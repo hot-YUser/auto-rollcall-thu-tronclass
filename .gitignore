@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+
+.venv/
+.vscode/
+
+.test-deps/
+.tmp-tests/
+tmp/
+tmp*/
+
+log/
+log_/
+
+build/
+dist/
