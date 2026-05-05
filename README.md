@@ -16,8 +16,10 @@
 - 預設使用 `config.yaml` 明文保存帳密，也支援 `TRON_USER` / `TRON_PASS` 覆蓋
 - 支援 Telegram / Discord 通知
 - 目前已實作數字點名流程
+- 數字點名期間會持續顯示進度，找到 Code 後會以醒目框線顯示
 - `radar` / `QR Code` 目前會明確標示為未支援，不會誤送答案
 - 檔案日誌已改為 JSON Lines structured logging
+- 通知逾時 / 送出失敗會被隔離，不會反過來中斷主監控流程
 - **目前版本沒有使用 Tesseract-OCR，也不需要 OCR 依賴**
 
 ## 專案結構
@@ -105,13 +107,15 @@ TRON_PASS=你的密碼
 - `Senkaku`: 輪詢間隔秒數，最小值會被限制為 `0.1`
 - `enable_log`: 是否寫入日誌
 - `retries`: 連續錯誤可容忍次數，最小值會被限制為 `1`
+- `http_timeout`: TronClass 主流程 HTTP timeout 秒數，預設 `20`
+- `notification_timeout`: Telegram / Discord 通知 timeout 秒數，預設 `10`
 - `verify_ssl`: 是否驗證 HTTPS / TLS 憑證，預設為 `true`
 - `user-agent`: 可輪替使用的 User-Agent 清單
 
 #### `notifications.tg`
 
 - `enable`: 是否啟用 Telegram 通知
-- `key`: Bot token
+- `key`: Bot token，可填純 token，程式會自動補上 `bot` 前綴
 - `chat`: chat id
 
 #### `notifications.dc`
@@ -203,6 +207,7 @@ CLI 介面支援：
 - 未支援 `radar` / `QR Code` 類型的明確通知與停用
 - JSON Lines structured logging
 - 基本錯誤重試與日誌輸出
+- 通知逾時 / 非 2xx 回應隔離
 - 離線整合測試與本地假服務驗證流程
 
 ### 尚未完成
@@ -215,6 +220,7 @@ CLI 介面支援：
 - 預設會將密碼明文保存在 `config.yaml`，請勿提交真實憑證；若不想明文保存，可改用 `TRON_USER` / `TRON_PASS`
 - 日誌會以 `.jsonl` 形式寫入 `log/`，可能包含回應摘要與點名資訊
 - 預設會驗證 HTTPS / TLS 憑證；只有在相容性需求下，才建議把 `config.verify_ssl` 改成 `false`
+- 通知送出使用獨立 timeout；若 Telegram / Discord 暫時異常，主監控流程仍會繼續執行
 - 若 `config.yaml` 損毀，程式會先備份原檔，再自動重建預設設定；若目錄不可寫，則退回本次執行用的內建預設值
 - 登入頁表單解析依賴目前學校登入頁 HTML 結構；若登入頁改版，`troTHU/tron_http.py` 可能需要調整
 

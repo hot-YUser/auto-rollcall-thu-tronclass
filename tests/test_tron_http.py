@@ -483,6 +483,55 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(mes_mock.await_count, 1)
         log_print.assert_called_once_with("偵測到未支援的 QR Code 點名")
 
+    async def test_mes_isolates_notification_timeout_failures(self) -> None:
+        tron.CONFIG["notifications"]["tg"].update(
+            {"enable": True, "key": "123456:token", "chat": "111"}
+        )
+        tron.CONFIG["notifications"]["dc"].update(
+            {"enable": True, "key": "discord-token", "chat": "222"}
+        )
+
+        with (
+            patch.object(
+                tron,
+                "_send_notification",
+                AsyncMock(side_effect=[asyncio.TimeoutError("tg timeout"), 200]),
+            ) as send_mock,
+            patch.object(tron, "log", return_value=True),
+            patch.object(tron, "log_print") as log_print,
+        ):
+            await tron.mes("hello")
+
+        self.assertEqual(send_mock.await_count, 2)
+        self.assertTrue(
+            any("Telegram 通知送出失敗" in call.args[0] for call in log_print.call_args_list)
+        )
+
+    async def test_send_notification_uses_timeout_and_raises_on_non_2xx(self) -> None:
+        response = make_response(status=503, text="service unavailable")
+        request = tron.NotificationRequest(
+            channel="telegram",
+            label="Telegram",
+            method="POST",
+            url="https://example.com/notify",
+            data={"text": "hello"},
+        )
+
+        with (
+            patch.object(
+                tron.aiohttp,
+                "request",
+                new=MagicMock(return_value=make_context_manager(response)),
+            ) as request_mock,
+            patch.object(tron, "create_notification_timeout", return_value="timeout-marker"),
+            patch.object(tron, "get_verify_ssl", return_value=True),
+        ):
+            with self.assertRaises(tron.NotificationSendError):
+                await tron._send_notification(request)
+
+        self.assertEqual(request_mock.call_args.kwargs["timeout"], "timeout-marker")
+        self.assertTrue(request_mock.call_args.kwargs["ssl"])
+
 
 class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
@@ -672,6 +721,31 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
             any("正在嘗試自動登入" in call.args[0] for call in log_print.call_args_list)
         )
 
+    async def test_app_main_uses_explicit_http_timeout(self) -> None:
+        fake_session = MagicMock()
+        fake_session.cookie_jar = MagicMock()
+
+        with (
+            patch.object(tron, "bootstrap_config"),
+            patch.object(tron, "consume_bootstrap_warnings", return_value=[]),
+            patch.object(tron, "random_ua", return_value="ua"),
+            patch.object(tron, "create_http_connector", return_value="connector-marker"),
+            patch.object(tron, "create_http_client_timeout", return_value="timeout-marker"),
+            patch.object(
+                tron.aiohttp,
+                "ClientSession",
+                return_value=make_context_manager(fake_session),
+            ) as client_session_mock,
+            patch.object(tron, "monitor_loop", AsyncMock(return_value=None)),
+            patch.object(tron, "input_loop", AsyncMock(return_value=None)),
+            patch.object(tron.sys.stdout, "write"),
+            patch.object(tron.sys.stdout, "flush"),
+        ):
+            await tron.app_main()
+
+        self.assertEqual(client_session_mock.call_args.kwargs["timeout"], "timeout-marker")
+        self.assertEqual(client_session_mock.call_args.kwargs["connector"], "connector-marker")
+
 
 class TronNumberRollcallTest(unittest.IsolatedAsyncioTestCase):
     async def test_number_stops_immediately_on_unauthorized_response(self) -> None:
@@ -745,6 +819,43 @@ class TronNumberRollcallTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(worker_session.put.call_count, 1)
         mes_mock.assert_not_awaited()
+
+    async def test_number_shows_progress_and_highlighted_found_code(self) -> None:
+        main_session = MagicMock()
+        main_session.cookie_jar = FakeCookieJar([FakeCookie("session", "ilearn.thu.edu.tw")])
+        worker_session = MagicMock()
+        worker_session.cookie_jar = MagicMock()
+        worker_session.put.side_effect = [
+            make_context_manager(make_response(status=400, url="https://example.com/rollcall")),
+            make_context_manager(make_response(status=200, url="https://example.com/rollcall")),
+        ]
+        client_session_context = make_context_manager(worker_session)
+
+        with (
+            patch.object(tron.aiohttp, "ClientSession", return_value=client_session_context) as client_session_mock,
+            patch.object(tron, "create_http_connector", return_value=MagicMock()),
+            patch.object(tron, "create_http_client_timeout", return_value="timeout-marker"),
+            patch.object(tron, "mes", AsyncMock()) as mes_mock,
+            patch.object(tron, "status_print") as status_print,
+            patch.object(tron, "log_print") as log_print,
+            patch.object(tron, "log", return_value=True),
+            patch.object(tron, "NUMBER_CODE_LIMIT", 2),
+            patch.object(tron, "NUMBER_WORKER_COUNT", 1),
+            patch.object(tron, "random_ua", return_value="ua"),
+        ):
+            await tron.number(main_session, 42)
+
+        self.assertEqual(client_session_mock.call_args.kwargs["timeout"], "timeout-marker")
+        self.assertTrue(
+            any("正在嘗試中" in call.args[0] for call in status_print.call_args_list)
+        )
+        self.assertTrue(
+            any("Code: 0001" in call.args[0] for call in log_print.call_args_list)
+        )
+        self.assertIn(
+            "Code: 0001",
+            mes_mock.await_args_list[0].kwargs["highlight_block"],
+        )
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 import asyncio
 import copy
+import html
 import hashlib
 import json
 import os
@@ -46,9 +47,12 @@ LAST_STATUS = "初始化中"
 NUMBER_CODE_LIMIT = 10000
 NUMBER_WORKER_COUNT = 100
 NUMBER_REQUEST_RETRIES = 3
+NUMBER_PROGRESS_INTERVAL = 0.5
 DEFAULT_OPERATING_RANGE = ["00:00", "00:00"]
 LOGIN_RETRY_DELAYS = (10.0, 30.0, 60.0, 300.0)
 FATAL_NOTIFICATION_INTERVAL = 300.0
+DEFAULT_HTTP_TIMEOUT_SECONDS = 20.0
+DEFAULT_NOTIFICATION_TIMEOUT_SECONDS = 10.0
 PLACEHOLDER_CREDENTIAL_VALUES = {
     "",
     "YOUR_STUDENT_ID",
@@ -87,6 +91,8 @@ DEFAULT_CONFIG = {
         "enable_log": True,
         "Senkaku": 1,
         "retries": 20,
+        "http_timeout": DEFAULT_HTTP_TIMEOUT_SECONDS,
+        "notification_timeout": DEFAULT_NOTIFICATION_TIMEOUT_SECONDS,
         "verify_ssl": True,
         "user-agent": list(DEFAULT_USER_AGENTS),
     },
@@ -99,6 +105,20 @@ DEFAULT_CONFIG = {
         5: {"enable": True, "range": list(DEFAULT_OPERATING_RANGE)},
         6: {"enable": True, "range": list(DEFAULT_OPERATING_RANGE)},
     },
+}
+
+BIG_DIGITS = {
+    "0": [" ### ", "#   #", "#   #", "#   #", " ### "],
+    "1": ["  #  ", " ##  ", "  #  ", "  #  ", " ### "],
+    "2": [" ### ", "#   #", "   # ", "  #  ", "#####"],
+    "3": ["#### ", "    #", " ### ", "    #", "#### "],
+    "4": ["#   #", "#   #", "#####", "    #", "    #"],
+    "5": ["#####", "#    ", "#### ", "    #", "#### "],
+    "6": [" ### ", "#    ", "#### ", "#   #", " ### "],
+    "7": ["#####", "    #", "   # ", "  #  ", "  #  "],
+    "8": [" ### ", "#   #", " ### ", "#   #", " ### "],
+    "9": [" ### ", "#   #", " ####", "    #", " ### "],
+    "?": ["#####", "    #", "  ## ", "     ", "  #  "],
 }
 
 YAML_ERROR_TYPES = tuple(
@@ -155,6 +175,24 @@ class LoginResult:
 LAST_LOGIN_RESULT = LoginResult(status="missing_credentials", credential_source="missing")
 
 
+@dataclass(frozen=True)
+class NotificationRequest:
+    channel: str
+    label: str
+    method: str
+    url: str
+    data: Optional[Dict[str, str]] = None
+    headers: Optional[Dict[str, str]] = None
+    json_body: Optional[Dict[str, Any]] = None
+
+
+class NotificationSendError(Exception):
+    def __init__(self, channel: str, message: str, status_code: int = 0) -> None:
+        super().__init__(message)
+        self.channel = channel
+        self.status_code = status_code
+
+
 def normalize_text(value: Any) -> str:
     return str(value or "").strip()
 
@@ -171,6 +209,14 @@ def coerce_bool(value: Any, default: bool) -> bool:
         if normalized in {"0", "false", "no", "off", "disable", "disabled"}:
             return False
     return default
+
+
+def coerce_positive_float(value: Any, default: float, minimum: float = 0.1) -> float:
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return default
+    return max(numeric, minimum)
 
 
 def is_placeholder_credential(value: Any) -> bool:
@@ -346,6 +392,16 @@ def normalize_config(raw_config: Any) -> Dict[str, Any]:
     runtime_config.setdefault("enable_log", DEFAULT_CONFIG["config"]["enable_log"])
     runtime_config.setdefault("Senkaku", DEFAULT_CONFIG["config"]["Senkaku"])
     runtime_config.setdefault("retries", DEFAULT_CONFIG["config"]["retries"])
+    runtime_config["http_timeout"] = coerce_positive_float(
+        runtime_config.get("http_timeout", DEFAULT_CONFIG["config"]["http_timeout"]),
+        DEFAULT_CONFIG["config"]["http_timeout"],
+    )
+    runtime_config["notification_timeout"] = coerce_positive_float(
+        runtime_config.get(
+            "notification_timeout", DEFAULT_CONFIG["config"]["notification_timeout"]
+        ),
+        DEFAULT_CONFIG["config"]["notification_timeout"],
+    )
     runtime_config["verify_ssl"] = coerce_bool(
         runtime_config.get("verify_ssl", DEFAULT_CONFIG["config"]["verify_ssl"]),
         DEFAULT_CONFIG["config"]["verify_ssl"],
@@ -521,6 +577,89 @@ def get_retry_limit() -> int:
     return max(retries, 1)
 
 
+def get_http_timeout_seconds() -> float:
+    return coerce_positive_float(
+        CONFIG["config"].get("http_timeout", DEFAULT_CONFIG["config"]["http_timeout"]),
+        DEFAULT_CONFIG["config"]["http_timeout"],
+    )
+
+
+def get_notification_timeout_seconds() -> float:
+    return coerce_positive_float(
+        CONFIG["config"].get(
+            "notification_timeout", DEFAULT_CONFIG["config"]["notification_timeout"]
+        ),
+        DEFAULT_CONFIG["config"]["notification_timeout"],
+    )
+
+
+def create_client_timeout(total_seconds: float) -> Any:
+    timeout_factory = getattr(aiohttp, "ClientTimeout", None)
+    if timeout_factory is None:
+        return None
+    return timeout_factory(total=max(total_seconds, 0.1))
+
+
+def create_http_client_timeout() -> Any:
+    return create_client_timeout(get_http_timeout_seconds())
+
+
+def create_notification_timeout() -> Any:
+    return create_client_timeout(get_notification_timeout_seconds())
+
+
+def normalize_telegram_bot_key(value: Any) -> str:
+    token = normalize_text(value)
+    if token and not token.startswith("bot"):
+        return "bot{}".format(token)
+    return token
+
+
+def render_big_digits(text: str) -> str:
+    rows = [""] * len(BIG_DIGITS["0"])
+    for char in normalize_text(text) or "?":
+        glyph = BIG_DIGITS.get(char, BIG_DIGITS["?"])
+        for index, part in enumerate(glyph):
+            rows[index] += part + "  "
+    return "\n".join(row.rstrip() for row in rows)
+
+
+def format_found_code_banner(code: str) -> str:
+    code_text = normalize_text(code) or "NA"
+    big_code = render_big_digits(code_text)
+    big_lines = big_code.splitlines() or [code_text]
+    width = max(
+        len("找到點名數字！"),
+        len("Code: {}".format(code_text)),
+        *(len(line) for line in big_lines),
+    )
+    border = "+" + "=" * (width + 2) + "+"
+    lines = [border, "| {} |".format("找到點名數字！".center(width))]
+    for line in big_lines:
+        lines.append("| {} |".format(line.ljust(width)))
+    lines.append("| {} |".format("Code: {}".format(code_text).center(width)))
+    lines.append(border)
+    return "\n".join(lines)
+
+
+def build_number_progress_message(
+    rollcall_id: int,
+    request_count: int,
+    latest_try_code: str,
+    started_at: float,
+) -> str:
+    elapsed = time.perf_counter() - started_at
+    return (
+        "數字點名 #{}: 正在嘗試中... 已送出 {}/{}，最近代碼 {}，已用 {:.1f}s"
+    ).format(
+        rollcall_id,
+        request_count,
+        NUMBER_CODE_LIMIT,
+        latest_try_code,
+        elapsed,
+    )
+
+
 def parse_schedule_range(range_str: Any) -> Tuple[Any, Any]:
     if isinstance(range_str, list) and len(range_str) == 2:
         try:
@@ -592,59 +731,141 @@ def log(
 
 
 async def _send_notification(
-    method: str,
-    url: str,
-    *,
-    data: Optional[Dict[str, str]] = None,
-    headers: Optional[Dict[str, str]] = None,
-    json_body: Optional[Dict[str, str]] = None,
-) -> None:
-    async with aiohttp.request(
-        method=method,
-        url=url,
-        data=data,
-        headers=headers,
-        json=json_body,
-    ) as resp:
-        await resp.read()
+    request: NotificationRequest,
+) -> int:
+    request_kwargs: Dict[str, Any] = {
+        "method": request.method,
+        "url": request.url,
+        "ssl": get_verify_ssl(),
+    }
+    if request.data is not None:
+        request_kwargs["data"] = request.data
+    if request.headers is not None:
+        request_kwargs["headers"] = request.headers
+    if request.json_body is not None:
+        request_kwargs["json"] = request.json_body
+
+    timeout = create_notification_timeout()
+    if timeout is not None:
+        request_kwargs["timeout"] = timeout
+
+    async with aiohttp.request(**request_kwargs) as resp:
+        body = await resp.text()
+        if not 200 <= resp.status < 300:
+            raise NotificationSendError(
+                request.channel,
+                "{} 通知回傳 HTTP {}: {}".format(request.label, resp.status, body[:200]),
+                status_code=resp.status,
+            )
+        return resp.status
 
 
-async def mes(text: str = "test message") -> None:
-    text = "THU Student\n" + text
-    tasks = []
+def build_notification_requests(
+    text: str,
+    highlight_block: str = "",
+) -> List[NotificationRequest]:
+    requests: List[NotificationRequest] = []
+    message_text = normalize_text(text) or "test message"
+    highlight_block = highlight_block.rstrip()
+    title_prefix = "THU Student\n"
 
     tg_config = CONFIG["notifications"]["tg"]
     if tg_config["enable"]:
-        tasks.append(
-            _send_notification(
-                "POST",
-                "https://api.telegram.org/{}/sendMessage".format(tg_config["key"]),
-                data={
-                    "chat_id": str(tg_config["chat"]),
-                    "text": text,
-                },
+        token = normalize_telegram_bot_key(tg_config.get("key"))
+        chat_id = normalize_text(tg_config.get("chat"))
+        if token and chat_id:
+            if highlight_block:
+                tg_text = "{}\n<pre>{}</pre>".format(
+                    html.escape(title_prefix + message_text),
+                    html.escape(highlight_block),
+                )
+                tg_data = {
+                    "chat_id": chat_id,
+                    "text": tg_text,
+                    "parse_mode": "HTML",
+                }
+            else:
+                tg_data = {
+                    "chat_id": chat_id,
+                    "text": title_prefix + message_text,
+                }
+            requests.append(
+                NotificationRequest(
+                    channel="telegram",
+                    label="Telegram",
+                    method="POST",
+                    url="https://api.telegram.org/{}/sendMessage".format(token),
+                    data=tg_data,
+                )
             )
-        )
+        else:
+            log(
+                event="notification_delivery",
+                status="skipped",
+                message="Telegram 通知已啟用，但缺少 token 或 chat id。",
+                extra={"channel": "telegram"},
+            )
 
     dc_config = CONFIG["notifications"]["dc"]
     if dc_config["enable"]:
-        tasks.append(
-            _send_notification(
-                "POST",
-                "https://discord.com/api/v10/channels/{}/messages".format(dc_config["chat"]),
-                headers={
-                    "Authorization": "Bot {}".format(dc_config["key"]),
-                    "Content-Type": "application/json",
-                },
-                json_body={"content": text},
+        bot_token = normalize_text(dc_config.get("key"))
+        channel_id = normalize_text(dc_config.get("chat"))
+        if bot_token and channel_id:
+            dc_content = title_prefix + message_text
+            if highlight_block:
+                dc_content = "{}\n```text\n{}\n```".format(dc_content, highlight_block)
+            requests.append(
+                NotificationRequest(
+                    channel="discord",
+                    label="Discord",
+                    method="POST",
+                    url="https://discord.com/api/v10/channels/{}/messages".format(channel_id),
+                    headers={
+                        "Authorization": "Bot {}".format(bot_token),
+                        "Content-Type": "application/json",
+                    },
+                    json_body={"content": dc_content},
+                )
             )
-        )
+        else:
+            log(
+                event="notification_delivery",
+                status="skipped",
+                message="Discord 通知已啟用，但缺少 token 或 channel id。",
+                extra={"channel": "discord"},
+            )
 
-    for task in tasks:
-        try:
-            await task
-        except aiohttp.ClientError as exc:
-            log_print("通知送出失敗: {}".format(exc))
+    return requests
+
+
+async def mes(text: str = "test message", highlight_block: str = "") -> None:
+    requests = build_notification_requests(text, highlight_block)
+    if not requests:
+        return
+
+    results = await asyncio.gather(
+        *[_send_notification(request) for request in requests],
+        return_exceptions=True,
+    )
+
+    for request, result in zip(requests, results):
+        if isinstance(result, BaseException):
+            log(
+                event="notification_delivery",
+                status="failed",
+                message="{} 通知送出失敗。".format(request.label),
+                error=result,
+                extra={"channel": request.channel, "url": request.url},
+            )
+            log_print("{} 通知送出失敗: {}".format(request.label, result))
+        else:
+            log(
+                event="notification_delivery",
+                status="success",
+                http_status=result,
+                message="{} 通知已送出。".format(request.label),
+                extra={"channel": request.channel, "url": request.url},
+            )
 
 
 IS_LOGGING_IN = False
@@ -755,14 +976,16 @@ async def number(main_session: aiohttp.ClientSession, rcid: int) -> None:
     request_count = 0
     found_code = "NA"
     stop_event = asyncio.Event()
+    progress_done = asyncio.Event()
     device = random_id()
     started_at = time.perf_counter()
     headers = {"User-Agent": random_ua()}
     fatal_error: Optional[BaseException] = None
     request_url = "{}/api/rollcall/{}/answer_number_rollcall".format(TRON, rcid)
+    latest_try_code = "----"
 
     async def try_number_code(session: aiohttp.ClientSession, try_code: int) -> None:
-        nonlocal request_count, found_code, fatal_error
+        nonlocal request_count, found_code, fatal_error, latest_try_code
 
         payload = {
             "deviceId": device,
@@ -773,6 +996,7 @@ async def number(main_session: aiohttp.ClientSession, rcid: int) -> None:
                 return
 
             try:
+                latest_try_code = payload["numberCode"]
                 async with session.put(
                     request_url,
                     json=payload,
@@ -783,8 +1007,9 @@ async def number(main_session: aiohttp.ClientSession, rcid: int) -> None:
                     if resp.status == 200:
                         found_code = payload["numberCode"]
                         stop_event.set()
-                        print("\n找到點名數字：{}！".format(found_code))
-                        await mes("找到點名數字：{}！".format(found_code))
+                        banner = format_found_code_banner(found_code)
+                        log_print(banner)
+                        await mes("找到點名數字！", highlight_block=banner)
                     elif resp.status in (400, 409):
                         return
                     elif resp.status in (401, 403):
@@ -843,9 +1068,31 @@ async def number(main_session: aiohttp.ClientSession, rcid: int) -> None:
                 else:
                     await asyncio.sleep(1)
 
+    async def progress_reporter() -> None:
+        while not progress_done.is_set():
+            status_print(
+                build_number_progress_message(
+                    rcid,
+                    request_count,
+                    latest_try_code,
+                    started_at,
+                )
+            )
+            try:
+                await asyncio.wait_for(progress_done.wait(), timeout=NUMBER_PROGRESS_INTERVAL)
+            except asyncio.TimeoutError:
+                continue
+
+    session_kwargs: Dict[str, Any] = {
+        "connector": create_http_connector(),
+        "headers": headers,
+    }
+    timeout = create_http_client_timeout()
+    if timeout is not None:
+        session_kwargs["timeout"] = timeout
+
     async with aiohttp.ClientSession(
-        connector=create_http_connector(),
-        headers=headers,
+        **session_kwargs,
     ) as session:
         clone_session_cookies(main_session, session)
         queue = asyncio.Queue()
@@ -867,7 +1114,13 @@ async def number(main_session: aiohttp.ClientSession, rcid: int) -> None:
             asyncio.create_task(worker())
             for _ in range(min(NUMBER_WORKER_COUNT, NUMBER_CODE_LIMIT))
         ]
-        await asyncio.gather(*workers)
+        status_print(build_number_progress_message(rcid, request_count, latest_try_code, started_at))
+        progress_task = asyncio.create_task(progress_reporter())
+        try:
+            await asyncio.gather(*workers)
+        finally:
+            progress_done.set()
+            await progress_task
 
     elapsed = time.perf_counter() - started_at
 
@@ -975,7 +1228,10 @@ async def check_rollcall(session: aiohttp.ClientSession, cnt: int = -1) -> str:
     if selected_status == "is_number" and selected_rollcall is not None:
         reset_unsupported_rollcall_state()
         rollcall_id = selected_rollcall.get("rollcall_id")
-        text = "start num\n  id:{}".format(rollcall_id)
+        text = "start num\n  id:{}\n  正在嘗試 0000-{:04d}，請稍候...".format(
+            rollcall_id,
+            NUMBER_CODE_LIMIT - 1,
+        )
         log(
             event="number_rollcall_started",
             counter=cnt,
@@ -1289,10 +1545,15 @@ async def app_main() -> None:
         log_print(warning)
 
     headers = {"User-Agent": random_ua()}
-    async with aiohttp.ClientSession(
-        connector=create_http_connector(),
-        headers=headers,
-    ) as session:
+    session_kwargs: Dict[str, Any] = {
+        "connector": create_http_connector(),
+        "headers": headers,
+    }
+    timeout = create_http_client_timeout()
+    if timeout is not None:
+        session_kwargs["timeout"] = timeout
+
+    async with aiohttp.ClientSession(**session_kwargs) as session:
         await asyncio.gather(
             monitor_loop(session, shutdown_event),
             input_loop(session, shutdown_event),
