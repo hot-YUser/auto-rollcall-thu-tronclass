@@ -41,7 +41,7 @@ LAST_STATUS = "初始化中"
 NUMBER_CODE_LIMIT = 10000
 NUMBER_WORKER_COUNT = 100
 NUMBER_REQUEST_RETRIES = 3
-DEFAULT_OPERATING_RANGE = ["09:00", "17:00"]
+DEFAULT_OPERATING_RANGE = ["00:00", "00:00"]
 PLACEHOLDER_CREDENTIAL_VALUES = {
     "",
     "YOUR_STUDENT_ID",
@@ -88,8 +88,8 @@ DEFAULT_CONFIG = {
         2: {"enable": True, "range": list(DEFAULT_OPERATING_RANGE)},
         3: {"enable": True, "range": list(DEFAULT_OPERATING_RANGE)},
         4: {"enable": True, "range": list(DEFAULT_OPERATING_RANGE)},
-        5: {"enable": False, "range": list(DEFAULT_OPERATING_RANGE)},
-        6: {"enable": False, "range": list(DEFAULT_OPERATING_RANGE)},
+        5: {"enable": True, "range": list(DEFAULT_OPERATING_RANGE)},
+        6: {"enable": True, "range": list(DEFAULT_OPERATING_RANGE)},
     },
 }
 
@@ -391,6 +391,15 @@ def parse_schedule_range(range_str: Any) -> Tuple[Any, Any]:
         datetime.strptime(fallback[0], "%H:%M").time(),
         datetime.strptime(fallback[1], "%H:%M").time(),
     )
+
+
+def is_within_schedule(start: Any, end: Any, current_time: Any) -> bool:
+    # Matching start/end means "always on"; start > end supports overnight ranges.
+    if start == end:
+        return True
+    if start < end:
+        return start <= current_time <= end
+    return current_time >= start or current_time <= end
 
 
 def log(
@@ -840,7 +849,7 @@ async def monitor_loop(session: aiohttp.ClientSession, shutdown_event: asyncio.E
             await sleep_or_shutdown(shutdown_event, 60)
             continue
 
-        if start <= current_time <= end:
+        if is_within_schedule(start, end, current_time):
             if not flag_day_night:
                 flag_day_night = True
                 text = "進入上課時間，開始監控點名...\n"
