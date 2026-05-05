@@ -485,6 +485,10 @@ def get_login_retry_delay(attempt_index: int) -> float:
     return LOGIN_RETRY_DELAYS[min(attempt_index, len(LOGIN_RETRY_DELAYS) - 1)]
 
 
+def should_auto_login_without_session() -> bool:
+    return LAST_LOGIN_RESULT.status not in {"missing_credentials", "rejected"}
+
+
 def extract_login_form(html_text: str, base_url: str = LOGIN_URL) -> Tuple[str, Dict[str, str]]:
     form = extract_login_form_data(html_text, base_url)
     return form.action_url, form.fields
@@ -833,6 +837,9 @@ async def number(main_session: aiohttp.ClientSession, rcid: int) -> None:
                         message="數字點名請求失敗。",
                         error=exc,
                     )
+                    if fatal_error is None and found_code == "NA":
+                        fatal_error = exc
+                        stop_event.set()
                 else:
                     await asyncio.sleep(1)
 
@@ -1121,10 +1128,10 @@ async def monitor_loop(session: aiohttp.ClientSession, shutdown_event: asyncio.E
             continue
 
         if not has_session_cookie(session):
-            if LAST_LOGIN_RESULT.should_auto_retry:
+            if should_auto_login_without_session():
                 now = time.monotonic()
                 if now >= next_login_retry_at:
-                    log_print("自動登入失敗後正在重新嘗試登入...")
+                    log_print("偵測到尚未登入，正在嘗試自動登入...")
                     login_result = await login(session)
                     if login_result.ok:
                         login_retry_attempt = 0
