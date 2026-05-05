@@ -76,12 +76,23 @@ class TronHelpersTest(unittest.TestCase):
         self.original_runtime_credentials = copy.deepcopy(tron.RUNTIME_CREDENTIALS)
         self.original_tron_user = os.environ.get("TRON_USER")
         self.original_tron_pass = os.environ.get("TRON_PASS")
+        self.original_config_path = tron.CONFIG_PATH
+        self.original_config_bootstrapped = tron.CONFIG_BOOTSTRAPPED
+        self.original_bootstrap_warnings = list(tron.BOOTSTRAP_WARNINGS)
+        self.original_last_login_result = tron.LAST_LOGIN_RESULT
+        self.original_last_fatal_notification_at = tron.LAST_FATAL_NOTIFICATION_AT
 
     def tearDown(self) -> None:
         tron.CONFIG.clear()
         tron.CONFIG.update(copy.deepcopy(self.original_config))
         tron.RUNTIME_CREDENTIALS.clear()
         tron.RUNTIME_CREDENTIALS.update(copy.deepcopy(self.original_runtime_credentials))
+        tron.CONFIG_PATH = self.original_config_path
+        tron.CONFIG_BOOTSTRAPPED = self.original_config_bootstrapped
+        tron.BOOTSTRAP_WARNINGS.clear()
+        tron.BOOTSTRAP_WARNINGS.extend(self.original_bootstrap_warnings)
+        tron.LAST_LOGIN_RESULT = self.original_last_login_result
+        tron.LAST_FATAL_NOTIFICATION_AT = self.original_last_fatal_notification_at
         if self.original_tron_user is None:
             os.environ.pop("TRON_USER", None)
         else:
@@ -126,17 +137,17 @@ class TronHelpersTest(unittest.TestCase):
         self.assertEqual(normalized["operating"][1]["range"], ["10:00", "11:00"])
         self.assertIn(0, normalized["operating"])
 
-    def test_default_operating_enables_weekdays_only(self) -> None:
+    def test_default_operating_enables_all_days(self) -> None:
         self.assertTrue(tron.DEFAULT_CONFIG["operating"][0]["enable"])
         self.assertTrue(tron.DEFAULT_CONFIG["operating"][4]["enable"])
-        self.assertFalse(tron.DEFAULT_CONFIG["operating"][5]["enable"])
-        self.assertFalse(tron.DEFAULT_CONFIG["operating"][6]["enable"])
+        self.assertTrue(tron.DEFAULT_CONFIG["operating"][5]["enable"])
+        self.assertTrue(tron.DEFAULT_CONFIG["operating"][6]["enable"])
 
-    def test_parse_schedule_range_falls_back_on_invalid_input(self) -> None:
+    def test_parse_schedule_range_falls_back_to_all_day_on_invalid_input(self) -> None:
         start, end = tron.parse_schedule_range("oops")
 
-        self.assertEqual(start.strftime("%H:%M"), "09:00")
-        self.assertEqual(end.strftime("%H:%M"), "17:00")
+        self.assertEqual(start.strftime("%H:%M"), "00:00")
+        self.assertEqual(end.strftime("%H:%M"), "00:00")
 
     def test_get_poll_interval_and_retry_limit_are_clamped(self) -> None:
         tron.CONFIG["config"]["Senkaku"] = "0"
@@ -144,6 +155,16 @@ class TronHelpersTest(unittest.TestCase):
 
         self.assertEqual(tron.get_poll_interval(), 0.1)
         self.assertEqual(tron.get_retry_limit(), 1)
+
+    def test_normalize_config_defaults_verify_ssl_to_true(self) -> None:
+        normalized = tron.normalize_config({"config": {}})
+
+        self.assertTrue(normalized["config"]["verify_ssl"])
+
+    def test_get_verify_ssl_reads_current_config_value(self) -> None:
+        tron.CONFIG["config"]["verify_ssl"] = False
+
+        self.assertFalse(tron.get_verify_ssl())
 
     def test_resolve_credentials_prefers_environment_over_config(self) -> None:
         tron.clear_runtime_credentials()
@@ -180,11 +201,12 @@ class TronHelpersTest(unittest.TestCase):
 
     def test_save_account_for_next_launch_persists_password_to_config(self) -> None:
         with patch.object(tron, "save_config") as save_config:
-            tron.save_account_for_next_launch("user2", "pass2")
+            result = tron.save_account_for_next_launch("user2", "pass2")
 
         self.assertEqual(tron.CONFIG["account"]["user"], "user2")
         self.assertEqual(tron.CONFIG["account"]["passwd"], "pass2")
         save_config.assert_called_once()
+        self.assertTrue(result)
 
     def test_log_writes_json_lines(self) -> None:
         temp_dir = make_workspace_temp_dir()
@@ -229,6 +251,83 @@ class TronHelpersTest(unittest.TestCase):
             self.assertFalse(path.exists())
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_bootstrap_config_recovers_from_broken_yaml_and_rewrites_default(self) -> None:
+        temp_dir = make_workspace_temp_dir()
+        try:
+            tron.CONFIG_PATH = temp_dir / "config.yaml"
+            tron.CONFIG_PATH.write_text("placeholder", encoding="utf-8")
+            tron.CONFIG_BOOTSTRAPPED = False
+            tron.BOOTSTRAP_WARNINGS.clear()
+
+            with patch.object(tron.yaml, "safe_load", side_effect=ValueError("broken yaml")):
+                config = tron.bootstrap_config(force=True)
+
+            backups = list(temp_dir.glob("config-broken-*.yaml"))
+            self.assertEqual(config["account"]["user"], "YOUR_STUDENT_ID")
+            self.assertEqual(len(backups), 1)
+            self.assertTrue(tron.CONFIG_PATH.exists())
+            self.assertTrue(any("已損毀" in warning for warning in tron.BOOTSTRAP_WARNINGS))
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_bootstrap_config_falls_back_to_defaults_when_rewrite_fails(self) -> None:
+        temp_dir = make_workspace_temp_dir()
+        try:
+            tron.CONFIG_PATH = temp_dir / "config.yaml"
+            tron.CONFIG_PATH.write_text("placeholder", encoding="utf-8")
+            tron.CONFIG_BOOTSTRAPPED = False
+            tron.BOOTSTRAP_WARNINGS.clear()
+
+            with (
+                patch.object(tron.yaml, "safe_load", side_effect=ValueError("broken yaml")),
+                patch.object(tron, "write_config_file", side_effect=OSError("read-only")),
+            ):
+                config = tron.bootstrap_config(force=True)
+
+            self.assertEqual(config["config"]["verify_ssl"], True)
+            self.assertTrue(
+                any("本次將使用內建預設設定" in warning for warning in tron.BOOTSTRAP_WARNINGS)
+            )
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_build_fatal_error_report_includes_fingerprint_and_traceback(self) -> None:
+        try:
+            raise RuntimeError("boom")
+        except RuntimeError as exc:
+            summary, formatted_traceback, fingerprint = tron.build_fatal_error_report(exc, 2)
+
+        self.assertIn("restart #2", summary)
+        self.assertTrue(fingerprint)
+        self.assertIn("RuntimeError: boom", formatted_traceback)
+
+    def test_report_fatal_exception_throttles_notifications(self) -> None:
+        def fake_asyncio_run(coro):
+            coro.close()
+            return None
+
+        with (
+            patch.object(tron, "log_print") as log_print,
+            patch.object(tron, "log", return_value=True) as log_mock,
+            patch("asyncio.run", side_effect=fake_asyncio_run) as asyncio_run,
+            patch.object(tron.time, "monotonic", side_effect=[1000.0, 1001.0]),
+        ):
+            tron.LAST_FATAL_NOTIFICATION_AT = 0.0
+
+            try:
+                raise RuntimeError("boom-1")
+            except RuntimeError as exc:
+                tron.report_fatal_exception(exc, 1)
+
+            try:
+                raise RuntimeError("boom-2")
+            except RuntimeError as exc:
+                tron.report_fatal_exception(exc, 2)
+
+        self.assertEqual(asyncio_run.call_count, 1)
+        self.assertEqual(log_mock.call_count, 2)
+        self.assertEqual(log_print.call_count, 2)
 
 
 if __name__ == "__main__":
