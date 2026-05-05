@@ -1,14 +1,17 @@
 import asyncio
 import copy
+import hashlib
 import json
 import os
 import random
 import string
 import sys
 import time
+import traceback
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp
 import yaml
@@ -21,6 +24,7 @@ try:
         TronHttpClient,
         TronHttpError,
         UnauthorizedError,
+        UnexpectedResponseError,
         extract_login_form as extract_login_form_data,
         has_session_cookie as has_session_cookie_data,
     )
@@ -32,6 +36,7 @@ except ImportError:
         TronHttpClient,
         TronHttpError,
         UnauthorizedError,
+        UnexpectedResponseError,
         extract_login_form as extract_login_form_data,
         has_session_cookie as has_session_cookie_data,
     )
@@ -42,6 +47,8 @@ NUMBER_CODE_LIMIT = 10000
 NUMBER_WORKER_COUNT = 100
 NUMBER_REQUEST_RETRIES = 3
 DEFAULT_OPERATING_RANGE = ["00:00", "00:00"]
+LOGIN_RETRY_DELAYS = (10.0, 30.0, 60.0, 300.0)
+FATAL_NOTIFICATION_INTERVAL = 300.0
 PLACEHOLDER_CREDENTIAL_VALUES = {
     "",
     "YOUR_STUDENT_ID",
@@ -80,6 +87,7 @@ DEFAULT_CONFIG = {
         "enable_log": True,
         "Senkaku": 1,
         "retries": 20,
+        "verify_ssl": True,
         "user-agent": list(DEFAULT_USER_AGENTS),
     },
     "operating": {
@@ -92,6 +100,12 @@ DEFAULT_CONFIG = {
         6: {"enable": True, "range": list(DEFAULT_OPERATING_RANGE)},
     },
 }
+
+YAML_ERROR_TYPES = tuple(
+    error_type
+    for error_type in (getattr(yaml, "YAMLError", None), ValueError)
+    if isinstance(error_type, type) and issubclass(error_type, BaseException)
+)
 
 def log_print(msg: Any) -> None:
     sys.stdout.write(
@@ -116,10 +130,47 @@ PATH = BASE_DIR / "log"
 CONFIG_PATH = BASE_DIR / "config.yaml"
 RUNTIME_CREDENTIALS = {"user": "", "passwd": ""}
 UNSUPPORTED_ROLLCALL_STATE = {"rollcall_id": None, "status": ""}
+BOOTSTRAP_WARNINGS: List[str] = []
+CONFIG_BOOTSTRAPPED = False
+LAST_FATAL_NOTIFICATION_AT = 0.0
+
+
+@dataclass(frozen=True)
+class LoginResult:
+    status: str
+    credential_source: str
+    user: str = ""
+    final_url: str = ""
+    error: str = ""
+
+    @property
+    def ok(self) -> bool:
+        return self.status == "success"
+
+    @property
+    def should_auto_retry(self) -> bool:
+        return self.status in {"missing_session", "transient_error"}
+
+
+LAST_LOGIN_RESULT = LoginResult(status="missing_credentials", credential_source="missing")
 
 
 def normalize_text(value: Any) -> str:
     return str(value or "").strip()
+
+
+def coerce_bool(value: Any, default: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "yes", "on", "enable", "enabled"}:
+            return True
+        if normalized in {"0", "false", "no", "off", "disable", "disabled"}:
+            return False
+    return default
 
 
 def is_placeholder_credential(value: Any) -> bool:
@@ -172,10 +223,10 @@ def resolve_credentials() -> Tuple[str, str, str]:
     return "", "", "missing"
 
 
-def save_account_for_next_launch(user: str, password: str) -> None:
+def save_account_for_next_launch(user: str, password: str) -> bool:
     CONFIG["account"]["user"] = normalize_text(user)
     CONFIG["account"]["passwd"] = normalize_text(password)
-    save_config()
+    return save_config()
 
 
 def make_payload_excerpt(payload: Any, limit: int = 500) -> Optional[str]:
@@ -254,6 +305,7 @@ async def maybe_notify_unsupported_rollcall(
 
 
 def write_config_file(config: Dict[str, Any]) -> None:
+    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(CONFIG_PATH, "w", encoding="utf-8") as file:
         yaml.safe_dump(config, file, allow_unicode=True, sort_keys=False)
 
@@ -280,7 +332,10 @@ def normalize_config(raw_config: Any) -> Dict[str, Any]:
         if not isinstance(channel_config, dict):
             channel_config = {}
             notifications[channel] = channel_config
-        channel_config.setdefault("enable", DEFAULT_CONFIG["notifications"][channel]["enable"])
+        channel_config["enable"] = coerce_bool(
+            channel_config.get("enable", DEFAULT_CONFIG["notifications"][channel]["enable"]),
+            DEFAULT_CONFIG["notifications"][channel]["enable"],
+        )
         channel_config.setdefault("key", DEFAULT_CONFIG["notifications"][channel]["key"])
         channel_config.setdefault("chat", DEFAULT_CONFIG["notifications"][channel]["chat"])
 
@@ -291,6 +346,10 @@ def normalize_config(raw_config: Any) -> Dict[str, Any]:
     runtime_config.setdefault("enable_log", DEFAULT_CONFIG["config"]["enable_log"])
     runtime_config.setdefault("Senkaku", DEFAULT_CONFIG["config"]["Senkaku"])
     runtime_config.setdefault("retries", DEFAULT_CONFIG["config"]["retries"])
+    runtime_config["verify_ssl"] = coerce_bool(
+        runtime_config.get("verify_ssl", DEFAULT_CONFIG["config"]["verify_ssl"]),
+        DEFAULT_CONFIG["config"]["verify_ssl"],
+    )
     user_agents = runtime_config.get("user-agent")
     if not isinstance(user_agents, list):
         user_agents = []
@@ -307,7 +366,7 @@ def normalize_config(raw_config: Any) -> Dict[str, Any]:
         merged = copy.deepcopy(default_schedule)
         if isinstance(raw_schedule, dict):
             if "enable" in raw_schedule:
-                merged["enable"] = bool(raw_schedule["enable"])
+                merged["enable"] = coerce_bool(raw_schedule["enable"], default_schedule["enable"])
             time_range = raw_schedule.get("range")
             if isinstance(time_range, list) and len(time_range) == 2:
                 merged["range"] = [str(time_range[0]), str(time_range[1])]
@@ -328,11 +387,75 @@ def load_config() -> Dict[str, Any]:
         return normalize_config(yaml.safe_load(file) or {})
 
 
-def save_config() -> None:
-    write_config_file(normalize_config(CONFIG))
+def make_config_backup_path(now: Optional[datetime] = None) -> Path:
+    timestamp = (now or datetime.now()).strftime("%Y%m%d-%H%M%S")
+    return CONFIG_PATH.with_name("{}-broken-{}{}".format(CONFIG_PATH.stem, timestamp, CONFIG_PATH.suffix))
 
 
-CONFIG = load_config()
+def bootstrap_config(force: bool = False) -> Dict[str, Any]:
+    global CONFIG_BOOTSTRAPPED, BOOTSTRAP_WARNINGS
+
+    if CONFIG_BOOTSTRAPPED and not force:
+        return CONFIG
+
+    warnings: List[str] = []
+    config = copy.deepcopy(DEFAULT_CONFIG)
+
+    try:
+        config = load_config()
+    except YAML_ERROR_TYPES as exc:
+        backup_path = None
+        if CONFIG_PATH.exists():
+            try:
+                backup_path = CONFIG_PATH.replace(make_config_backup_path())
+            except OSError as backup_exc:
+                warnings.append("config.yaml 讀取失敗，且無法備份原始檔案: {}".format(backup_exc))
+        try:
+            write_config_file(copy.deepcopy(DEFAULT_CONFIG))
+            if backup_path is not None:
+                warnings.append(
+                    "config.yaml 已損毀，已備份為 {}，並重建為預設設定。".format(backup_path.name)
+                )
+            else:
+                warnings.append("config.yaml 已損毀，已重建為預設設定。")
+        except OSError as write_exc:
+            warnings.append(
+                "config.yaml 已損毀，且無法重建設定檔；本次將使用內建預設設定。{}".format(
+                    " ({})".format(write_exc)
+                )
+            )
+    except OSError as exc:
+        warnings.append(
+            "無法讀取或建立 config.yaml，將使用內建預設設定；本次無法保存設定。 ({})".format(
+                exc
+            )
+        )
+
+    if not config.get("config", {}).get("verify_ssl", True):
+        warnings.append("警告: 已停用 TLS 憑證驗證 (`config.verify_ssl=false`)。")
+
+    CONFIG.clear()
+    CONFIG.update(normalize_config(config))
+    BOOTSTRAP_WARNINGS = warnings
+    CONFIG_BOOTSTRAPPED = True
+    return CONFIG
+
+
+def consume_bootstrap_warnings() -> List[str]:
+    warnings = list(BOOTSTRAP_WARNINGS)
+    BOOTSTRAP_WARNINGS.clear()
+    return warnings
+
+
+def save_config() -> bool:
+    try:
+        write_config_file(normalize_config(CONFIG))
+    except OSError:
+        return False
+    return True
+
+
+CONFIG = copy.deepcopy(DEFAULT_CONFIG)
 
 
 def random_id() -> str:
@@ -343,6 +466,23 @@ def random_id() -> str:
 def random_ua() -> str:
     ua_list = CONFIG.get("config", {}).get("user-agent", [])
     return random.choice(ua_list or DEFAULT_USER_AGENTS)
+
+
+def get_verify_ssl() -> bool:
+    return coerce_bool(
+        CONFIG.get("config", {}).get("verify_ssl", DEFAULT_CONFIG["config"]["verify_ssl"]),
+        DEFAULT_CONFIG["config"]["verify_ssl"],
+    )
+
+
+def create_http_connector() -> aiohttp.TCPConnector:
+    return aiohttp.TCPConnector(ssl=get_verify_ssl())
+
+
+def get_login_retry_delay(attempt_index: int) -> float:
+    if attempt_index < 0:
+        attempt_index = 0
+    return LOGIN_RETRY_DELAYS[min(attempt_index, len(LOGIN_RETRY_DELAYS) - 1)]
 
 
 def extract_login_form(html_text: str, base_url: str = LOGIN_URL) -> Tuple[str, Dict[str, str]]:
@@ -506,8 +646,8 @@ async def mes(text: str = "test message") -> None:
 IS_LOGGING_IN = False
 
 
-async def login(session: aiohttp.ClientSession) -> bool:
-    global IS_LOGGING_IN
+async def login(session: aiohttp.ClientSession) -> LoginResult:
+    global IS_LOGGING_IN, LAST_LOGIN_RESULT
 
     user, passwd, credential_source = resolve_credentials()
     if not has_real_credential(user) or not has_real_credential(passwd):
@@ -518,7 +658,8 @@ async def login(session: aiohttp.ClientSession) -> bool:
             extra={"credential_source": credential_source},
         )
         log_print("未設定帳號密碼，請先在下方輸入區填寫您的學號與密碼！")
-        return False
+        LAST_LOGIN_RESULT = LoginResult(status="missing_credentials", credential_source=credential_source)
+        return LAST_LOGIN_RESULT
 
     IS_LOGGING_IN = True
     log_print("嘗試使用帳密自動登入...")
@@ -543,7 +684,13 @@ async def login(session: aiohttp.ClientSession) -> bool:
                 extra={"credential_source": credential_source, "user": user},
             )
             log_print("登入流程已完成，但未取得有效 session。")
-            return False
+            LAST_LOGIN_RESULT = LoginResult(
+                status="missing_session",
+                credential_source=credential_source,
+                user=user,
+                final_url=outcome.final_url,
+            )
+            return LAST_LOGIN_RESULT
 
         CONFIG["account"]["user"] = user
         log(
@@ -554,7 +701,13 @@ async def login(session: aiohttp.ClientSession) -> bool:
             extra={"credential_source": credential_source, "user": user},
         )
         log_print("登入成功！綁定學號：{}".format(user))
-        return True
+        LAST_LOGIN_RESULT = LoginResult(
+            status="success",
+            credential_source=credential_source,
+            user=user,
+            final_url=outcome.final_url,
+        )
+        return LAST_LOGIN_RESULT
     except LoginRejectedError:
         log(
             event="login_failure",
@@ -563,17 +716,28 @@ async def login(session: aiohttp.ClientSession) -> bool:
             extra={"credential_source": credential_source, "user": user},
         )
         log_print("登入失敗，請檢查帳號或密碼是否正確。")
-        return False
+        LAST_LOGIN_RESULT = LoginResult(
+            status="rejected",
+            credential_source=credential_source,
+            user=user,
+        )
+        return LAST_LOGIN_RESULT
     except (TronHttpError, aiohttp.ClientError, asyncio.TimeoutError) as exc:
         log(
             event="login_failure",
-            status="error",
+            status="transient_error",
             message="登入過程發生錯誤。",
             error=exc,
             extra={"credential_source": credential_source, "user": user},
         )
         log_print("登入過程中發生錯誤: {}".format(exc))
-        return False
+        LAST_LOGIN_RESULT = LoginResult(
+            status="transient_error",
+            credential_source=credential_source,
+            user=user,
+            error=normalize_text(exc),
+        )
+        return LAST_LOGIN_RESULT
     finally:
         IS_LOGGING_IN = False
 
@@ -590,9 +754,11 @@ async def number(main_session: aiohttp.ClientSession, rcid: int) -> None:
     device = random_id()
     started_at = time.perf_counter()
     headers = {"User-Agent": random_ua()}
+    fatal_error: Optional[BaseException] = None
+    request_url = "{}/api/rollcall/{}/answer_number_rollcall".format(TRON, rcid)
 
     async def try_number_code(session: aiohttp.ClientSession, try_code: int) -> None:
-        nonlocal request_count, found_code
+        nonlocal request_count, found_code, fatal_error
 
         payload = {
             "deviceId": device,
@@ -604,16 +770,37 @@ async def number(main_session: aiohttp.ClientSession, rcid: int) -> None:
 
             try:
                 async with session.put(
-                    "{}/api/rollcall/{}/answer_number_rollcall".format(TRON, rcid),
+                    request_url,
                     json=payload,
                 ) as resp:
                     request_count += 1
+                    if stop_event.is_set() and found_code != "NA":
+                        return
                     if resp.status == 200:
                         found_code = payload["numberCode"]
                         stop_event.set()
                         print("\n找到點名數字：{}！".format(found_code))
                         await mes("找到點名數字：{}！".format(found_code))
-                    elif resp.status not in (400, 409):
+                    elif resp.status in (400, 409):
+                        return
+                    elif resp.status in (401, 403):
+                        body = await resp.text()
+                        log(
+                            event="tron_http_error",
+                            path=number_log_path(rcid),
+                            counter=try_code,
+                            status="number_unauthorized",
+                            url=str(resp.url),
+                            http_status=resp.status,
+                            rollcall_id=rcid,
+                            rollcall_type="number",
+                            message="數字點名期間登入狀態失效。",
+                            payload_excerpt=body[:300],
+                        )
+                        if fatal_error is None and found_code == "NA":
+                            fatal_error = UnauthorizedError("數字點名期間登入狀態失效。")
+                            stop_event.set()
+                    else:
                         body = await resp.text()
                         log(
                             event="tron_http_error",
@@ -627,6 +814,11 @@ async def number(main_session: aiohttp.ClientSession, rcid: int) -> None:
                             message="數字點名回傳了未預期的 HTTP 狀態。",
                             payload_excerpt=body[:300],
                         )
+                        if fatal_error is None and found_code == "NA":
+                            fatal_error = UnexpectedResponseError(
+                                "HTTP {}: {}".format(resp.status, body[:200])
+                            )
+                            stop_event.set()
                     return
             except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
                 if attempt == NUMBER_REQUEST_RETRIES - 1:
@@ -635,7 +827,7 @@ async def number(main_session: aiohttp.ClientSession, rcid: int) -> None:
                         path=number_log_path(rcid),
                         counter=try_code,
                         status="number_request_error",
-                        url="{}/api/rollcall/{}/answer_number_rollcall".format(TRON, rcid),
+                        url=request_url,
                         rollcall_id=rcid,
                         rollcall_type="number",
                         message="數字點名請求失敗。",
@@ -645,7 +837,7 @@ async def number(main_session: aiohttp.ClientSession, rcid: int) -> None:
                     await asyncio.sleep(1)
 
     async with aiohttp.ClientSession(
-        connector=aiohttp.TCPConnector(ssl=False),
+        connector=create_http_connector(),
         headers=headers,
     ) as session:
         clone_session_cookies(main_session, session)
@@ -672,20 +864,31 @@ async def number(main_session: aiohttp.ClientSession, rcid: int) -> None:
 
     elapsed = time.perf_counter() - started_at
 
+    if fatal_error is not None:
+        summary_status = "failed"
+        summary_message = "數字點名流程提早中止。"
+    else:
+        summary_status = "completed"
+        summary_message = "數字點名流程結束。"
+
     log(
         event="number_rollcall_summary",
         path=number_log_path(rcid),
-        status="completed",
+        status=summary_status,
         rollcall_id=rcid,
         rollcall_type="number",
-        message="數字點名流程結束。",
+        message=summary_message,
         extra={
             "spend_time_seconds": round(elapsed, 2),
             "request_count": request_count,
             "found_code": found_code,
             "stopped_early": found_code != "NA",
+            "fatal_error": normalize_text(fatal_error) or None,
         },
     )
+
+    if fatal_error is not None:
+        raise fatal_error
 
     text = (
         "Total time: {:.2f}s\n"
@@ -702,19 +905,44 @@ async def number(main_session: aiohttp.ClientSession, rcid: int) -> None:
     await mes(text)
 
 
+def select_rollcall(rollcalls: Any) -> Tuple[str, Optional[Dict[str, Any]], str, str]:
+    if not isinstance(rollcalls, list) or not rollcalls:
+        return "not_call", None, "", ""
+
+    first_supported_number = None
+    first_unsupported: Optional[Tuple[str, Dict[str, Any], str, str]] = None
+    has_on_call_fine = False
+
+    for rollcall in rollcalls:
+        if not isinstance(rollcall, dict):
+            continue
+        if rollcall.get("is_number"):
+            first_supported_number = rollcall
+            break
+        if rollcall.get("status") == "on_call_fine":
+            has_on_call_fine = True
+            continue
+        if first_unsupported is None:
+            status, rollcall_type, message = classify_rollcall(rollcall)
+            first_unsupported = (status, rollcall, rollcall_type, message)
+
+    if first_supported_number is not None:
+        return "is_number", first_supported_number, "number", ""
+    if first_unsupported is not None:
+        status, rollcall, rollcall_type, message = first_unsupported
+        return status, rollcall, rollcall_type, message
+    if has_on_call_fine:
+        return "on_call_fine", None, "", ""
+    return "not_call", None, "", ""
+
+
 async def check_rollcall(session: aiohttp.ClientSession, cnt: int = -1) -> str:
     client = TronHttpClient(session)
     result = await client.fetch_rollcalls()
 
     rollcalls = result.payload.get("rollcalls") or []
-    first_rollcall = rollcalls[0] if rollcalls else {}
-    poll_rollcall_id = first_rollcall.get("rollcall_id")
-    poll_rollcall_type = (
-        "number"
-        if first_rollcall.get("is_number")
-        else "radar"
-        if first_rollcall.get("is_radar")
-        else ""
+    selected_status, selected_rollcall, selected_rollcall_type, selected_message = select_rollcall(
+        rollcalls
     )
     log(
         event="rollcall_poll",
@@ -722,23 +950,24 @@ async def check_rollcall(session: aiohttp.ClientSession, cnt: int = -1) -> str:
         status="ok",
         url=result.url,
         http_status=result.status_code,
-        rollcall_id=poll_rollcall_id,
-        rollcall_type=poll_rollcall_type,
+        rollcall_id=selected_rollcall.get("rollcall_id") if selected_rollcall else None,
+        rollcall_type=selected_rollcall_type,
         message="完成一次點名輪詢。",
         payload_excerpt=result.payload,
+        extra={"rollcall_count": len(rollcalls), "selected_status": selected_status},
     )
 
-    if not rollcalls:
+    if selected_status == "not_call":
         reset_unsupported_rollcall_state()
         return "not call"
 
-    rollcall = first_rollcall
-    if rollcall.get("status") == "on_call_fine":
+    if selected_status == "on_call_fine":
         reset_unsupported_rollcall_state()
         return "on_call_fine"
-    if rollcall.get("is_number"):
+
+    if selected_status == "is_number" and selected_rollcall is not None:
         reset_unsupported_rollcall_state()
-        rollcall_id = rollcall.get("rollcall_id")
+        rollcall_id = selected_rollcall.get("rollcall_id")
         text = "start num\n  id:{}".format(rollcall_id)
         log(
             event="number_rollcall_started",
@@ -749,16 +978,21 @@ async def check_rollcall(session: aiohttp.ClientSession, cnt: int = -1) -> str:
             rollcall_id=rollcall_id,
             rollcall_type="number",
             message=text,
-            payload_excerpt=rollcall,
+            payload_excerpt=selected_rollcall,
         )
         log_print(text)
         await mes(text)
         await number(session, rollcall_id)
         return "is_number"
 
-    status, rollcall_type, message = classify_rollcall(rollcall)
-    await maybe_notify_unsupported_rollcall(status, rollcall, message, rollcall_type)
-    return status
+    if selected_rollcall is not None:
+        await maybe_notify_unsupported_rollcall(
+            selected_status,
+            selected_rollcall,
+            selected_message,
+            selected_rollcall_type,
+        )
+    return selected_status
 
 
 cnt = 0
@@ -790,6 +1024,48 @@ async def sleep_or_shutdown(shutdown_event: asyncio.Event, seconds: float) -> No
         return
 
 
+def build_fatal_error_report(exc: BaseException, restart_count: int) -> Tuple[str, str, str]:
+    formatted_traceback = traceback.format_exc()
+    frames = traceback.extract_tb(exc.__traceback__)
+    location = ""
+    if frames:
+        last_frame = frames[-1]
+        location = "{}:{}:{}".format(Path(last_frame.filename).name, last_frame.lineno, last_frame.name)
+    fingerprint_source = "{}|{}|{}".format(exc.__class__.__name__, normalize_text(exc), location)
+    fingerprint = hashlib.sha1(fingerprint_source.encode("utf-8")).hexdigest()[:12]
+    summary = "fatal error on {}, restart #{}, fingerprint={}".format(cnt, restart_count, fingerprint)
+    return summary, formatted_traceback, fingerprint
+
+
+def report_fatal_exception(exc: BaseException, restart_count: int) -> None:
+    global LAST_FATAL_NOTIFICATION_AT
+
+    summary, formatted_traceback, fingerprint = build_fatal_error_report(exc, restart_count)
+    text = "{}\n{}\n{}".format(summary, normalize_text(exc), formatted_traceback.rstrip())
+    log(
+        event="fatal_error",
+        status="restarting",
+        message=summary,
+        error=exc,
+        extra={
+            "restart_count": restart_count,
+            "fingerprint": fingerprint,
+            "traceback": formatted_traceback,
+        },
+    )
+    log_print(text)
+
+    now = time.monotonic()
+    if now - LAST_FATAL_NOTIFICATION_AT < FATAL_NOTIFICATION_INTERVAL:
+        return
+
+    LAST_FATAL_NOTIFICATION_AT = now
+    try:
+        asyncio.run(mes("{}\n{}".format(summary, normalize_text(exc))))
+    except Exception:
+        return
+
+
 async def input_loop(session: aiohttp.ClientSession, shutdown_event: asyncio.Event) -> None:
     global CURRENT_PROMPT
 
@@ -810,8 +1086,10 @@ async def input_loop(session: aiohttp.ClientSession, shutdown_event: asyncio.Eve
         CONFIG["account"]["passwd"] = passwd
         save_prefix = ""
         if save.lower() == "y":
-            save_account_for_next_launch(user, passwd)
-            save_prefix = "已將學號與密碼寫入 config.yaml，"
+            if save_account_for_next_launch(user, passwd):
+                save_prefix = "已將學號與密碼寫入 config.yaml，"
+            else:
+                save_prefix = "無法寫入 config.yaml，本次僅暫存於執行期間，"
 
         log_print("{}帳號已更新為 {}，正在重新登入...".format(save_prefix, user))
         await login(session)
@@ -823,10 +1101,18 @@ async def input_loop(session: aiohttp.ClientSession, shutdown_event: asyncio.Eve
 async def monitor_loop(session: aiohttp.ClientSession, shutdown_event: asyncio.Event) -> None:
     global cnt
     flag_day_night = False
+    login_retry_attempt = 0
+    next_login_retry_at = 0.0
 
-    is_logged_in = await login(session)
-    if not is_logged_in:
-        log_print("首次登入失敗，請在下方輸入正確的帳密。")
+    login_result = await login(session)
+    if not login_result.ok:
+        if login_result.should_auto_retry:
+            delay = get_login_retry_delay(login_retry_attempt)
+            next_login_retry_at = time.monotonic() + delay
+            login_retry_attempt += 1
+            log_print("首次登入失敗，稍後會自動重試；也可在下方輸入帳密。")
+        else:
+            log_print("首次登入失敗，請在下方輸入正確的帳密。")
 
     error_cnt = 0
     while not shutdown_event.is_set():
@@ -835,9 +1121,38 @@ async def monitor_loop(session: aiohttp.ClientSession, shutdown_event: asyncio.E
             continue
 
         if not has_session_cookie(session):
-            status_print("尚未登入 (等待登入中，請在下方輸入帳號密碼)")
-            await sleep_or_shutdown(shutdown_event, 5)
+            if LAST_LOGIN_RESULT.should_auto_retry:
+                now = time.monotonic()
+                if now >= next_login_retry_at:
+                    log_print("自動登入失敗後正在重新嘗試登入...")
+                    login_result = await login(session)
+                    if login_result.ok:
+                        login_retry_attempt = 0
+                        next_login_retry_at = 0.0
+                        error_cnt = 0
+                        continue
+                    if login_result.should_auto_retry:
+                        delay = get_login_retry_delay(login_retry_attempt)
+                        next_login_retry_at = time.monotonic() + delay
+                        login_retry_attempt += 1
+                    else:
+                        next_login_retry_at = 0.0
+                    await sleep_or_shutdown(shutdown_event, 1)
+                    continue
+
+                remaining = max(1, int(round(next_login_retry_at - now)))
+                status_print(
+                    "尚未登入 (等待自動重試或手動輸入帳號密碼，{} 秒後重試)".format(remaining)
+                )
+                await sleep_or_shutdown(shutdown_event, min(5.0, float(remaining)))
+            else:
+                status_print("尚未登入 (等待登入中，請在下方輸入帳號密碼)")
+                await sleep_or_shutdown(shutdown_event, 5)
             continue
+
+        if LAST_LOGIN_RESULT.ok and login_retry_attempt:
+            login_retry_attempt = 0
+            next_login_retry_at = 0.0
 
         today = datetime.today().weekday()
         schedule = get_schedule_for_day(today)
@@ -888,8 +1203,16 @@ async def monitor_loop(session: aiohttp.ClientSession, shutdown_event: asyncio.E
             )
             log_print("Cookie 已過期，正在重新自動登入...")
             session.cookie_jar.clear()
-            success = await login(session)
-            if not success:
+            login_result = await login(session)
+            if login_result.ok:
+                login_retry_attempt = 0
+                next_login_retry_at = 0.0
+            elif login_result.should_auto_retry:
+                delay = get_login_retry_delay(login_retry_attempt)
+                next_login_retry_at = time.monotonic() + delay
+                login_retry_attempt += 1
+                log_print("自動登入失敗，稍後會持續自動重試；也可手動輸入帳密。")
+            else:
                 log_print("自動登入失敗，請在下方輸入正確的帳號密碼。")
             error_cnt = 0
             continue
@@ -951,13 +1274,16 @@ async def monitor_loop(session: aiohttp.ClientSession, shutdown_event: asyncio.E
 
 
 async def app_main() -> None:
+    bootstrap_config()
     shutdown_event = asyncio.Event()
     sys.stdout.write("\n[狀態] {}\n{}".format(LAST_STATUS, CURRENT_PROMPT))
     sys.stdout.flush()
+    for warning in consume_bootstrap_warnings():
+        log_print(warning)
 
     headers = {"User-Agent": random_ua()}
     async with aiohttp.ClientSession(
-        connector=aiohttp.TCPConnector(ssl=False),
+        connector=create_http_connector(),
         headers=headers,
     ) as session:
         await asyncio.gather(
@@ -969,6 +1295,7 @@ async def app_main() -> None:
 if __name__ == "__main__":
     print("啟動自動登入與點名監控程式...")
     time.sleep(1)
+    restart_count = 0
     while True:
         try:
             asyncio.run(app_main())
@@ -977,6 +1304,6 @@ if __name__ == "__main__":
             print("\n已接收到終止指令，安全關閉程式...")
             sys.exit(0)
         except Exception as exc:
-            text = "fatal error on {}, trying...\n{}".format(cnt, exc)
-            log_print(text)
+            restart_count += 1
+            report_fatal_exception(exc, restart_count)
             time.sleep(10)

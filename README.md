@@ -105,6 +105,7 @@ TRON_PASS=你的密碼
 - `Senkaku`: 輪詢間隔秒數，最小值會被限制為 `0.1`
 - `enable_log`: 是否寫入日誌
 - `retries`: 連續錯誤可容忍次數，最小值會被限制為 `1`
+- `verify_ssl`: 是否驗證 HTTPS / TLS 憑證，預設為 `true`
 - `user-agent`: 可輪替使用的 User-Agent 清單
 
 #### `notifications.tg`
@@ -122,6 +123,7 @@ TRON_PASS=你的密碼
 #### `operating`
 
 控制每週各天是否啟用監控，以及啟用時間區間。
+預設產生的設定檔是 `00:00-00:00` 且每週七天都啟用，等同 `24/7` 持續監控。
 
 程式使用的是 Python `datetime.weekday()` 規則：
 
@@ -155,10 +157,10 @@ operating:
     enable: true
     range: ["09:00", "17:00"]
   5:
-    enable: false
+    enable: true
     range: ["09:00", "17:00"]
   6:
-    enable: false
+    enable: true
     range: ["09:00", "17:00"]
 ```
 
@@ -212,7 +214,8 @@ CLI 介面支援：
 
 - 預設會將密碼明文保存在 `config.yaml`，請勿提交真實憑證；若不想明文保存，可改用 `TRON_USER` / `TRON_PASS`
 - 日誌會以 `.jsonl` 形式寫入 `log/`，可能包含回應摘要與點名資訊
-- 程式目前建立 `aiohttp` session 時關閉了 SSL 驗證；若要部署到更正式的環境，建議先補強
+- 預設會驗證 HTTPS / TLS 憑證；只有在相容性需求下，才建議把 `config.verify_ssl` 改成 `false`
+- 若 `config.yaml` 損毀，程式會先備份原檔，再自動重建預設設定；若目錄不可寫，則退回本次執行用的內建預設值
 - 登入頁表單解析依賴目前學校登入頁 HTML 結構；若登入頁改版，`troTHU/tron_http.py` 可能需要調整
 
 ## 測試
