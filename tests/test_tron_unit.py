@@ -161,10 +161,55 @@ class TronHelpersTest(unittest.TestCase):
 
         self.assertTrue(normalized["config"]["verify_ssl"])
 
+    def test_normalize_config_defaults_timeouts(self) -> None:
+        normalized = tron.normalize_config({"config": {}})
+
+        self.assertEqual(
+            normalized["config"]["http_timeout"],
+            tron.DEFAULT_CONFIG["config"]["http_timeout"],
+        )
+        self.assertEqual(
+            normalized["config"]["notification_timeout"],
+            tron.DEFAULT_CONFIG["config"]["notification_timeout"],
+        )
+
     def test_get_verify_ssl_reads_current_config_value(self) -> None:
         tron.CONFIG["config"]["verify_ssl"] = False
 
         self.assertFalse(tron.get_verify_ssl())
+
+    def test_timeout_helpers_clamp_and_fall_back(self) -> None:
+        tron.CONFIG["config"]["http_timeout"] = "0"
+        tron.CONFIG["config"]["notification_timeout"] = "bad"
+
+        self.assertEqual(tron.get_http_timeout_seconds(), 0.1)
+        self.assertEqual(
+            tron.get_notification_timeout_seconds(),
+            tron.DEFAULT_CONFIG["config"]["notification_timeout"],
+        )
+
+    def test_build_notification_requests_formats_highlighted_payloads(self) -> None:
+        tron.CONFIG["notifications"]["tg"].update(
+            {"enable": True, "key": "123456:token", "chat": "111"}
+        )
+        tron.CONFIG["notifications"]["dc"].update(
+            {"enable": True, "key": "discord-token", "chat": "222"}
+        )
+        banner = tron.format_found_code_banner("0427")
+
+        requests = tron.build_notification_requests("找到點名數字！", banner)
+
+        self.assertEqual(len(requests), 2)
+        telegram_request = requests[0]
+        discord_request = requests[1]
+        self.assertEqual(
+            telegram_request.url,
+            "https://api.telegram.org/bot123456:token/sendMessage",
+        )
+        self.assertEqual(telegram_request.data["parse_mode"], "HTML")
+        self.assertIn("<pre>", telegram_request.data["text"])
+        self.assertIn("```text", discord_request.json_body["content"])
+        self.assertIn("Code: 0427", discord_request.json_body["content"])
 
     def test_resolve_credentials_prefers_environment_over_config(self) -> None:
         tron.clear_runtime_credentials()
