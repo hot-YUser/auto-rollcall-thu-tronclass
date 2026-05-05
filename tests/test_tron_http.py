@@ -638,6 +638,40 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(login_mock.await_count, 1)
 
+    async def test_monitor_loop_auto_reauths_when_cookie_disappears_after_success(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = MagicMock()
+        shutdown_event = asyncio.Event()
+
+        async def fake_check_rollcall(_session, _cnt):
+            shutdown_event.set()
+            return "not call"
+
+        async def fake_login(_session):
+            result = make_login_result("success", final_url="https://ilearn.thu.edu.tw/home")
+            tron.LAST_LOGIN_RESULT = result
+            return result
+
+        with (
+            patch.object(tron, "login", AsyncMock(side_effect=fake_login)) as login_mock,
+            patch.object(tron, "has_session_cookie", side_effect=[False, True]),
+            patch.object(tron, "check_rollcall", AsyncMock(side_effect=fake_check_rollcall)),
+            patch.object(
+                tron,
+                "get_schedule_for_day",
+                return_value={"enable": True, "range": ["00:00", "23:59"]},
+            ),
+            patch.object(tron, "parse_schedule_range", return_value=(dt_time(0, 0), dt_time(23, 59))),
+            patch.object(tron, "log_print") as log_print,
+            patch.object(tron, "mes", AsyncMock()),
+        ):
+            await tron.monitor_loop(session, shutdown_event)
+
+        self.assertEqual(login_mock.await_count, 2)
+        self.assertTrue(
+            any("正在嘗試自動登入" in call.args[0] for call in log_print.call_args_list)
+        )
+
 
 class TronNumberRollcallTest(unittest.IsolatedAsyncioTestCase):
     async def test_number_stops_immediately_on_unauthorized_response(self) -> None:
@@ -687,6 +721,30 @@ class TronNumberRollcallTest(unittest.IsolatedAsyncioTestCase):
                 await tron.number(main_session, 99)
 
         self.assertEqual(worker_session.put.call_count, 1)
+
+    async def test_number_raises_terminal_timeout_instead_of_reporting_na(self) -> None:
+        main_session = MagicMock()
+        main_session.cookie_jar = FakeCookieJar([FakeCookie("session", "ilearn.thu.edu.tw")])
+        worker_session = MagicMock()
+        worker_session.cookie_jar = MagicMock()
+        worker_session.put.side_effect = asyncio.TimeoutError()
+        client_session_context = make_context_manager(worker_session)
+
+        with (
+            patch.object(tron.aiohttp, "ClientSession", return_value=client_session_context),
+            patch.object(tron, "create_http_connector", return_value=MagicMock()),
+            patch.object(tron, "mes", AsyncMock()) as mes_mock,
+            patch.object(tron, "log", return_value=True),
+            patch.object(tron, "NUMBER_CODE_LIMIT", 3),
+            patch.object(tron, "NUMBER_WORKER_COUNT", 1),
+            patch.object(tron, "NUMBER_REQUEST_RETRIES", 1),
+            patch.object(tron, "random_ua", return_value="ua"),
+        ):
+            with self.assertRaises(asyncio.TimeoutError):
+                await tron.number(main_session, 7)
+
+        self.assertEqual(worker_session.put.call_count, 1)
+        mes_mock.assert_not_awaited()
 
 
 if __name__ == "__main__":
