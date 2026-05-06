@@ -524,13 +524,13 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
                 new=MagicMock(return_value=make_context_manager(response)),
             ) as request_mock,
             patch.object(tron, "create_notification_timeout", return_value="timeout-marker"),
-            patch.object(tron, "get_verify_ssl", return_value=True),
+            patch.object(tron, "get_ssl_request_setting", return_value="ssl-marker"),
         ):
             with self.assertRaises(tron.NotificationSendError):
                 await tron._send_notification(request)
 
         self.assertEqual(request_mock.call_args.kwargs["timeout"], "timeout-marker")
-        self.assertTrue(request_mock.call_args.kwargs["ssl"])
+        self.assertEqual(request_mock.call_args.kwargs["ssl"], "ssl-marker")
 
 
 class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
