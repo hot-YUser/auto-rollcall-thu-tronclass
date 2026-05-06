@@ -1,11 +1,96 @@
-# auto-rollcall-thu-tronclass
+# Auto-Rollcall-thu-Tronclass
+# 東海Tronclass自動點名
 
 這個專案是目前版本的東海大學 TronClass / iLearn 點名監控工具。
 它會使用帳號密碼登入學校單一登入流程，於指定時段內持續檢查點名狀態，並在符合條件時執行對應動作與通知。
-目前這份 README 已依接手維護後的現行程式碼與實際功能重寫，不再沿用舊版說明。
 
 > 請只在你有權限、且符合學校與課程規範的情境下使用本專案。
-> 這份 README 以目前程式碼實作為準，已移除過時資訊。
+
+## Windows 壓縮包使用說明
+
+如果你只是想在 Windows 上直接使用，請優先下載 Release 裡的壓縮包，不需要先安裝 Python，也不需要自己打包。
+
+Release 檔名格式會像這樣：
+
+```text
+THU_Auto_Rollcall-vx.y.z-windows-x64.zip
+```
+
+其中 `vx.y.z` 是版本號，例如 `v0.2.6a`。`windows-x64` 代表這份壓縮包是給 64 位元 Windows 使用。
+
+### 下載哪一個檔案
+
+請到 GitHub 頁面的 `Releases`，下載名稱類似 `THU_Auto_Rollcall-v0.2.6a-windows-x64.zip` 的檔案。
+
+不要下載 GitHub 自動產生的 `Source code (zip)` 或 `Source code (tar.gz)`，那是原始碼壓縮包，給開發者使用，不是一般使用者直接執行的版本。
+
+### 第一次使用
+
+1. 將 `THU_Auto_Rollcall-vx.y.z-windows-x64.zip` 下載到電腦。
+2. 對 zip 按右鍵，選擇「全部解壓縮」或用 7-Zip / WinRAR 解壓縮。
+3. 建議解壓縮到固定資料夾，例如：
+
+```text
+C:\Users\你的使用者名稱\Documents\THU_Auto_Rollcall\
+```
+
+4. 不要直接在 zip 壓縮檔裡面雙擊執行，請先完整解壓縮。
+5. 打開解壓縮後的資料夾，找到裡面的 `.exe` 檔並雙擊執行。新版打包通常會看到 `auto-rollcall-thu-tronclass.exe`，早期包可能會看到 `THU_Auto_Rollcall.exe`。
+6. 第一次啟動時，如果程式找不到可用帳密，會在終端機中請你輸入學號與密碼。
+7. 程式可能會詢問是否將學號與密碼寫入 `config.yaml`，如果你選擇寫入，下次啟動就可以自動讀取。
+
+如果雙擊 `.exe` 後視窗一閃而過，請在解壓縮後的資料夾空白處按右鍵，選擇「在終端機中開啟」或「開啟 PowerShell 視窗」，再輸入 `.exe` 檔名執行。這樣錯誤訊息會留在畫面上，比較方便判斷發生什麼事。
+
+### config.yaml 在哪裡
+
+使用 Windows 壓縮包時，`config.yaml` 會放在 `.exe` 同一層資料夾。你可以用記事本或 VS Code 打開它。
+
+最基本會看到這樣的帳號設定：
+
+```yaml
+account:
+  user: "你的學號"
+  passwd: "你的密碼"
+```
+
+如果你不想把密碼存進 `config.yaml`，可以不要寫入，改用環境變數 `TRON_USER` / `TRON_PASS`。不過對完全新手來說，先用 `config.yaml` 會比較直覺。
+
+請注意：`config.yaml` 可能會明文保存你的學號與密碼。不要把它傳給別人，不要截圖公開，也不要把填好帳密的資料夾整包上傳到網路。
+
+### 執行後會發生什麼事
+
+程式啟動後會嘗試登入 TronClass / iLearn，然後依照 `config.yaml` 裡的 `operating` 設定持續監控點名。
+
+預設設定會讓每週七天都啟用，時間範圍是 `00:00` 到 `00:00`。在本專案裡，開始時間和結束時間相同代表全天監控。
+
+如果你想只在特定時段監控，可以修改 `config.yaml` 裡的 `operating`。例如只想星期一 09:00 到 17:00 啟用：
+
+```yaml
+operating:
+  0:
+    enable: true
+    range: ["09:00", "17:00"]
+```
+
+其中 `0` 代表星期一，`6` 代表星期日。
+
+### 日誌在哪裡
+
+程式執行後會在 `.exe` 同一層建立 `log/` 資料夾。裡面可能包含執行狀態、錯誤訊息、點名檢查結果等 JSON Lines 日誌。
+
+如果程式行為怪怪的，可以先看 `log/` 裡最新的 `.jsonl` 檔案。請注意，日誌可能包含回應摘要或點名資訊，分享給別人前請先檢查內容。
+
+### Windows 安全提示
+
+因為這個 `.exe` 是由 PyInstaller 打包，而且不是大型公司簽章的商業軟體，Windows SmartScreen 或防毒軟體可能會跳出提醒。這不一定代表程式有病毒，但也不應該直接忽略。
+
+建議你先確認：
+
+- 檔案是從本專案 GitHub Release 下載的
+- 檔名符合 `THU_Auto_Rollcall-vx.y.z-windows-x64.zip`
+- 解壓縮後的資料夾內容沒有被你不認識的第三方修改過
+
+如果你不確定來源，請不要執行。若你是在可信任的 Release 頁面下載，且了解本專案用途，再自行決定是否允許執行。
 
 ## 目前版本重點
 
@@ -39,6 +124,14 @@
 
 ## 系統需求
 
+使用 Windows Release 壓縮包時：
+
+- Windows 64 位元系統
+- 可連線至學校登入系統與 iLearn / TronClass
+- 不需要事先安裝 Python
+
+從原始碼執行或開發時：
+
 - Python 3.8+
 - Windows、macOS 或 Linux
 - 可連線至學校登入系統與 iLearn / TronClass
@@ -48,7 +141,11 @@
 - `aiohttp`
 - `PyYAML`
 
-## 安裝
+## 開發者 / 從原始碼執行
+
+以下方式適合想看原始碼、修改程式、跑測試，或不使用 Windows 壓縮包的人。如果你只是一般 Windows 使用者，請優先看最上方的「Windows 壓縮包使用說明」。
+
+### 安裝依賴
 
 1. 建立虛擬環境
 
@@ -169,7 +266,7 @@ operating:
     range: ["09:00", "17:00"]
 ```
 
-## 執行方式
+### 執行方式
 
 建議從專案根目錄執行：
 
@@ -310,3 +407,5 @@ pyinstaller auto-rollcall-thu-tronclass.spec
 - 哪些文件已經過時
 - 入口點在哪裡
 - 要去哪裡改登入、點名、通知和排程邏輯
+
+> 本專案使用Gemini、Codex協助完成。
