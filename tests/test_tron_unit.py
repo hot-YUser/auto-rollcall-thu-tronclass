@@ -178,6 +178,25 @@ class TronHelpersTest(unittest.TestCase):
 
         self.assertFalse(tron.get_verify_ssl())
 
+    def test_get_ssl_request_setting_returns_false_when_verification_disabled(self) -> None:
+        self.assertFalse(tron.get_ssl_request_setting(False))
+
+    def test_get_ssl_request_setting_relaxes_x509_strict_flag(self) -> None:
+        class FakeContext:
+            def __init__(self) -> None:
+                self.verify_flags = 0b1111
+
+        fake_context = FakeContext()
+
+        with (
+            patch.object(tron.ssl, "create_default_context", return_value=fake_context),
+            patch.object(tron.ssl, "VERIFY_X509_STRICT", 0b0100, create=True),
+        ):
+            result = tron.get_ssl_request_setting(True)
+
+        self.assertIs(result, fake_context)
+        self.assertEqual(fake_context.verify_flags, 0b1011)
+
     def test_timeout_helpers_clamp_and_fall_back(self) -> None:
         tron.CONFIG["config"]["http_timeout"] = "0"
         tron.CONFIG["config"]["notification_timeout"] = "bad"

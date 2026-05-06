@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import random
+import ssl
 import string
 import sys
 import time
@@ -531,8 +532,22 @@ def get_verify_ssl() -> bool:
     )
 
 
+def get_ssl_request_setting(verify_ssl: Optional[bool] = None) -> Any:
+    if verify_ssl is None:
+        verify_ssl = get_verify_ssl()
+    if not verify_ssl:
+        return False
+
+    context = ssl.create_default_context()
+    strict_flag = getattr(ssl, "VERIFY_X509_STRICT", 0)
+    if strict_flag and hasattr(context, "verify_flags"):
+        # Python/OpenSSL strict mode can reject some legacy-but-still-trusted campus CA chains.
+        context.verify_flags &= ~strict_flag
+    return context
+
+
 def create_http_connector() -> aiohttp.TCPConnector:
-    return aiohttp.TCPConnector(ssl=get_verify_ssl())
+    return aiohttp.TCPConnector(ssl=get_ssl_request_setting())
 
 
 def get_login_retry_delay(attempt_index: int) -> float:
@@ -736,7 +751,7 @@ async def _send_notification(
     request_kwargs: Dict[str, Any] = {
         "method": request.method,
         "url": request.url,
-        "ssl": get_verify_ssl(),
+        "ssl": get_ssl_request_setting(),
     }
     if request.data is not None:
         request_kwargs["data"] = request.data

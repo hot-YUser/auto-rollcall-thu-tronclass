@@ -1,4 +1,4 @@
-# THU Auto Rollcall
+# auto-rollcall-thu-tronclass
 
 這個專案是目前版本的東海大學 TronClass / iLearn 點名監控工具。
 它會使用帳號密碼登入學校單一登入流程，於指定時段內持續檢查點名狀態，並在符合條件時執行對應動作與通知。
@@ -14,6 +14,7 @@
 - 在指定星期 / 時段內持續監控點名狀態
 - session 過期時可自動重新登入
 - 預設使用 `config.yaml` 明文保存帳密，也支援 `TRON_USER` / `TRON_PASS` 覆蓋
+- 預設啟用 HTTPS / TLS 憑證驗證，並加入較相容的校園憑證鏈驗證設定
 - 支援 Telegram / Discord 通知
 - 目前已實作數字點名流程
 - 數字點名期間會持續顯示進度，找到 Code 後會以醒目框線顯示
@@ -33,7 +34,7 @@
 ├─ log/                   # 執行後輸出的日誌
 ├─ config.yaml            # 執行設定
 ├─ requirements.txt       # Python 依賴
-└─ THU_Auto_Rollcall.spec # PyInstaller 打包設定
+└─ auto-rollcall-thu-tronclass.spec # PyInstaller 打包設定
 ```
 
 ## 系統需求
@@ -109,7 +110,7 @@ TRON_PASS=你的密碼
 - `retries`: 連續錯誤可容忍次數，最小值會被限制為 `1`
 - `http_timeout`: TronClass 主流程 HTTP timeout 秒數，預設 `20`
 - `notification_timeout`: Telegram / Discord 通知 timeout 秒數，預設 `10`
-- `verify_ssl`: 是否驗證 HTTPS / TLS 憑證，預設為 `true`
+- `verify_ssl`: 是否驗證 HTTPS / TLS 憑證，預設為 `true`；啟用時會使用較相容的憑證鏈驗證設定
 - `user-agent`: 可輪替使用的 User-Agent 清單
 
 #### `notifications.tg`
@@ -218,8 +219,9 @@ CLI 介面支援：
 ### 已知注意事項
 
 - 預設會將密碼明文保存在 `config.yaml`，請勿提交真實憑證；若不想明文保存，可改用 `TRON_USER` / `TRON_PASS`
+- 互動式 CLI 目前輸入密碼時仍會在終端機回顯；若在共享螢幕或錄影環境操作，請特別留意
 - 日誌會以 `.jsonl` 形式寫入 `log/`，可能包含回應摘要與點名資訊
-- 預設會驗證 HTTPS / TLS 憑證；只有在相容性需求下，才建議把 `config.verify_ssl` 改成 `false`
+- 預設會驗證 HTTPS / TLS 憑證；若校方憑證鏈仍與你所在環境不相容，才建議把 `config.verify_ssl` 改成 `false`
 - 通知送出使用獨立 timeout；若 Telegram / Discord 暫時異常，主監控流程仍會繼續執行
 - 若 `config.yaml` 損毀，程式會先備份原檔，再自動重建預設設定；若目錄不可寫，則退回本次執行用的內建預設值
 - 登入頁表單解析依賴目前學校登入頁 HTML 結構；若登入頁改版，`troTHU/tron_http.py` 可能需要調整
@@ -265,12 +267,12 @@ TRON_PASS=你的密碼
 
 ## 打包
 
-專案附有 PyInstaller 設定檔 `THU_Auto_Rollcall.spec`。
+專案附有 PyInstaller 設定檔 `auto-rollcall-thu-tronclass.spec`。
 
 如果你要產生可執行檔，可先安裝 PyInstaller，再執行：
 
 ```bash
-pyinstaller THU_Auto_Rollcall.spec
+pyinstaller auto-rollcall-thu-tronclass.spec
 ```
 
 ## 專案現況
@@ -296,7 +298,7 @@ pyinstaller THU_Auto_Rollcall.spec
 
 1. 補上 `radar` 點名的協定研究與實作驗證
 2. 釐清 `QR Code` 點名資料流，決定是否可安全自動化
-3. 補強 SSL 驗證與更正式的 deployment 安全設定
+3. 改善憑證處理體驗，例如隱藏 CLI 密碼輸入、降低把真實憑證留在工作樹的風險
 4. 將 structured logging 接到外部分析或告警流程
 5. 為打包與測試加入 CI
 
