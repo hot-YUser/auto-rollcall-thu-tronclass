@@ -151,6 +151,7 @@ PATH = BASE_DIR / "log"
 CONFIG_PATH = BASE_DIR / "config.yaml"
 RUNTIME_CREDENTIALS = {"user": "", "passwd": ""}
 UNSUPPORTED_ROLLCALL_STATE = {"rollcall_id": None, "status": ""}
+COMPLETED_NUMBER_ROLLCALLS: Dict[str, str] = {}
 BOOTSTRAP_WARNINGS: List[str] = []
 CONFIG_BOOTSTRAPPED = False
 LAST_FATAL_NOTIFICATION_AT = 0.0
@@ -322,6 +323,22 @@ def classify_rollcall(rollcall: Dict[str, Any]) -> Tuple[str, str, str]:
 def reset_unsupported_rollcall_state() -> None:
     UNSUPPORTED_ROLLCALL_STATE["rollcall_id"] = None
     UNSUPPORTED_ROLLCALL_STATE["status"] = ""
+
+
+def number_rollcall_key(rollcall_id: Any) -> str:
+    return normalize_text(rollcall_id)
+
+
+def is_completed_number_rollcall(rollcall_id: Any) -> bool:
+    key = number_rollcall_key(rollcall_id)
+    return bool(key) and key in COMPLETED_NUMBER_ROLLCALLS
+
+
+def mark_completed_number_rollcall(rollcall_id: Any, code: Any) -> None:
+    key = number_rollcall_key(rollcall_id)
+    code_text = normalize_text(code)
+    if key and code_text and code_text != "NA":
+        COMPLETED_NUMBER_ROLLCALLS[key] = code_text
 
 
 async def maybe_notify_unsupported_rollcall(
@@ -987,7 +1004,7 @@ def clone_session_cookies(source: aiohttp.ClientSession, target: aiohttp.ClientS
         target.cookie_jar.update_cookies({cookie.key: cookie.value})
 
 
-async def number(main_session: aiohttp.ClientSession, rcid: int) -> None:
+async def number(main_session: aiohttp.ClientSession, rcid: int) -> str:
     request_count = 0
     found_code = "NA"
     stop_event = asyncio.Event()
@@ -1178,6 +1195,7 @@ async def number(main_session: aiohttp.ClientSession, rcid: int) -> None:
     )
     print(text)
     await mes(text)
+    return found_code
 
 
 def select_rollcall(rollcalls: Any) -> Tuple[str, Optional[Dict[str, Any]], str, str]:
@@ -1243,6 +1261,22 @@ async def check_rollcall(session: aiohttp.ClientSession, cnt: int = -1) -> str:
     if selected_status == "is_number" and selected_rollcall is not None:
         reset_unsupported_rollcall_state()
         rollcall_id = selected_rollcall.get("rollcall_id")
+        if is_completed_number_rollcall(rollcall_id):
+            found_code = COMPLETED_NUMBER_ROLLCALLS[number_rollcall_key(rollcall_id)]
+            log(
+                event="number_rollcall_skipped",
+                counter=cnt,
+                status="already_completed",
+                url=result.url,
+                http_status=result.status_code,
+                rollcall_id=rollcall_id,
+                rollcall_type="number",
+                message="數字點名已處理，略過重複嘗試。",
+                payload_excerpt=selected_rollcall,
+                extra={"found_code": found_code},
+            )
+            return "數字點名已處理"
+
         text = "start num\n  id:{}\n  正在嘗試 0000-{:04d}，請稍候...".format(
             rollcall_id,
             NUMBER_CODE_LIMIT - 1,
@@ -1260,7 +1294,8 @@ async def check_rollcall(session: aiohttp.ClientSession, cnt: int = -1) -> str:
         )
         log_print(text)
         await mes(text)
-        await number(session, rollcall_id)
+        found_code = await number(session, rollcall_id)
+        mark_completed_number_rollcall(rollcall_id, found_code)
         return "is_number"
 
     if selected_rollcall is not None:
