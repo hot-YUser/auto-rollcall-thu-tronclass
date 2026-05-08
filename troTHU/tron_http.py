@@ -105,11 +105,17 @@ def has_session_cookie(session: aiohttp.ClientSession) -> bool:
 
 
 class TronHttpClient:
-    def __init__(self, session: aiohttp.ClientSession) -> None:
+    def __init__(self, session: aiohttp.ClientSession, request_ssl: Any = None) -> None:
         self.session = session
+        self.request_ssl = request_ssl
+
+    def request_kwargs(self) -> Dict[str, Any]:
+        if self.request_ssl is None:
+            return {}
+        return {"ssl": self.request_ssl}
 
     async def fetch_login_form(self) -> LoginForm:
-        async with self.session.get(LOGIN_URL) as resp:
+        async with self.session.get(LOGIN_URL, **self.request_kwargs()) as resp:
             html_text = await resp.text()
         return extract_login_form(html_text, LOGIN_URL)
 
@@ -122,7 +128,7 @@ class TronHttpClient:
             }
         )
 
-        async with self.session.post(form.action_url, data=form_data) as resp:
+        async with self.session.post(form.action_url, data=form_data, **self.request_kwargs()) as resp:
             await resp.read()
             final_url = str(resp.url)
 
@@ -133,7 +139,7 @@ class TronHttpClient:
         return LoginOutcome(final_url=final_url, has_session=has_session)
 
     async def fetch_user_id(self) -> Optional[int]:
-        async with self.session.get(TRON) as resp:
+        async with self.session.get(TRON, **self.request_kwargs()) as resp:
             html_text = await resp.text()
 
         match = re.search(r"window\.APPRuntime\s*=\s*(\{.*?\});", html_text, re.DOTALL)
@@ -149,7 +155,7 @@ class TronHttpClient:
         return user_id if isinstance(user_id, int) else None
 
     async def fetch_rollcalls(self) -> RollcallsResult:
-        async with self.session.get(ROLLCALLS_URL) as resp:
+        async with self.session.get(ROLLCALLS_URL, **self.request_kwargs()) as resp:
             url = str(resp.url)
             status_code = resp.status
             if status_code == 401 or "login" in url.lower():
