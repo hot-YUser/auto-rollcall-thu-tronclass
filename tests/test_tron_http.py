@@ -343,6 +343,54 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         client.submit_login.assert_awaited_once()
         log_print.assert_any_call("登入成功！綁定學號：user1")
 
+    async def test_login_disables_verify_ssl_and_retries_on_certificate_error(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = MagicMock()
+        session.cookie_jar.clear = MagicMock()
+        tron.CONFIG["account"]["user"] = "user1"
+        tron.CONFIG["account"]["passwd"] = "pass1"
+        tron.CONFIG["config"]["verify_ssl"] = True
+        first_client = MagicMock()
+        first_client.fetch_login_form = AsyncMock(
+            side_effect=tron.aiohttp.ClientError(
+                "Cannot connect to host tcidentity.thu.edu.tw:443 ssl:True "
+                "[SSLCertVerificationError: certificate verify failed: "
+                "self-signed certificate in certificate chain]"
+            )
+        )
+        second_client = MagicMock()
+        second_client.fetch_login_form = AsyncMock(
+            return_value=tron_http.LoginForm("https://example.com/login", {})
+        )
+        second_client.submit_login = AsyncMock(
+            return_value=tron_http.LoginOutcome(
+                final_url="https://ilearn.thu.edu.tw/home",
+                has_session=True,
+            )
+        )
+
+        with (
+            patch.object(tron, "TronHttpClient", side_effect=[first_client, second_client]) as client_factory,
+            patch.object(tron, "has_session_cookie", return_value=True),
+            patch.object(tron, "save_config", return_value=True) as save_config,
+            patch.object(tron, "log", return_value=True),
+            patch.object(tron, "log_print") as log_print,
+        ):
+            result = await tron.login(session)
+
+        self.assertTrue(result.ok)
+        self.assertFalse(tron.CONFIG["config"]["verify_ssl"])
+        save_config.assert_called_once()
+        self.assertEqual(client_factory.call_count, 2)
+        self.assertIs(client_factory.call_args_list[1].kwargs["request_ssl"], False)
+        first_client.fetch_login_form.assert_awaited_once()
+        second_client.fetch_login_form.assert_awaited_once()
+        second_client.submit_login.assert_awaited_once()
+        self.assertEqual(session.cookie_jar.clear.call_count, 2)
+        self.assertTrue(
+            any("config.verify_ssl 改成 false" in call.args[0] for call in log_print.call_args_list)
+        )
+
     async def test_login_returns_rejected_result_when_credentials_rejected(self) -> None:
         session = MagicMock()
         session.cookie_jar = MagicMock()

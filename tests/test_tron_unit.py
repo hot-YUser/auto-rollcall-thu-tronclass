@@ -236,6 +236,16 @@ class TronHelpersTest(unittest.TestCase):
         self.assertIs(result, fake_context)
         self.assertEqual(fake_context.verify_flags, 0b1011)
 
+    def test_is_ssl_certificate_verification_error_matches_wrapped_text(self) -> None:
+        exc = RuntimeError(
+            "Cannot connect to host tcidentity.thu.edu.tw:443 ssl:True "
+            "[SSLCertVerificationError: certificate verify failed: "
+            "self-signed certificate in certificate chain]"
+        )
+
+        self.assertTrue(tron.is_ssl_certificate_verification_error(exc))
+        self.assertFalse(tron.is_ssl_certificate_verification_error(RuntimeError("timeout")))
+
     def test_timeout_helpers_clamp_and_fall_back(self) -> None:
         tron.CONFIG["config"]["http_timeout"] = "0"
         tron.CONFIG["config"]["notification_timeout"] = "bad"

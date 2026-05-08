@@ -610,6 +610,71 @@ def get_ssl_request_setting(verify_ssl: Optional[bool] = None) -> Any:
     return context
 
 
+def is_ssl_certificate_verification_error(exc: BaseException) -> bool:
+    pending: List[BaseException] = [exc]
+    seen: set[int] = set()
+
+    while pending:
+        current = pending.pop()
+        identity = id(current)
+        if identity in seen:
+            continue
+        seen.add(identity)
+
+        if isinstance(current, ssl.SSLCertVerificationError):
+            return True
+
+        details = "{} {}".format(type(current).__name__, normalize_text(current)).lower()
+        if (
+            "sslcertverificationerror" in details
+            or "certificate_verify_failed" in details
+            or "self-signed certificate in certificate chain" in details
+        ):
+            return True
+
+        cause = getattr(current, "__cause__", None)
+        context = getattr(current, "__context__", None)
+        if isinstance(cause, BaseException):
+            pending.append(cause)
+        if isinstance(context, BaseException):
+            pending.append(context)
+
+        for arg in getattr(current, "args", ()):
+            if isinstance(arg, BaseException):
+                pending.append(arg)
+            elif isinstance(arg, str):
+                arg_text = arg.lower()
+                if (
+                    "sslcertverificationerror" in arg_text
+                    or "certificate_verify_failed" in arg_text
+                    or "self-signed certificate in certificate chain" in arg_text
+                ):
+                    return True
+
+    return False
+
+
+def enable_insecure_ssl_fallback(exc: BaseException) -> bool:
+    CONFIG.setdefault("config", {})["verify_ssl"] = False
+    saved = save_config()
+    log(
+        event="tls_verification_fallback",
+        status="enabled",
+        message="偵測到 TLS 憑證鏈驗證失敗，已停用 config.verify_ssl 並準備重試。",
+        error=exc,
+        extra={"config_saved": saved},
+    )
+    if saved:
+        log_print(
+            "偵測到 TLS 憑證鏈驗證失敗，已自動將 config.verify_ssl 改成 false，正在重試登入。"
+        )
+    else:
+        log_print(
+            "偵測到 TLS 憑證鏈驗證失敗，本次執行會暫時停用 verify_ssl 並重試；config.yaml 無法寫入。"
+        )
+    return saved
+
+
 def create_http_connector() -> aiohttp.TCPConnector:
     return aiohttp.TCPConnector(ssl=get_ssl_request_setting())
 
@@ -965,75 +1030,87 @@ async def login(session: aiohttp.ClientSession) -> LoginResult:
         message="嘗試登入 TronClass。",
         extra={"credential_source": credential_source, "user": user},
     )
-    client = TronHttpClient(session)
+    ssl_fallback_attempted = False
     try:
-        session.cookie_jar.clear()
-        form = await client.fetch_login_form()
-        outcome = await client.submit_login(form, user, passwd)
+        while True:
+            client = TronHttpClient(session, request_ssl=get_ssl_request_setting())
+            try:
+                session.cookie_jar.clear()
+                form = await client.fetch_login_form()
+                outcome = await client.submit_login(form, user, passwd)
+            except LoginRejectedError:
+                log(
+                    event="login_failure",
+                    status="rejected",
+                    message="登入失敗，帳號密碼被拒絕。",
+                    extra={"credential_source": credential_source, "user": user},
+                )
+                log_print("登入失敗，請檢查帳號或密碼是否正確。")
+                LAST_LOGIN_RESULT = LoginResult(
+                    status="rejected",
+                    credential_source=credential_source,
+                    user=user,
+                )
+                return LAST_LOGIN_RESULT
+            except (TronHttpError, aiohttp.ClientError, asyncio.TimeoutError, ssl.SSLError) as exc:
+                if (
+                    not ssl_fallback_attempted
+                    and get_verify_ssl()
+                    and is_ssl_certificate_verification_error(exc)
+                ):
+                    ssl_fallback_attempted = True
+                    enable_insecure_ssl_fallback(exc)
+                    continue
 
-        if not outcome.has_session or not has_session_cookie(session):
+                log(
+                    event="login_failure",
+                    status="transient_error",
+                    message="登入過程發生錯誤。",
+                    error=exc,
+                    extra={"credential_source": credential_source, "user": user},
+                )
+                log_print("登入過程中發生錯誤: {}".format(exc))
+                LAST_LOGIN_RESULT = LoginResult(
+                    status="transient_error",
+                    credential_source=credential_source,
+                    user=user,
+                    error=normalize_text(exc),
+                )
+                return LAST_LOGIN_RESULT
+
+            if not outcome.has_session or not has_session_cookie(session):
+                log(
+                    event="login_failure",
+                    status="missing_session",
+                    url=outcome.final_url,
+                    message="登入流程完成，但未取得有效 session。",
+                    extra={"credential_source": credential_source, "user": user},
+                )
+                log_print("登入流程已完成，但未取得有效 session。")
+                LAST_LOGIN_RESULT = LoginResult(
+                    status="missing_session",
+                    credential_source=credential_source,
+                    user=user,
+                    final_url=outcome.final_url,
+                )
+                return LAST_LOGIN_RESULT
+
+            CONFIG["account"]["user"] = user
             log(
-                event="login_failure",
-                status="missing_session",
+                event="login_success",
+                status="success",
                 url=outcome.final_url,
-                message="登入流程完成，但未取得有效 session。",
+                message="登入成功。",
                 extra={"credential_source": credential_source, "user": user},
             )
-            log_print("登入流程已完成，但未取得有效 session。")
+            log_print("登入成功！綁定學號：{}".format(user))
             LAST_LOGIN_RESULT = LoginResult(
-                status="missing_session",
+                status="success",
                 credential_source=credential_source,
                 user=user,
                 final_url=outcome.final_url,
             )
             return LAST_LOGIN_RESULT
-
-        CONFIG["account"]["user"] = user
-        log(
-            event="login_success",
-            status="success",
-            url=outcome.final_url,
-            message="登入成功。",
-            extra={"credential_source": credential_source, "user": user},
-        )
-        log_print("登入成功！綁定學號：{}".format(user))
-        LAST_LOGIN_RESULT = LoginResult(
-            status="success",
-            credential_source=credential_source,
-            user=user,
-            final_url=outcome.final_url,
-        )
-        return LAST_LOGIN_RESULT
-    except LoginRejectedError:
-        log(
-            event="login_failure",
-            status="rejected",
-            message="登入失敗，帳號密碼被拒絕。",
-            extra={"credential_source": credential_source, "user": user},
-        )
-        log_print("登入失敗，請檢查帳號或密碼是否正確。")
-        LAST_LOGIN_RESULT = LoginResult(
-            status="rejected",
-            credential_source=credential_source,
-            user=user,
-        )
-        return LAST_LOGIN_RESULT
-    except (TronHttpError, aiohttp.ClientError, asyncio.TimeoutError) as exc:
-        log(
-            event="login_failure",
-            status="transient_error",
-            message="登入過程發生錯誤。",
-            error=exc,
-            extra={"credential_source": credential_source, "user": user},
-        )
-        log_print("登入過程中發生錯誤: {}".format(exc))
-        LAST_LOGIN_RESULT = LoginResult(
-            status="transient_error",
-            credential_source=credential_source,
-            user=user,
-            error=normalize_text(exc),
-        )
-        return LAST_LOGIN_RESULT
     finally:
         IS_LOGGING_IN = False
 
@@ -1251,7 +1328,7 @@ async def radar(main_session: aiohttp.ClientSession, rollcall: Dict[str, Any]) -
 
     async with aiohttp.ClientSession(**session_kwargs) as session:
         clone_session_cookies(main_session, session)
-        client = TronHttpClient(session)
+        client = TronHttpClient(session, request_ssl=get_ssl_request_setting())
         user_id = await client.fetch_user_id()
 
         lite_url = f"{TRON}/api/rollcall/{rollcall_id}/lite"
@@ -1331,7 +1408,7 @@ def select_rollcall(rollcalls: Any) -> Tuple[str, Optional[Dict[str, Any]], str,
 
 
 async def check_rollcall(session: aiohttp.ClientSession, cnt: int = -1) -> str:
-    client = TronHttpClient(session)
+    client = TronHttpClient(session, request_ssl=get_ssl_request_setting())
     result = await client.fetch_rollcalls()
 
     rollcalls = result.payload.get("rollcalls") or []
@@ -1695,6 +1772,11 @@ async def monitor_loop(session: aiohttp.ClientSession, shutdown_event: asyncio.E
                 shutdown_event.set()
                 break
         except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
+            if get_verify_ssl() and is_ssl_certificate_verification_error(exc):
+                enable_insecure_ssl_fallback(exc)
+                error_cnt = 0
+                continue
+
             if error_cnt < get_retry_limit():
                 text = "network error on {}, trying {} times, error: {}".format(
                     cnt, error_cnt, exc

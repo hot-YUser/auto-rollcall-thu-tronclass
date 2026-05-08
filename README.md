@@ -6,19 +6,20 @@
 
 > 請只在你有權限、且符合學校與課程規範的情境下使用本專案。
 
-## 版本狀態：v1.0-alpha.1
+## 版本狀態：v1.0-alpha.2
 
-`v1.0-alpha.1` 是一次變更範圍較大的 alpha 版本，主要來自自動分支合併後的功能整合。
+`v1.0-alpha.2` 是一次變更範圍較大的 alpha 版本，延續 `v1.0-alpha.1` 自動分支合併後的功能整合。
 這個版本已整理 README 與本地測試，但尚未經過完整實機點名情境驗證，因此會以 GitHub Pre-release 發布。
 
 如果你只是想要相對穩定的日常使用版本，建議優先使用上一個正式版 `v0.2.8`。
-如果你願意協助驗證新功能，才建議嘗試 `v1.0-alpha.1`，並請特別留意 `log/` 裡的錯誤訊息。
+如果你願意協助驗證新功能，才建議嘗試 `v1.0-alpha.2`，並請特別留意 `log/` 裡的錯誤訊息。
 
 這個 alpha 版本最重要的變動是：
 
 - 新增實驗性的 `radar` 點名處理流程
 - 仍保留數字點名流程與重複點名略過機制
 - 會嘗試從 `window.APPRuntime` 解析使用者 ID，供 radar beacon 計算使用
+- 偵測到 TLS / SSL 憑證鏈驗證失敗時，會自動停用 `config.verify_ssl` 並重試登入或監控
 - `QR Code` 點名仍未自動化
 - 目前尚未完成真實課堂環境的完整測試
 
@@ -32,16 +33,16 @@ Release 檔名格式會像這樣：
 THU_Auto_Rollcall-vx.y.z-windows-x64.zip
 ```
 
-其中 `vx.y.z` 是版本號，例如 `v0.2.8` 或 `v1.0-alpha.1`。`windows-x64` 代表這份壓縮包是給 64 位元 Windows 使用。
+其中 `vx.y.z` 是版本號，例如 `v0.2.8` 或 `v1.0-alpha.2`。`windows-x64` 代表這份壓縮包是給 64 位元 Windows 使用。
 
 ### 下載哪一個檔案
 
-請到 GitHub 頁面的 `Releases`，下載名稱類似 `THU_Auto_Rollcall-v0.2.8-windows-x64.zip` 或 `THU_Auto_Rollcall-v1.0-alpha.1-windows-x64.zip` 的檔案。
+請到 GitHub 頁面的 `Releases`，下載名稱類似 `THU_Auto_Rollcall-v0.2.8-windows-x64.zip` 或 `THU_Auto_Rollcall-v1.0-alpha.2-windows-x64.zip` 的檔案。
 
 不要下載 GitHub 自動產生的 `Source code (zip)` 或 `Source code (tar.gz)`，那是原始碼壓縮包，給開發者使用，不是一般使用者直接執行的版本。
 
 如果 Release 標示為 `Pre-release`，代表它是測試性版本，可能包含尚未完整驗證的新功能。
-`v1.0-alpha.1` 就屬於 Pre-release；若你不想承擔測試風險，請改用最新正式版。
+`v1.0-alpha.2` 就屬於 Pre-release；若你不想承擔測試風險，請改用最新正式版。
 
 ### 第一次使用
 
@@ -131,7 +132,7 @@ operating:
 - 支援 Telegram / Discord 通知
 - 目前已實作數字點名流程
 - 數字點名期間會持續顯示進度，找到 Code 後會以醒目框線顯示
-- `radar` 點名目前已有實驗性處理流程，但 `v1.0-alpha.1` 尚未經完整實機測試
+- `radar` 點名目前已有實驗性處理流程，但 `v1.0-alpha.2` 尚未經完整實機測試
 - `QR Code` 目前會明確標示為未支援，不會誤送答案
 - 檔案日誌已改為 JSON Lines 結構化日誌
 - 通知逾時 / 送出失敗會被隔離，不會反過來中斷主監控流程
@@ -350,9 +351,9 @@ CLI 介面支援：
 - 預設會將密碼明文保存在 `config.yaml`，請勿提交真實憑證；若不想明文保存，可改用 `TRON_USER` / `TRON_PASS`
 - 互動式 CLI 目前輸入密碼時仍會在終端機回顯；若在共享螢幕或錄影環境操作，請特別留意
 - 日誌會以 `.jsonl` 形式寫入 `log/`，可能包含回應摘要與點名資訊
-- `v1.0-alpha.1` 的 `radar` 流程來自自動分支合併後的實驗性整合，尚未經完整測試；若遇到失敗，請優先保留 `log/` 供後續排查
+- `v1.0-alpha.2` 的 `radar` 流程延續自動分支合併後的實驗性整合，尚未經完整測試；若遇到失敗，請優先保留 `log/` 供後續排查
 - `radar` 流程會嘗試送出裝置 ID、經緯度與必要時的 beacon 訊號；不同課堂或學校端 API 行為若有差異，可能仍需要調整
-- 預設會驗證 HTTPS / TLS 憑證；若校方憑證鏈仍與你所在環境不相容，才建議把 `config.verify_ssl` 改成 `false`
+- 預設會驗證 HTTPS / TLS 憑證；若登入或監控時偵測到憑證鏈驗證失敗，程式會自動把 `config.verify_ssl` 改成 `false` 並重試
 - 通知送出使用獨立 timeout；若 Telegram / Discord 暫時異常，主監控流程仍會繼續執行
 - 若 `config.yaml` 損毀，程式會先備份原檔，再自動重建預設設定；若目錄不可寫，則退回本次執行用的內建預設值
 - 登入頁表單解析依賴目前學校登入頁 HTML 結構；若登入頁改版，`troTHU/tron_http.py` 可能需要調整
@@ -430,7 +431,7 @@ pyinstaller auto-rollcall-thu-tronclass.spec
 
 如果要把這個專案整理成更好維護的版本，推薦優先做：
 
-1. 針對 `v1.0-alpha.1` 的 `radar` 流程做真實環境測試，確認經緯度、beacon 與使用者 ID 行為是否符合預期
+1. 針對 `v1.0-alpha.2` 的 `radar` 流程做真實環境測試，確認經緯度、beacon 與使用者 ID 行為是否符合預期
 2. 釐清 `QR Code` 點名資料流，決定是否可安全自動化
 3. 改善憑證處理體驗，例如隱藏 CLI 密碼輸入、降低把真實憑證留在工作樹的風險
 4. 將結構化日誌接到外部分析或告警流程
