@@ -137,6 +137,26 @@ class TronHelpersTest(unittest.TestCase):
         self.assertEqual(normalized["operating"][1]["range"], ["10:00", "11:00"])
         self.assertIn(0, normalized["operating"])
 
+    def test_normalize_config_accepts_string_schedule_range(self) -> None:
+        normalized = tron.normalize_config(
+            {
+                "config": {"user-agent": []},
+                "operating": {"1": {"enable": True, "range": "09:00-17:30"}},
+            }
+        )
+
+        self.assertEqual(normalized["operating"][1]["range"], ["09:00", "17:30"])
+
+    def test_normalize_config_accepts_schedule_range_dict(self) -> None:
+        normalized = tron.normalize_config(
+            {
+                "config": {"user-agent": []},
+                "operating": {"1": {"enable": True, "range": {"start": "8:05", "end": "12:10"}}},
+            }
+        )
+
+        self.assertEqual(normalized["operating"][1]["range"], ["08:05", "12:10"])
+
     def test_default_operating_enables_all_days(self) -> None:
         self.assertTrue(tron.DEFAULT_CONFIG["operating"][0]["enable"])
         self.assertTrue(tron.DEFAULT_CONFIG["operating"][4]["enable"])
@@ -148,6 +168,25 @@ class TronHelpersTest(unittest.TestCase):
 
         self.assertEqual(start.strftime("%H:%M"), "00:00")
         self.assertEqual(end.strftime("%H:%M"), "00:00")
+
+    def test_parse_schedule_range_accepts_string_range(self) -> None:
+        start, end = tron.parse_schedule_range("09:00 ~ 17:30")
+
+        self.assertEqual(start.strftime("%H:%M"), "09:00")
+        self.assertEqual(end.strftime("%H:%M"), "17:30")
+
+    def test_is_within_schedule_supports_overnight_ranges(self) -> None:
+        start, end = tron.parse_schedule_range("23:00-01:00")
+
+        self.assertTrue(
+            tron.is_within_schedule(start, end, tron.datetime.strptime("23:30", "%H:%M").time())
+        )
+        self.assertTrue(
+            tron.is_within_schedule(start, end, tron.datetime.strptime("00:30", "%H:%M").time())
+        )
+        self.assertFalse(
+            tron.is_within_schedule(start, end, tron.datetime.strptime("12:00", "%H:%M").time())
+        )
 
     def test_get_poll_interval_and_retry_limit_are_clamped(self) -> None:
         tron.CONFIG["config"]["Senkaku"] = "0"
