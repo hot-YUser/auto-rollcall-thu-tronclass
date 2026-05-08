@@ -154,6 +154,7 @@ CONFIG_PATH = BASE_DIR / "config.yaml"
 RUNTIME_CREDENTIALS = {"user": "", "passwd": ""}
 UNSUPPORTED_ROLLCALL_STATE = {"rollcall_id": None, "status": ""}
 COMPLETED_NUMBER_ROLLCALLS: Dict[str, str] = {}
+COMPLETED_RADAR_ROLLCALLS: Dict[str, bool] = {}
 BOOTSTRAP_WARNINGS: List[str] = []
 CONFIG_BOOTSTRAPPED = False
 LAST_FATAL_NOTIFICATION_AT = 0.0
@@ -349,9 +350,6 @@ def classify_rollcall(rollcall: Dict[str, Any]) -> Tuple[str, str, str]:
     rollcall_type_value = normalize_text(
         rollcall.get("type") or rollcall.get("rollcall_type") or rollcall.get("name")
     ).lower()
-
-    if rollcall.get("is_radar") or "radar" in rollcall_type_value:
-        return "unsupported_radar", "radar", "偵測到未支援的 radar 點名"
 
     qrcode_keys = (
         "is_qrcode",
@@ -1239,11 +1237,66 @@ async def number(main_session: aiohttp.ClientSession, rcid: int) -> str:
     return found_code
 
 
+async def radar(main_session: aiohttp.ClientSession, rollcall: Dict[str, Any]) -> None:
+    rollcall_id = rollcall.get("rollcall_id")
+    device_id = random_id()
+    headers = {"User-Agent": random_ua()}
+    session_kwargs: Dict[str, Any] = {
+        "connector": create_http_connector(),
+        "headers": headers,
+    }
+    timeout = create_http_client_timeout()
+    if timeout is not None:
+        session_kwargs["timeout"] = timeout
+
+    async with aiohttp.ClientSession(**session_kwargs) as session:
+        clone_session_cookies(main_session, session)
+        client = TronHttpClient(session)
+        user_id = await client.fetch_user_id()
+
+        lite_url = f"{TRON}/api/rollcall/{rollcall_id}/lite"
+        async with session.get(lite_url) as resp:
+            if resp.status == 200:
+                lite_data = await resp.json()
+            else:
+                lite_data = rollcall
+
+        use_beacon = lite_data.get("use_beacon", rollcall.get("use_beacon", False))
+        beacon_nonce = lite_data.get("beacon_nonce", "")
+        latitude = lite_data.get("latitude", rollcall.get("latitude", 0.0))
+        longitude = lite_data.get("longitude", rollcall.get("longitude", 0.0))
+
+        payload: Dict[str, Any] = {
+            "deviceId": device_id,
+            "latitude": latitude,
+            "longitude": longitude,
+        }
+
+        if use_beacon:
+            timestamp = int(time.time() * 1000)
+            user_id_part = str(user_id) if user_id is not None else "undefined"
+            raw_signal = f"{beacon_nonce}{device_id}{user_id_part}{timestamp}"
+            payload["radarSignal"] = hashlib.md5(raw_signal.encode("utf-8")).hexdigest()
+
+        request_url = f"{TRON}/api/rollcall/{rollcall_id}/answer?api_version=1.76"
+        async with session.put(request_url, json=payload) as resp:
+            if resp.status == 200:
+                text = f"雷達點名 #{rollcall_id} 成功！"
+                log_print(text)
+                await mes(text)
+                return
+
+            body = await resp.text()
+            log_print(f"雷達點名 #{rollcall_id} 失敗 (HTTP {resp.status}): {body[:100]}")
+            await mes(f"雷達點名 #{rollcall_id} 失敗！HTTP {resp.status}")
+
+
 def select_rollcall(rollcalls: Any) -> Tuple[str, Optional[Dict[str, Any]], str, str]:
     if not isinstance(rollcalls, list) or not rollcalls:
         return "not_call", None, "", ""
 
     first_supported_number = None
+    first_supported_radar = None
     first_unsupported: Optional[Tuple[str, Dict[str, Any], str, str]] = None
     has_on_call_fine = False
 
@@ -1252,6 +1305,11 @@ def select_rollcall(rollcalls: Any) -> Tuple[str, Optional[Dict[str, Any]], str,
             continue
         if rollcall.get("is_number"):
             first_supported_number = rollcall
+            break
+        if rollcall.get("is_radar") or "radar" in normalize_text(
+            rollcall.get("type") or rollcall.get("rollcall_type") or rollcall.get("name")
+        ).lower():
+            first_supported_radar = rollcall
             break
         if rollcall.get("status") == "on_call_fine":
             has_on_call_fine = True
@@ -1262,6 +1320,8 @@ def select_rollcall(rollcalls: Any) -> Tuple[str, Optional[Dict[str, Any]], str,
 
     if first_supported_number is not None:
         return "is_number", first_supported_number, "number", ""
+    if first_supported_radar is not None:
+        return "is_radar", first_supported_radar, "radar", ""
     if first_unsupported is not None:
         status, rollcall, rollcall_type, message = first_unsupported
         return status, rollcall, rollcall_type, message
@@ -1338,6 +1398,42 @@ async def check_rollcall(session: aiohttp.ClientSession, cnt: int = -1) -> str:
         found_code = await number(session, rollcall_id)
         mark_completed_number_rollcall(rollcall_id, found_code)
         return "is_number"
+
+    if selected_status == "is_radar" and selected_rollcall is not None:
+        reset_unsupported_rollcall_state()
+        rollcall_id = selected_rollcall.get("rollcall_id")
+        radar_key = normalize_text(rollcall_id)
+        if radar_key in COMPLETED_RADAR_ROLLCALLS:
+            log(
+                event="radar_rollcall_skipped",
+                counter=cnt,
+                status="already_completed",
+                url=result.url,
+                http_status=result.status_code,
+                rollcall_id=rollcall_id,
+                rollcall_type="radar",
+                message="雷達點名已處理，略過重複嘗試。",
+                payload_excerpt=selected_rollcall,
+            )
+            return "雷達點名已處理"
+
+        text = f"start radar\n  id:{rollcall_id}\n  正在處理雷達點名，請稍候..."
+        log(
+            event="radar_rollcall_started",
+            counter=cnt,
+            status="started",
+            url=result.url,
+            http_status=result.status_code,
+            rollcall_id=rollcall_id,
+            rollcall_type="radar",
+            message=text,
+            payload_excerpt=selected_rollcall,
+        )
+        log_print(text)
+        await mes(text)
+        await radar(session, selected_rollcall)
+        COMPLETED_RADAR_ROLLCALLS[radar_key] = True
+        return "is_radar"
 
     if selected_rollcall is not None:
         await maybe_notify_unsupported_rollcall(
@@ -1546,6 +1642,8 @@ async def monitor_loop(session: aiohttp.ClientSession, shutdown_event: asyncio.E
                 status_print("第 {} 次檢查: 發現未支援的 QR Code 點名".format(cnt))
             elif status_msg == "unsupported_rollcall":
                 status_print("第 {} 次檢查: 發現未支援的點名類型".format(cnt))
+            elif status_msg == "is_radar":
+                status_print("第 {} 次檢查: 雷達點名已觸發".format(cnt))
             else:
                 status_print("第 {} 次檢查: {}".format(cnt, status_msg))
         except UnauthorizedError:
