@@ -236,11 +236,13 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         self.original_is_logging_in = tron.IS_LOGGING_IN
         self.original_runtime_credentials = copy.deepcopy(tron.RUNTIME_CREDENTIALS)
         self.original_unsupported_rollcall_state = copy.deepcopy(tron.UNSUPPORTED_ROLLCALL_STATE)
+        self.original_completed_number_rollcalls = copy.deepcopy(tron.COMPLETED_NUMBER_ROLLCALLS)
         self.original_tron_user = os.environ.get("TRON_USER")
         self.original_tron_pass = os.environ.get("TRON_PASS")
         self.original_last_login_result = tron.LAST_LOGIN_RESULT
         tron.cnt = 0
         tron.IS_LOGGING_IN = False
+        tron.COMPLETED_NUMBER_ROLLCALLS.clear()
         tron.clear_runtime_credentials()
         os.environ.pop("TRON_USER", None)
         os.environ.pop("TRON_PASS", None)
@@ -254,6 +256,8 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         tron.RUNTIME_CREDENTIALS.update(copy.deepcopy(self.original_runtime_credentials))
         tron.UNSUPPORTED_ROLLCALL_STATE.clear()
         tron.UNSUPPORTED_ROLLCALL_STATE.update(copy.deepcopy(self.original_unsupported_rollcall_state))
+        tron.COMPLETED_NUMBER_ROLLCALLS.clear()
+        tron.COMPLETED_NUMBER_ROLLCALLS.update(copy.deepcopy(self.original_completed_number_rollcalls))
         tron.LAST_LOGIN_RESULT = self.original_last_login_result
         if self.original_tron_user is None:
             os.environ.pop("TRON_USER", None)
@@ -402,6 +406,41 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result, "is_number")
         number_mock.assert_awaited_once_with(session, 42)
         mes_mock.assert_awaited_once()
+
+    async def test_check_rollcall_skips_number_rollcall_after_successful_attempt(self) -> None:
+        session = MagicMock()
+        client = MagicMock()
+        client.fetch_rollcalls = AsyncMock(
+            return_value=tron_http.RollcallsResult(
+                url=tron_http.ROLLCALLS_URL,
+                status_code=200,
+                payload={
+                    "rollcalls": [
+                        {
+                            "is_number": True,
+                            "rollcall_id": 42,
+                        }
+                    ]
+                },
+            )
+        )
+        number_mock = AsyncMock(return_value="1234")
+        mes_mock = AsyncMock()
+
+        with (
+            patch.object(tron, "TronHttpClient", return_value=client),
+            patch.object(tron, "log", return_value=True),
+            patch.object(tron, "number", number_mock),
+            patch.object(tron, "mes", mes_mock),
+            patch.object(tron, "log_print"),
+        ):
+            first = await tron.check_rollcall(session, 5)
+            second = await tron.check_rollcall(session, 6)
+
+        self.assertEqual(first, "is_number")
+        self.assertEqual(second, "數字點名已處理")
+        number_mock.assert_awaited_once_with(session, 42)
+        self.assertEqual(mes_mock.await_count, 1)
 
     async def test_check_rollcall_prefers_first_number_rollcall_over_earlier_unsupported(self) -> None:
         session = MagicMock()
