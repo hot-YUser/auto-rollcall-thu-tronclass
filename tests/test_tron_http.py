@@ -179,6 +179,33 @@ class TronHttpClientTest(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(tron_http.LoginRejectedError):
             await client.submit_login(form, "user1", "pass1")
 
+    async def test_fetch_user_id_parses_app_runtime_user(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = FakeCookieJar()
+        session.get.return_value = make_context_manager(
+            make_response(
+                text='''<script>window.APPRuntime = {"USER": {"id": 238730}};</script>'''
+            )
+        )
+        client = tron_http.TronHttpClient(session)
+
+        user_id = await client.fetch_user_id()
+
+        self.assertEqual(user_id, 238730)
+        session.get.assert_called_once_with(tron_http.TRON)
+
+    async def test_fetch_user_id_returns_none_when_app_runtime_missing(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = FakeCookieJar()
+        session.get.return_value = make_context_manager(
+            make_response(text="<html><body>home</body></html>")
+        )
+        client = tron_http.TronHttpClient(session)
+
+        user_id = await client.fetch_user_id()
+
+        self.assertIsNone(user_id)
+
     async def test_fetch_rollcalls_raises_on_unauthorized_status(self) -> None:
         session = MagicMock()
         session.cookie_jar = FakeCookieJar()
@@ -237,12 +264,14 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         self.original_runtime_credentials = copy.deepcopy(tron.RUNTIME_CREDENTIALS)
         self.original_unsupported_rollcall_state = copy.deepcopy(tron.UNSUPPORTED_ROLLCALL_STATE)
         self.original_completed_number_rollcalls = copy.deepcopy(tron.COMPLETED_NUMBER_ROLLCALLS)
+        self.original_completed_radar_rollcalls = copy.deepcopy(tron.COMPLETED_RADAR_ROLLCALLS)
         self.original_tron_user = os.environ.get("TRON_USER")
         self.original_tron_pass = os.environ.get("TRON_PASS")
         self.original_last_login_result = tron.LAST_LOGIN_RESULT
         tron.cnt = 0
         tron.IS_LOGGING_IN = False
         tron.COMPLETED_NUMBER_ROLLCALLS.clear()
+        tron.COMPLETED_RADAR_ROLLCALLS.clear()
         tron.clear_runtime_credentials()
         os.environ.pop("TRON_USER", None)
         os.environ.pop("TRON_PASS", None)
@@ -258,6 +287,8 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         tron.UNSUPPORTED_ROLLCALL_STATE.update(copy.deepcopy(self.original_unsupported_rollcall_state))
         tron.COMPLETED_NUMBER_ROLLCALLS.clear()
         tron.COMPLETED_NUMBER_ROLLCALLS.update(copy.deepcopy(self.original_completed_number_rollcalls))
+        tron.COMPLETED_RADAR_ROLLCALLS.clear()
+        tron.COMPLETED_RADAR_ROLLCALLS.update(copy.deepcopy(self.original_completed_radar_rollcalls))
         tron.LAST_LOGIN_RESULT = self.original_last_login_result
         if self.original_tron_user is None:
             os.environ.pop("TRON_USER", None)
@@ -441,6 +472,62 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(second, "數字點名已處理")
         number_mock.assert_awaited_once_with(session, 42)
         self.assertEqual(mes_mock.await_count, 1)
+
+    async def test_check_rollcall_invokes_radar_for_radar_rollcall(self) -> None:
+        session = MagicMock()
+        radar_rollcall = {"is_radar": True, "rollcall_id": 43}
+        client = MagicMock()
+        client.fetch_rollcalls = AsyncMock(
+            return_value=tron_http.RollcallsResult(
+                url=tron_http.ROLLCALLS_URL,
+                status_code=200,
+                payload={"rollcalls": [radar_rollcall]},
+            )
+        )
+        radar_mock = AsyncMock()
+        mes_mock = AsyncMock()
+
+        with (
+            patch.object(tron, "TronHttpClient", return_value=client),
+            patch.object(tron, "log", return_value=True),
+            patch.object(tron, "radar", radar_mock),
+            patch.object(tron, "mes", mes_mock),
+            patch.object(tron, "log_print"),
+        ):
+            result = await tron.check_rollcall(session, 5)
+
+        self.assertEqual(result, "is_radar")
+        radar_mock.assert_awaited_once_with(session, radar_rollcall)
+        mes_mock.assert_awaited_once()
+        self.assertIn("43", tron.COMPLETED_RADAR_ROLLCALLS)
+
+    async def test_check_rollcall_skips_radar_rollcall_after_successful_attempt(self) -> None:
+        session = MagicMock()
+        radar_rollcall = {"is_radar": True, "rollcall_id": 43}
+        tron.COMPLETED_RADAR_ROLLCALLS["43"] = True
+        client = MagicMock()
+        client.fetch_rollcalls = AsyncMock(
+            return_value=tron_http.RollcallsResult(
+                url=tron_http.ROLLCALLS_URL,
+                status_code=200,
+                payload={"rollcalls": [radar_rollcall]},
+            )
+        )
+        radar_mock = AsyncMock()
+        mes_mock = AsyncMock()
+
+        with (
+            patch.object(tron, "TronHttpClient", return_value=client),
+            patch.object(tron, "log", return_value=True),
+            patch.object(tron, "radar", radar_mock),
+            patch.object(tron, "mes", mes_mock),
+            patch.object(tron, "log_print"),
+        ):
+            result = await tron.check_rollcall(session, 6)
+
+        self.assertEqual(result, "雷達點名已處理")
+        radar_mock.assert_not_awaited()
+        mes_mock.assert_not_awaited()
 
     async def test_check_rollcall_prefers_first_number_rollcall_over_earlier_unsupported(self) -> None:
         session = MagicMock()

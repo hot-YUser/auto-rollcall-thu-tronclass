@@ -1,7 +1,8 @@
 import html
+import json
 import re
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from urllib.parse import urljoin
 
 import aiohttp
@@ -130,6 +131,22 @@ class TronHttpClient:
             raise LoginRejectedError("登入失敗，請檢查帳號或密碼是否正確。")
 
         return LoginOutcome(final_url=final_url, has_session=has_session)
+
+    async def fetch_user_id(self) -> Optional[int]:
+        async with self.session.get(TRON) as resp:
+            html_text = await resp.text()
+
+        match = re.search(r"window\.APPRuntime\s*=\s*(\{.*?\});", html_text, re.DOTALL)
+        if not match:
+            return None
+
+        try:
+            runtime = json.loads(match.group(1))
+        except ValueError:
+            return None
+
+        user_id = runtime.get("USER", {}).get("id")
+        return user_id if isinstance(user_id, int) else None
 
     async def fetch_rollcalls(self) -> RollcallsResult:
         async with self.session.get(ROLLCALLS_URL) as resp:
