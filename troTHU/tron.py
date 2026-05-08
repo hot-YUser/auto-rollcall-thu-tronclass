@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import random
+import re
 import ssl
 import string
 import sys
@@ -54,6 +55,7 @@ LOGIN_RETRY_DELAYS = (10.0, 30.0, 60.0, 300.0)
 FATAL_NOTIFICATION_INTERVAL = 300.0
 DEFAULT_HTTP_TIMEOUT_SECONDS = 20.0
 DEFAULT_NOTIFICATION_TIMEOUT_SECONDS = 10.0
+TIME_RANGE_PATTERN = re.compile(r"\b\d{1,2}[:：]\d{2}\b")
 PLACEHOLDER_CREDENTIAL_VALUES = {
     "",
     "YOUR_STUDENT_ID",
@@ -219,6 +221,51 @@ def coerce_positive_float(value: Any, default: float, minimum: float = 0.1) -> f
     except (TypeError, ValueError):
         return default
     return max(numeric, minimum)
+
+
+def parse_time_value(value: Any) -> Optional[Any]:
+    if isinstance(value, (int, float)) and float(value).is_integer():
+        minutes = int(value)
+        if 0 <= minutes < 24 * 60:
+            return datetime.strptime("{:02d}:{:02d}".format(minutes // 60, minutes % 60), "%H:%M").time()
+
+    text = normalize_text(value).replace("：", ":")
+    if not text:
+        return None
+
+    try:
+        return datetime.strptime(text, "%H:%M").time()
+    except ValueError:
+        return None
+
+
+def format_time_value(value: Any) -> Optional[str]:
+    parsed = parse_time_value(value)
+    if parsed is None:
+        return None
+    return parsed.strftime("%H:%M")
+
+
+def normalize_schedule_range(value: Any, default: Optional[List[str]] = None) -> List[str]:
+    fallback = list(default or DEFAULT_OPERATING_RANGE)
+    start_value: Any = None
+    end_value: Any = None
+
+    if isinstance(value, (list, tuple)) and len(value) == 2:
+        start_value, end_value = value
+    elif isinstance(value, dict):
+        start_value = value.get("start", value.get("from", value.get("begin")))
+        end_value = value.get("end", value.get("to", value.get("until")))
+    else:
+        matches = TIME_RANGE_PATTERN.findall(normalize_text(value))
+        if len(matches) >= 2:
+            start_value, end_value = matches[0], matches[1]
+
+    start = format_time_value(start_value)
+    end = format_time_value(end_value)
+    if start is None or end is None:
+        return fallback
+    return [start, end]
 
 
 def is_placeholder_credential(value: Any) -> bool:
@@ -441,9 +488,11 @@ def normalize_config(raw_config: Any) -> Dict[str, Any]:
         if isinstance(raw_schedule, dict):
             if "enable" in raw_schedule:
                 merged["enable"] = coerce_bool(raw_schedule["enable"], default_schedule["enable"])
-            time_range = raw_schedule.get("range")
-            if isinstance(time_range, list) and len(time_range) == 2:
-                merged["range"] = [str(time_range[0]), str(time_range[1])]
+            if "range" in raw_schedule:
+                merged["range"] = normalize_schedule_range(
+                    raw_schedule.get("range"),
+                    default_schedule["range"],
+                )
         normalized_operating[day] = merged
     config["operating"] = normalized_operating
 
@@ -693,15 +742,7 @@ def build_number_progress_message(
 
 
 def parse_schedule_range(range_str: Any) -> Tuple[Any, Any]:
-    if isinstance(range_str, list) and len(range_str) == 2:
-        try:
-            start = datetime.strptime(str(range_str[0]), "%H:%M").time()
-            end = datetime.strptime(str(range_str[1]), "%H:%M").time()
-            return start, end
-        except ValueError:
-            pass
-
-    fallback = DEFAULT_OPERATING_RANGE
+    fallback = normalize_schedule_range(range_str)
     return (
         datetime.strptime(fallback[0], "%H:%M").time(),
         datetime.strptime(fallback[1], "%H:%M").time(),
