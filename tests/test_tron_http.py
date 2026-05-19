@@ -1,5 +1,7 @@
 import asyncio
 import copy
+import hashlib
+import json
 import os
 import sys
 import types
@@ -532,7 +534,7 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
                 payload={"rollcalls": [radar_rollcall]},
             )
         )
-        radar_mock = AsyncMock()
+        radar_mock = AsyncMock(return_value=True)
         mes_mock = AsyncMock()
 
         with (
@@ -576,6 +578,60 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result, "雷達點名已處理")
         radar_mock.assert_not_awaited()
         mes_mock.assert_not_awaited()
+
+    async def test_check_rollcall_retries_radar_after_failure(self) -> None:
+        session = MagicMock()
+        radar_rollcall = {"is_radar": True, "rollcall_id": 100}
+        client = MagicMock()
+        client.fetch_rollcalls = AsyncMock(
+            return_value=tron_http.RollcallsResult(
+                url=tron_http.ROLLCALLS_URL,
+                status_code=200,
+                payload={"rollcalls": [radar_rollcall]},
+            )
+        )
+        radar_mock = AsyncMock(return_value=False)
+        mes_mock = AsyncMock()
+
+        with (
+            patch.object(tron, "TronHttpClient", return_value=client),
+            patch.object(tron, "log", return_value=True),
+            patch.object(tron, "radar", radar_mock),
+            patch.object(tron, "mes", mes_mock),
+            patch.object(tron, "log_print"),
+        ):
+            first = await tron.check_rollcall(session, 5)
+            second = await tron.check_rollcall(session, 6)
+
+        self.assertEqual(first, "radar_failed")
+        self.assertEqual(second, "radar_failed")
+        self.assertNotIn("100", tron.COMPLETED_RADAR_ROLLCALLS)
+        self.assertEqual(radar_mock.await_count, 2)
+        self.assertEqual(mes_mock.await_count, 2)
+
+    def test_parse_radar_answer_result_extracts_scope_distance(self) -> None:
+        result = tron.parse_radar_answer_result(
+            400,
+            json.dumps(
+                {
+                    "distance": 13090027.227394557,
+                    "error_code": "radar_out_of_rollcall_scope",
+                    "id": 18742077,
+                    "message": "out of scope",
+                }
+            ),
+        )
+
+        self.assertFalse(result.success)
+        self.assertTrue(result.is_scope_distance)
+        self.assertEqual(result.distance, 13090027.227394557)
+
+    def test_build_radar_signal_includes_md5_and_timestamp(self) -> None:
+        expected_hash = hashlib.md5("nonce-device-2387301715000123456".encode("utf-8")).hexdigest()
+
+        signal = tron.build_radar_signal("nonce-", "device-", 238730, 1715000123456)
+
+        self.assertEqual(signal, f"{expected_hash},1715000123456")
 
     async def test_check_rollcall_prefers_first_number_rollcall_over_earlier_unsupported(self) -> None:
         session = MagicMock()

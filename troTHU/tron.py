@@ -20,6 +20,16 @@ import aiohttp
 import yaml
 
 try:
+    from troTHU.radar_solver import (
+        DEFAULT_BOUNDARY_POINTS,
+        DistanceObservation,
+        GeoPoint,
+        RadarGeometryError,
+        build_probe_plan,
+        choose_fourth_probe,
+        final_candidate_points,
+        solve_position,
+    )
     from troTHU.tron_http import (
         LOGIN_URL,
         TRON,
@@ -32,6 +42,16 @@ try:
         has_session_cookie as has_session_cookie_data,
     )
 except ImportError:
+    from radar_solver import (
+        DEFAULT_BOUNDARY_POINTS,
+        DistanceObservation,
+        GeoPoint,
+        RadarGeometryError,
+        build_probe_plan,
+        choose_fourth_probe,
+        final_candidate_points,
+        solve_position,
+    )
     from tron_http import (
         LOGIN_URL,
         TRON,
@@ -98,6 +118,17 @@ DEFAULT_CONFIG = {
         "notification_timeout": DEFAULT_NOTIFICATION_TIMEOUT_SECONDS,
         "verify_ssl": True,
         "user-agent": list(DEFAULT_USER_AGENTS),
+    },
+    "radar": {
+        "boundary_points": [[lat, lon] for lat, lon in DEFAULT_BOUNDARY_POINTS],
+        "allow_outside_probe": True,
+        "outside_scale": 1.6,
+        "max_distance_probes": 4,
+        "max_final_attempts": 100,
+        "final_precision_min": 3,
+        "final_precision_max": 14,
+        "final_grid_step_meters": 5.0,
+        "final_grid_radius_meters": 20.0,
     },
     "operating": {
         0: {"enable": True, "range": list(DEFAULT_OPERATING_RANGE)},
@@ -191,6 +222,22 @@ class NotificationRequest:
     json_body: Optional[Dict[str, Any]] = None
 
 
+@dataclass(frozen=True)
+class RadarCoordinateResult:
+    success: bool
+    distance: float = -1.0
+    error_code: str = ""
+    message: str = ""
+
+    @property
+    def has_distance(self) -> bool:
+        return self.distance >= 0.0
+
+    @property
+    def is_scope_distance(self) -> bool:
+        return self.error_code == "radar_out_of_rollcall_scope" and self.has_distance
+
+
 class NotificationSendError(Exception):
     def __init__(self, channel: str, message: str, status_code: int = 0) -> None:
         super().__init__(message)
@@ -219,6 +266,14 @@ def coerce_bool(value: Any, default: bool) -> bool:
 def coerce_positive_float(value: Any, default: float, minimum: float = 0.1) -> float:
     try:
         numeric = float(value)
+    except (TypeError, ValueError):
+        return default
+    return max(numeric, minimum)
+
+
+def coerce_positive_int(value: Any, default: int, minimum: int = 1) -> int:
+    try:
+        numeric = int(value)
     except (TypeError, ValueError):
         return default
     return max(numeric, minimum)
@@ -267,6 +322,29 @@ def normalize_schedule_range(value: Any, default: Optional[List[str]] = None) ->
     if start is None or end is None:
         return fallback
     return [start, end]
+
+
+def normalize_radar_boundary_points(value: Any) -> List[List[float]]:
+    default_points = copy.deepcopy(DEFAULT_CONFIG["radar"]["boundary_points"])
+    if not isinstance(value, (list, tuple)):
+        return default_points
+
+    normalized = []
+    for item in value:
+        try:
+            if isinstance(item, dict):
+                lat = float(item["lat"])
+                lon = float(item.get("lon", item.get("lng")))
+            else:
+                lat = float(item[0])
+                lon = float(item[1])
+        except (TypeError, ValueError, KeyError, IndexError):
+            return default_points
+        normalized.append([lat, lon])
+
+    if len(normalized) < 3:
+        return default_points
+    return normalized
 
 
 def is_placeholder_credential(value: Any) -> bool:
@@ -335,6 +413,58 @@ def make_payload_excerpt(payload: Any, limit: int = 500) -> Optional[str]:
     if len(text) > limit:
         return text[:limit] + "...(truncated)"
     return text
+
+
+def parse_radar_answer_result(status_code: int, body_text: str = "") -> RadarCoordinateResult:
+    if status_code == 200:
+        return RadarCoordinateResult(success=True, distance=0.0)
+
+    error_code = ""
+    message = ""
+    distance = -1.0
+    body = normalize_text(body_text)
+    if body:
+        try:
+            payload = json.loads(body)
+        except ValueError:
+            payload = body
+        if isinstance(payload, dict):
+            error_code = normalize_text(payload.get("error_code") or payload.get("message"))
+            message = normalize_text(payload.get("message") or error_code)
+            try:
+                distance = float(payload.get("distance", -1.0))
+            except (TypeError, ValueError):
+                distance = -1.0
+        else:
+            message = body[:120]
+
+    if error_code == "radar_out_of_rollcall_scope" and distance >= 0.0:
+        return RadarCoordinateResult(
+            success=False,
+            distance=distance,
+            error_code=error_code,
+            message=message,
+        )
+
+    return RadarCoordinateResult(
+        success=False,
+        distance=distance,
+        error_code=error_code or message or "radar_answer_failed",
+        message=message,
+    )
+
+
+def build_radar_signal(
+    beacon_nonce: Any,
+    device_id: Any,
+    user_id: Optional[int],
+    timestamp: Optional[int] = None,
+) -> str:
+    timestamp_value = int(time.time() * 1000) if timestamp is None else int(timestamp)
+    user_id_part = str(user_id) if user_id is not None else "undefined"
+    raw_signal = f"{normalize_text(beacon_nonce)}{normalize_text(device_id)}{user_id_part}{timestamp_value}"
+    digest = hashlib.md5(raw_signal.encode("utf-8")).hexdigest()
+    return f"{digest},{timestamp_value}"
 
 
 def daily_log_path(today: Optional[datetime] = None) -> Path:
@@ -474,6 +604,96 @@ def normalize_config(raw_config: Any) -> Dict[str, Any]:
         user_agents = []
     user_agents = [str(agent).strip() for agent in user_agents if str(agent).strip()]
     runtime_config["user-agent"] = user_agents or list(DEFAULT_USER_AGENTS)
+
+    radar_config = config.setdefault("radar", {})
+    if not isinstance(radar_config, dict):
+        radar_config = {}
+        config["radar"] = radar_config
+    radar_config["boundary_points"] = normalize_radar_boundary_points(
+        radar_config.get("boundary_points", DEFAULT_CONFIG["radar"]["boundary_points"])
+    )
+    radar_config["allow_outside_probe"] = coerce_bool(
+        radar_config.get(
+            "allow_outside_probe",
+            DEFAULT_CONFIG["radar"]["allow_outside_probe"],
+        ),
+        DEFAULT_CONFIG["radar"]["allow_outside_probe"],
+    )
+    radar_config["outside_scale"] = coerce_positive_float(
+        radar_config.get("outside_scale", DEFAULT_CONFIG["radar"]["outside_scale"]),
+        DEFAULT_CONFIG["radar"]["outside_scale"],
+        minimum=1.0,
+    )
+    radar_config["max_distance_probes"] = min(
+        8,
+        coerce_positive_int(
+            radar_config.get(
+                "max_distance_probes",
+                DEFAULT_CONFIG["radar"]["max_distance_probes"],
+            ),
+            DEFAULT_CONFIG["radar"]["max_distance_probes"],
+            minimum=3,
+        ),
+    )
+    radar_config["max_final_attempts"] = min(
+        200,
+        coerce_positive_int(
+            radar_config.get(
+                "max_final_attempts",
+                DEFAULT_CONFIG["radar"]["max_final_attempts"],
+            ),
+            DEFAULT_CONFIG["radar"]["max_final_attempts"],
+            minimum=1,
+        ),
+    )
+    min_precision = min(
+        14,
+        coerce_positive_int(
+            radar_config.get(
+                "final_precision_min",
+                DEFAULT_CONFIG["radar"]["final_precision_min"],
+            ),
+            DEFAULT_CONFIG["radar"]["final_precision_min"],
+            minimum=0,
+        ),
+    )
+    max_precision = min(
+        14,
+        coerce_positive_int(
+            radar_config.get(
+                "final_precision_max",
+                DEFAULT_CONFIG["radar"]["final_precision_max"],
+            ),
+            DEFAULT_CONFIG["radar"]["final_precision_max"],
+            minimum=0,
+        ),
+    )
+    if min_precision > max_precision:
+        min_precision, max_precision = max_precision, min_precision
+    radar_config["final_precision_min"] = min_precision
+    radar_config["final_precision_max"] = max_precision
+    radar_config["final_grid_step_meters"] = min(
+        50.0,
+        coerce_positive_float(
+            radar_config.get(
+                "final_grid_step_meters",
+                DEFAULT_CONFIG["radar"]["final_grid_step_meters"],
+            ),
+            DEFAULT_CONFIG["radar"]["final_grid_step_meters"],
+            minimum=0.5,
+        ),
+    )
+    radar_config["final_grid_radius_meters"] = min(
+        100.0,
+        coerce_positive_float(
+            radar_config.get(
+                "final_grid_radius_meters",
+                DEFAULT_CONFIG["radar"]["final_grid_radius_meters"],
+            ),
+            DEFAULT_CONFIG["radar"]["final_grid_radius_meters"],
+            minimum=0.0,
+        ),
+    )
 
     operating = config.setdefault("operating", {})
     if not isinstance(operating, dict):
@@ -1314,7 +1534,7 @@ async def number(main_session: aiohttp.ClientSession, rcid: int) -> str:
     return found_code
 
 
-async def radar(main_session: aiohttp.ClientSession, rollcall: Dict[str, Any]) -> None:
+async def radar(main_session: aiohttp.ClientSession, rollcall: Dict[str, Any]) -> bool:
     rollcall_id = rollcall.get("rollcall_id")
     device_id = random_id()
     headers = {"User-Agent": random_ua()}
@@ -1328,11 +1548,12 @@ async def radar(main_session: aiohttp.ClientSession, rollcall: Dict[str, Any]) -
 
     async with aiohttp.ClientSession(**session_kwargs) as session:
         clone_session_cookies(main_session, session)
-        client = TronHttpClient(session, request_ssl=get_ssl_request_setting())
+        request_ssl = get_ssl_request_setting()
+        client = TronHttpClient(session, request_ssl=request_ssl)
         user_id = await client.fetch_user_id()
 
         lite_url = f"{TRON}/api/rollcall/{rollcall_id}/lite"
-        async with session.get(lite_url) as resp:
+        async with session.get(lite_url, ssl=request_ssl) as resp:
             if resp.status == 200:
                 lite_data = await resp.json()
             else:
@@ -1340,32 +1561,171 @@ async def radar(main_session: aiohttp.ClientSession, rollcall: Dict[str, Any]) -
 
         use_beacon = lite_data.get("use_beacon", rollcall.get("use_beacon", False))
         beacon_nonce = lite_data.get("beacon_nonce", "")
-        latitude = lite_data.get("latitude", rollcall.get("latitude", 0.0))
-        longitude = lite_data.get("longitude", rollcall.get("longitude", 0.0))
 
-        payload: Dict[str, Any] = {
-            "deviceId": device_id,
-            "latitude": latitude,
-            "longitude": longitude,
-        }
+        async def try_coord(point: GeoPoint, label: str = "") -> RadarCoordinateResult:
+            payload: Dict[str, Any] = {
+                "deviceId": device_id,
+                "latitude": point.lat,
+                "longitude": point.lon,
+                "accuracy": random.randint(40, 80),
+            }
+            if use_beacon:
+                payload["radarSignal"] = build_radar_signal(beacon_nonce, device_id, user_id)
 
-        if use_beacon:
-            timestamp = int(time.time() * 1000)
-            user_id_part = str(user_id) if user_id is not None else "undefined"
-            raw_signal = f"{beacon_nonce}{device_id}{user_id_part}{timestamp}"
-            payload["radarSignal"] = hashlib.md5(raw_signal.encode("utf-8")).hexdigest()
+            request_url = f"{TRON}/api/rollcall/{rollcall_id}/answer?api_version=1.76"
+            async with session.put(request_url, json=payload, ssl=request_ssl) as resp:
+                body_text = await resp.text()
+                result = parse_radar_answer_result(resp.status, body_text)
 
-        request_url = f"{TRON}/api/rollcall/{rollcall_id}/answer?api_version=1.76"
-        async with session.put(request_url, json=payload) as resp:
-            if resp.status == 200:
-                text = f"雷達點名 #{rollcall_id} 成功！"
+            if result.success:
+                log(
+                    event="radar_coordinate_attempt",
+                    status="success",
+                    rollcall_id=rollcall_id,
+                    rollcall_type="radar",
+                    message="雷達點名座標送出成功。",
+                    extra={
+                        "label": label,
+                        "latitude": point.lat,
+                        "longitude": point.lon,
+                    },
+                )
+                return result
+
+            if result.is_scope_distance:
+                return result
+
+            log(
+                event="radar_coordinate_attempt",
+                status="failed",
+                rollcall_id=rollcall_id,
+                rollcall_type="radar",
+                message="雷達點名座標送出被拒絕。",
+                extra={
+                    "label": label,
+                    "latitude": point.lat,
+                    "longitude": point.lon,
+                    "error_code": result.error_code,
+                    "message": result.message,
+                },
+            )
+            return result
+
+        radar_config = normalize_config(copy.deepcopy(CONFIG)).get(
+            "radar",
+            DEFAULT_CONFIG["radar"],
+        )
+        max_distance_probes = int(radar_config.get("max_distance_probes", 4))
+        max_final_attempts = int(radar_config.get("max_final_attempts", 100))
+        final_precision_min = int(radar_config.get("final_precision_min", 3))
+        final_precision_max = int(radar_config.get("final_precision_max", 14))
+        final_precisions = tuple(range(final_precision_max, final_precision_min - 1, -1))
+        final_grid_step_meters = float(radar_config.get("final_grid_step_meters", 5.0))
+        final_grid_radius_meters = float(radar_config.get("final_grid_radius_meters", 20.0))
+
+        try:
+            probe_plan = build_probe_plan(
+                radar_config.get("boundary_points", DEFAULT_CONFIG["radar"]["boundary_points"]),
+                allow_outside=bool(radar_config.get("allow_outside_probe", True)),
+                outside_scale=float(radar_config.get("outside_scale", 1.6)),
+            )
+        except (RadarGeometryError, ValueError) as exc:
+            text = f"雷達點名 #{rollcall_id} 失敗：場域設定無法建立定位模型 ({exc})。"
+            log_print(text)
+            await mes(text)
+            return False
+
+        observations: List[DistanceObservation] = []
+        log_print("啟動雷達定位：以外擴三點探測場域距離...")
+
+        for index, local_probe in enumerate(probe_plan.probes, start=1):
+            geo_probe = probe_plan.frame.to_geo(local_probe)
+            result = await try_coord(geo_probe, f"probe-{index}")
+            if result.success:
+                text = f"雷達點名 #{rollcall_id} 成功！(探測點 {index} 命中)"
                 log_print(text)
                 await mes(text)
-                return
+                return True
+            if not result.is_scope_distance:
+                text = f"雷達點名 #{rollcall_id} 失敗：伺服器拒絕探測點 {index} ({result.error_code})。"
+                log_print(text)
+                await mes(text)
+                return False
+            observations.append(DistanceObservation(local_probe, result.distance))
+            log_print(f"探測點 {index} 距離 {result.distance:.2f} 公尺。")
 
-            body = await resp.text()
-            log_print(f"雷達點名 #{rollcall_id} 失敗 (HTTP {resp.status}): {body[:100]}")
-            await mes(f"雷達點名 #{rollcall_id} 失敗！HTTP {resp.status}")
+        try:
+            solution = solve_position(observations)
+        except RadarGeometryError as exc:
+            text = f"雷達點名 #{rollcall_id} 失敗：前三點定位無法求解 ({exc})。"
+            log_print(text)
+            await mes(text)
+            return False
+
+        if max_distance_probes >= 4:
+            fourth_probe = choose_fourth_probe(
+                solution.point,
+                tuple(observation.point for observation in observations),
+                probe_plan.hull,
+                allow_outside=bool(radar_config.get("allow_outside_probe", True)),
+            )
+            fourth_geo = probe_plan.frame.to_geo(fourth_probe)
+            result = await try_coord(fourth_geo, "probe-4")
+            if result.success:
+                text = f"雷達點名 #{rollcall_id} 成功！(第四探測點命中)"
+                log_print(text)
+                await mes(text)
+                return True
+            if not result.is_scope_distance:
+                text = f"雷達點名 #{rollcall_id} 失敗：伺服器拒絕第四探測點 ({result.error_code})。"
+                log_print(text)
+                await mes(text)
+                return False
+            observations.append(DistanceObservation(fourth_probe, result.distance))
+            try:
+                solution = solve_position(observations, initial=solution.point)
+            except RadarGeometryError as exc:
+                text = f"雷達點名 #{rollcall_id} 失敗：四點定位無法求解 ({exc})。"
+                log_print(text)
+                await mes(text)
+                return False
+            log_print(
+                f"第四探測點距離 {result.distance:.2f} 公尺；定位殘差約 {solution.residual_rmse:.2f} 公尺。"
+            )
+
+        candidates = final_candidate_points(
+            probe_plan.frame,
+            solution.point,
+            max_candidates=max_final_attempts,
+            precisions=final_precisions,
+            grid_step_meters=final_grid_step_meters,
+            grid_radius_meters=final_grid_radius_meters,
+        )
+        estimated = probe_plan.frame.to_geo(solution.point)
+        log_print(
+            f"定位完成：估計座標 {estimated.lat:.8f}, {estimated.lon:.8f}，開始小數位與 {final_grid_step_meters:g}m 方格候選重試..."
+        )
+
+        for index, candidate in enumerate(candidates, start=1):
+            result = await try_coord(candidate, f"candidate-{index}")
+            if result.success:
+                text = f"雷達點名 #{rollcall_id} 成功！(候選座標 {index}/{len(candidates)})"
+                log_print(text)
+                await mes(text)
+                return True
+            if not result.is_scope_distance:
+                text = f"雷達點名 #{rollcall_id} 失敗：候選座標被拒絕 ({result.error_code})。"
+                log_print(text)
+                await mes(text)
+                return False
+            log_print(
+                f"候選 {index}/{len(candidates)} 未命中，剩餘距離 {result.distance:.2f} 公尺。"
+            )
+
+        text = f"雷達點名 #{rollcall_id} 最終失敗：已用完 {len(candidates)} 個候選座標。"
+        log_print(text)
+        await mes(text)
+        return False
 
 
 def select_rollcall(rollcalls: Any) -> Tuple[str, Optional[Dict[str, Any]], str, str]:
@@ -1508,9 +1868,11 @@ async def check_rollcall(session: aiohttp.ClientSession, cnt: int = -1) -> str:
         )
         log_print(text)
         await mes(text)
-        await radar(session, selected_rollcall)
-        COMPLETED_RADAR_ROLLCALLS[radar_key] = True
-        return "is_radar"
+        radar_success = await radar(session, selected_rollcall)
+        if radar_success:
+            COMPLETED_RADAR_ROLLCALLS[radar_key] = True
+            return "is_radar"
+        return "radar_failed"
 
     if selected_rollcall is not None:
         await maybe_notify_unsupported_rollcall(
@@ -1721,6 +2083,8 @@ async def monitor_loop(session: aiohttp.ClientSession, shutdown_event: asyncio.E
                 status_print("第 {} 次檢查: 發現未支援的點名類型".format(cnt))
             elif status_msg == "is_radar":
                 status_print("第 {} 次檢查: 雷達點名已觸發".format(cnt))
+            elif status_msg == "radar_failed":
+                status_print("第 {} 次檢查: 雷達點名處理失敗，下一輪會再檢查".format(cnt))
             else:
                 status_print("第 {} 次檢查: {}".format(cnt, status_msg))
         except UnauthorizedError:
