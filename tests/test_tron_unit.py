@@ -212,6 +212,17 @@ class TronHelpersTest(unittest.TestCase):
             tron.DEFAULT_CONFIG["config"]["notification_timeout"],
         )
 
+    def test_normalize_config_defaults_radar_settings(self) -> None:
+        normalized = tron.normalize_config({"config": {}})
+
+        self.assertEqual(
+            normalized["radar"]["boundary_points"],
+            tron.DEFAULT_CONFIG["radar"]["boundary_points"],
+        )
+        self.assertEqual(normalized["radar"]["max_distance_probes"], 4)
+        self.assertEqual(normalized["radar"]["final_precision_min"], 3)
+        self.assertEqual(normalized["radar"]["final_precision_max"], 14)
+
     def test_get_verify_ssl_reads_current_config_value(self) -> None:
         tron.CONFIG["config"]["verify_ssl"] = False
 

@@ -6,19 +6,21 @@
 
 > 請只在你有權限、且符合學校與課程規範的情境下使用本專案。
 
-## 版本狀態：v1.0-alpha.2
+## 版本狀態：v1.0-alpha.3
 
-`v1.0-alpha.2` 是一次變更範圍較大的 alpha 版本，延續 `v1.0-alpha.1` 自動分支合併後的功能整合。
-這個版本已整理 README 與本地測試，但尚未經過完整實機點名情境驗證，因此會以 GitHub Pre-release 發布。
+`v1.0-alpha.3` 是一次變更範圍較大的 alpha 版本，主要整合 Gemini 分支中可正確運作的 radar 幾何定位流程。
+這個版本已整理 README 與本地測試，但 radar 仍屬實驗性功能，尚未保證所有真實課堂點名情境都能成功。
 
 如果你只是想要相對穩定的日常使用版本，建議優先使用上一個正式版 `v0.2.8`。
-如果你願意協助驗證新功能，才建議嘗試 `v1.0-alpha.2`，並請特別留意 `log/` 裡的錯誤訊息。
+如果你願意協助驗證新功能，才建議嘗試 `v1.0-alpha.3`，並請特別留意 `log/` 裡的錯誤訊息。
 
 這個 alpha 版本最重要的變動是：
 
-- 新增實驗性的 `radar` 點名處理流程
+- 將 Gemini 分支的 `radar` 幾何求解器整合為主要 radar 流程
+- radar 會以外擴探測點取得距離，再用三/四點求解與候選座標重試
 - 仍保留數字點名流程與重複點名略過機制
 - 會嘗試從 `window.APPRuntime` 解析使用者 ID，供 radar beacon 計算使用
+- beacon 模式會送出 `md5,timestamp` 格式的 `radarSignal`
 - 偵測到 TLS / SSL 憑證鏈驗證失敗時，會自動停用 `config.verify_ssl` 並重試登入或監控
 - `QR Code` 點名仍未自動化
 - 目前尚未完成真實課堂環境的完整測試
@@ -33,16 +35,16 @@ Release 檔名格式會像這樣：
 THU_Auto_Rollcall-vx.y.z-windows-x64.zip
 ```
 
-其中 `vx.y.z` 是版本號，例如 `v0.2.8` 或 `v1.0-alpha.2`。`windows-x64` 代表這份壓縮包是給 64 位元 Windows 使用。
+其中 `vx.y.z` 是版本號，例如 `v0.2.8` 或 `v1.0-alpha.3`。`windows-x64` 代表這份壓縮包是給 64 位元 Windows 使用。
 
 ### 下載哪一個檔案
 
-請到 GitHub 頁面的 `Releases`，下載名稱類似 `THU_Auto_Rollcall-v0.2.8-windows-x64.zip` 或 `THU_Auto_Rollcall-v1.0-alpha.2-windows-x64.zip` 的檔案。
+請到 GitHub 頁面的 `Releases`，下載名稱類似 `THU_Auto_Rollcall-v0.2.8-windows-x64.zip` 或 `THU_Auto_Rollcall-v1.0-alpha.3-windows-x64.zip` 的檔案。
 
 不要下載 GitHub 自動產生的 `Source code (zip)` 或 `Source code (tar.gz)`，那是原始碼壓縮包，給開發者使用，不是一般使用者直接執行的版本。
 
 如果 Release 標示為 `Pre-release`，代表它是測試性版本，可能包含尚未完整驗證的新功能。
-`v1.0-alpha.2` 就屬於 Pre-release；若你不想承擔測試風險，請改用最新正式版。
+`v1.0-alpha.3` 屬於 alpha 測試路線；若你不想承擔測試風險，請改用最新正式版。
 
 ### 第一次使用
 
@@ -132,7 +134,7 @@ operating:
 - 支援 Telegram / Discord 通知
 - 目前已實作數字點名流程
 - 數字點名期間會持續顯示進度，找到 Code 後會以醒目框線顯示
-- `radar` 點名目前已有實驗性處理流程，但 `v1.0-alpha.2` 尚未經完整實機測試
+- `radar` 點名目前以 Gemini 幾何求解器作為主要流程，但 `v1.0-alpha.3` 尚未經完整實機測試
 - `QR Code` 目前會明確標示為未支援，不會誤送答案
 - 檔案日誌已改為 JSON Lines 結構化日誌
 - 通知逾時 / 送出失敗會被隔離，不會反過來中斷主監控流程
@@ -144,6 +146,7 @@ operating:
 .
 ├─ troTHU/
 │  ├─ tron.py             # 主流程：設定、登入、輪詢、通知、CLI
+│  ├─ radar_solver.py     # radar 場域投影、探測點配置與三/四點定位求解
 │  └─ tron_http.py        # HTTP 層：登入表單解析、session 判斷、API 包裝
 ├─ tests/                 # 單元測試與手動驗證腳本
 ├─ log/                   # 執行後輸出的日誌
@@ -240,6 +243,21 @@ TRON_PASS=你的密碼
 - `verify_ssl`: 是否驗證 HTTPS / TLS 憑證，預設為 `true`；啟用時會使用較相容的憑證鏈驗證設定
 - `user-agent`: 可輪替使用的 User-Agent 清單
 
+#### `radar`
+
+`radar` 是實驗性功能，僅適合你有權回應該點名且已理解課程規範時使用。`v1.0-alpha.3` 會把設定中的場域座標轉成局部 ENU 公尺座標，再用外擴探測點取得距離，最後以三/四點最小平方法與候選座標重試來尋找可接受座標。
+
+- `boundary_points`: 場域邊界座標，預設是目前整理出的四點凸包
+- `allow_outside_probe`: 是否允許探測點放在邊界外，預設 `true`
+- `outside_scale`: 外擴探測三角形的尺度，預設 `1.6`
+- `max_distance_probes`: 距離探測上限，預設 `4`
+- `max_final_attempts`: 最終候選座標送出上限，預設 `100`
+- `final_precision_min` / `final_precision_max`: 最終座標小數位掃描範圍
+- `final_grid_step_meters`: 方格候選的格距，預設 `5.0`
+- `final_grid_radius_meters`: 方格候選從估計座標向外延伸的距離，預設 `20.0`
+
+如果伺服器回傳 `radar_out_of_rollcall_scope`，程式會讀取其中的 `distance` 作為定位資料。若該點名需要 beacon，程式會使用 `beacon_nonce + deviceId + user_id + timestamp` 產生 MD5，並以 `md5,timestamp` 格式送出 `radarSignal`。
+
 #### `notifications.tg`
 
 - `enable`: 是否啟用 Telegram 通知
@@ -334,7 +352,7 @@ CLI 介面支援：
 - 自動重新登入
 - Telegram / Discord 通知
 - `TRON_USER` / `TRON_PASS` 覆蓋式憑證讀取
-- 實驗性的 `radar` 點名處理流程
+- 實驗性的 `radar` 幾何定位流程：外擴探測、三/四點求解、候選座標重試
 - 未支援 `QR Code` 類型的明確通知與停用
 - JSON Lines 結構化日誌
 - 基本錯誤重試與日誌輸出
@@ -351,8 +369,8 @@ CLI 介面支援：
 - 預設會將密碼明文保存在 `config.yaml`，請勿提交真實憑證；若不想明文保存，可改用 `TRON_USER` / `TRON_PASS`
 - 互動式 CLI 目前輸入密碼時仍會在終端機回顯；若在共享螢幕或錄影環境操作，請特別留意
 - 日誌會以 `.jsonl` 形式寫入 `log/`，可能包含回應摘要與點名資訊
-- `v1.0-alpha.2` 的 `radar` 流程延續自動分支合併後的實驗性整合，尚未經完整測試；若遇到失敗，請優先保留 `log/` 供後續排查
-- `radar` 流程會嘗試送出裝置 ID、經緯度與必要時的 beacon 訊號；不同課堂或學校端 API 行為若有差異，可能仍需要調整
+- `v1.0-alpha.3` 的 `radar` 流程已改用 Gemini 幾何求解器，但尚未經完整實機驗證；若遇到失敗，請優先保留 `log/` 供後續排查
+- `radar` 流程會嘗試送出裝置 ID、經緯度與必要時的 `md5,timestamp` beacon 訊號；不同課堂或學校端 API 行為若有差異，可能仍需要調整
 - 預設會驗證 HTTPS / TLS 憑證；若登入或監控時偵測到憑證鏈驗證失敗，程式會自動把 `config.verify_ssl` 改成 `false` 並重試
 - 通知送出使用獨立 timeout；若 Telegram / Discord 暫時異常，主監控流程仍會繼續執行
 - 若 `config.yaml` 損毀，程式會先備份原檔，再自動重建預設設定；若目錄不可寫，則退回本次執行用的內建預設值
@@ -365,7 +383,7 @@ CLI 介面支援：
 目前較穩定的是本地單元測試：
 
 ```bash
-python -m unittest tests.test_tron_unit tests.test_tron_http tests.test_tron_integration -v
+python -m unittest tests.test_radar_solver tests.test_tron_unit tests.test_tron_http tests.test_tron_integration -v
 ```
 
 測試涵蓋：
@@ -375,7 +393,8 @@ python -m unittest tests.test_tron_unit tests.test_tron_http tests.test_tron_int
 - 登入成功 / 失敗流程
 - 點名狀態判斷
 - 監控迴圈的重試與重新登入行為
-- `radar` 點名選取、觸發與重複略過邏輯
+- `radar` 幾何求解、點名選取、觸發、失敗重試與重複略過邏輯
+- `radarSignal` 的 `md5,timestamp` beacon 格式
 - APPRuntime 使用者 ID 解析
 - 憑證優先順序與 `config.yaml` 明文保存
 - 結構化日誌輸出
@@ -431,7 +450,7 @@ pyinstaller auto-rollcall-thu-tronclass.spec
 
 如果要把這個專案整理成更好維護的版本，推薦優先做：
 
-1. 針對 `v1.0-alpha.2` 的 `radar` 流程做真實環境測試，確認經緯度、beacon 與使用者 ID 行為是否符合預期
+1. 針對 `v1.0-alpha.3` 的 `radar` 幾何求解流程做真實環境測試，確認距離回傳、beacon、MD5 timestamp 與使用者 ID 行為是否符合預期
 2. 釐清 `QR Code` 點名資料流，決定是否可安全自動化
 3. 改善憑證處理體驗，例如隱藏 CLI 密碼輸入、降低把真實憑證留在工作樹的風險
 4. 將結構化日誌接到外部分析或告警流程
