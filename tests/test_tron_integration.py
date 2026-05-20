@@ -15,6 +15,7 @@ except (ImportError, ModuleNotFoundError):
     web = None
 
 from troTHU import tron, tron_http
+from tests.fake_tron_server import FakeTronServer
 
 TEST_WORKSPACE_DIR = Path(__file__).resolve().parents[1]
 
@@ -27,81 +28,34 @@ def make_workspace_temp_dir() -> Path:
     return path
 
 
-class FakeTronServer:
-    def __init__(self) -> None:
-        self.rollcalls = []
-
-    async def login_page(self, _request):
-        html = """
-        <html>
-          <form class="form-horizontal" action="/submit">
-            <input type="hidden" name="execution" value="abc123">
-            <input type="hidden" name="tab_id" value="tab-1">
-          </form>
-        </html>
-        """
-        return web.Response(text=html, content_type="text/html")
-
-    async def submit_login(self, request):
-        data = await request.post()
-        if data.get("username") != "user1" or data.get("password") != "pass1":
-            return web.Response(text="bad credentials", status=200)
-
-        response = web.HTTPFound("/home")
-        response.set_cookie("session", "local-test-session")
-        return response
-
-    async def home(self, _request):
-        return web.Response(text="ok")
-
-    async def rollcalls_api(self, request):
-        if request.cookies.get("session") != "local-test-session":
-            return web.Response(status=401, text="unauthorized")
-        return web.json_response({"rollcalls": self.rollcalls})
-
-
 @unittest.skipUnless(aiohttp is not None and web is not None, "aiohttp.web is required")
 class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.original_config = copy.deepcopy(tron.CONFIG)
         self.original_path = tron.PATH
+        self.original_base_dir = tron.BASE_DIR
         self.original_unsupported_rollcall_state = copy.deepcopy(tron.UNSUPPORTED_ROLLCALL_STATE)
-        self.original_login_url = tron_http.LOGIN_URL
-        self.original_rollcalls_url = tron_http.ROLLCALLS_URL
-
+        self.base_dir = make_workspace_temp_dir()
+        tron.BASE_DIR = self.base_dir
         tron.CONFIG["config"]["enable_log"] = True
         tron.CONFIG["notifications"]["tg"]["enable"] = False
         tron.CONFIG["notifications"]["dc"]["enable"] = False
         tron.reset_unsupported_rollcall_state()
 
-        self.fake_server = FakeTronServer()
-        app = web.Application()
-        app.router.add_get("/login", self.fake_server.login_page)
-        app.router.add_post("/submit", self.fake_server.submit_login)
-        app.router.add_get("/home", self.fake_server.home)
-        app.router.add_get("/api/radar/rollcalls", self.fake_server.rollcalls_api)
-
-        self.runner = web.AppRunner(app)
-        await self.runner.setup()
-        self.site = web.TCPSite(self.runner, "127.0.0.1", 0)
-        await self.site.start()
-        port = self.site._server.sockets[0].getsockname()[1]
-        self.base_url = "http://127.0.0.1:{}".format(port)
-
-        tron_http.LOGIN_URL = self.base_url + "/login"
-        tron_http.ROLLCALLS_URL = (
-            self.base_url + "/api/radar/rollcalls?api_version=1.1.0"
-        )
+        self.fake_server = await FakeTronServer().start()
+        self.url_patch = self.fake_server.patch_tron_http_urls(tron_http)
+        self.url_patch.__enter__()
 
     async def asyncTearDown(self) -> None:
         tron.CONFIG.clear()
         tron.CONFIG.update(copy.deepcopy(self.original_config))
         tron.PATH = self.original_path
+        tron.BASE_DIR = self.original_base_dir
         tron.UNSUPPORTED_ROLLCALL_STATE.clear()
         tron.UNSUPPORTED_ROLLCALL_STATE.update(copy.deepcopy(self.original_unsupported_rollcall_state))
-        tron_http.LOGIN_URL = self.original_login_url
-        tron_http.ROLLCALLS_URL = self.original_rollcalls_url
-        await self.runner.cleanup()
+        self.url_patch.__exit__(None, None, None)
+        await self.fake_server.close()
+        shutil.rmtree(self.base_dir, ignore_errors=True)
 
     async def login_session(self, session):
         client = tron_http.TronHttpClient(session)
@@ -199,6 +153,74 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
             [entry["event"] for entry in entries].count("rollcall_poll"),
             2,
         )
+
+    async def test_radar_flow_uses_lite_beacon_payload_and_safe_diagnostics(self) -> None:
+        probe_plan = tron.build_probe_plan(tron.DEFAULT_CONFIG["radar"]["boundary_points"])
+        first_probe = probe_plan.frame.to_geo(probe_plan.probes[0])
+        self.fake_server.set_radar_target(first_probe.lat, first_probe.lon, success_radius_meters=3.0)
+        self.fake_server.radar_lite_payload = {
+            "data": {
+                "rollcallId": 501,
+                "useBeacon": "true",
+                "beacon": {"nonce": "fixture-nonce"},
+            }
+        }
+
+        temp_dir = make_workspace_temp_dir()
+        try:
+            tron.PATH = temp_dir
+            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                await self.login_session(session)
+                with (
+                    patch.object(tron, "mes", AsyncMock()),
+                    patch.object(tron, "log_print"),
+                ):
+                    success = await tron.radar(session, {"is_radar": True, "rollcall_id": 501})
+
+            log_path = self.current_daily_log_path(temp_dir)
+            entries = [
+                json.loads(line)
+                for line in log_path.read_text(encoding="utf-8").splitlines()
+            ]
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+        self.assertTrue(success)
+        self.assertEqual(len(self.fake_server.radar_answers), 1)
+        payload = self.fake_server.radar_answers[0]["body"]
+        self.assertIn("radarSignal", payload)
+        self.assertIn("altitudeAccuracy", payload)
+        attempt_entry = next(entry for entry in entries if entry["event"] == "radar_coordinate_attempt")
+        self.assertEqual(attempt_entry["status"], "success")
+        self.assertIn("radarSignal", attempt_entry["payload_fields"])
+        self.assertNotIn("fixture-nonce", json.dumps(attempt_entry, ensure_ascii=False))
+        self.assertNotIn(payload["radarSignal"], json.dumps(attempt_entry, ensure_ascii=False))
+
+    async def test_radar_lite_rate_limit_returns_safe_failure_without_submit(self) -> None:
+        self.fake_server.queue_response("radar_lite", status=429, text="limited")
+
+        async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+            await self.login_session(session)
+            with (
+                patch.object(tron, "mes", AsyncMock()),
+                patch.object(tron, "log_print"),
+            ):
+                success = await tron.radar(session, {"is_radar": True, "rollcall_id": 502})
+
+        self.assertFalse(success)
+        self.assertEqual(self.fake_server.radar_answers, [])
+
+    async def test_radar_answer_session_expired_raises_unauthorized(self) -> None:
+        self.fake_server.queue_response("radar", status=401, text="unauthorized")
+
+        async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+            await self.login_session(session)
+            with (
+                patch.object(tron, "mes", AsyncMock()),
+                patch.object(tron, "log_print"),
+            ):
+                with self.assertRaises(tron_http.UnauthorizedError):
+                    await tron.radar(session, {"is_radar": True, "rollcall_id": 503})
 
 
 if __name__ == "__main__":

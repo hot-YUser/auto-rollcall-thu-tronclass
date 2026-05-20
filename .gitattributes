@@ -1,0 +1,19 @@
+# Keep text normalization predictable across Windows and CI.
+* text=auto
+
+*.py text eol=lf
+*.pyi text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.spec text eol=lf
+*.json text eol=lf
+*.js text eol=lf
+
+*.zip binary
+*.exe binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary

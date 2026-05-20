@@ -1,0 +1,148 @@
+from __future__ import annotations
+
+try:  # pragma: no cover - package import path
+    import troTHU.runtime_context as ctx
+except ImportError:  # pragma: no cover - direct script fallback
+    import runtime_context as ctx  # type: ignore
+
+
+def __getattr__(name: str):
+    return getattr(ctx, name)
+
+
+
+def classify_rollcall(rollcall: ctx.Dict[str, ctx.Any]) -> ctx.Tuple[str, str, str]:
+    return ctx.engine_classify_rollcall(rollcall)
+
+
+def reset_unsupported_rollcall_state() -> None:
+    ctx.UNSUPPORTED_ROLLCALL_STATE['rollcall_id'] = None
+    ctx.UNSUPPORTED_ROLLCALL_STATE['status'] = ''
+
+
+def number_rollcall_key(rollcall_id: ctx.Any) -> str:
+    return ctx.normalize_text(rollcall_id)
+
+
+def is_completed_number_rollcall(rollcall_id: ctx.Any) -> bool:
+    key = ctx.number_rollcall_key(rollcall_id)
+    return bool(key) and key in ctx.COMPLETED_NUMBER_ROLLCALLS
+
+
+def mark_completed_number_rollcall(rollcall_id: ctx.Any, code: ctx.Any) -> None:
+    key = ctx.number_rollcall_key(rollcall_id)
+    code_text = ctx.normalize_text(code)
+    if key and code_text and (code_text != 'NA'):
+        ctx.COMPLETED_NUMBER_ROLLCALLS[key] = code_text
+
+
+async def maybe_notify_unsupported_rollcall(status: str, rollcall: ctx.Dict[str, ctx.Any], message: str, rollcall_type: str) -> None:
+    rollcall_id = rollcall.get('rollcall_id')
+    if ctx.UNSUPPORTED_ROLLCALL_STATE.get('rollcall_id') == rollcall_id and ctx.UNSUPPORTED_ROLLCALL_STATE.get('status') == status:
+        return
+    ctx.UNSUPPORTED_ROLLCALL_STATE['rollcall_id'] = rollcall_id
+    ctx.UNSUPPORTED_ROLLCALL_STATE['status'] = status
+    if status == 'unsupported_qrcode':
+        active = ctx.get_active_profile(ctx.CONFIG)
+        ctx.add_pending_qr(ctx.BASE_DIR, profile=active.name, rollcall_id=rollcall_id, rollcall_type=rollcall_type, provider=ctx.get_active_provider_key(), source_adapter='monitor', message=message, payload_excerpt=rollcall, ttl_seconds=ctx.CONFIG.get('ux', {}).get('pending_qr_ttl_seconds', 600))
+        try:
+            plan = ctx.build_group_execution_plan(ctx.CONFIG)
+            for user in plan.get('fanout_users', []):
+                if user and user != active.name:
+                    ctx.add_pending_qr(ctx.BASE_DIR, profile=user, rollcall_id=rollcall_id, rollcall_type=rollcall_type, provider=ctx.get_active_provider_key(), source_adapter='monitor-group', message=message, payload_excerpt=rollcall, ttl_seconds=ctx.CONFIG.get('ux', {}).get('pending_qr_ttl_seconds', 600))
+        except Exception:
+            pass
+    ctx.log_print(message)
+    await ctx.mes(message)
+    ctx.log(event='unsupported_rollcall_detected', status=status, rollcall_id=rollcall_id, rollcall_type=rollcall_type, message=message, payload_excerpt=rollcall)
+
+
+def record_check_runtime(status: str, *, rollcall_id: ctx.Any='', rollcall_type: str='') -> None:
+    try:
+        ctx.mark_check_result(ctx.BASE_DIR, ctx.get_active_profile(ctx.CONFIG).name, status, rollcall_id=rollcall_id, rollcall_type=rollcall_type)
+    except Exception:
+        pass
+
+
+def record_runtime_error(status: str, message: ctx.Any) -> None:
+    try:
+        ctx.mark_profile_error(ctx.BASE_DIR, ctx.get_active_profile(ctx.CONFIG).name, status, message)
+    except Exception:
+        pass
+
+
+def decide_rollcall(rollcalls: ctx.Any) -> ctx.RollcallDecision:
+    return ctx.engine_decide_rollcall(rollcalls)
+
+
+def select_rollcall(rollcalls: ctx.Any) -> ctx.Tuple[str, ctx.Optional[ctx.Dict[str, ctx.Any]], str, str]:
+    return ctx.engine_select_rollcall(rollcalls)
+
+
+async def check_rollcall(session: ctx.aiohttp.ClientSession, cnt: int=-1) -> str:
+    if not ctx.provider_is_daily_allowed():
+        message = ctx.provider_block_message('rollcall polling')
+        ctx.log(event='provider_guard', counter=cnt, status='blocked', message=message, extra={'provider': ctx.get_active_provider_key(), 'action': 'check_rollcall'})
+        ctx.record_runtime_error('provider_experimental', message)
+        raise ctx.UnexpectedResponseError(message)
+    client = ctx.create_tron_http_client(session, request_ssl=ctx.get_ssl_request_setting())
+    result = await client.fetch_rollcalls()
+    rollcalls = result.payload.get('rollcalls') or []
+    decision = ctx.decide_rollcall(rollcalls)
+    selected_status = decision.status
+    selected_rollcall = decision.rollcall
+    selected_rollcall_type = '' if decision.attendance_type == ctx.AttendanceType.NONE else decision.attendance_type.value
+    selected_message = decision.message
+    ctx.log(event='rollcall_poll', counter=cnt, status='ok', url=result.url, http_status=result.status_code, rollcall_id=selected_rollcall.get('rollcall_id') if selected_rollcall else None, rollcall_type=selected_rollcall_type, message='完成一次點名輪詢。', payload_excerpt=result.payload, extra={'rollcall_count': len(rollcalls), 'selected_status': selected_status})
+    ctx.record_check_runtime(selected_status, rollcall_id=selected_rollcall.get('rollcall_id') if selected_rollcall else '', rollcall_type=selected_rollcall_type)
+    if selected_status == 'not_call':
+        ctx.reset_unsupported_rollcall_state()
+        return 'not call'
+    if selected_status == 'on_call_fine':
+        ctx.reset_unsupported_rollcall_state()
+        return 'on_call_fine'
+    if selected_status == 'is_number' and selected_rollcall is not None:
+        ctx.reset_unsupported_rollcall_state()
+        rollcall_id = selected_rollcall.get('rollcall_id')
+        if ctx.is_completed_number_rollcall(rollcall_id):
+            found_code = ctx.COMPLETED_NUMBER_ROLLCALLS[ctx.number_rollcall_key(rollcall_id)]
+            ctx.log(event='number_rollcall_skipped', counter=cnt, status='already_completed', url=result.url, http_status=result.status_code, rollcall_id=rollcall_id, rollcall_type='number', message='數字點名已處理，略過重複嘗試。', payload_excerpt=selected_rollcall, extra={'found_code': found_code})
+            return '數字點名已處理'
+        text = 'start num\n  id:{}\n  正在嘗試 0000-{:04d}，請稍候...'.format(rollcall_id, ctx.NUMBER_CODE_LIMIT - 1)
+        ctx.log(event='number_rollcall_started', counter=cnt, status='started', url=result.url, http_status=result.status_code, rollcall_id=rollcall_id, rollcall_type='number', message=text, payload_excerpt=selected_rollcall)
+        ctx.log_print(text)
+        await ctx.mes(text)
+        found_code = await ctx.number(session, rollcall_id)
+        ctx.mark_completed_number_rollcall(rollcall_id, found_code)
+        try:
+            group_result = await ctx.submit_group_number(found_code, session=session, config=ctx.CONFIG)
+            if group_result.get('ok'):
+                ctx.log(event='group_number_fanout_planned', status='planned', rollcall_id=rollcall_id, rollcall_type='number', message='群組 number fan-out 已建立安全執行計畫。', extra=group_result)
+        except Exception as exc:
+            ctx.log(event='group_number_fanout_planned', status='failed', rollcall_id=rollcall_id, rollcall_type='number', message='群組 number fan-out 計畫建立失敗。', error=exc)
+        return 'is_number'
+    if selected_status == 'is_radar' and selected_rollcall is not None:
+        ctx.reset_unsupported_rollcall_state()
+        rollcall_id = selected_rollcall.get('rollcall_id')
+        radar_key = ctx.normalize_text(rollcall_id)
+        if radar_key in ctx.COMPLETED_RADAR_ROLLCALLS:
+            ctx.log(event='radar_rollcall_skipped', counter=cnt, status='already_completed', url=result.url, http_status=result.status_code, rollcall_id=rollcall_id, rollcall_type='radar', message='雷達點名已處理，略過重複嘗試。', payload_excerpt=selected_rollcall)
+            return '雷達點名已處理'
+        text = f'start radar\n  id:{rollcall_id}\n  正在處理雷達點名，請稍候...'
+        ctx.log(event='radar_rollcall_started', counter=cnt, status='started', url=result.url, http_status=result.status_code, rollcall_id=rollcall_id, rollcall_type='radar', message=text, payload_excerpt=selected_rollcall)
+        ctx.log_print(text)
+        await ctx.mes(text)
+        radar_success = await ctx.radar(session, selected_rollcall)
+        if radar_success:
+            ctx.COMPLETED_RADAR_ROLLCALLS[radar_key] = True
+            try:
+                group_result = await ctx.submit_group_radar({}, session=session, config=ctx.CONFIG)
+                if group_result.get('ok'):
+                    ctx.log(event='group_radar_fanout_planned', status='planned', rollcall_id=rollcall_id, rollcall_type='radar', message='群組 radar fan-out 已建立安全執行計畫。', extra=group_result)
+            except Exception as exc:
+                ctx.log(event='group_radar_fanout_planned', status='failed', rollcall_id=rollcall_id, rollcall_type='radar', message='群組 radar fan-out 計畫建立失敗。', error=exc)
+            return 'is_radar'
+        return 'radar_failed'
+    if selected_rollcall is not None:
+        await ctx.maybe_notify_unsupported_rollcall(selected_status, selected_rollcall, selected_message, selected_rollcall_type)
+    return selected_status

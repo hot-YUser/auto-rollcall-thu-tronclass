@@ -1,4 +1,5 @@
 import copy
+import io
 import json
 import os
 import shutil
@@ -58,6 +59,8 @@ except ModuleNotFoundError:
     sys.modules["yaml"] = fake_yaml
 
 from troTHU import tron, tron_http
+from troTHU.account_runtime_store import mark_bot_state, mark_check_result, mark_monitor_state, runtime_state_path
+from troTHU.pending_qr import add_pending_qr
 
 TEST_WORKSPACE_DIR = Path(__file__).resolve().parents[1]
 
@@ -323,14 +326,159 @@ class TronHelpersTest(unittest.TestCase):
 
         self.assertEqual((user, password, source), ("config-user", "config-pass", "config"))
 
+    def test_normalize_config_migrates_legacy_account_to_default_profile(self) -> None:
+        normalized = tron.normalize_config(
+            {
+                "account": {"user": "legacy-user", "passwd": "legacy-pass"},
+                "config": {},
+            }
+        )
+
+        self.assertEqual(normalized["accounts"]["current"], "default")
+        self.assertEqual(
+            normalized["accounts"]["profiles"]["default"]["user"],
+            "legacy-user",
+        )
+        self.assertTrue(normalized["session"]["cache_cookies"])
+
+    def test_resolve_credentials_uses_keyring_for_active_profile(self) -> None:
+        tron.clear_runtime_credentials()
+        os.environ.pop("TRON_USER", None)
+        os.environ.pop("TRON_PASS", None)
+        tron.CONFIG["account"]["user"] = "YOUR_STUDENT_ID"
+        tron.CONFIG["account"]["passwd"] = "YOUR_PASSWORD"
+        tron.CONFIG["accounts"] = {
+            "current": "thu",
+            "profiles": {
+                "thu": {"user": "profile-user", "passwd": "", "label": "THU"},
+            },
+        }
+
+        with patch.object(tron, "get_keyring_password", return_value="keyring-pass"):
+            user, password, source = tron.resolve_credentials()
+
+        self.assertEqual((user, password, source), ("profile-user", "keyring-pass", "keyring"))
+
     def test_save_account_for_next_launch_persists_password_to_config(self) -> None:
         with patch.object(tron, "save_config") as save_config:
             result = tron.save_account_for_next_launch("user2", "pass2")
 
         self.assertEqual(tron.CONFIG["account"]["user"], "user2")
         self.assertEqual(tron.CONFIG["account"]["passwd"], "pass2")
+        self.assertEqual(tron.CONFIG["accounts"]["profiles"]["default"]["user"], "user2")
         save_config.assert_called_once()
         self.assertTrue(result)
+
+    def test_status_report_includes_runtime_state_without_network(self) -> None:
+        temp_dir = make_workspace_temp_dir()
+        original_base_dir = tron.BASE_DIR
+        try:
+            tron.BASE_DIR = temp_dir
+            tron.CONFIG["accounts"] = {
+                "current": "default",
+                "profiles": {
+                    "default": {"user": "user1", "passwd": "", "label": ""},
+                },
+            }
+            mark_bot_state(temp_dir, "default", "running")
+            mark_monitor_state(temp_dir, "default", "running")
+
+            report = tron.status_report()
+
+            self.assertEqual(report["runtime_state"]["bot_state"], "running")
+            self.assertEqual(report["runtime_state"]["monitor_state"], "running")
+        finally:
+            tron.BASE_DIR = original_base_dir
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_account_state_json_aggregates_safe_runtime_pending_and_bindings(self) -> None:
+        temp_dir = make_workspace_temp_dir()
+        original_base_dir = tron.BASE_DIR
+        try:
+            tron.BASE_DIR = temp_dir
+            tron.CONFIG["accounts"] = {
+                "current": "default",
+                "profiles": {
+                    "default": {"user": "user1", "passwd": "", "label": "Primary"},
+                },
+            }
+            tron.CONFIG["integrations"] = {
+                "bindings": {
+                    "discord:u1": {
+                        "adapter": "discord",
+                        "external_user_id": "u1",
+                        "profile": "default",
+                        "channel_id": "chan-1",
+                    }
+                }
+            }
+            mark_check_result(temp_dir, "default", "not_call")
+            add_pending_qr(temp_dir, profile="default", rollcall_id=88, provider="thu")
+
+            output = io.StringIO()
+            with patch("sys.stdout", output):
+                exit_code = tron.account_state("default", json_output=True)
+            report = json.loads(output.getvalue())
+
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(report["profile"], "default")
+            self.assertEqual(report["runtime"]["last_check"]["status"], "not_call")
+            self.assertEqual(report["pending_qr_count"], 1)
+            self.assertEqual(report["binding_count"], 1)
+            self.assertEqual(report["adapter_counts"]["discord"], 1)
+            self.assertNotIn("token", output.getvalue().lower())
+        finally:
+            tron.BASE_DIR = original_base_dir
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_account_state_handles_corrupt_runtime_file(self) -> None:
+        temp_dir = make_workspace_temp_dir()
+        original_base_dir = tron.BASE_DIR
+        try:
+            tron.BASE_DIR = temp_dir
+            tron.CONFIG["accounts"] = {
+                "current": "default",
+                "profiles": {
+                    "default": {"user": "user1", "passwd": "", "label": ""},
+                },
+            }
+            path = runtime_state_path(temp_dir)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("{broken", encoding="utf-8")
+
+            report = tron.account_state_report("default")
+
+            self.assertEqual(report["runtime"]["store_status"], "corrupt")
+        finally:
+            tron.BASE_DIR = original_base_dir
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_monitor_loop_marks_runtime_running_on_start(self) -> None:
+        temp_dir = make_workspace_temp_dir()
+        original_base_dir = tron.BASE_DIR
+        original_cookie_restored = tron.COOKIE_CACHE_RESTORED
+        try:
+            tron.BASE_DIR = temp_dir
+            tron.COOKIE_CACHE_RESTORED = False
+            tron.CONFIG["accounts"] = {
+                "current": "default",
+                "profiles": {
+                    "default": {"user": "", "passwd": "", "label": ""},
+                },
+            }
+            async def run_once():
+                shutdown = tron.asyncio.Event()
+                shutdown.set()
+                await tron.monitor_loop(object(), shutdown)
+
+            tron.asyncio.run(run_once())
+            report = tron.account_runtime_summary("default")
+
+            self.assertEqual(report["monitor_state"], "running")
+        finally:
+            tron.BASE_DIR = original_base_dir
+            tron.COOKIE_CACHE_RESTORED = original_cookie_restored
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
     def test_log_writes_json_lines(self) -> None:
         temp_dir = make_workspace_temp_dir()

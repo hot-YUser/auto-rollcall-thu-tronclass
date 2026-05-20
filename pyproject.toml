@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "auto-rollcall-thu-tronclass"
+version = "1.1.0a1"
+description = "THU TronClass auto rollcall helper"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "aiohttp>=3.9.5",
+  "PyYAML>=6.0.2",
+  "PyNaCl>=1.5.0",
+]
+
+[project.optional-dependencies]
+keyring = ["keyring>=24"]
+packaging = ["PyInstaller>=6"]
+dev = ["PyInstaller>=6", "keyring>=24"]
+
+[project.scripts]
+trothu = "troTHU.tron:main"
+auto-rollcall-thu-tronclass = "troTHU.tron:main"
+
+[tool.setuptools]
+packages = ["troTHU"]
+include-package-data = false

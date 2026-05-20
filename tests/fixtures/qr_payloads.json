@@ -1,0 +1,90 @@
+[
+  {
+    "name": "absolute_p_json",
+    "raw": "https://ilearn.thu.edu.tw/scanner-jumper?_p=%7B%22rollcallId%22%3A%20101%2C%20%22data%22%3A%20%22fixture-json%22%2C%20%22extra%22%3A%20%22keep%22%7D",
+    "valid": true,
+    "rollcall_id": "101",
+    "data": "fixture-json",
+    "source_kind": "url",
+    "encoding": "_p_json",
+    "extras": ["extra"]
+  },
+  {
+    "name": "relative_p_compact",
+    "raw": "/scanner-jumper?p=4~%1016!3~relative-fixture!x~keep-relative",
+    "valid": true,
+    "rollcall_id": "42",
+    "data": "relative-fixture",
+    "source_kind": "relative_url",
+    "encoding": "p_compact",
+    "extras": ["x"]
+  },
+  {
+    "name": "query_only_json",
+    "raw": "_p=%7B%22rollcall_id%22%3A%20103%2C%20%22data%22%3A%20%22query-fixture%22%7D",
+    "valid": true,
+    "rollcall_id": "103",
+    "data": "query-fixture",
+    "source_kind": "query",
+    "encoding": "_p_json",
+    "extras": []
+  },
+  {
+    "name": "query_only_compact",
+    "raw": "p=4~%102w!3~query-compact!8~%1A1",
+    "valid": true,
+    "rollcall_id": "104",
+    "data": "query-compact",
+    "source_kind": "query",
+    "encoding": "p_compact",
+    "extras": []
+  },
+  {
+    "name": "percent_json_rollcall_id_alias",
+    "raw": "%7B%22rollcallID%22%3A%20105%2C%20%22data%22%3A%20%22percent-json%22%2C%20%22unknown%22%3A%20%22preserved%22%7D",
+    "valid": true,
+    "rollcall_id": "105",
+    "data": "percent-json",
+    "source_kind": "json",
+    "encoding": "percent_json",
+    "extras": ["unknown"]
+  },
+  {
+    "name": "pure_compact_escape",
+    "raw": "4~\u001016!3~hello\u001fworld\u001ebang!x~keep-me",
+    "valid": true,
+    "rollcall_id": "42",
+    "data": "hello~world!bang",
+    "source_kind": "compact",
+    "encoding": "compact",
+    "extras": ["x"]
+  },
+  {
+    "name": "pure_compact_type_token",
+    "raw": "4~\u001016!3~typed-fixture!2~\u001a2!8~\u001a1",
+    "valid": true,
+    "rollcall_id": "42",
+    "data": "typed-fixture",
+    "source_kind": "compact",
+    "encoding": "compact",
+    "extras": []
+  },
+  {
+    "name": "invalid_empty",
+    "raw": "",
+    "valid": false,
+    "error": "empty_payload"
+  },
+  {
+    "name": "invalid_url_path",
+    "raw": "https://ilearn.thu.edu.tw/not-qr?p=4~%1016!3~payload",
+    "valid": false,
+    "error": "not_tronclass_qr_url"
+  },
+  {
+    "name": "invalid_json",
+    "raw": "{bad-json}",
+    "valid": false,
+    "error": "invalid_json"
+  }
+]

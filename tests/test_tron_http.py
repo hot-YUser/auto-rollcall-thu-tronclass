@@ -3,10 +3,12 @@ import copy
 import hashlib
 import json
 import os
+import shutil
 import sys
 import types
 import unittest
 from datetime import time as dt_time
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 try:
@@ -58,6 +60,16 @@ except ModuleNotFoundError:
     sys.modules["yaml"] = fake_yaml
 
 from troTHU import tron, tron_http
+
+TEST_WORKSPACE_DIR = Path(__file__).resolve().parents[1]
+
+
+def make_workspace_temp_dir() -> Path:
+    root = TEST_WORKSPACE_DIR / ".tmp-tests"
+    root.mkdir(exist_ok=True)
+    path = root / hashlib.md5(os.urandom(16)).hexdigest()
+    path.mkdir()
+    return path
 
 
 class FakeCookie:
@@ -208,6 +220,31 @@ class TronHttpClientTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsNone(user_id)
 
+    async def test_client_accepts_custom_provider_endpoints(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = FakeCookieJar([FakeCookie("session", "school.example")])
+        session.get.return_value = make_context_manager(
+            make_response(
+                text='''<script>window.APPRuntime = {"USER": {"id": 123}};</script>'''
+            )
+        )
+        endpoints = tron_http.endpoints_from_provider(
+            {
+                "base_url": "https://school.example",
+                "login_url": "https://identity.example/login",
+                "rollcalls_url": "https://school.example/api/rollcalls",
+            }
+        )
+        client = tron_http.TronHttpClient(session, endpoints=endpoints)
+
+        user_id = await client.fetch_user_id()
+
+        self.assertEqual(user_id, 123)
+        self.assertEqual(endpoints.session_cookie_domain, "school.example")
+        self.assertTrue(tron_http.has_session_cookie(session, "school.example"))
+        self.assertFalse(tron_http.has_session_cookie(session, "ilearn.thu.edu.tw"))
+        session.get.assert_called_once_with("https://school.example")
+
     async def test_fetch_rollcalls_raises_on_unauthorized_status(self) -> None:
         session = MagicMock()
         session.cookie_jar = FakeCookieJar()
@@ -270,6 +307,9 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         self.original_tron_user = os.environ.get("TRON_USER")
         self.original_tron_pass = os.environ.get("TRON_PASS")
         self.original_last_login_result = tron.LAST_LOGIN_RESULT
+        self.original_base_dir = tron.BASE_DIR
+        self.temp_dir = make_workspace_temp_dir()
+        tron.BASE_DIR = self.temp_dir
         tron.cnt = 0
         tron.IS_LOGGING_IN = False
         tron.COMPLETED_NUMBER_ROLLCALLS.clear()
@@ -292,6 +332,8 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         tron.COMPLETED_RADAR_ROLLCALLS.clear()
         tron.COMPLETED_RADAR_ROLLCALLS.update(copy.deepcopy(self.original_completed_radar_rollcalls))
         tron.LAST_LOGIN_RESULT = self.original_last_login_result
+        tron.BASE_DIR = self.original_base_dir
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
         if self.original_tron_user is None:
             os.environ.pop("TRON_USER", None)
         else:
@@ -711,7 +753,7 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first, "unsupported_qrcode")
         self.assertEqual(second, "unsupported_qrcode")
         self.assertEqual(mes_mock.await_count, 1)
-        log_print.assert_called_once_with("偵測到未支援的 QR Code 點名")
+        log_print.assert_called_once_with("偵測到 QR Code 點名，請貼上 QR 內容後手動送出。")
 
     async def test_mes_isolates_notification_timeout_failures(self) -> None:
         tron.CONFIG["notifications"]["tg"].update(
@@ -768,13 +810,21 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
         self.original_cnt = tron.cnt
         self.original_is_logging_in = tron.IS_LOGGING_IN
         self.original_last_login_result = tron.LAST_LOGIN_RESULT
+        self.original_cookie_cache_restored = tron.COOKIE_CACHE_RESTORED
+        self.original_base_dir = tron.BASE_DIR
+        self.temp_dir = make_workspace_temp_dir()
+        tron.BASE_DIR = self.temp_dir
         tron.cnt = 0
         tron.IS_LOGGING_IN = False
+        tron.COOKIE_CACHE_RESTORED = False
 
     def tearDown(self) -> None:
         tron.cnt = self.original_cnt
         tron.IS_LOGGING_IN = self.original_is_logging_in
         tron.LAST_LOGIN_RESULT = self.original_last_login_result
+        tron.COOKIE_CACHE_RESTORED = self.original_cookie_cache_restored
+        tron.BASE_DIR = self.original_base_dir
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     async def test_monitor_loop_reauths_on_unauthorized_error(self) -> None:
         session = MagicMock()
@@ -917,6 +967,39 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(login_mock.await_count, 1)
 
+    async def test_monitor_loop_prints_manual_login_notice_once(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = MagicMock()
+        shutdown_event = asyncio.Event()
+        sleep_calls = 0
+
+        async def fake_sleep(_event, _seconds):
+            nonlocal sleep_calls
+            sleep_calls += 1
+            if sleep_calls >= 3:
+                shutdown_event.set()
+
+        async def fake_login(_session):
+            result = make_login_result("missing_credentials")
+            tron.LAST_LOGIN_RESULT = result
+            return result
+
+        with (
+            patch.object(tron, "login", AsyncMock(side_effect=fake_login)),
+            patch.object(tron, "has_session_cookie", return_value=False),
+            patch.object(tron, "sleep_or_shutdown", AsyncMock(side_effect=fake_sleep)),
+            patch.object(tron, "status_print") as status_print,
+            patch.object(tron, "log_print"),
+        ):
+            await tron.monitor_loop(session, shutdown_event)
+
+        manual_notices = [
+            call.args[0]
+            for call in status_print.call_args_list
+            if "偵測到尚未登入" in call.args[0]
+        ]
+        self.assertEqual(manual_notices, ["偵測到尚未登入。請按任意鍵編輯 config.yaml，填好帳號密碼後關閉記事本。"])
+
     async def test_monitor_loop_auto_reauths_when_cookie_disappears_after_success(self) -> None:
         session = MagicMock()
         session.cookie_jar = MagicMock()
@@ -951,6 +1034,56 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
             any("正在嘗試自動登入" in call.args[0] for call in log_print.call_args_list)
         )
 
+    async def test_status_print_is_append_only_monitor_line(self) -> None:
+        previous_status = tron.LAST_STATUS
+        updated_status = ""
+        try:
+            with (
+                patch.object(tron.sys.stdout, "write") as write_mock,
+                patch.object(tron.sys.stdout, "flush") as flush_mock,
+            ):
+                tron.status_print("手動輸入中背景狀態")
+                updated_status = tron.LAST_STATUS
+        finally:
+            tron.LAST_STATUS = previous_status
+
+        self.assertEqual(updated_status, "手動輸入中背景狀態")
+        write_mock.assert_called_once_with("[監控] 手動輸入中背景狀態\n")
+        flush_mock.assert_called_once()
+
+    async def test_log_print_is_append_only_line(self) -> None:
+        with (
+            patch.object(tron.sys.stdout, "write") as write_mock,
+            patch.object(tron.sys.stdout, "flush") as flush_mock,
+        ):
+            tron.log_print("背景訊息")
+
+        write_mock.assert_called_once_with("背景訊息\n")
+        flush_mock.assert_called_once()
+
+    async def test_console_output_ignores_removed_prompt_state(self) -> None:
+        previous_prompt_active = getattr(tron, "PROMPT_INPUT_ACTIVE", False)
+        previous_deferred = list(getattr(tron, "CONSOLE_DEFERRED_LINES", []))
+        tron.PROMPT_INPUT_ACTIVE = True
+        tron.CONSOLE_DEFERRED_LINES.clear()
+        try:
+            with (
+                patch.object(tron.sys.stdout, "write") as write_mock,
+                patch.object(tron.sys.stdout, "flush") as flush_mock,
+            ):
+                tron.status_print("尚未登入 (請按任意鍵開啟 config.yaml)")
+                tron.log_print("背景訊息")
+                tron.PROMPT_INPUT_ACTIVE = False
+                tron.flush_console_output()
+        finally:
+            tron.PROMPT_INPUT_ACTIVE = previous_prompt_active
+            tron.CONSOLE_DEFERRED_LINES[:] = previous_deferred
+
+        self.assertEqual(tron.CONSOLE_DEFERRED_LINES, previous_deferred)
+        self.assertEqual(write_mock.call_args_list[0].args[0], "[監控] 尚未登入 (請按任意鍵開啟 config.yaml)\n")
+        self.assertEqual(write_mock.call_args_list[1].args[0], "背景訊息\n")
+        self.assertEqual(flush_mock.call_count, 3)
+
     async def test_app_main_uses_explicit_http_timeout(self) -> None:
         fake_session = MagicMock()
         fake_session.cookie_jar = MagicMock()
@@ -967,11 +1100,8 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
                 return_value=make_context_manager(fake_session),
             ) as client_session_mock,
             patch.object(tron, "monitor_loop", AsyncMock(return_value=None)),
-            patch.object(tron, "input_loop", AsyncMock(return_value=None)),
-            patch.object(tron.sys.stdout, "write"),
-            patch.object(tron.sys.stdout, "flush"),
         ):
-            await tron.app_main()
+            await tron.app_main(input_enabled=False)
 
         self.assertEqual(client_session_mock.call_args.kwargs["timeout"], "timeout-marker")
         self.assertEqual(client_session_mock.call_args.kwargs["connector"], "connector-marker")
@@ -1024,7 +1154,7 @@ class TronNumberRollcallTest(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(tron_http.UnexpectedResponseError):
                 await tron.number(main_session, 99)
 
-        self.assertEqual(worker_session.put.call_count, 1)
+        self.assertEqual(worker_session.put.call_count, 3)
 
     async def test_number_raises_terminal_timeout_instead_of_reporting_na(self) -> None:
         main_session = MagicMock()
@@ -1047,8 +1177,50 @@ class TronNumberRollcallTest(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(asyncio.TimeoutError):
                 await tron.number(main_session, 7)
 
-        self.assertEqual(worker_session.put.call_count, 1)
+        self.assertEqual(worker_session.put.call_count, 3)
         mes_mock.assert_not_awaited()
+
+    async def test_number_cools_down_on_transient_failure_burst(self) -> None:
+        main_session = MagicMock()
+        main_session.cookie_jar = FakeCookieJar([FakeCookie("session", "ilearn.thu.edu.tw")])
+        worker_session = MagicMock()
+        worker_session.cookie_jar = MagicMock()
+        worker_session.put.return_value = make_context_manager(
+            make_response(status=429, url="https://example.com/rollcall", text="limited")
+        )
+        client_session_context = make_context_manager(worker_session)
+        original_number_config = copy.deepcopy(tron.CONFIG.get("number", {}))
+        tron.CONFIG["number"] = {
+            "concurrency": 2,
+            "min_concurrency": 1,
+            "request_retries": 1,
+            "cooldown_seconds": 0.1,
+            "max_cooldowns": 1,
+            "transient_failure_threshold": 2,
+            "transient_failure_ratio": 0.5,
+        }
+
+        try:
+            with (
+                patch.object(tron.aiohttp, "ClientSession", return_value=client_session_context),
+                patch.object(tron, "create_http_connector", return_value=MagicMock()),
+                patch.object(tron, "mes", AsyncMock()),
+                patch.object(tron, "status_print"),
+                patch.object(tron, "log", return_value=True) as log_mock,
+                patch.object(tron, "NUMBER_CODE_LIMIT", 2),
+                patch.object(tron, "random_ua", return_value="ua"),
+            ):
+                with self.assertRaises(tron_http.UnexpectedResponseError):
+                    await tron.number(main_session, 55)
+        finally:
+            tron.CONFIG["number"] = original_number_config
+
+        self.assertTrue(
+            any(
+                call.kwargs.get("event") == "number_rollcall_cooldown"
+                for call in log_mock.call_args_list
+            )
+        )
 
     async def test_number_shows_progress_and_highlighted_found_code(self) -> None:
         main_session = MagicMock()

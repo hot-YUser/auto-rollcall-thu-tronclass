@@ -3,9 +3,19 @@ import json
 import re
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
-import aiohttp
+try:
+    import aiohttp
+except ModuleNotFoundError:  # pragma: no cover - exercised by CLI-only environments
+    class _MissingAiohttp:
+        class ClientSession:
+            pass
+
+        class ContentTypeError(Exception):
+            pass
+
+    aiohttp = _MissingAiohttp()  # type: ignore
 
 TRON = "https://ilearn.thu.edu.tw"
 LOGIN_URL = (
@@ -13,6 +23,8 @@ LOGIN_URL = (
     "?ui_locales=zh-TW&service=https%3A//ilearn.thu.edu.tw/login&locale=zh_TW"
 )
 ROLLCALLS_URL = "{}/api/radar/rollcalls?api_version=1.1.0".format(TRON)
+CURRENT_SEMESTER_URL = "{}/api/current-semester-info".format(TRON)
+COURSES_URL = "{}/api/my-courses?page=1&page_size=50".format(TRON)
 
 FORM_PATTERNS = [
     re.compile(
@@ -64,6 +76,52 @@ class RollcallsResult:
     payload: Dict[str, Any]
 
 
+@dataclass(frozen=True)
+class TronHttpEndpoints:
+    base_url: str = TRON
+    login_url: str = LOGIN_URL
+    rollcalls_url: str = ROLLCALLS_URL
+    current_semester_url: str = CURRENT_SEMESTER_URL
+    courses_url: str = COURSES_URL
+    session_cookie_domain: str = "ilearn.thu.edu.tw"
+
+
+DEFAULT_ENDPOINTS = TronHttpEndpoints()
+
+
+def default_endpoints() -> TronHttpEndpoints:
+    return TronHttpEndpoints(
+        base_url=TRON,
+        login_url=LOGIN_URL,
+        rollcalls_url=ROLLCALLS_URL,
+        current_semester_url=CURRENT_SEMESTER_URL,
+        courses_url=COURSES_URL,
+        session_cookie_domain=urlparse(TRON).hostname or DEFAULT_ENDPOINTS.session_cookie_domain,
+    )
+
+
+def endpoints_from_provider(provider: Any) -> TronHttpEndpoints:
+    if hasattr(provider, "to_config"):
+        provider = provider.to_config()
+    if not isinstance(provider, dict):
+        return default_endpoints()
+
+    base_url = str(provider.get("base_url") or TRON).rstrip("/")
+    cookie_domain = urlparse(base_url).hostname or DEFAULT_ENDPOINTS.session_cookie_domain
+    return TronHttpEndpoints(
+        base_url=base_url,
+        login_url=str(provider.get("login_url") or LOGIN_URL),
+        rollcalls_url=str(provider.get("rollcalls_url") or ROLLCALLS_URL),
+        current_semester_url=str(
+            provider.get("current_semester_url") or "{}/api/current-semester-info".format(base_url)
+        ),
+        courses_url=str(
+            provider.get("courses_url") or "{}/api/my-courses?page=1&page_size=50".format(base_url)
+        ),
+        session_cookie_domain=cookie_domain,
+    )
+
+
 def parse_tag_attributes(tag: str) -> Dict[str, str]:
     attributes = {}
     for key, _, value in ATTR_PATTERN.findall(tag):
@@ -96,18 +154,28 @@ def extract_login_form(html_text: str, base_url: str = LOGIN_URL) -> LoginForm:
     raise LoginPageChangedError("找不到登入表單的 action URL，可能網站結構已更改。")
 
 
-def has_session_cookie(session: aiohttp.ClientSession) -> bool:
+def has_session_cookie(
+    session: aiohttp.ClientSession,
+    session_cookie_domain: str = DEFAULT_ENDPOINTS.session_cookie_domain,
+) -> bool:
+    expected_domain = str(session_cookie_domain or "").strip()
     for cookie in session.cookie_jar:
         domain = cookie["domain"] or ""
-        if cookie.key == "session" and ("ilearn.thu.edu.tw" in domain or not domain):
+        if cookie.key == "session" and (expected_domain in domain or not domain):
             return True
     return False
 
 
 class TronHttpClient:
-    def __init__(self, session: aiohttp.ClientSession, request_ssl: Any = None) -> None:
+    def __init__(
+        self,
+        session: aiohttp.ClientSession,
+        request_ssl: Any = None,
+        endpoints: Optional[TronHttpEndpoints] = None,
+    ) -> None:
         self.session = session
         self.request_ssl = request_ssl
+        self.endpoints = endpoints or default_endpoints()
 
     def request_kwargs(self) -> Dict[str, Any]:
         if self.request_ssl is None:
@@ -115,9 +183,9 @@ class TronHttpClient:
         return {"ssl": self.request_ssl}
 
     async def fetch_login_form(self) -> LoginForm:
-        async with self.session.get(LOGIN_URL, **self.request_kwargs()) as resp:
+        async with self.session.get(self.endpoints.login_url, **self.request_kwargs()) as resp:
             html_text = await resp.text()
-        return extract_login_form(html_text, LOGIN_URL)
+        return extract_login_form(html_text, self.endpoints.login_url)
 
     async def submit_login(self, form: LoginForm, username: str, password: str) -> LoginOutcome:
         form_data = dict(form.fields)
@@ -132,14 +200,22 @@ class TronHttpClient:
             await resp.read()
             final_url = str(resp.url)
 
-        has_session = has_session_cookie(self.session)
+        if self.endpoints.session_cookie_domain == DEFAULT_ENDPOINTS.session_cookie_domain:
+            has_session = has_session_cookie(self.session)
+        else:
+            try:
+                has_session = has_session_cookie(self.session, self.endpoints.session_cookie_domain)
+            except TypeError:
+                # Some legacy tests and external monkeypatches replace
+                # has_session_cookie with a one-argument callable.
+                has_session = has_session_cookie(self.session)
         if "login" in final_url.lower() and not has_session:
             raise LoginRejectedError("登入失敗，請檢查帳號或密碼是否正確。")
 
         return LoginOutcome(final_url=final_url, has_session=has_session)
 
     async def fetch_user_id(self) -> Optional[int]:
-        async with self.session.get(TRON, **self.request_kwargs()) as resp:
+        async with self.session.get(self.endpoints.base_url, **self.request_kwargs()) as resp:
             html_text = await resp.text()
 
         match = re.search(r"window\.APPRuntime\s*=\s*(\{.*?\});", html_text, re.DOTALL)
@@ -155,7 +231,7 @@ class TronHttpClient:
         return user_id if isinstance(user_id, int) else None
 
     async def fetch_rollcalls(self) -> RollcallsResult:
-        async with self.session.get(ROLLCALLS_URL, **self.request_kwargs()) as resp:
+        async with self.session.get(self.endpoints.rollcalls_url, **self.request_kwargs()) as resp:
             url = str(resp.url)
             status_code = resp.status
             if status_code == 401 or "login" in url.lower():
@@ -173,3 +249,37 @@ class TronHttpClient:
                 )
 
         return RollcallsResult(url=url, status_code=status_code, payload=payload)
+
+    async def fetch_current_semester(self) -> Dict[str, Any]:
+        async with self.session.get(self.endpoints.current_semester_url, **self.request_kwargs()) as resp:
+            url = str(resp.url)
+            status_code = resp.status
+            if status_code == 401 or "login" in url.lower():
+                raise UnauthorizedError("Cookie 已過期或導向登入頁。")
+            if status_code != 200:
+                body = await resp.text()
+                raise UnexpectedResponseError("HTTP {}: {}".format(status_code, body[:200]))
+            try:
+                return await resp.json(encoding="utf-8")
+            except (aiohttp.ContentTypeError, ValueError):
+                body = await resp.text()
+                raise UnexpectedResponseError(
+                    "Unexpected response body: {}".format(body[:200])
+                )
+
+    async def fetch_my_courses(self) -> Dict[str, Any]:
+        async with self.session.get(self.endpoints.courses_url, **self.request_kwargs()) as resp:
+            url = str(resp.url)
+            status_code = resp.status
+            if status_code == 401 or "login" in url.lower():
+                raise UnauthorizedError("Cookie 已過期或導向登入頁。")
+            if status_code != 200:
+                body = await resp.text()
+                raise UnexpectedResponseError("HTTP {}: {}".format(status_code, body[:200]))
+            try:
+                return await resp.json(encoding="utf-8")
+            except (aiohttp.ContentTypeError, ValueError):
+                body = await resp.text()
+                raise UnexpectedResponseError(
+                    "Unexpected response body: {}".format(body[:200])
+                )
