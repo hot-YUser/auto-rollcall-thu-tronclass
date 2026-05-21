@@ -1,9 +1,10 @@
 import html
 import json
 import re
+from http.cookies import SimpleCookie
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
-from urllib.parse import urljoin, urlparse
+from urllib.parse import unquote, urljoin, urlparse
 
 try:
     import aiohttp
@@ -16,6 +17,10 @@ except ModuleNotFoundError:  # pragma: no cover - exercised by CLI-only environm
             pass
 
     aiohttp = _MissingAiohttp()  # type: ignore
+try:
+    from yarl import URL
+except ModuleNotFoundError:  # pragma: no cover - aiohttp normally provides yarl
+    URL = None  # type: ignore
 
 TRON = "https://ilearn.thu.edu.tw"
 LOGIN_URL = (
@@ -26,6 +31,49 @@ ROLLCALLS_URL = "{}/api/radar/rollcalls?api_version=1.1.0".format(TRON)
 CURRENT_SEMESTER_URL = "{}/api/current-semester-info".format(TRON)
 COURSES_URL = "{}/api/my-courses?page=1&page_size=50".format(TRON)
 
+TKU_SSO_HOST = "sso.tku.edu.tw"
+TKU_ICLASS_HOST = "iclass.tku.edu.tw"
+TKU_SSO_LOGIN_FORM_URL_TEMPLATE = "https://sso.tku.edu.tw/NEAI/logineb.jsp?myurl={}"
+HTML_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+LANGUAGE_ACCEPT = "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7"
+TKU_SSO_FORM_HEADERS = {
+    "Accept": HTML_ACCEPT,
+    "Accept-Language": LANGUAGE_ACCEPT,
+    "Referer": "https://iclass.tku.edu.tw/login?next=/iportal&locale=zh_TW",
+    "Upgrade-Insecure-Requests": "1",
+}
+TKU_SSO_IMAGE_HEADERS = {
+    "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+    "Accept-Language": LANGUAGE_ACCEPT,
+    "Referer": TKU_SSO_LOGIN_FORM_URL_TEMPLATE.format(
+        "https://iclass.tku.edu.tw/login?next=/iportal&locale=zh_TW"
+    ),
+}
+TKU_SSO_AJAX_HEADERS = {
+    "Accept": "text/plain, */*; q=0.01",
+    "Accept-Language": LANGUAGE_ACCEPT,
+    "Origin": "https://sso.tku.edu.tw",
+    "Referer": TKU_SSO_LOGIN_FORM_URL_TEMPLATE.format(
+        "https://iclass.tku.edu.tw/login?next=/iportal&locale=zh_TW"
+    ),
+    "X-Requested-With": "XMLHttpRequest",
+}
+TKU_SSO_SUBMIT_HEADERS = {
+    "Accept": HTML_ACCEPT,
+    "Accept-Language": LANGUAGE_ACCEPT,
+    "Cache-Control": "max-age=0",
+    "Origin": "https://sso.tku.edu.tw",
+    "Referer": TKU_SSO_LOGIN_FORM_URL_TEMPLATE.format(
+        "https://iclass.tku.edu.tw/login?next=/iportal&locale=zh_TW"
+    ),
+    "Upgrade-Insecure-Requests": "1",
+}
+NAVIGATION_HEADERS = {
+    "Accept": HTML_ACCEPT,
+    "Accept-Language": LANGUAGE_ACCEPT,
+    "Upgrade-Insecure-Requests": "1",
+}
+
 FORM_PATTERNS = [
     re.compile(
         r"(<form\b[^>]*class=(['\"]).*?form-horizontal.*?\2[^>]*>)(.*?)</form>",
@@ -35,6 +83,20 @@ FORM_PATTERNS = [
 ]
 INPUT_PATTERN = re.compile(r"<input\b[^>]*>", re.IGNORECASE)
 ATTR_PATTERN = re.compile(r"([:\w-]+)\s*=\s*(['\"])(.*?)\2", re.IGNORECASE | re.DOTALL)
+SCRIPT_REDIRECT_PATTERNS = [
+    re.compile(
+        r"(?:window|document)\.location(?:\.href)?\s*=\s*(['\"])(.*?)\1",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(
+        r"(?:window|document)\.location\.replace\(\s*(['\"])(.*?)\1\s*\)",
+        re.IGNORECASE | re.DOTALL,
+    ),
+]
+META_REFRESH_PATTERN = re.compile(
+    r"<meta\b[^>]*http-equiv\s*=\s*(['\"])refresh\1[^>]*content\s*=\s*(['\"])[^'\"]*url=([^'\"]+)\2",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 class TronHttpError(Exception):
@@ -154,6 +216,23 @@ def extract_login_form(html_text: str, base_url: str = LOGIN_URL) -> LoginForm:
     raise LoginPageChangedError("找不到登入表單的 action URL，可能網站結構已更改。")
 
 
+def extract_html_redirect(html_text: str, base_url: str) -> Optional[str]:
+    for pattern in SCRIPT_REDIRECT_PATTERNS:
+        match = pattern.search(html_text)
+        if match:
+            return urljoin(base_url, html.unescape(match.group(2)))
+
+    match = META_REFRESH_PATTERN.search(html_text)
+    if match:
+        return urljoin(base_url, html.unescape(unquote(match.group(3).strip())))
+
+    return None
+
+
+def make_tku_sso_login_form_url(target_url: str) -> str:
+    return TKU_SSO_LOGIN_FORM_URL_TEMPLATE.format(target_url)
+
+
 def has_session_cookie(
     session: aiohttp.ClientSession,
     session_cookie_domain: str = DEFAULT_ENDPOINTS.session_cookie_domain,
@@ -182,10 +261,127 @@ class TronHttpClient:
             return {}
         return {"ssl": self.request_ssl}
 
+    def is_tku_fast_sso(self) -> bool:
+        host = urlparse(self.endpoints.base_url).hostname or ""
+        login_host = urlparse(self.endpoints.login_url).hostname or ""
+        return host.lower() == TKU_ICLASS_HOST or login_host.lower() == TKU_ICLASS_HOST
+
+    def _set_tku_browser_cookie(self, name: str, value: str, path: str = "/") -> None:
+        if URL is None:
+            return
+        cookie = SimpleCookie()
+        cookie[name] = value
+        cookie[name]["path"] = path
+        self.session.cookie_jar.update_cookies(
+            cookie,
+            response_url=URL("https://sso.tku.edu.tw/"),
+        )
+
+    async def _get_login_form_response(
+        self,
+        url: str,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> tuple[str, str]:
+        async with self.session.get(url, headers=headers, **self.request_kwargs()) as resp:
+            return await resp.text(), str(resp.url)
+
+    async def _get_login_form_page(
+        self,
+        url: str,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> str:
+        html_text, _ = await self._get_login_form_response(url, headers)
+        return html_text
+
+    async def _fetch_tku_image_validate_code(self, form_url: str) -> str:
+        validate_url = urljoin(form_url, "ImageValidate")
+        async with self.session.get(
+            validate_url,
+            headers=TKU_SSO_IMAGE_HEADERS,
+            **self.request_kwargs(),
+        ) as resp:
+            await resp.read()
+
+        async with self.session.post(
+            validate_url,
+            data={"outType": "1"},
+            headers=TKU_SSO_AJAX_HEADERS,
+            **self.request_kwargs(),
+        ) as resp:
+            await resp.read()
+
+        async with self.session.post(
+            validate_url,
+            data={"outType": "2"},
+            headers=TKU_SSO_AJAX_HEADERS,
+            **self.request_kwargs(),
+        ) as resp:
+            if resp.status != 200:
+                raise LoginPageChangedError("TKU SSO ImageValidate returned HTTP {}.".format(resp.status))
+            code = (await resp.text()).strip()
+        if not code:
+            raise LoginPageChangedError("TKU SSO ImageValidate did not return a validation code.")
+        return code
+
+    async def _complete_tku_login_form(self, form: LoginForm) -> LoginForm:
+        fields = dict(form.fields)
+        if "vidcode" in fields and not fields["vidcode"]:
+            fields["vidcode"] = await self._fetch_tku_image_validate_code(form.action_url)
+        return LoginForm(action_url=form.action_url, fields=fields)
+
+    async def _follow_tku_login_redirects(
+        self,
+        html_text: str,
+        base_url: str,
+        max_redirects: int = 10,
+    ) -> str:
+        final_url = base_url
+        for _ in range(max_redirects):
+            redirect_url = extract_html_redirect(html_text, final_url)
+            if redirect_url is None:
+                break
+
+            while True:
+                headers = dict(NAVIGATION_HEADERS)
+                headers["Referer"] = final_url
+                async with self.session.get(
+                    redirect_url,
+                    headers=headers,
+                    allow_redirects=False,
+                    **self.request_kwargs(),
+                ) as resp:
+                    html_text = await resp.text()
+                    response_url = str(resp.url)
+                    location = resp.headers.get("Location")
+                    if resp.status in {301, 302, 303, 307, 308} and location:
+                        final_url = response_url
+                        redirect_url = urljoin(response_url, location)
+                        continue
+
+                    final_url = response_url
+                    break
+
+        return final_url
+
     async def fetch_login_form(self) -> LoginForm:
-        async with self.session.get(self.endpoints.login_url, **self.request_kwargs()) as resp:
-            html_text = await resp.text()
-        return extract_login_form(html_text, self.endpoints.login_url)
+        html_text, current_url = await self._get_login_form_response(self.endpoints.login_url)
+        if not self.is_tku_fast_sso():
+            return extract_login_form(html_text, self.endpoints.login_url)
+
+        try:
+            return await self._complete_tku_login_form(extract_login_form(html_text, current_url))
+        except LoginPageChangedError:
+            if "redirectLoginPage" not in html_text and "logineb.jsp" not in html_text:
+                raise
+
+        self._set_tku_browser_cookie("IV_JCT", "%2FNEAI")
+        sso_login_form_url = make_tku_sso_login_form_url(current_url)
+        html_text = await self._get_login_form_page(sso_login_form_url, TKU_SSO_FORM_HEADERS)
+        form = extract_login_form(html_text, sso_login_form_url)
+        if ";jsessionid=" in form.action_url:
+            html_text = await self._get_login_form_page(sso_login_form_url, TKU_SSO_FORM_HEADERS)
+            form = extract_login_form(html_text, sso_login_form_url)
+        return await self._complete_tku_login_form(form)
 
     async def submit_login(self, form: LoginForm, username: str, password: str) -> LoginOutcome:
         form_data = dict(form.fields)
@@ -196,9 +392,27 @@ class TronHttpClient:
             }
         )
 
-        async with self.session.post(form.action_url, data=form_data, **self.request_kwargs()) as resp:
-            await resp.read()
+        headers = None
+        allow_redirects = True
+        if self.is_tku_fast_sso() and urlparse(form.action_url).hostname == TKU_SSO_HOST:
+            headers = TKU_SSO_SUBMIT_HEADERS
+            allow_redirects = False
+
+        post_kwargs: Dict[str, Any] = {"data": form_data}
+        if headers is not None:
+            post_kwargs["headers"] = headers
+            post_kwargs["allow_redirects"] = allow_redirects
+
+        async with self.session.post(
+            form.action_url,
+            **post_kwargs,
+            **self.request_kwargs(),
+        ) as resp:
+            html_text = await resp.text()
             final_url = str(resp.url)
+
+        if headers is not None:
+            final_url = await self._follow_tku_login_redirects(html_text, final_url)
 
         if self.endpoints.session_cookie_domain == DEFAULT_ENDPOINTS.session_cookie_domain:
             has_session = has_session_cookie(self.session)
@@ -209,6 +423,8 @@ class TronHttpClient:
                 # Some legacy tests and external monkeypatches replace
                 # has_session_cookie with a one-argument callable.
                 has_session = has_session_cookie(self.session)
+        if headers is not None and not has_session:
+            raise LoginPageChangedError("TKU fast SSO login did not yield an iClass session cookie.")
         if "login" in final_url.lower() and not has_session:
             raise LoginRejectedError("登入失敗，請檢查帳號或密碼是否正確。")
 

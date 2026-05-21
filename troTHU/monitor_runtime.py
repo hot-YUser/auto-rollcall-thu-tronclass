@@ -42,7 +42,9 @@ async def monitor_loop(session: ctx.aiohttp.ClientSession, shutdown_event: ctx.a
         ctx.COOKIE_CACHE_RESTORED = False
         login_result = await ctx.login(session)
     if not login_result.ok:
-        if login_result.should_auto_retry:
+        if login_result.status == 'manual_cookie_required':
+            pass
+        elif login_result.should_auto_retry:
             delay = ctx.get_login_retry_delay(login_retry_attempt)
             next_login_retry_at = ctx.time.monotonic() + delay
             login_retry_attempt += 1
@@ -59,6 +61,9 @@ async def monitor_loop(session: ctx.aiohttp.ClientSession, shutdown_event: ctx.a
             await ctx.sleep_or_shutdown(shutdown_event, 1)
             continue
         if not ctx.has_session_cookie(session):
+            if ctx.LAST_LOGIN_RESULT.status == 'manual_cookie_required':
+                await ctx.sleep_or_shutdown(shutdown_event, 5)
+                continue
             if ctx.should_auto_login_without_session():
                 now = ctx.time.monotonic()
                 if now >= next_login_retry_at:

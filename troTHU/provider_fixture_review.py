@@ -1,4 +1,4 @@
-"""FJU/TKU sanitized fixture review helpers."""
+"""FJU/TKU sanitized fixture review helpers for the internal ledger."""
 
 from __future__ import annotations
 
@@ -9,15 +9,15 @@ from typing import Any, Dict, List, Mapping
 try:  # pragma: no cover - script execution fallback
     from troTHU.provider_ready_gate import REQUIRED_ENDPOINTS, build_provider_ready_gate
     from troTHU.provider_verification import (
-        ALLOWED_PROVIDERS,
         SAFE_ENDPOINT_TYPES,
         build_provider_fixture_template,
+        provider_requires_verification,
         validate_provider_fixture,
     )
     from troTHU.providers import DEFAULT_PROVIDER, get_provider, provider_support_report
 except ImportError:  # pragma: no cover
     from provider_ready_gate import REQUIRED_ENDPOINTS, build_provider_ready_gate
-    from provider_verification import ALLOWED_PROVIDERS, SAFE_ENDPOINT_TYPES, build_provider_fixture_template, validate_provider_fixture
+    from provider_verification import SAFE_ENDPOINT_TYPES, build_provider_fixture_template, provider_requires_verification, validate_provider_fixture
     from providers import DEFAULT_PROVIDER, get_provider, provider_support_report
 
 
@@ -108,7 +108,7 @@ def build_provider_fixture_review(
 ) -> Dict[str, Any]:
     key = _provider_key(provider)
     support = provider_support_report(get_provider(key).to_config(), allow_experimental=False) if key else {}
-    if key not in ALLOWED_PROVIDERS:
+    if not provider_requires_verification(key):
         return {
             "version": REVIEW_VERSION,
             "provider": key,
@@ -124,11 +124,11 @@ def build_provider_fixture_review(
             "provider": key,
             "status": "not_reviewed",
             "candidate_ready_for_human_review": False,
-            "daily_ready_after_review": False,
-            "support_level": support.get("support_level", "experimental"),
+            "daily_ready_after_review": bool(support.get("daily_ready")),
+            "support_level": support.get("support_level", "ready"),
             "blockers": ["fixture_missing"],
             "evidence_matrix": _evidence_matrix({"records": []}, None),
-            "recommendation": "collect_sanitized_fixture",
+            "recommendation": "collect_internal_sanitized_fixture",
         }
     validation = validate_provider_fixture(fixture, provider=key)
     gate = build_provider_ready_gate(key, fixture=fixture, config=config or {})
@@ -144,8 +144,8 @@ def build_provider_fixture_review(
         "provider": key,
         "status": "candidate_ready_for_human_review" if candidate else "blocked",
         "candidate_ready_for_human_review": candidate,
-        "daily_ready_after_review": False,
-        "support_level": support.get("support_level", "experimental"),
+        "daily_ready_after_review": bool(support.get("daily_ready")),
+        "support_level": support.get("support_level", "ready"),
         "validation_status": validation.get("status"),
         "ready_gate_status": gate.get("status"),
         "blockers": blockers,
@@ -153,7 +153,7 @@ def build_provider_fixture_review(
         "sanitizer_findings": sensitive_findings,
         "manual_acceptance": _manual_acceptance(fixture),
         "evidence_matrix": _evidence_matrix(validation, fixture),
-        "recommendation": "human_review_only_no_auto_promotion" if candidate else "keep_experimental",
+        "recommendation": "ledger_review_only_no_runtime_change" if candidate else "keep_verification_pending",
         "promotes_provider": False,
     }
 
@@ -167,12 +167,13 @@ def review_provider_fixture_file(path: Path | str, *, provider: str = "") -> Dic
     try:
         fixture = _read_json(fixture_path)
     except Exception:
+        support = provider_support_report(get_provider(provider).to_config(), allow_experimental=False) if provider else {}
         return {
             "version": REVIEW_VERSION,
             "provider": provider,
             "status": "fixture_unreadable",
             "candidate_ready_for_human_review": False,
-            "daily_ready_after_review": False,
+            "daily_ready_after_review": bool(support.get("daily_ready")),
             "blockers": ["fixture_unreadable"],
             "path": fixture_path.name,
         }

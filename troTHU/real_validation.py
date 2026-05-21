@@ -212,11 +212,11 @@ def build_real_validation_checklist(config: Any = None) -> Dict[str, Any]:
             required=False,
         ),
         _case(
-            "browser_assisted_login_opt_in",
-            "Browser-assisted login gate",
-            "Confirm Playwright-assisted login remains disabled by default and only runs after explicit config opt-in.",
+            "browser_assisted_login_provider_auto",
+            "TKU fast SSO and browser fallback gate",
+            "Confirm TKU uses HTTP fast SSO first, while Playwright-assisted login stays opt-in for ordinary providers and auto-fallback for TKU.",
             "python -m troTHU.tron doctor --json",
-            "doctor reports browser-assisted login availability/gates without launching a browser unless enabled.",
+            "doctor reports configured_enabled vs auto_for_provider and fallback only imports cookies when fast SSO cannot validate the API session.",
             required=False,
         ),
         _case(
@@ -232,16 +232,16 @@ def build_real_validation_checklist(config: Any = None) -> Dict[str, Any]:
             "Safety review",
             "Confirm outputs and reports avoid sensitive material and research/provider boundaries remain explicit.",
             "python -m troTHU.tron validation summary --json",
-            "summary records only safe notes and FJU/TKU remain experimental.",
+            "summary records only safe notes and provider scope keeps user-level ready support separate from internal verification ledger.",
         ),
     ]
     return {
         "version": VALIDATION_VERSION,
         "round": "R1-REAL-VALIDATION",
         "provider_scope": {
-            "thu": {"support_level": "ready", "required_live_validation": True},
-            "fju": {"support_level": "experimental", "required_live_validation": False},
-            "tku": {"support_level": "experimental", "required_live_validation": False},
+            "thu": {"support_level": "ready", "verification": "verified", "required_live_validation": True},
+            "fju": {"support_level": "ready", "verification": "unverified", "required_live_validation": False, "user_visible": False, "auth_flow": "manual_cookie_only"},
+            "tku": {"support_level": "ready", "verification": "account_pending", "required_live_validation": False},
         },
         "record_path": "state/validation/{}".format(VALIDATION_RECORD_FILENAME),
         "accepted_live_block_reason": ACCEPTED_LIVE_BLOCK_REASON,
@@ -305,10 +305,14 @@ def _provider_scope_is_safe(scope: Mapping[str, Any]) -> bool:
     thu = scope.get("thu", {}) if isinstance(scope.get("thu"), Mapping) else {}
     fju = scope.get("fju", {}) if isinstance(scope.get("fju"), Mapping) else {}
     tku = scope.get("tku", {}) if isinstance(scope.get("tku"), Mapping) else {}
+    known_verification_values = {"verified", "account_pending", "unverified"}
     return (
         str(thu.get("support_level") or "") == "ready"
-        and str(fju.get("support_level") or "") == "experimental"
-        and str(tku.get("support_level") or "") == "experimental"
+        and str(fju.get("support_level") or "") == "ready"
+        and str(tku.get("support_level") or "") == "ready"
+        and str(thu.get("verification") or "") == "verified"
+        and str(fju.get("verification") or "") in known_verification_values
+        and str(tku.get("verification") or "") in known_verification_values
     )
 
 
@@ -403,7 +407,7 @@ def build_local_smoke_validation_records(
         record(
             "safety_review",
             safety_ok,
-            "local safety gates remain explicit and provider scope remains THU-ready/FJU-TKU-experimental",
+            "local safety gates remain explicit and provider scope separates ready support from internal verification ledger",
             {
                 "qr_image": qr_gate,
                 "doctor_probe": doctor_gate,

@@ -1,8 +1,8 @@
-"""Provider ready-gate evaluation for FJU/TKU experimental support.
+"""Provider ready-gate evaluation for the internal FJU/TKU ledger.
 
 The ready gate is deliberately conservative. It can say a sanitized fixture is
-ready for human review, but it never mutates provider configuration or promotes
-FJU/TKU to daily-ready automatically.
+ready for human review, but it never mutates provider configuration or changes
+the user-level ready state.
 """
 
 from __future__ import annotations
@@ -10,10 +10,20 @@ from __future__ import annotations
 from typing import Any, Dict, Iterable, List, Mapping
 
 try:  # pragma: no cover - script execution fallback
-    from troTHU.provider_verification import ALLOWED_PROVIDERS, validate_provider_fixture
+    from troTHU.provider_verification import (
+        PENDING_VERIFICATION_VALUES,
+        provider_requires_verification,
+        provider_verification_value,
+        validate_provider_fixture,
+    )
     from troTHU.providers import DEFAULT_PROVIDER, get_provider, provider_support_report
 except ImportError:  # pragma: no cover
-    from provider_verification import ALLOWED_PROVIDERS, validate_provider_fixture
+    from provider_verification import (
+        PENDING_VERIFICATION_VALUES,
+        provider_requires_verification,
+        provider_verification_value,
+        validate_provider_fixture,
+    )
     from providers import DEFAULT_PROVIDER, get_provider, provider_support_report
 
 
@@ -82,7 +92,7 @@ def _records_by_endpoint(validation: Mapping[str, Any]) -> Dict[str, Mapping[str
 
 
 def build_provider_ready_acceptance_template(provider: Any) -> Dict[str, Any]:
-    """Return a human-review acceptance template for FJU/TKU."""
+    """Return a human-review acceptance template for the internal ledger."""
     config = _provider_config(provider)
     key = str(config.get("key") or DEFAULT_PROVIDER)
     return {
@@ -100,9 +110,10 @@ def build_provider_ready_acceptance_template(provider: Any) -> Dict[str, Any]:
 
 
 def build_provider_ready_gate(provider: Any, *, fixture: Any = None, config: Mapping[str, Any] | None = None) -> Dict[str, Any]:
-    """Evaluate whether an experimental provider has enough evidence for review."""
+    """Evaluate whether a pending-verification provider has enough evidence."""
     provider_config = _provider_config(provider)
     key = str(provider_config.get("key") or DEFAULT_PROVIDER).lower()
+    verification = provider_verification_value(provider_config)
     allow_experimental = False
     if isinstance(config, Mapping):
         provider_section = config.get("provider")
@@ -110,26 +121,28 @@ def build_provider_ready_gate(provider: Any, *, fixture: Any = None, config: Map
             allow_experimental = _safe_bool(provider_section.get("allow_experimental"))
     support = provider_support_report(provider_config, allow_experimental=allow_experimental)
 
-    if key not in ALLOWED_PROVIDERS:
-        status = "not_required" if key == DEFAULT_PROVIDER else "unsupported_provider"
+    if not provider_requires_verification(provider_config):
+        status = "not_required" if verification == "verified" else "unsupported_provider"
+        ready_candidate = verification == "verified"
         return {
             "version": READY_GATE_VERSION,
             "provider": key,
             "status": status,
-            "ready_candidate": key == DEFAULT_PROVIDER,
+            "ready_candidate": ready_candidate,
             "promotes_provider": False,
             "daily_ready_after_gate": bool(support.get("daily_ready")),
             "support_level": support.get("support_level"),
-            "criteria": [_criterion("provider_scope", key == DEFAULT_PROVIDER, "ready gate applies only to FJU/TKU", required=False)],
-            "blockers": [] if key == DEFAULT_PROVIDER else ["provider_not_in_scope"],
-            "warnings": ["primary_provider_uses_existing_ready_path"] if key == DEFAULT_PROVIDER else [],
-            "acceptance_schema": build_provider_ready_acceptance_template("fju"),
+            "verification": verification,
+            "criteria": [_criterion("verification", ready_candidate, "provider verification ledger is already verified", required=False)],
+            "blockers": [] if ready_candidate else ["provider_not_in_scope"],
+            "warnings": ["provider_verification_already_verified"] if ready_candidate else [],
+            "acceptance_schema": build_provider_ready_acceptance_template(provider_config),
         }
 
     criteria: List[Dict[str, Any]] = [
-        _criterion("provider_scope", True, "provider is in FJU/TKU scope"),
-        _criterion("support_level", support.get("support_level") == "experimental", "provider remains experimental"),
-        _criterion("no_auto_promotion", True, "gate does not modify provider registry"),
+        _criterion("provider_scope", True, "provider is in internal FJU/TKU verification scope"),
+        _criterion("verification", verification in PENDING_VERIFICATION_VALUES, "provider verification ledger is pending"),
+        _criterion("no_runtime_change", True, "gate does not modify provider registry or runtime readiness"),
     ]
     blockers: List[str] = []
     warnings: List[str] = []
@@ -177,14 +190,15 @@ def build_provider_ready_gate(provider: Any, *, fixture: Any = None, config: Map
         "promotes_provider": False,
         "daily_ready_after_gate": bool(support.get("daily_ready")),
         "support_level": support.get("support_level"),
+        "verification": verification,
         "criteria": criteria,
         "blockers": sorted(set(blockers)),
         "warnings": sorted(set(warnings + list(validation.get("warnings", []) if validation else []))),
         "validation_status": validation.get("status", "not_evaluated") if validation else "not_evaluated",
         "acceptance_schema": build_provider_ready_acceptance_template(provider_config),
         "next_actions": [
-            "keep_provider_experimental_until_manual_review",
-            "only_enable_provider.allow_experimental_after_acceptance",
+            "collect_sanitized_fixture_for_internal_ledger",
+            "mark_provider_verification_verified_after_manual_review",
             "do_not_commit_raw_responses_or_credentials",
         ],
     }

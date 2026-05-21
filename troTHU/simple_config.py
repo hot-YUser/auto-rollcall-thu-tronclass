@@ -11,6 +11,7 @@ except ImportError:  # pragma: no cover - direct script fallback
 PLACEHOLDER_PREFIXES = ("(", "（")
 SIMPLE_WEEKDAY_TO_INTERNAL = {0: 6, 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5}
 INTERNAL_WEEKDAY_TO_SIMPLE = {value: key for key, value in SIMPLE_WEEKDAY_TO_INTERNAL.items()}
+VISIBLE_DEFAULT_SCHOOLS = ("THU", "TKU")
 
 
 def _strip_value(value: ctx.Any) -> str:
@@ -45,6 +46,14 @@ def _canonical_school(value: ctx.Any) -> str:
         "fju": "fju",
     }
     return aliases.get(school, school or "thu")
+
+
+def _profile_school(profile: ctx.Mapping[str, ctx.Any], default: str = "thu") -> str:
+    for key in ("school", "label"):
+        school = _canonical_school(profile.get(key))
+        if school in {"thu", "tku", "fju"}:
+            return school
+    return default
 
 
 def _usable_accounts(simple: ctx.Mapping[str, ctx.Any]) -> ctx.List[ctx.Dict[str, str]]:
@@ -326,14 +335,14 @@ def split_normalized_config(config: ctx.Mapping[str, ctx.Any]) -> ctx.Tuple[ctx.
             continue
         entry = account_index.get(user.lower())
         if entry is None:
-            entry = {"user": user, "passwd": "", "school": _canonical_school(profile.get("school") or profile.get("label"))}
+            entry = {"user": user, "passwd": "", "school": _profile_school(profile)}
             accounts.append(entry)
             account_index[user.lower()] = entry
         entry["user"] = user
         if _strip_value(profile.get("passwd")):
             entry["passwd"] = _strip_value(profile.get("passwd"))
         if not _strip_value(entry.get("school")):
-            entry["school"] = _canonical_school(profile.get("school") or profile.get("label"))
+            entry["school"] = _profile_school(profile)
     now = _strip_value(simple_meta.get("now")) or _strip_value(normalized.get("account", {}).get("user"))
     simple_operating: ctx.Dict[int, ctx.Any] = {}
     for internal_day, entry in normalized.get("operating", {}).items():
@@ -369,9 +378,9 @@ def split_normalized_config(config: ctx.Mapping[str, ctx.Any]) -> ctx.Tuple[ctx.
 def render_simple_config(config: ctx.Mapping[str, ctx.Any] | None = None) -> str:
     simple = ctx.copy.deepcopy(dict(config or {}))
     accounts = list(simple.get("accounts") or [])
-    while len(accounts) < 3:
+    while len(accounts) < len(VISIBLE_DEFAULT_SCHOOLS):
         index = len(accounts) + 1
-        accounts.append({"user": "", "passwd": "", "school": ("THU", "TKU", "FJU")[index - 1]})
+        accounts.append({"user": "", "passwd": "", "school": VISIBLE_DEFAULT_SCHOOLS[index - 1]})
     groups = list(simple.get("groups") or [])
     while len(groups) < 2:
         groups.append({"class": "A" if not groups else "B", "school": "THU", "users": [""]})

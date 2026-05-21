@@ -32,6 +32,7 @@ except ImportError:  # pragma: no cover
 FORBIDDEN_RELEASE_PARTS = {
     ".codex-worklog.md",
     "config.yaml",
+    "config.advanced.yaml",
     "state",
     "log",
     "cookies",
@@ -218,15 +219,16 @@ def _iter_collect_files(collect_dir: Path) -> List[Path]:
 def _release_notes_text() -> str:
     return "\n".join(
         [
-            "THU Auto Rollcall v{}".format(PROJECT_VERSION),
+            "THU Auto Rollcall v{} 預發布說明".format(PROJECT_VERSION),
             "",
-            "This archive was produced by `python -m troTHU.tron release-build --execute`.",
-            "It contains the PyInstaller collect output plus README.md and this release note.",
+            "此 Windows 壓縮檔由 `python -m troTHU.tron release-build --execute` 產生。",
+            "內容包含 PyInstaller collect output、README.md 與本預發布說明。",
             "",
-            "Safety notes:",
-            "- No local config.yaml, state/, log/, cookies, tests, or Codex worklog files should be present.",
-            "- Run `auto-rollcall-thu-tronclass.exe status --json` after extracting to inspect local state.",
-            "- Full live readiness still depends on R1 THU number/radar/QR acceptance records.",
+            "預發布提醒：",
+            "- 這是 alpha 預發布版本，尚未經實際課堂環境完整驗收。",
+            "- 壓縮檔不應包含本機 config.yaml、config.advanced.yaml、state/、log/、cookies/、tests/ 或 Codex 工作紀錄。",
+            "- 解壓縮後可先執行 `auto-rollcall-thu-tronclass.exe status --json` 檢查本機狀態。",
+            "- 真實可用性仍需後續 number/radar/QR 實際驗收紀錄補齊。",
             "",
         ]
     )

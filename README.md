@@ -5,9 +5,9 @@
 
 > 請只在你有權限、且符合學校與課程規範的情境下使用。不要分享帳密、token、cookie、`state/`、`log/`、真實 QR payload 或未遮蔽的 API 回應。不要把填好帳密的 `config.yaml` 傳給別人。
 
-## 版本狀態：v1.1-alpha.2
+## 版本狀態：v1.1-alpha.3
 
-`v1.1-alpha.2` 是目前功能整合版。主要能力仍屬 alpha，尚未完成真實 THU number/radar/QR live acceptance；請把這版視為未完整測試的預發布版本。
+`v1.1-alpha.3` 是目前功能整合版。主要能力仍屬 alpha，尚未經實際課堂環境完整驗收；請把這版視為未完整測試的預發布版本。
 
 目前重點：
 
@@ -15,7 +15,7 @@
 - `config.yaml` 是沒有註解的極簡人類格式，只保留 `now`、帳號、群組與上課時間；進階項放在同層 `config.advanced.yaml`
 - 常見輸入會自動修正前後空白與多餘空格；QR payload 只 trim 前後空白，不改內部內容
 - 排程可在 `config.advanced.yaml` 設定 IANA timezone；每日可有多段 range
-- THU provider 是 ready 主線；FJU/TKU 只有 experimental core 與 fixture review / ready gate，不承諾 daily-ready
+- THU / TKU 是預設使用者可見 provider；登入後監控、number、radar、QR、課程與學期 API 走同一套 endpoint-driven runtime
 - Discord HTTP Interactions 是推薦 production 入口；optional Gateway、QR modal、schema sync 已有核心
 - research probe 只在明確 opt-in 下記錄高風險端點的 HTTP 狀態與欄位形狀，不記錄答案值，也不進 daily automation
 - Windows zip release build runner 會跑 unittest、PyInstaller、artifact validation 與 temp-extract smoke
@@ -66,7 +66,7 @@ python -m troTHU.tron validation local-smoke --json
 Release zip 名稱格式：
 
 ```text
-THU_Auto_Rollcall-v1.1.0a2-windows-x64.zip
+THU_Auto_Rollcall-v1.1.0a3-windows-x64.zip
 ```
 
 下載後請完整解壓縮，再在資料夾內執行 `auto-rollcall-thu-tronclass.exe`。不要直接在 zip 裡雙擊執行。第一次啟動會在 exe 同層建立或使用 `config.yaml`、`state/`、`log/`。
@@ -221,16 +221,16 @@ Telegram 目前支援 outbound notification bus sink：
 python -m troTHU.tron account bind telegram TELEGRAM_CHAT_ID default
 ```
 
-## Provider：THU + FJU/TKU experimental
+## Provider：THU / TKU ready
 
 ```bash
 python -m troTHU.tron provider list
-python -m troTHU.tron provider show fju --json
+python -m troTHU.tron provider show tku --json
 python -m troTHU.tron provider fixture review-template tku --json
-python -m troTHU.tron provider ready-gate fju --fixture fixture.json --json
+python -m troTHU.tron provider ready-gate tku --fixture fixture.json --json
 ```
 
-THU 是 ready provider。FJU/TKU 只保留 experimental endpoint/config/fake-server/fixture-review 路線；未提供 sanitized fixture 與人工 acceptance 前，不會升級 daily-ready。NFU/GUET/XMU 不在 provider ready 目標內。
+THU、TKU 在預設使用者入口中是可見 ready provider；兩校都可啟動完整日常流程，不需要 `provider.allow_experimental`。這個舊欄位會保留作為相容 no-op。TKU 會優先使用 HTTP fast SSO 路徑模擬 iClass/SSO 表單、ImageValidate 與 redirect，並在登入後用 iClass API 驗證 session；若 fast path 失敗或 API 驗證失敗，才自動回退到 Playwright browser-assisted login。fixture review / ready-gate 只處理 sanitized fixture 與人工 acceptance，不會保存密碼、cookie、raw response、完整 QR payload 或 number code。NFU/GUET/XMU 不在 provider ready 目標內。
 
 ## App shell / WebView / Research
 
@@ -239,7 +239,7 @@ THU 是 ready provider。FJU/TKU 只保留 experimental endpoint/config/fake-ser
 - `webview preview/import`：只做 cookie sync contract 與本地 cookie cache bridge；真正 import 必須同時開 config gate 與 `--save`。
 - `research status/api/browser-check/browser-capture`：明確 opt-in 的 read-only metadata capture；不查答案、不保存 raw body/header/cookie/token/QR。
 - `research probe student_rollcalls --rollcall-id <id>`：方案 B 的唯讀探測，只記 HTTP 狀態與欄位形狀；需要 `research.enabled=true`、`allow_api_exploration=true`、`allow_risky_probe=true`，且不會把 `number_code` 值寫入輸出。
-- `auth.browser_assisted_login.enabled=true`：當一般表單登入因 CAS 頁面改版失敗時，可選用 Playwright 後備登入；只匯入 session cookie，不保存 header/body。
+- `auth.browser_assisted_login.enabled=true`：一般 provider 遇到 CAS/登入頁改版時，可手動啟用 Playwright 後備登入；TKU 預設先跑 HTTP fast SSO，必要時自動使用 Playwright 作為保底。兩者都不保存 header/body/密碼。
 
 ## R1/R2/R3 驗收
 
@@ -255,7 +255,7 @@ python -m troTHU.tron validation summary --json
 
 `local-smoke --record` 只會寫入本機可證明的非 live case：preflight、time schedule、Bot fake sandbox、package/release static、安全 gate。`auth_restore`、number/radar/QR live、靜態 QR live、fan-out live 仍需要真實 THU 情境，不會被自動假造。
 
-R1 checklist 也會列出本輪新增的非 UI 驗收面：`time_schedule_local`、`qr_static_image_live`、`doctor_probe_opt_in`、`browser_assisted_login_opt_in`、`research_student_rollcalls_probe`。其中 opt-in doctor / browser / research probe 不會在日常流程自動執行；若沒有真實課堂 QR 截圖或研究授權，就記錄為 blocked/skip，不要用假資料宣稱完成。
+R1 checklist 也會列出本輪新增的非 UI 驗收面：`time_schedule_local`、`qr_static_image_live`、`doctor_probe_opt_in`、`browser_assisted_login_provider_auto`、`research_student_rollcalls_probe`。其中 doctor probe / research probe 不會在日常流程自動執行；browser-assisted login 對一般 provider 仍是 opt-in，對 TKU 則作為 fast SSO 失敗時的自動保底。若沒有真實課堂 QR 截圖或研究授權，就記錄為 blocked/skip，不要用假資料宣稱完成。
 
 R2 是 release build：
 
@@ -320,7 +320,7 @@ python -m troTHU.tron release-build --dry-run --json
 ## 目前限制
 
 - R1 真實 THU live acceptance records 尚未補齊；功能已具備，但完整宣稱仍需 live validation。
-- FJU/TKU 仍是 experimental，不保證 daily automation ready。
+- TKU 的 `verification` ledger 尚待補齊 sanitized evidence；完整可用性仍需實際課堂環境驗收。
 - native/mobile App、App-side encrypted vault、map SDK 仍不是本版本目標。
 - Telegram inbound command bot 不做；目前只提供 outbound notification sink。
 - 直接讀碼只保留 research probe；沒有真實 THU 探測證據前，不會做日常自動化或直接提交分支。

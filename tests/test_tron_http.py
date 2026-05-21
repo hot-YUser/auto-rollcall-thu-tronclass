@@ -45,6 +45,16 @@ except ModuleNotFoundError:
     sys.modules["aiohttp"] = fake_aiohttp
 
 try:
+    from aiohttp import web
+except (ImportError, ModuleNotFoundError):  # pragma: no cover - aiohttp absent fallback
+    web = None
+
+try:
+    from yarl import URL
+except (ImportError, ModuleNotFoundError):  # pragma: no cover - aiohttp absent fallback
+    URL = None
+
+try:
     import yaml  # noqa: F401
 except ModuleNotFoundError:
     fake_yaml = types.ModuleType("yaml")
@@ -60,6 +70,7 @@ except ModuleNotFoundError:
     sys.modules["yaml"] = fake_yaml
 
 from troTHU import tron, tron_http
+from tests.fake_tron_server import FakeTronServer
 
 TEST_WORKSPACE_DIR = Path(__file__).resolve().parents[1]
 
@@ -120,6 +131,140 @@ def make_login_result(status: str, **kwargs):
     defaults = {"credential_source": "config", "user": "user1"}
     defaults.update(kwargs)
     return tron.LoginResult(status=status, **defaults)
+
+
+class FakeTkuSsoServer:
+    def __init__(self) -> None:
+        self.session_cookie = "local-tku-session"
+        self.validation_code = "123456"
+        self.break_form = False
+        self.fail_image_validate = False
+        self.api_redirects_to_sso = False
+        self.login_posts = []
+        self.image_validate_posts = []
+        self.current_semester_requests = 0
+        self.runner = None
+        self.site = None
+        self.base_url = ""
+
+    @property
+    def login_url(self) -> str:
+        return self.base_url + "/login?next=/iportal&locale=zh_TW"
+
+    @property
+    def rollcalls_url(self) -> str:
+        return self.base_url + "/api/radar/rollcalls?api_version=1.1.0"
+
+    @property
+    def current_semester_url(self) -> str:
+        return self.base_url + "/api/current-semester-info"
+
+    @property
+    def courses_url(self) -> str:
+        return self.base_url + "/api/my-courses?page=1&page_size=50"
+
+    async def login_page(self, _request):
+        return web.Response(
+            text="<html><script>redirectLoginPage();</script></html>",
+            content_type="text/html",
+        )
+
+    async def sso_login_form(self, _request):
+        if self.break_form:
+            return web.Response(text="<html><body>changed</body></html>", content_type="text/html")
+        html = """
+        <html>
+          <form class="form-horizontal" action="/NEAI/login2.do">
+            <input type="hidden" name="myurl" value="/login">
+            <input type="hidden" name="logintype" value="logineb">
+            <input type="text" name="username" value="">
+            <input type="password" name="password" value="">
+            <input type="text" name="vidcode" value="">
+          </form>
+        </html>
+        """
+        return web.Response(text=html, content_type="text/html")
+
+    async def image_validate(self, request):
+        if request.method == "GET":
+            return web.Response(body=b"fake-image")
+        data = await request.post()
+        self.image_validate_posts.append(dict(data))
+        if self.fail_image_validate:
+            return web.Response(status=500, text="")
+        if data.get("outType") == "2":
+            return web.Response(text=self.validation_code)
+        return web.Response(text="")
+
+    async def submit_sso_login(self, request):
+        data = await request.post()
+        self.login_posts.append(dict(data))
+        response = web.Response(
+            text="<html><script>window.location.href='/iportal';</script></html>",
+            content_type="text/html",
+        )
+        if (
+            data.get("username") == "user1"
+            and data.get("password") == "pass1"
+            and data.get("vidcode") == self.validation_code
+        ):
+            response.set_cookie("session", self.session_cookie)
+        return response
+
+    async def iportal(self, _request):
+        return web.Response(text="iClass")
+
+    def _session_ok(self, request) -> bool:
+        return request.cookies.get("session") == self.session_cookie
+
+    async def current_semester_api(self, request):
+        self.current_semester_requests += 1
+        if self.api_redirects_to_sso:
+            raise web.HTTPFound("/auth/realms/TKU/protocol/openid-connect/auth")
+        if not self._session_ok(request):
+            return web.Response(status=401, text="unauthorized")
+        return web.json_response({"academic_year": {"id": 114}, "semester": {"id": 2}})
+
+    async def rollcalls_api(self, request):
+        if not self._session_ok(request):
+            return web.Response(status=401, text="unauthorized")
+        return web.json_response({"rollcalls": []})
+
+    async def sso_auth_page(self, _request):
+        return web.Response(text="<html>sso auth</html>", content_type="text/html")
+
+    async def start(self):
+        if web is None:
+            raise unittest.SkipTest("aiohttp.web is required for TKU fast SSO tests")
+        app = web.Application()
+        app.router.add_get("/login", self.login_page)
+        app.router.add_get("/NEAI/logineb.jsp", self.sso_login_form)
+        app.router.add_route("*", "/NEAI/ImageValidate", self.image_validate)
+        app.router.add_post("/NEAI/login2.do", self.submit_sso_login)
+        app.router.add_get("/iportal", self.iportal)
+        app.router.add_get("/api/current-semester-info", self.current_semester_api)
+        app.router.add_get("/api/radar/rollcalls", self.rollcalls_api)
+        app.router.add_get("/auth/realms/TKU/protocol/openid-connect/auth", self.sso_auth_page)
+        self.runner = web.AppRunner(app)
+        await self.runner.setup()
+        self.site = web.TCPSite(self.runner, "127.0.0.1", 0)
+        await self.site.start()
+        port = self.site._server.sockets[0].getsockname()[1]
+        self.base_url = "http://127.0.0.1:{}".format(port)
+        return self
+
+    async def close(self) -> None:
+        if self.runner is not None:
+            await self.runner.cleanup()
+        self.runner = None
+        self.site = None
+        self.base_url = ""
+
+    async def __aenter__(self):
+        return await self.start()
+
+    async def __aexit__(self, _exc_type, _exc, _tb):
+        await self.close()
 
 
 class TronHttpClientTest(unittest.IsolatedAsyncioTestCase):
@@ -356,6 +501,69 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.status, "missing_credentials")
         log_print.assert_called_once()
 
+    async def test_fju_manual_cookie_provider_skips_password_login_without_cookie(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = MagicMock()
+        tron.CONFIG.clear()
+        tron.CONFIG.update(
+            tron.normalize_config(
+                {
+                    "account": {"user": "fju-user", "passwd": "pass1"},
+                    "provider": {"current": "fju"},
+                }
+            )
+        )
+
+        with (
+            patch.object(tron, "has_session_cookie", return_value=False),
+            patch.object(tron, "TronHttpClient") as client_factory,
+            patch.object(tron, "browser_assisted_login", AsyncMock()) as browser_login,
+            patch.object(tron, "log_print") as log_print,
+        ):
+            result = await tron.login(session)
+
+        self.assertFalse(result.ok)
+        self.assertEqual(result.status, "manual_cookie_required")
+        self.assertEqual(result.credential_source, "manual_cookie")
+        client_factory.assert_not_called()
+        browser_login.assert_not_awaited()
+        log_print.assert_not_called()
+
+    async def test_fju_manual_cookie_provider_uses_common_rollcalls_when_cookie_exists(self) -> None:
+        if URL is None or web is None:
+            self.skipTest("aiohttp.web and yarl are required for cookie-scoped fake-server tests")
+        original_config = copy.deepcopy(tron.CONFIG)
+        async with FakeTronServer() as server:
+            try:
+                tron.CONFIG.clear()
+                tron.CONFIG.update(
+                    tron.normalize_config(
+                        {
+                            "account": {"user": "fju-user", "passwd": ""},
+                            "provider": {
+                                "current": "fju",
+                                "available": {
+                                    "fju": {
+                                        "base_url": server.base_url,
+                                        "login_url": server.login_url,
+                                    }
+                                },
+                            },
+                        }
+                    )
+                )
+                async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                    session.cookie_jar.update_cookies(
+                        {"session": server.session_cookie},
+                        response_url=URL(server.base_url),
+                    )
+                    result = await tron.check_rollcall(session, 1)
+            finally:
+                tron.CONFIG.clear()
+                tron.CONFIG.update(original_config)
+
+        self.assertEqual(result, "not call")
+
     async def test_login_returns_success_result_when_client_succeeds(self) -> None:
         session = MagicMock()
         session.cookie_jar = MagicMock()
@@ -385,7 +593,206 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         session.cookie_jar.clear.assert_called_once()
         client.fetch_login_form.assert_awaited_once()
         client.submit_login.assert_awaited_once()
-        log_print.assert_any_call("登入成功！綁定學號：user1")
+        self.assertTrue(
+            any("登入成功！綁定帳號：user1" in call.args[0] for call in log_print.call_args_list)
+        )
+
+    def _configure_local_tku_provider(self, server: FakeTkuSsoServer) -> None:
+        tron.CONFIG.clear()
+        tron.CONFIG.update(
+            tron.normalize_config(
+                {
+                    "account": {"user": "user1", "passwd": "pass1"},
+                    "accounts": {
+                        "current": "default",
+                        "profiles": {
+                            "default": {"user": "user1", "passwd": "pass1", "label": ""}
+                        },
+                    },
+                    "provider": {
+                        "current": "tku",
+                        "available": {
+                            "tku": {
+                                "key": "tku",
+                                "base_url": server.base_url,
+                                "login_url": server.login_url,
+                                "rollcalls_url": server.rollcalls_url,
+                                "current_semester_url": server.current_semester_url,
+                                "courses_url": server.courses_url,
+                                "auth_flow": "tku_sso_browser",
+                                "support_level": "ready",
+                            }
+                        },
+                    },
+                    "auth": {
+                        "browser_assisted_login": {
+                            "enabled": False,
+                            "headless": True,
+                            "timeout_ms": 5000,
+                        }
+                    },
+                }
+            )
+        )
+
+    def _patch_local_tku_hosts(self, server: FakeTkuSsoServer):
+        return (
+            patch.object(tron_http, "TKU_ICLASS_HOST", "127.0.0.1"),
+            patch.object(tron_http, "TKU_SSO_HOST", "127.0.0.1"),
+            patch.object(
+                tron_http,
+                "TKU_SSO_LOGIN_FORM_URL_TEMPLATE",
+                server.base_url + "/NEAI/logineb.jsp?myurl={}",
+            ),
+        )
+
+    async def test_tku_fast_sso_login_succeeds_without_browser_assist(self) -> None:
+        async with FakeTkuSsoServer() as server:
+            self._configure_local_tku_provider(server)
+            async with tron.aiohttp.ClientSession(cookie_jar=tron.aiohttp.CookieJar(unsafe=True)) as session:
+                host_patch, sso_host_patch, template_patch = self._patch_local_tku_hosts(server)
+                with (
+                    host_patch,
+                    sso_host_patch,
+                    template_patch,
+                    patch.object(tron, "browser_assisted_login", AsyncMock()) as browser_login,
+                    patch.object(tron, "log_print"),
+                ):
+                    result = await tron.login(session)
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.credential_source, "config")
+        self.assertEqual(len(server.login_posts), 1)
+        self.assertEqual(server.login_posts[0]["vidcode"], server.validation_code)
+        self.assertGreaterEqual(server.current_semester_requests, 1)
+        browser_login.assert_not_awaited()
+
+    async def test_tku_fast_sso_form_change_falls_back_to_browser_assist(self) -> None:
+        async with FakeTkuSsoServer() as server:
+            server.break_form = True
+            self._configure_local_tku_provider(server)
+            assisted = make_login_result(
+                "success",
+                credential_source="browser_assist:config",
+                final_url=server.base_url + "/iportal",
+            )
+            async with tron.aiohttp.ClientSession(cookie_jar=tron.aiohttp.CookieJar(unsafe=True)) as session:
+                host_patch, sso_host_patch, template_patch = self._patch_local_tku_hosts(server)
+                with (
+                    host_patch,
+                    sso_host_patch,
+                    template_patch,
+                    patch.object(tron, "browser_assisted_login", AsyncMock(return_value=assisted)) as browser_login,
+                    patch.object(tron, "log_print"),
+                ):
+                    result = await tron.login(session)
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.credential_source, "browser_assist:config")
+        browser_login.assert_awaited_once()
+
+    async def test_tku_fast_sso_image_validate_failure_falls_back_to_browser_assist(self) -> None:
+        async with FakeTkuSsoServer() as server:
+            server.fail_image_validate = True
+            self._configure_local_tku_provider(server)
+            assisted = make_login_result(
+                "success",
+                credential_source="browser_assist:config",
+                final_url=server.base_url + "/iportal",
+            )
+            async with tron.aiohttp.ClientSession(cookie_jar=tron.aiohttp.CookieJar(unsafe=True)) as session:
+                host_patch, sso_host_patch, template_patch = self._patch_local_tku_hosts(server)
+                with (
+                    host_patch,
+                    sso_host_patch,
+                    template_patch,
+                    patch.object(tron, "browser_assisted_login", AsyncMock(return_value=assisted)) as browser_login,
+                    patch.object(tron, "log_print"),
+                ):
+                    result = await tron.login(session)
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.credential_source, "browser_assist:config")
+        browser_login.assert_awaited_once()
+
+    async def test_tku_fast_sso_api_validation_failure_falls_back_to_browser_assist(self) -> None:
+        async with FakeTkuSsoServer() as server:
+            server.api_redirects_to_sso = True
+            self._configure_local_tku_provider(server)
+            assisted = make_login_result(
+                "success",
+                credential_source="browser_assist:config",
+                final_url=server.base_url + "/iportal",
+            )
+            async with tron.aiohttp.ClientSession(cookie_jar=tron.aiohttp.CookieJar(unsafe=True)) as session:
+                host_patch, sso_host_patch, template_patch = self._patch_local_tku_hosts(server)
+                with (
+                    host_patch,
+                    sso_host_patch,
+                    template_patch,
+                    patch.object(tron, "browser_assisted_login", AsyncMock(return_value=assisted)) as browser_login,
+                    patch.object(tron, "log_print"),
+                ):
+                    result = await tron.login(session)
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.credential_source, "browser_assist:config")
+        self.assertGreaterEqual(server.current_semester_requests, 1)
+        browser_login.assert_awaited_once()
+
+    async def test_tku_login_auto_uses_browser_assist_when_form_parser_fails(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = MagicMock()
+        session.cookie_jar.clear = MagicMock()
+        tron.CONFIG["provider"]["current"] = "tku"
+        tron.CONFIG["auth"]["browser_assisted_login"]["enabled"] = False
+        tron.CONFIG["account"]["user"] = "user1"
+        tron.CONFIG["account"]["passwd"] = "pass1"
+        client = MagicMock()
+        client.fetch_login_form = AsyncMock(
+            side_effect=tron_http.LoginPageChangedError("TKU SSO bootstrap page")
+        )
+        assisted = make_login_result(
+            "success",
+            credential_source="browser_assist:config",
+            final_url="https://iclass.tku.edu.tw/iportal#/",
+        )
+
+        with (
+            patch.object(tron, "TronHttpClient", return_value=client),
+            patch.object(tron, "browser_assisted_login", AsyncMock(return_value=assisted)) as browser_login,
+            patch.object(tron, "log_print"),
+            patch.object(tron, "log", return_value=True),
+        ):
+            result = await tron.login(session)
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.credential_source, "browser_assist:config")
+        browser_login.assert_awaited_once_with(
+            session,
+            user="user1",
+            passwd="pass1",
+            credential_source="config",
+        )
+
+    def test_tku_browser_assisted_login_status_is_provider_auto(self) -> None:
+        tron.CONFIG["provider"]["current"] = "tku"
+        tron.CONFIG["auth"]["browser_assisted_login"]["enabled"] = False
+
+        status = tron.browser_assisted_login_status()
+
+        self.assertTrue(status["enabled"])
+        self.assertFalse(status["configured_enabled"])
+        self.assertTrue(status["auto_for_provider"])
+
+    def test_thu_browser_assisted_login_status_remains_config_opt_in(self) -> None:
+        tron.CONFIG["provider"]["current"] = "thu"
+        tron.CONFIG["auth"]["browser_assisted_login"]["enabled"] = False
+
+        status = tron.browser_assisted_login_status()
+
+        self.assertFalse(status["enabled"])
+        self.assertFalse(status["auto_for_provider"])
 
     async def test_login_disables_verify_ssl_and_retries_on_certificate_error(self) -> None:
         session = MagicMock()
@@ -566,6 +973,7 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(mes_mock.await_count, 1)
 
     async def test_check_rollcall_invokes_radar_for_radar_rollcall(self) -> None:
+        tron.CONFIG["provider"]["current"] = "tku"
         session = MagicMock()
         radar_rollcall = {"is_radar": True, "rollcall_id": 43}
         client = MagicMock()
@@ -966,6 +1374,36 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
             await tron.monitor_loop(session, shutdown_event)
 
         self.assertEqual(login_mock.await_count, 1)
+
+    async def test_monitor_loop_silently_waits_for_fju_manual_cookie(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = MagicMock()
+        shutdown_event = asyncio.Event()
+        sleep_calls = 0
+
+        async def fake_sleep(_event, _seconds):
+            nonlocal sleep_calls
+            sleep_calls += 1
+            if sleep_calls >= 2:
+                shutdown_event.set()
+
+        async def fake_login(_session):
+            result = make_login_result("manual_cookie_required", credential_source="manual_cookie")
+            tron.LAST_LOGIN_RESULT = result
+            return result
+
+        with (
+            patch.object(tron, "login", AsyncMock(side_effect=fake_login)) as login_mock,
+            patch.object(tron, "has_session_cookie", return_value=False),
+            patch.object(tron, "sleep_or_shutdown", AsyncMock(side_effect=fake_sleep)),
+            patch.object(tron, "status_print") as status_print,
+            patch.object(tron, "log_print") as log_print,
+        ):
+            await tron.monitor_loop(session, shutdown_event)
+
+        self.assertEqual(login_mock.await_count, 1)
+        status_print.assert_not_called()
+        log_print.assert_not_called()
 
     async def test_monitor_loop_prints_manual_login_notice_once(self) -> None:
         session = MagicMock()

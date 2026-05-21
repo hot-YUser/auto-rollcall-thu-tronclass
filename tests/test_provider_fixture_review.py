@@ -34,12 +34,12 @@ class ProviderFixtureReviewTest(unittest.TestCase):
         for forbidden in ("password", "token", "cookie=", "raw response", "raw payload", "number code"):
             self.assertNotIn(forbidden, encoded)
 
-    def test_valid_fixture_is_candidate_but_not_daily_ready(self) -> None:
+    def test_valid_fixture_is_candidate_without_promoting_runtime_state(self) -> None:
         report = build_provider_fixture_review("fju", fixture=valid_fixture("fju"))
 
         self.assertEqual(report["status"], "candidate_ready_for_human_review")
         self.assertTrue(report["candidate_ready_for_human_review"])
-        self.assertFalse(report["daily_ready_after_review"])
+        self.assertTrue(report["daily_ready_after_review"])
         self.assertFalse(report["promotes_provider"])
 
     def test_missing_manual_acceptance_blocks_review(self) -> None:

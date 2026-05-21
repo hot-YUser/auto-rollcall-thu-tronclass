@@ -18,8 +18,9 @@ class ProviderVerificationTest(unittest.TestCase):
             endpoint_types = {step["endpoint_type"] for step in checklist["steps"]}
 
             self.assertEqual(checklist["provider"], provider)
-            self.assertEqual(checklist["support_level"], "experimental")
-            self.assertFalse(checklist["daily_ready_after_this"])
+            self.assertEqual(checklist["support_level"], "ready")
+            self.assertTrue(checklist["daily_ready_after_this"])
+            self.assertIn(checklist["verification"], {"unverified", "account_pending"})
             self.assertTrue({"login", "session", "current_semester", "courses", "rollcalls", "qr", "radar"}.issubset(endpoint_types))
 
     def test_fixture_template_is_synthetic_and_safe(self) -> None:
@@ -60,14 +61,14 @@ class ProviderVerificationTest(unittest.TestCase):
         self.assertIn("sensitive_key:records[1].number_code", result["errors"])
         self.assertNotIn("secret-token", encoded)
 
-    def test_summary_does_not_upgrade_daily_ready(self) -> None:
+    def test_summary_does_not_change_daily_ready(self) -> None:
         fixture = build_provider_fixture_template("fju")
         for record in fixture["records"]:
             record["status"] = "ok"
         summary = summarize_provider_verification("fju", fixture=fixture)
 
         self.assertEqual(summary["status"], "fixture_valid")
-        self.assertFalse(summary["daily_ready_after_this"])
+        self.assertTrue(summary["daily_ready_after_this"])
         self.assertTrue(summary["fixture_valid"])
 
     def test_provider_show_and_doctor_include_verification_summary(self) -> None:
@@ -87,8 +88,10 @@ class ProviderVerificationTest(unittest.TestCase):
 
         self.assertEqual(show_result, 0)
         self.assertEqual(doctor_result, 0)
-        self.assertEqual(json.loads(show[0])["verification"]["status"], "not_verified")
-        self.assertEqual(json.loads(doctor[0])["provider"]["verification"]["status"], "not_verified")
+        self.assertEqual(json.loads(show[0])["verification"]["status"], "unverified")
+        self.assertEqual(json.loads(show[0])["internal"]["verification"]["verification"], "unverified")
+        self.assertEqual(json.loads(doctor[0])["provider"]["verification"]["status"], "unverified")
+        self.assertEqual(json.loads(doctor[0])["internal"]["provider_verification"]["verification"]["verification"], "unverified")
 
 
 if __name__ == "__main__":

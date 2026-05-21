@@ -45,6 +45,11 @@ def effective_config_now_value(config: ctx.Mapping[str, ctx.Any] | None = None) 
     return ctx.normalize_text(ctx.infer_single_account_now(simple))
 
 
+def display_config_now_value(value: ctx.Any, config: ctx.Mapping[str, ctx.Any] | None = None) -> str:
+    text = ctx.normalize_text(value)
+    return text or "-"
+
+
 def reload_config_after_editor() -> ctx.Dict[str, ctx.Any]:
     ctx.CONFIG_BOOTSTRAPPED = False
     config = ctx.bootstrap_config(force=True)
@@ -97,7 +102,7 @@ async def watch_any_key_to_edit_config(shutdown_event: ctx.asyncio.Event, sessio
         after = effective_config_now_value(ctx.CONFIG)
         ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status="transient_error", credential_source="config_reload")
         if after != before:
-            ctx.log_print("設定 now 已變更為 `{}`，將清除目前 session 並套用新設定。".format(after or "-"))
+            ctx.log_print("設定 now 已變更為 `{}`，將清除目前 session 並套用新設定。".format(display_config_now_value(after, ctx.CONFIG)))
             try:
                 if session is not None:
                     session.cookie_jar.clear()

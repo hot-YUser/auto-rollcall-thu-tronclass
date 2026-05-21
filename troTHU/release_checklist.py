@@ -23,6 +23,7 @@ except ImportError:  # pragma: no cover
 
 FORBIDDEN_ARTIFACT_NAMES = (
     "config.yaml",
+    "config.advanced.yaml",
     "state",
     "log",
     "cookies",
@@ -261,6 +262,7 @@ def build_release_build_plan(base_dir: Path, *, dist_dir: Path | None = None) ->
         ],
         "forbidden_outputs": [
             "config.yaml",
+            "config.advanced.yaml",
             "state_directory",
             "log_directory",
             "cookies",
@@ -290,11 +292,11 @@ def _readme_report(path: Path) -> Dict[str, Any]:
     lowered = text.lower()
     checks = [
         _check("README exists", path.exists(), path.name, severity="warn"),
-        _check("README alpha status", "v1.1-alpha.2" in text or "alpha" in text.lower(), "alpha status documented", severity="warn"),
+        _check("README alpha status", "v1.1-alpha.3" in text or "alpha" in text.lower(), "alpha status documented", severity="warn"),
         _check("README release-check", "release-check" in text, "release-check documented", severity="warn"),
         _check("README monitor console quickstart", "監控 console" in text and "run --no-input" in text, "monitor console quickstart documented", severity="warn"),
         _check("README current bot docs", "HTTP Interactions" in text and "optional Gateway" in text, "current Discord entrypoints documented", severity="warn"),
-        _check("README provider scope", "FJU/TKU" in text and "experimental" in lowered, "FJU/TKU experimental provider scope documented", severity="warn"),
+        _check("README provider scope", "THU / TKU" in text and "fast SSO" in text and "provider.allow_experimental" in text, "THU/TKU provider scope documented", severity="warn"),
         _check("README no stale stable-version advice", "建議優先使用上一個正式版" not in text and "v0.2.8" not in text, "no obsolete v0.2.8 recommendation", severity="warn"),
     ]
     return {"exists": path.exists(), "file": path.name, "checks": checks, "status": _overall_status(checks)}

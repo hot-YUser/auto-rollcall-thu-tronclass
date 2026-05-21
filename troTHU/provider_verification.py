@@ -1,7 +1,8 @@
 """Safe provider verification checklist and fixture helpers.
 
-FJU/TKU verification is intentionally manual and sanitized. These helpers never
-store raw responses, credentials, cookies, QR contents, or number answers.
+FJU/TKU verification is an internal sanitized ledger. These helpers never store
+raw responses, credentials, cookies, QR contents, or number answers, and they do
+not change the user-level ready state.
 """
 
 from __future__ import annotations
@@ -17,7 +18,8 @@ except ImportError:  # pragma: no cover
 
 
 FIXTURE_VERSION = "provider-fixture-v1"
-ALLOWED_PROVIDERS = {"fju", "tku"}
+VERIFICATION_VALUES = {"verified", "account_pending", "unverified"}
+PENDING_VERIFICATION_VALUES = {"account_pending", "unverified"}
 SAFE_ENDPOINT_TYPES = {"login", "session", "current_semester", "courses", "rollcalls", "qr", "radar"}
 SAFE_STATUSES = {"ok", "skipped", "failed", "warning", "unsupported", "not_tested"}
 SENSITIVE_KEY_RE = re.compile(
@@ -48,6 +50,30 @@ def _provider_config(provider: Any) -> Dict[str, Any]:
 
 def _provider_key(provider: Any) -> str:
     return str(_provider_config(provider).get("key") or DEFAULT_PROVIDER).lower()
+
+
+def provider_verification_value(provider: Any) -> str:
+    raw_value = _provider_config(provider).get("verification")
+    if isinstance(raw_value, Mapping):
+        raw_value = raw_value.get("verification") or raw_value.get("status")
+    value = str(raw_value or "unverified").strip().lower()
+    return value if value in VERIFICATION_VALUES else "unverified"
+
+
+def provider_requires_verification(provider: Any) -> bool:
+    return _provider_key(provider) in {"fju", "tku"} and provider_verification_value(provider) in PENDING_VERIFICATION_VALUES
+
+
+def provider_verification_scope() -> set[str]:
+    return {
+        item.key
+        for item in (get_provider("fju"), get_provider("tku"))
+        if provider_requires_verification(item)
+    }
+
+
+# Back-compat alias for callers/tests that still refer to "allowed providers".
+ALLOWED_PROVIDERS = provider_verification_scope()
 
 
 def _safe_text(value: Any, *, limit: int = 120) -> str:
@@ -101,10 +127,11 @@ def _checklist_step(step_id: str, title: str, endpoint_type: str, *, expected_fi
 
 
 def build_provider_verification_checklist(provider: Any, *, config: Mapping[str, Any] | None = None) -> Dict[str, Any]:
-    """Build a manual verification checklist for FJU/TKU experimental providers."""
+    """Build a manual verification checklist for the internal FJU/TKU ledger."""
     provider_config = _provider_config(provider)
     key = str(provider_config.get("key") or DEFAULT_PROVIDER)
     support = provider_support_report(provider_config, allow_experimental=False)
+    verification = provider_verification_value(provider_config)
     capabilities = provider_config.get("capabilities", {})
     if not isinstance(capabilities, Mapping):
         capabilities = {}
@@ -132,7 +159,8 @@ def build_provider_verification_checklist(provider: Any, *, config: Mapping[str,
         "provider": key,
         "label": str(provider_config.get("label") or key),
         "support_level": support.get("support_level"),
-        "daily_ready_after_this": False,
+        "verification": verification,
+        "daily_ready_after_this": bool(support.get("daily_ready")),
         "fixture_version": FIXTURE_VERSION,
         "steps": steps,
         "forbidden_outputs": [
@@ -144,8 +172,8 @@ def build_provider_verification_checklist(provider: Any, *, config: Mapping[str,
             "number_code_answer",
         ],
         "notes": [
-            "manual_verification_only",
-            "does_not_upgrade_daily_ready",
+            "internal_verification_ledger_only",
+            "does_not_change_user_runtime_ready_state",
             "store_only_sanitized_fixture",
         ],
     }
@@ -169,7 +197,8 @@ def build_provider_fixture_template(provider: Any) -> Dict[str, Any]:
     return {
         "version": FIXTURE_VERSION,
         "provider": key,
-        "support_level": str(provider_config.get("support_level") or provider_config.get("status") or "experimental"),
+        "support_level": str(provider_config.get("support_level") or provider_config.get("status") or "ready"),
+        "verification": provider_verification_value(provider_config),
         "source": "synthetic_sanitized_template",
         "records": records,
         "manual_acceptance": {
@@ -218,8 +247,8 @@ def validate_provider_fixture(value: Any, *, provider: str = "") -> Dict[str, An
     provider_key = str(value.get("provider") or provider or "").strip().lower()
     if provider and provider_key != str(provider).strip().lower():
         errors.append("provider_mismatch")
-    if provider_key not in ALLOWED_PROVIDERS:
-        errors.append("provider_not_fju_tku")
+    if not provider_requires_verification(provider_key):
+        errors.append("provider_not_in_verification_scope")
     records = value.get("records")
     if not isinstance(records, list) or not records:
         errors.append("records_missing")
@@ -257,19 +286,32 @@ def summarize_provider_verification(provider: Any, *, fixture: Any = None) -> Di
     """Return provider verification state without changing support level."""
     provider_config = _provider_config(provider)
     key = str(provider_config.get("key") or DEFAULT_PROVIDER)
+    verification = provider_verification_value(provider_config)
+    support = provider_support_report(provider_config, allow_experimental=False)
     if fixture is None:
+        if verification == "verified":
+            return {
+                "provider": key,
+                "status": "verified",
+                "verification": verification,
+                "daily_ready_after_this": bool(support.get("daily_ready")),
+                "fixture_valid": False,
+                "warnings": ["provider_verification_already_verified"],
+            }
         return {
             "provider": key,
-            "status": "not_verified" if key in ALLOWED_PROVIDERS else "not_required",
-            "daily_ready_after_this": False,
+            "status": verification,
+            "verification": verification,
+            "daily_ready_after_this": bool(support.get("daily_ready")),
             "fixture_valid": False,
-            "warnings": [] if key in ALLOWED_PROVIDERS else ["primary_provider_ready_path"],
+            "warnings": [],
         }
     validation = validate_provider_fixture(fixture, provider=key)
     return {
         "provider": key,
         "status": validation["status"],
-        "daily_ready_after_this": False,
+        "verification": verification,
+        "daily_ready_after_this": bool(support.get("daily_ready")),
         "fixture_valid": bool(validation["ok"]),
         "record_count": validation.get("record_count", 0),
         "errors": validation.get("errors", []),

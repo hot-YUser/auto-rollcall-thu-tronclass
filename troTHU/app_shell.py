@@ -520,7 +520,7 @@ def create_app_shell(
             "qr_fanout": "python -m troTHU.tron qr paste --all --yes <QR_URL_OR_PAYLOAD>",
             "webview_import": "python -m troTHU.tron webview import --input cookies.json --profile default --save --json",
             "reauth": "python -m troTHU.tron bot serve --adapter generic",
-            "provider_verify": "python -m troTHU.tron provider verify-checklist fju --json",
+            "provider_verify": "python -m troTHU.tron provider verify-checklist tku --json",
             "release_check": "python -m troTHU.tron release-check --json",
         }
         template = templates.get(action) or "python -m troTHU.tron status --json"

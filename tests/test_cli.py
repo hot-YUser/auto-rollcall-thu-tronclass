@@ -163,7 +163,20 @@ class TronCliSmokeTest(unittest.TestCase):
 
         self.assertEqual(result, 0)
         payload = json.loads(outputs[0])
-        self.assertEqual({item["key"] for item in payload["providers"]}, {"thu", "fju", "tku"})
+        self.assertEqual({item["key"] for item in payload["providers"]}, {"thu", "tku"})
+        self.assertFalse(payload["include_hidden"])
+
+    def test_provider_list_all_json_includes_hidden_fju(self) -> None:
+        outputs = []
+        with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):
+            result = tron.main(["provider", "list", "--all", "--json"])
+
+        self.assertEqual(result, 0)
+        payload = json.loads(outputs[0])
+        providers = {item["key"]: item for item in payload["providers"]}
+        self.assertEqual(set(providers), {"thu", "fju", "tku"})
+        self.assertFalse(providers["fju"]["user_visible"])
+        self.assertTrue(providers["fju"]["capabilities"]["radar"])
 
     def test_provider_show_json_command_dispatches(self) -> None:
         outputs = []
@@ -173,8 +186,13 @@ class TronCliSmokeTest(unittest.TestCase):
         self.assertEqual(result, 0)
         payload = json.loads(outputs[0])
         self.assertEqual(payload["key"], "fju")
-        self.assertEqual(payload["support"]["support_level"], "experimental")
-        self.assertEqual(payload["verification"]["status"], "not_verified")
+        self.assertEqual(payload["auth_flow"], "manual_cookie_only")
+        self.assertFalse(payload["user_visible"])
+        self.assertTrue(payload["capabilities"]["radar"])
+        self.assertEqual(payload["support"]["support_level"], "ready")
+        self.assertTrue(payload["support"]["daily_ready"])
+        self.assertEqual(payload["verification"]["status"], "unverified")
+        self.assertEqual(payload["internal"]["verification"]["verification"], "unverified")
         self.assertEqual(payload["ready_gate"]["status"], "blocked")
 
     def test_provider_verify_checklist_and_fixture_template_dispatch(self) -> None:
@@ -323,7 +341,8 @@ class TronCliSmokeTest(unittest.TestCase):
         payload = json.loads(outputs[0])
         self.assertEqual(payload["version"], "real-validation-v1")
         self.assertIn("cases", payload)
-        self.assertEqual(payload["provider_scope"]["fju"]["support_level"], "experimental")
+        self.assertEqual(payload["provider_scope"]["fju"]["support_level"], "ready")
+        self.assertEqual(payload["provider_scope"]["fju"]["verification"], "unverified")
 
     def test_validation_record_and_summary_json_commands_dispatch(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -366,7 +385,7 @@ class TronCliSmokeTest(unittest.TestCase):
         self.assertIn("bot_sandbox", payload["checks"])
         self.assertEqual(payload["checks"]["bot_sandbox"], "ok")
 
-    def test_run_rejects_experimental_provider_without_allow_flag(self) -> None:
+    def test_run_allows_fju_provider_without_experimental_flag(self) -> None:
         tron.CONFIG.clear()
         tron.CONFIG.update(
             tron.normalize_config(
@@ -378,13 +397,15 @@ class TronCliSmokeTest(unittest.TestCase):
         )
         with (
             patch.object(tron, "bootstrap_config"),
-            patch.object(tron, "app_main") as app_main,
+            patch.object(tron, "ensure_config_now_or_open_editor", return_value={"ok": True}),
+            patch.object(tron.time, "sleep"),
+            patch.object(tron, "app_main", new=AsyncMock()) as app_main,
             patch("builtins.print"),
         ):
             result = tron.main(["run"])
 
-        self.assertEqual(result, 1)
-        app_main.assert_not_called()
+        self.assertEqual(result, 0)
+        app_main.assert_called_once()
 
     def test_app_blueprint_text_command_dispatches(self) -> None:
         outputs = []

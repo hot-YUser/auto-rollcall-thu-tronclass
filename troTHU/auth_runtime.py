@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from urllib.parse import urlparse
+
 try:  # pragma: no cover - package import path
     import troTHU.runtime_context as ctx
 except ImportError:  # pragma: no cover - direct script fallback
@@ -89,7 +91,41 @@ def get_login_retry_delay(attempt_index: int) -> float:
 
 
 def should_auto_login_without_session() -> bool:
-    return ctx.LAST_LOGIN_RESULT.status not in {'missing_credentials', 'rejected'}
+    return ctx.LAST_LOGIN_RESULT.status not in {'manual_cookie_required', 'missing_credentials', 'rejected'}
+
+
+def redacted_login_user(user: ctx.Any) -> str:
+    return ctx.normalize_text(user)
+
+
+def masked_login_user(user: ctx.Any) -> str:
+    return ctx.normalize_text(user)
+
+
+BROWSER_ASSIST_AUTH_FLOWS = {
+    'browser_sso',
+    'oidc_browser',
+    'sso_browser',
+    'tku_sso_browser',
+}
+
+
+def provider_requires_manual_cookie_login() -> bool:
+    try:
+        provider = ctx.get_active_provider_config()
+    except Exception:
+        provider = {}
+    auth_flow = ctx.normalize_text(provider.get('auth_flow') if isinstance(provider, dict) else '').lower()
+    return auth_flow == 'manual_cookie_only'
+
+
+def provider_prefers_browser_assisted_login() -> bool:
+    try:
+        provider = ctx.get_active_provider_config()
+    except Exception:
+        provider = {}
+    auth_flow = ctx.normalize_text(provider.get('auth_flow') if isinstance(provider, dict) else '').lower()
+    return auth_flow in BROWSER_ASSIST_AUTH_FLOWS
 
 
 def get_browser_assisted_login_config() -> ctx.Dict[str, ctx.Any]:
@@ -103,6 +139,10 @@ def get_browser_assisted_login_config() -> ctx.Dict[str, ctx.Any]:
     }
 
 
+def should_try_browser_assisted_login() -> bool:
+    return bool(ctx.get_browser_assisted_login_config().get('enabled') or ctx.provider_prefers_browser_assisted_login())
+
+
 def browser_assisted_login_available() -> bool:
     try:
         return ctx.importlib.util.find_spec('playwright.async_api') is not None
@@ -112,20 +152,103 @@ def browser_assisted_login_available() -> bool:
 
 def browser_assisted_login_status() -> ctx.Dict[str, ctx.Any]:
     config = ctx.get_browser_assisted_login_config()
+    auto_for_provider = ctx.provider_prefers_browser_assisted_login()
     return {
-        'enabled': bool(config.get('enabled')),
+        'enabled': bool(config.get('enabled') or auto_for_provider),
+        'configured_enabled': bool(config.get('enabled')),
+        'auto_for_provider': bool(auto_for_provider),
         'playwright_available': ctx.browser_assisted_login_available(),
         'headless': bool(config.get('headless')),
         'timeout_ms': int(config.get('timeout_ms', 0) or 0),
-        'mode': 'opt_in_session_cookie_import',
+        'mode': 'provider_auto_or_opt_in_session_cookie_import',
         'stores_headers': False,
         'stores_body': False,
     }
 
 
+def _browser_cookie_response_url(cookie: ctx.Mapping[str, ctx.Any], fallback_url: str) -> ctx.Any:
+    try:
+        from yarl import URL
+    except Exception:
+        return None
+    domain = ctx.normalize_text(cookie.get('domain')).lstrip('.')
+    if not domain:
+        try:
+            domain = urlparse(fallback_url).hostname or ''
+        except Exception:
+            domain = ''
+    if not domain:
+        return None
+    path = ctx.normalize_text(cookie.get('path')) or '/'
+    if not path.startswith('/'):
+        path = '/' + path
+    return URL('https://{}{}'.format(domain, path))
+
+
+def _browser_assisted_expected_host(endpoints: ctx.Any) -> str:
+    host = ctx.normalize_text(getattr(endpoints, 'session_cookie_domain', ''))
+    if host:
+        return host
+    try:
+        return ctx.normalize_text(urlparse(str(getattr(endpoints, 'base_url', ''))).hostname)
+    except Exception:
+        return ''
+
+
+def _browser_assisted_iportal_url(endpoints: ctx.Any) -> str:
+    base_url = ctx.normalize_text(getattr(endpoints, 'base_url', '')).rstrip('/')
+    if not base_url:
+        return ''
+    return '{}/iportal'.format(base_url)
+
+
+def _session_user_agent(session: ctx.Any) -> str:
+    headers = getattr(session, '_default_headers', {}) or {}
+    try:
+        return ctx.normalize_text(headers.get('User-Agent') or headers.get('user-agent'))
+    except Exception:
+        return ''
+
+
+def _set_session_user_agent(session: ctx.Any, user_agent: str) -> None:
+    if not user_agent:
+        return
+    try:
+        headers = getattr(session, '_default_headers', None)
+        if headers is not None:
+            headers['User-Agent'] = user_agent
+    except Exception:
+        pass
+
+
+async def _wait_for_browser_assisted_navigation(page: ctx.Any, endpoints: ctx.Any, timeout_ms: int) -> None:
+    expected_host = _browser_assisted_expected_host(endpoints)
+    wait_timeout = max(1000, min(int(timeout_ms or 45000), 45000))
+    if expected_host:
+        try:
+            await page.wait_for_url('**://{}**'.format(expected_host), timeout=wait_timeout)
+        except Exception:
+            pass
+        try:
+            current_host = ctx.normalize_text(urlparse(str(page.url)).hostname)
+        except Exception:
+            current_host = ''
+        target_url = _browser_assisted_iportal_url(endpoints)
+        if target_url and current_host != expected_host:
+            try:
+                await page.goto(target_url, wait_until='domcontentloaded', timeout=wait_timeout)
+                await page.wait_for_url('**://{}**'.format(expected_host), timeout=wait_timeout)
+            except Exception:
+                pass
+    try:
+        await page.wait_for_load_state('networkidle', timeout=wait_timeout)
+    except Exception:
+        await page.wait_for_timeout(1000)
+
+
 async def browser_assisted_login(session: ctx.aiohttp.ClientSession, *, user: str, passwd: str, credential_source: str) -> ctx.LoginResult:
     config = ctx.get_browser_assisted_login_config()
-    if not config.get('enabled'):
+    if not ctx.should_try_browser_assisted_login():
         return ctx.LoginResult(status='browser_assist_disabled', credential_source=credential_source, user=user)
     if not ctx.browser_assisted_login_available():
         return ctx.LoginResult(status='browser_assist_unavailable', credential_source=credential_source, user=user)
@@ -139,17 +262,16 @@ async def browser_assisted_login(session: ctx.aiohttp.ClientSession, *, user: st
     try:
         async with async_playwright() as playwright:
             browser = await playwright.chromium.launch(headless=bool(config.get('headless')))
-            context = await browser.new_context()
+            browser_user_agent = _session_user_agent(session) or ctx.random_ua()
+            _set_session_user_agent(session, browser_user_agent)
+            context = await browser.new_context(user_agent=browser_user_agent)
             page = await context.new_page()
             timeout_ms = int(config.get('timeout_ms') or 45000)
             await page.goto(str(endpoints.login_url), wait_until='domcontentloaded', timeout=timeout_ms)
             await page.locator('input[name="username"], input#username').first.fill(user, timeout=timeout_ms)
             await page.locator('input[name="password"], input#password').first.fill(passwd, timeout=timeout_ms)
             await page.locator('button[type="submit"], input[type="submit"]').first.click(timeout=timeout_ms)
-            try:
-                await page.wait_for_load_state('networkidle', timeout=timeout_ms)
-            except Exception:
-                await page.wait_for_timeout(1000)
+            await _wait_for_browser_assisted_navigation(page, endpoints, timeout_ms)
             final_url = str(page.url)
             cookies = await context.cookies()
             await browser.close()
@@ -167,7 +289,11 @@ async def browser_assisted_login(session: ctx.aiohttp.ClientSession, *, user: st
         name = ctx.normalize_text(cookie.get('name'))
         value = ctx.normalize_text(cookie.get('value'))
         if name and value:
-            session.cookie_jar.update_cookies({name: value})
+            response_url = _browser_cookie_response_url(cookie, final_url)
+            if response_url is not None:
+                session.cookie_jar.update_cookies({name: value}, response_url=response_url)
+            else:
+                session.cookie_jar.update_cookies({name: value})
     if not ctx.has_session_cookie(session):
         return ctx.LoginResult(status='browser_assist_missing_session', credential_source=credential_source, user=user, final_url=final_url)
     ctx.CONFIG['account']['user'] = user
@@ -216,6 +342,57 @@ def create_tron_http_client(session: ctx.aiohttp.ClientSession, request_ssl: ctx
     return ctx.TronHttpClient(session, request_ssl=request_ssl, endpoints=ctx.get_active_http_endpoints())
 
 
+async def validate_login_api_session(client: ctx.Any) -> None:
+    await client.fetch_current_semester()
+
+
+async def fallback_to_browser_assisted_login(
+    session: ctx.aiohttp.ClientSession,
+    *,
+    user: str,
+    passwd: str,
+    credential_source: str,
+    reason: str,
+    error: ctx.Any = None,
+) -> ctx.LoginResult:
+    ctx.log(
+        event='login_browser_assist',
+        status='started',
+        message=reason,
+        error=error,
+        extra={
+            'credential_source': credential_source,
+            'user': user,
+            'auto_for_provider': ctx.provider_prefers_browser_assisted_login(),
+        },
+    )
+    assisted = await ctx.browser_assisted_login(
+        session,
+        user=user,
+        passwd=passwd,
+        credential_source=credential_source,
+    )
+    ctx.LAST_LOGIN_RESULT = assisted
+    if assisted.ok:
+        ctx.log(
+            event='login_success',
+            status='success',
+            url=assisted.final_url,
+            message='Browser-assisted login succeeded.',
+            extra={'credential_source': assisted.credential_source, 'user': user},
+        )
+        ctx.log_print('登入成功！綁定帳號：{}'.format(user))
+    else:
+        ctx.log(
+            event='login_failure',
+            status=assisted.status,
+            message='Browser-assisted login failed.',
+            error=assisted.error,
+            extra={'credential_source': credential_source, 'user': user},
+        )
+    return ctx.record_login_runtime(assisted)
+
+
 def record_login_runtime(result: ctx.LoginResult) -> ctx.LoginResult:
     try:
         ctx.mark_login_result(ctx.BASE_DIR, ctx.get_active_profile(ctx.CONFIG).name, result)
@@ -230,6 +407,21 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
         if blocked is not None:
             ctx.LAST_LOGIN_RESULT = blocked
             return ctx.record_login_runtime(blocked)
+    if ctx.provider_requires_manual_cookie_login():
+        active_profile = ctx.get_active_profile(ctx.CONFIG)
+        if ctx.has_session_cookie(session):
+            result = ctx.LoginResult(status='success', credential_source='manual_cookie', user=active_profile.user)
+            ctx.LAST_LOGIN_RESULT = result
+            return ctx.record_login_runtime(result)
+        result = ctx.LoginResult(status='manual_cookie_required', credential_source='manual_cookie', user=active_profile.user)
+        ctx.log(
+            event='login_skipped',
+            status='manual_cookie_required',
+            message='Provider requires a manually supplied session cookie; password login is disabled.',
+            extra={'provider': ctx.get_active_provider_key(), 'user': active_profile.user},
+        )
+        ctx.LAST_LOGIN_RESULT = result
+        return ctx.record_login_runtime(result)
     user, passwd, credential_source = ctx.resolve_credentials()
     if not ctx.has_real_credential(user) or not ctx.has_real_credential(passwd):
         ctx.log(event='login_failure', status='missing_credentials', message='尚未設定可用帳號密碼。', extra={'credential_source': credential_source})
@@ -248,21 +440,29 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
                 form = await client.fetch_login_form()
                 outcome = await client.submit_login(form, user, passwd)
             except ctx.LoginPageChangedError as exc:
-                if ctx.get_browser_assisted_login_config().get('enabled'):
-                    ctx.log(event='login_browser_assist', status='started', message='Login form changed; trying opt-in browser-assisted login.', error=exc, extra={'credential_source': credential_source, 'user': user})
-                    assisted = await ctx.browser_assisted_login(session, user=user, passwd=passwd, credential_source=credential_source)
-                    ctx.LAST_LOGIN_RESULT = assisted
-                    if assisted.ok:
-                        ctx.log(event='login_success', status='success', url=assisted.final_url, message='Browser-assisted login succeeded.', extra={'credential_source': assisted.credential_source, 'user': user})
-                        ctx.log_print('登入成功！綁定學號：{}'.format(user))
-                    else:
-                        ctx.log(event='login_failure', status=assisted.status, message='Browser-assisted login failed.', error=assisted.error, extra={'credential_source': credential_source, 'user': user})
-                    return ctx.record_login_runtime(assisted)
+                if ctx.should_try_browser_assisted_login():
+                    return await ctx.fallback_to_browser_assisted_login(
+                        session,
+                        user=user,
+                        passwd=passwd,
+                        credential_source=credential_source,
+                        reason='Login form changed or TKU fast SSO failed; trying browser-assisted login.',
+                        error=exc,
+                    )
                 ctx.log(event='login_failure', status='login_page_changed', message='登入頁結構已更改。', error=exc, extra={'credential_source': credential_source, 'user': user})
                 ctx.log_print('登入頁結構已更改，可在 config.advanced.yaml 啟用 auth.browser_assisted_login 作為 opt-in 後備。')
                 ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='login_page_changed', credential_source=credential_source, user=user, error=ctx.normalize_text(exc))
                 return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
-            except ctx.LoginRejectedError:
+            except ctx.LoginRejectedError as exc:
+                if ctx.provider_prefers_browser_assisted_login():
+                    return await ctx.fallback_to_browser_assisted_login(
+                        session,
+                        user=user,
+                        passwd=passwd,
+                        credential_source=credential_source,
+                        reason='TKU fast SSO rejected or changed; trying browser-assisted login.',
+                        error=exc,
+                    )
                 ctx.log(event='login_failure', status='rejected', message='登入失敗，帳號密碼被拒絕。', extra={'credential_source': credential_source, 'user': user})
                 ctx.log_print('登入失敗，請檢查帳號或密碼是否正確。')
                 ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='rejected', credential_source=credential_source, user=user)
@@ -272,28 +472,47 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
                     ssl_fallback_attempted = True
                     ctx.enable_insecure_ssl_fallback(exc)
                     continue
+                if ctx.provider_prefers_browser_assisted_login():
+                    return await ctx.fallback_to_browser_assisted_login(
+                        session,
+                        user=user,
+                        passwd=passwd,
+                        credential_source=credential_source,
+                        reason='TKU fast SSO encountered an HTTP error; trying browser-assisted login.',
+                        error=exc,
+                    )
                 ctx.log(event='login_failure', status='transient_error', message='登入過程發生錯誤。', error=exc, extra={'credential_source': credential_source, 'user': user})
                 ctx.log_print('登入過程中發生錯誤: {}'.format(exc))
                 ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='transient_error', credential_source=credential_source, user=user, error=ctx.normalize_text(exc))
                 return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
             if not outcome.has_session or not ctx.has_session_cookie(session):
-                if ctx.get_browser_assisted_login_config().get('enabled'):
-                    ctx.log(event='login_browser_assist', status='started', message='Normal login did not yield a session; trying opt-in browser-assisted login.', extra={'credential_source': credential_source, 'user': user})
-                    assisted = await ctx.browser_assisted_login(session, user=user, passwd=passwd, credential_source=credential_source)
-                    ctx.LAST_LOGIN_RESULT = assisted
-                    if assisted.ok:
-                        ctx.log(event='login_success', status='success', url=assisted.final_url, message='Browser-assisted login succeeded.', extra={'credential_source': assisted.credential_source, 'user': user})
-                        ctx.log_print('登入成功！綁定學號：{}'.format(user))
-                    else:
-                        ctx.log(event='login_failure', status=assisted.status, message='Browser-assisted login failed.', error=assisted.error, extra={'credential_source': credential_source, 'user': user})
-                    return ctx.record_login_runtime(assisted)
+                if ctx.should_try_browser_assisted_login():
+                    return await ctx.fallback_to_browser_assisted_login(
+                        session,
+                        user=user,
+                        passwd=passwd,
+                        credential_source=credential_source,
+                        reason='Login did not yield a valid session; trying browser-assisted login.',
+                    )
                 ctx.log(event='login_failure', status='missing_session', url=outcome.final_url, message='登入流程完成，但未取得有效 session。', extra={'credential_source': credential_source, 'user': user})
                 ctx.log_print('登入流程已完成，但未取得有效 session。')
                 ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='missing_session', credential_source=credential_source, user=user, final_url=outcome.final_url)
                 return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
+            if ctx.provider_prefers_browser_assisted_login():
+                try:
+                    await ctx.validate_login_api_session(client)
+                except (ctx.TronHttpError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError, ctx.ssl.SSLError) as exc:
+                    return await ctx.fallback_to_browser_assisted_login(
+                        session,
+                        user=user,
+                        passwd=passwd,
+                        credential_source=credential_source,
+                        reason='TKU fast SSO session failed API validation; trying browser-assisted login.',
+                        error=exc,
+                    )
             ctx.CONFIG['account']['user'] = user
             ctx.log(event='login_success', status='success', url=outcome.final_url, message='登入成功。', extra={'credential_source': credential_source, 'user': user})
-            ctx.log_print('登入成功！綁定學號：{}'.format(user))
+            ctx.log_print('登入成功！綁定帳號：{}'.format(user))
             try:
                 active_profile = ctx.get_active_profile(ctx.CONFIG)
                 if ctx.cookie_cache_enabled(ctx.CONFIG):

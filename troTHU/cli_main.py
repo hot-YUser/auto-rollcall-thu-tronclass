@@ -113,7 +113,10 @@ def main(argv: ctx.Optional[ctx.List[str]]=None) -> int:
     if args.command == 'provider':
         provider_command = getattr(args, 'provider_command', None) or 'list'
         if provider_command == 'list':
-            return ctx.provider_list_command(json_output=getattr(args, 'json', False))
+            return ctx.provider_list_command(
+                json_output=getattr(args, 'json', False),
+                include_hidden=getattr(args, 'all', False),
+            )
         if provider_command == 'show':
             return ctx.provider_show_command(getattr(args, 'name', ''), json_output=getattr(args, 'json', False))
         if provider_command == 'verify-checklist':

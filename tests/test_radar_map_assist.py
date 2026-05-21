@@ -56,13 +56,17 @@ class RadarMapAssistTest(unittest.TestCase):
         self.assertFalse(invalid["ok"])
         self.assertEqual(invalid["reason"], "invalid_coordinate")
 
-    def test_experimental_provider_adds_warning_without_failure(self) -> None:
-        config = tron.normalize_config({"provider": {"current": "fju", "allow_experimental": True}})
-        model = build_radar_map_assist(config)
+    def test_tku_and_fju_share_radar_capability_without_warning(self) -> None:
+        tku = build_radar_map_assist(tron.normalize_config({"provider": {"current": "tku"}}))
+        config = tron.normalize_config({"provider": {"current": "fju"}})
+        fju = build_radar_map_assist(config)
 
-        self.assertEqual(model["provider"], "fju")
-        self.assertEqual(model["support_level"], "experimental")
-        self.assertIn("provider_not_daily_ready", model["warnings"])
+        for model in (tku, fju):
+            self.assertEqual(model["support_level"], "ready")
+            self.assertTrue(model["daily_ready"])
+            self.assertTrue(model["capabilities"]["radar"])
+            self.assertNotIn("provider_radar_capability_unknown", model["warnings"])
+            self.assertNotIn("provider_not_daily_ready", model["warnings"])
 
     def test_summary_formatter_is_stable(self) -> None:
         lines = format_radar_map_assist_summary(build_radar_map_assist(make_config()))

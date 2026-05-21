@@ -21,7 +21,7 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
     headers = {'User-Agent': ctx.random_ua()}
     fatal_error: ctx.Optional[BaseException] = None
     last_transient_error: ctx.Optional[BaseException] = None
-    request_url = '{}/api/rollcall/{}/answer_number_rollcall'.format(ctx.TRON, rcid)
+    request_url = '{}/api/rollcall/{}/answer_number_rollcall'.format(ctx.get_active_http_endpoints().base_url.rstrip('/'), rcid)
     latest_try_code = '----'
     number_config = ctx.get_number_config()
     default_number_config = ctx.DEFAULT_CONFIG['number']

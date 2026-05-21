@@ -86,6 +86,7 @@ def build_arg_parser() -> ctx.argparse.ArgumentParser:
     provider_subcommands = provider_parser.add_subparsers(dest='provider_command')
     provider_list = provider_subcommands.add_parser('list', help='list supported providers')
     provider_list.add_argument('--json', action='store_true', help='print JSON')
+    provider_list.add_argument('--all', action='store_true', help='include hidden/internal providers')
     provider_show = provider_subcommands.add_parser('show', help='show one provider')
     provider_show.add_argument('name', nargs='?', default='', help='provider key; defaults to active')
     provider_show.add_argument('--json', action='store_true', help='print JSON')

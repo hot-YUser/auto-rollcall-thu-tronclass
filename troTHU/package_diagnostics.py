@@ -7,11 +7,12 @@ from typing import Any, Dict, Iterable, List, Mapping, Sequence
 
 
 PROJECT_NAME = "auto-rollcall-thu-tronclass"
-PROJECT_VERSION = "1.1.0a2"
+PROJECT_VERSION = "1.1.0a3"
 SPEC_NAME = "auto-rollcall-thu-tronclass.spec"
 FORBIDDEN_BUNDLE_NAMES = (
     ".codex-worklog.md",
     "config.yaml",
+    "config.advanced.yaml",
     "state",
     "log",
     "cookies",

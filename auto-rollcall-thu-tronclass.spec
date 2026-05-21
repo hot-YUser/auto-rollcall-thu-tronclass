@@ -21,7 +21,7 @@ def safe_collect_submodules(package_name):
 # config.yaml next to itself on first run, and runtime folders such as state/,
 # log/, cookies/, tests/, and external reference projects must never be bundled.
 # Keep HIDDEN_IMPORTS in sync with `python -m troTHU.tron package-check --json`;
-# v1.1-alpha.2 requires the doctor connection probe module in frozen builds.
+# v1.1-alpha.3 requires the doctor connection probe module in frozen builds.
 DATAS = []
 
 HIDDEN_IMPORTS = sorted(

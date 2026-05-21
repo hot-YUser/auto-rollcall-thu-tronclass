@@ -40,6 +40,7 @@ state/
 cookies/
 config-full-backup-*.yaml
 config-legacy-backup-*.yaml
+config-broken-*.yaml
 
 # Local release/build artifacts. Rebuild with:
 #   python -m troTHU.tron release-build --execute --json
@@ -52,6 +53,7 @@ RELEASE_NOTES*.md
 .codex-worklog.md
 CLAUDE.md
 PLAN.md
+*-promotion-plan.md
 新文件*.txt
 競品分析與上位替代規劃.md
 

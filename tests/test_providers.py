@@ -2,15 +2,18 @@ import copy
 import unittest
 
 import aiohttp
+from yarl import URL
 
 from troTHU import tron
 from troTHU.providers import (
     DEFAULT_PROVIDER,
     get_provider,
+    list_all_providers,
     list_supported_providers,
     normalize_provider_config,
     provider_support_report,
     provider_registry_config,
+    tronclass_api_endpoints,
 )
 from troTHU.research_mode import normalize_research_mode_config
 from tests.fake_tron_server import FakeTronServer
@@ -34,22 +37,46 @@ class ProviderConfigTest(unittest.TestCase):
         self.assertEqual(get_provider("Tunghai").key, DEFAULT_PROVIDER)
         self.assertEqual(get_provider("not-a-provider").key, DEFAULT_PROVIDER)
 
-    def test_registry_keeps_stubs_visible_but_not_ready(self) -> None:
+    def test_registry_keeps_fju_hidden_and_tku_visible(self) -> None:
         registry = provider_registry_config()
 
         self.assertEqual(registry["current"], "thu")
         self.assertFalse(registry["allow_experimental"])
         self.assertTrue(registry["available"]["thu"]["ready"])
-        self.assertFalse(registry["available"]["fju"]["ready"])
-        self.assertFalse(registry["available"]["tku"]["ready"])
-        self.assertEqual(registry["available"]["fju"]["support_level"], "experimental")
-        self.assertEqual(registry["available"]["tku"]["support_level"], "experimental")
+        self.assertTrue(registry["available"]["fju"]["ready"])
+        self.assertFalse(registry["available"]["fju"]["user_visible"])
+        self.assertTrue(registry["available"]["tku"]["ready"])
+        self.assertTrue(registry["available"]["tku"]["user_visible"])
+        self.assertEqual(registry["available"]["fju"]["support_level"], "ready")
+        self.assertEqual(registry["available"]["fju"]["verification"], "unverified")
+        self.assertEqual(registry["available"]["fju"]["auth_flow"], "manual_cookie_only")
+        self.assertTrue(registry["available"]["fju"]["capabilities"]["radar"])
+        self.assertEqual(registry["available"]["tku"]["support_level"], "ready")
+        self.assertEqual(registry["available"]["tku"]["verification"], "account_pending")
+        self.assertEqual(registry["available"]["tku"]["base_url"], "https://iclass.tku.edu.tw")
+        self.assertEqual(registry["available"]["tku"]["auth_flow"], "tku_sso_browser")
+        self.assertTrue(registry["available"]["tku"]["capabilities"]["radar"])
 
-    def test_supported_provider_registry_is_limited_to_thu_fju_tku(self) -> None:
+    def test_supported_provider_registry_hides_fju_by_default(self) -> None:
         self.assertEqual(
             [provider.key for provider in list_supported_providers()],
+            ["thu", "tku"],
+        )
+        self.assertEqual(
+            [provider.key for provider in list_supported_providers(include_hidden=True)],
             ["fju", "thu", "tku"],
         )
+        self.assertEqual([provider.key for provider in list_all_providers()], ["fju", "thu", "tku"])
+
+    def test_tronclass_api_endpoint_builder_is_shared(self) -> None:
+        endpoints = tronclass_api_endpoints("https://school.example/")
+
+        self.assertEqual(
+            endpoints["rollcalls_url"],
+            "https://school.example/api/radar/rollcalls?api_version=1.1.0",
+        )
+        self.assertEqual(endpoints["current_semester_url"], "https://school.example/api/current-semester-info")
+        self.assertEqual(endpoints["courses_url"], "https://school.example/api/my-courses?page=1&page_size=50")
 
     def test_normalize_provider_config_preserves_known_overrides(self) -> None:
         normalized = normalize_provider_config(
@@ -73,6 +100,10 @@ class ProviderConfigTest(unittest.TestCase):
             normalized["available"]["fju"]["current_semester_url"],
             "https://example.edu/api/current-semester-info",
         )
+        self.assertEqual(
+            normalized["available"]["fju"]["rollcalls_url"],
+            "https://example.edu/api/radar/rollcalls?api_version=1.1.0",
+        )
         self.assertEqual(normalized["available"]["fju"]["notes"], "lab only")
 
     def test_unknown_provider_falls_back_with_warning_metadata(self) -> None:
@@ -82,13 +113,16 @@ class ProviderConfigTest(unittest.TestCase):
         self.assertEqual(normalized["requested"], "nfu")
         self.assertEqual(normalized["fallback_reason"], "unknown_provider")
 
-    def test_provider_support_report_marks_experimental_daily_ready_only_when_allowed(self) -> None:
+    def test_provider_support_report_marks_fju_tku_daily_ready_without_experimental_gate(self) -> None:
         fju = get_provider("fju")
         blocked = provider_support_report(fju)
         allowed = provider_support_report(fju, allow_experimental=True)
 
-        self.assertEqual(blocked["support_level"], "experimental")
-        self.assertFalse(blocked["daily_ready"])
+        self.assertEqual(blocked["support_level"], "ready")
+        self.assertEqual(blocked["verification"], "unverified")
+        self.assertTrue(blocked["daily_ready"])
+        self.assertFalse(blocked["user_visible"])
+        self.assertTrue(blocked["capabilities"]["radar"])
         self.assertTrue(allowed["daily_ready"])
         self.assertTrue(allowed["endpoint_configured"]["base_url"])
 
@@ -144,7 +178,7 @@ class ResearchModeConfigTest(unittest.TestCase):
         self.assertTrue(report["research"]["enabled"])
         self.assertTrue(report["research"]["allow_api_exploration"])
 
-    def test_doctor_report_warns_for_experimental_provider_without_hard_failure(self) -> None:
+    def test_doctor_report_keeps_pending_verification_internal(self) -> None:
         tron.CONFIG.update(
             tron.normalize_config(
                 {
@@ -158,50 +192,117 @@ class ResearchModeConfigTest(unittest.TestCase):
 
         self.assertIn(report["status"], {"warn", "fail"})
         self.assertEqual(report["provider"]["key"], "fju")
-        self.assertEqual(report["provider_support"]["support_level"], "experimental")
+        self.assertEqual(report["provider_support"]["support_level"], "ready")
+        self.assertTrue(report["provider_support"]["daily_ready"])
+        self.assertEqual(report["internal"]["provider_verification"]["verification"]["verification"], "unverified")
         provider_checks = [item for item in report["checks"] if item["name"].startswith("provider")]
-        self.assertTrue(any(item["status"] == "warn" for item in provider_checks))
+        self.assertTrue(all(item["status"] == "ok" for item in provider_checks))
+
+    def _configure_provider_for_fake_server(self, provider_key: str, server: FakeTronServer) -> None:
+        tron.CONFIG.clear()
+        tron.CONFIG.update(
+            tron.normalize_config(
+                {
+                    "account": {"user": "user1", "passwd": "pass1"},
+                    "accounts": {
+                        "current": "default",
+                        "profiles": {
+                            "default": {"user": "user1", "passwd": "pass1", "label": ""}
+                        },
+                    },
+                    "provider": {
+                        "current": provider_key,
+                        "available": {
+                            provider_key: {
+                                "base_url": server.base_url,
+                                "login_url": server.login_url,
+                                "rollcalls_url": server.rollcalls_url,
+                                "current_semester_url": server.current_semester_url,
+                                "courses_url": server.courses_url,
+                            }
+                        },
+                    },
+                }
+            )
+        )
+
+    def _seed_cookie_for_manual_provider(self, provider_key: str, server: FakeTronServer, session) -> None:
+        if provider_key == "fju":
+            session.cookie_jar.update_cookies(
+                {"session": server.session_cookie},
+                response_url=URL(server.base_url),
+            )
 
     async def _discover_courses_with_provider(self, provider_key: str) -> dict:
+        original_config = copy.deepcopy(tron.CONFIG)
         async with FakeTronServer() as server:
             server.courses = [{"id": 1, "name": "Synthetic Course"}]
-            tron.CONFIG.clear()
-            tron.CONFIG.update(
-                tron.normalize_config(
-                    {
-                        "account": {"user": "user1", "passwd": "pass1"},
-                        "accounts": {
-                            "current": "default",
-                            "profiles": {
-                                "default": {"user": "user1", "passwd": "pass1", "label": ""}
-                            },
-                        },
-                        "provider": {
-                            "current": provider_key,
-                            "allow_experimental": True,
-                            "available": {
-                                provider_key: {
-                                    "base_url": server.base_url,
-                                    "login_url": server.login_url,
-                                    "rollcalls_url": server.rollcalls_url,
-                                    "current_semester_url": server.current_semester_url,
-                                    "courses_url": server.courses_url,
-                                }
-                            },
-                        },
-                    }
-                )
-            )
-            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
-                login_result = await tron.login(session)
-                self.assertTrue(login_result.ok)
-                client = tron.create_tron_http_client(session)
-                result = await tron.discover_courses(
-                    session,
-                    endpoints=client.endpoints,
-                    request_ssl=tron.get_ssl_request_setting(),
-                )
-                return result.to_dict()
+            try:
+                self._configure_provider_for_fake_server(provider_key, server)
+                async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                    self._seed_cookie_for_manual_provider(provider_key, server, session)
+                    login_result = await tron.login(session)
+                    self.assertTrue(login_result.ok)
+                    client = tron.create_tron_http_client(session)
+                    result = await tron.discover_courses(
+                        session,
+                        endpoints=client.endpoints,
+                        request_ssl=tron.get_ssl_request_setting(),
+                    )
+                    return result.to_dict()
+            finally:
+                tron.CONFIG.clear()
+                tron.CONFIG.update(original_config)
+
+    async def _number_rollcall_with_provider(self, provider_key: str) -> dict:
+        original_config = copy.deepcopy(tron.CONFIG)
+        original_completed = dict(tron.COMPLETED_NUMBER_ROLLCALLS)
+        async with FakeTronServer(correct_number_code="0000") as server:
+            server.rollcalls = [{"rollcall_id": 42, "is_number": True, "status": "started"}]
+            try:
+                tron.COMPLETED_NUMBER_ROLLCALLS.clear()
+                self._configure_provider_for_fake_server(provider_key, server)
+                async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                    self._seed_cookie_for_manual_provider(provider_key, server, session)
+                    login_result = await tron.login(session)
+                    self.assertTrue(login_result.ok)
+                    with (
+                        unittest.mock.patch.object(tron, "NUMBER_CODE_LIMIT", 1),
+                        unittest.mock.patch.object(tron, "NUMBER_WORKER_COUNT", 1),
+                        unittest.mock.patch.object(tron, "mes", unittest.mock.AsyncMock()),
+                        unittest.mock.patch.object(tron, "log_print"),
+                        unittest.mock.patch.object(tron, "status_print"),
+                    ):
+                        status = await tron.check_rollcall(session, 1)
+                return {"status": status, "attempts": server.number_attempts}
+            finally:
+                tron.CONFIG.clear()
+                tron.CONFIG.update(original_config)
+                tron.COMPLETED_NUMBER_ROLLCALLS.clear()
+                tron.COMPLETED_NUMBER_ROLLCALLS.update(original_completed)
+
+    async def _qr_submit_with_provider(self, provider_key: str) -> dict:
+        original_config = copy.deepcopy(tron.CONFIG)
+        async with FakeTronServer() as server:
+            try:
+                self._configure_provider_for_fake_server(provider_key, server)
+                async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                    self._seed_cookie_for_manual_provider(provider_key, server, session)
+                    login_result = await tron.login(session)
+                    self.assertTrue(login_result.ok)
+                    with (
+                        unittest.mock.patch.object(tron, "mes", unittest.mock.AsyncMock()),
+                        unittest.mock.patch.object(tron, "log_print"),
+                        unittest.mock.patch.object(tron, "notify_event", unittest.mock.AsyncMock()),
+                    ):
+                        ok = await tron.submit_qr_payload(
+                            session,
+                            '{"rollcallId":77,"data":"synthetic-qr-data"}',
+                        )
+                return {"ok": ok, "answers": server.qr_answers}
+            finally:
+                tron.CONFIG.clear()
+                tron.CONFIG.update(original_config)
 
     def test_fju_provider_endpoints_can_target_fake_server(self) -> None:
         result = __import__("asyncio").run(self._discover_courses_with_provider("fju"))
@@ -214,3 +315,21 @@ class ResearchModeConfigTest(unittest.TestCase):
 
         self.assertEqual(result["status"], "ok")
         self.assertEqual(result["course_count"], 1)
+
+    def test_fju_tku_number_rollcall_uses_provider_base_url(self) -> None:
+        for provider in ("fju", "tku"):
+            with self.subTest(provider=provider):
+                result = __import__("asyncio").run(self._number_rollcall_with_provider(provider))
+
+                self.assertEqual(result["status"], "is_number")
+                self.assertEqual(result["attempts"][0]["rollcall_id"], "42")
+                self.assertEqual(result["attempts"][0]["body"]["numberCode"], "0000")
+
+    def test_fju_tku_qr_submit_uses_provider_base_url(self) -> None:
+        for provider in ("fju", "tku"):
+            with self.subTest(provider=provider):
+                result = __import__("asyncio").run(self._qr_submit_with_provider(provider))
+
+                self.assertTrue(result["ok"])
+                self.assertEqual(result["answers"][0]["rollcall_id"], "77")
+                self.assertEqual(result["answers"][0]["body"]["data"], "synthetic-qr-data")

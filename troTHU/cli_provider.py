@@ -17,9 +17,17 @@ def provider_summary(provider: ctx.Any='') -> ctx.Dict[str, ctx.Any]:
     return ctx.provider_support_report(config, allow_experimental=False)
 
 
-def provider_list_command(json_output: bool=False) -> int:
-    providers = [ctx.provider_summary(provider) for provider in ctx.list_supported_providers()]
-    payload = {'current': ctx.get_active_provider_key(), 'allow_experimental': ctx.coerce_bool(ctx.normalize_provider_config(ctx.CONFIG.get('provider', ctx.DEFAULT_CONFIG['provider'])).get('allow_experimental'), False), 'providers': providers}
+def provider_list_command(json_output: bool=False, include_hidden: bool=False) -> int:
+    providers = [
+        ctx.provider_summary(provider)
+        for provider in ctx.list_supported_providers(include_hidden=include_hidden)
+    ]
+    payload = {
+        'current': ctx.get_active_provider_key(),
+        'allow_experimental': ctx.coerce_bool(ctx.normalize_provider_config(ctx.CONFIG.get('provider', ctx.DEFAULT_CONFIG['provider'])).get('allow_experimental'), False),
+        'include_hidden': bool(include_hidden),
+        'providers': providers,
+    }
     if json_output:
         print(ctx.json_text(payload))
         return 0
@@ -42,6 +50,12 @@ def provider_show_command(name: str='', json_output: bool=False) -> int:
     report['verification'] = ctx.summarize_provider_verification(report)
     report['ready_gate'] = ctx.build_provider_ready_gate(report, config=ctx.CONFIG)
     report['fixture_review'] = ctx.build_provider_fixture_review(report, config=ctx.CONFIG)
+    report['internal'] = {
+        'verification': report['verification'],
+        'ready_gate': report['ready_gate'],
+        'fixture_review': report['fixture_review'],
+        'user_runtime_blocking': False,
+    }
     if json_output:
         print(ctx.json_text(report))
         return 0

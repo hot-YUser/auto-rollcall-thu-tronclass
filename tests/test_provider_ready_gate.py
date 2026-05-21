@@ -47,9 +47,28 @@ class ProviderReadyGateTest(unittest.TestCase):
         self.assertEqual(report["status"], "candidate_ready")
         self.assertTrue(report["ready_candidate"])
         self.assertFalse(report["promotes_provider"])
-        self.assertEqual(report["support_level"], "experimental")
+        self.assertEqual(report["support_level"], "ready")
+        self.assertEqual(report["verification"], "unverified")
+        self.assertTrue(report["daily_ready_after_gate"])
         self.assertNotIn("password", encoded)
         self.assertNotIn("raw response", encoded)
+
+    def test_ready_gate_verified_provider_is_not_required(self) -> None:
+        report = build_provider_ready_gate("thu")
+
+        self.assertEqual(report["status"], "not_required")
+        self.assertTrue(report["ready_candidate"])
+        self.assertFalse(report["promotes_provider"])
+        self.assertEqual(report["verification"], "verified")
+
+    def test_ready_gate_preserves_account_pending_from_summary_shape(self) -> None:
+        provider = tron.get_provider("tku").to_config()
+        provider["verification"] = tron.summarize_provider_verification(provider)
+
+        report = build_provider_ready_gate(provider)
+
+        self.assertEqual(report["provider"], "tku")
+        self.assertEqual(report["verification"], "account_pending")
 
     def test_missing_acceptance_flag_keeps_gate_blocked(self) -> None:
         fixture = accepted_fixture("tku")
@@ -108,6 +127,7 @@ class ProviderReadyGateTest(unittest.TestCase):
         self.assertEqual(doctor_result, 0)
         self.assertEqual(json.loads(show[0])["ready_gate"]["status"], "blocked")
         self.assertEqual(json.loads(doctor[0])["provider"]["ready_gate"]["status"], "blocked")
+        self.assertTrue(json.loads(show[0])["ready_gate"]["daily_ready_after_gate"])
 
 
 if __name__ == "__main__":

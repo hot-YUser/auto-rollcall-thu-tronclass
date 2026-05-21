@@ -34,7 +34,7 @@ class ReadmeUsageTest(unittest.TestCase):
             "## Bot / 通知",
             "HTTP Interactions",
             "optional Gateway",
-            "## Provider：THU + FJU/TKU experimental",
+            "## Provider：THU / TKU ready",
             "## App shell / WebView / Research",
             "## 打包與 Git hygiene",
         ):
@@ -53,7 +53,9 @@ class ReadmeUsageTest(unittest.TestCase):
     def test_safety_and_current_limitations_are_clear(self) -> None:
         self.assertIn("不要把填好帳密的 `config.yaml`", self.text)
         self.assertIn("真實 THU live acceptance", self.text)
-        self.assertIn("FJU/TKU", self.text)
+        self.assertNotIn("FJU", self.text)
+        self.assertNotIn("fju", self.lowered)
+        self.assertIn("verification", self.lowered)
         self.assertIn("optional Gateway", self.text)
         self.assertNotIn("Discord Gateway 尚未內建", self.text)
         self.assertNotIn("建議優先使用上一個正式版", self.text)
