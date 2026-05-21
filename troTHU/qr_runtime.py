@@ -49,6 +49,134 @@ def print_pending_qr(json_output: bool=False) -> int:
     return 0
 
 
+def _decode_qr_image_with_opencv(path: ctx.Path) -> ctx.Tuple[str, str]:
+    try:
+        import cv2  # type: ignore
+    except Exception as exc:  # pragma: no cover - depends on optional package
+        return "", "opencv_unavailable:{}".format(type(exc).__name__)
+    image = cv2.imread(str(path))
+    if image is None:
+        return "", "opencv_image_unreadable"
+    try:
+        detector = cv2.QRCodeDetector()
+        value, _points, _straight = detector.detectAndDecode(image)
+    except Exception as exc:  # pragma: no cover - depends on optional package
+        return "", "opencv_decode_failed:{}".format(type(exc).__name__)
+    return ctx.normalize_text(value), ""
+
+
+def _decode_qr_image_with_pyzbar(path: ctx.Path) -> ctx.Tuple[str, str]:
+    try:
+        from PIL import Image  # type: ignore
+        from pyzbar.pyzbar import decode  # type: ignore
+    except Exception as exc:  # pragma: no cover - depends on optional packages/native zbar
+        return "", "pyzbar_unavailable:{}".format(type(exc).__name__)
+    try:
+        decoded = decode(Image.open(path))
+    except Exception as exc:  # pragma: no cover - depends on optional packages/native zbar
+        return "", "pyzbar_decode_failed:{}".format(type(exc).__name__)
+    if not decoded:
+        return "", "pyzbar_no_qr"
+    value = decoded[0].data.decode("utf-8", errors="replace")
+    return ctx.normalize_text(value), ""
+
+
+def _safe_qr_payload_metadata(payload: str) -> ctx.Dict[str, ctx.Any]:
+    payload_text = ctx.normalize_text(payload)
+    return {
+        "payload_hash": ctx.hashlib.sha256(payload_text.encode("utf-8")).hexdigest()[:16] if payload_text else "",
+        "payload_length": len(payload_text),
+    }
+
+
+def safe_qr_image_decode_report(result: ctx.Mapping[str, ctx.Any]) -> ctx.Dict[str, ctx.Any]:
+    safe = {key: value for key, value in dict(result or {}).items() if key != "payload"}
+    if "payload" in result:
+        safe.update(_safe_qr_payload_metadata(str(result.get("payload") or "")))
+    return safe
+
+
+def decode_qr_image_file(path: ctx.Any, decoder: ctx.Any=None) -> ctx.Dict[str, ctx.Any]:
+    image_path = ctx.Path(path)
+    errors: ctx.List[str] = []
+    if not image_path.exists() or not image_path.is_file():
+        return {
+            "ok": False,
+            "status": "image_not_found",
+            "path": str(image_path),
+            "decoder": "",
+            "errors": ["image_not_found"],
+        }
+
+    payload = ""
+    decoder_name = ""
+    if decoder is not None:
+        try:
+            payload = ctx.normalize_text(decoder(image_path))
+            decoder_name = "injected"
+        except Exception as exc:
+            errors.append("injected_decode_failed:{}".format(type(exc).__name__))
+    else:
+        payload, error = _decode_qr_image_with_opencv(image_path)
+        if payload:
+            decoder_name = "opencv"
+        elif error:
+            errors.append(error)
+        if not payload:
+            payload, error = _decode_qr_image_with_pyzbar(image_path)
+            if payload:
+                decoder_name = "pyzbar"
+            elif error:
+                errors.append(error)
+
+    if not payload:
+        return {
+            "ok": False,
+            "status": "qr_not_found",
+            "path": str(image_path),
+            "decoder": decoder_name,
+            "errors": errors or ["qr_not_found"],
+        }
+    payload = ctx.sanitize_input_field(payload, field_type="qr_payload", field_name="qr image payload").value
+    return {
+        "ok": True,
+        "status": "decoded",
+        "path": str(image_path),
+        "decoder": decoder_name or "unknown",
+        "payload": payload,
+        **_safe_qr_payload_metadata(payload),
+    }
+
+
+async def qr_image_command(path: ctx.Any, *, assume_yes: bool=False, json_output: bool=False, fanout_all: bool=False) -> int:
+    decoded = ctx.decode_qr_image_file(path)
+    safe_decoded = ctx.safe_qr_image_decode_report(decoded)
+    if not decoded.get("ok"):
+        if json_output:
+            print(ctx.json_text(safe_decoded))
+        else:
+            print("QR image decode failed: {}".format(decoded.get("status", "failed")))
+            if decoded.get("errors"):
+                print("Optional decoders: install `.[qr-image]` if no decoder is available.")
+        return 1
+    preview = ctx.build_qr_preview(str(decoded.get("payload") or ""))
+    if json_output:
+        payload = dict(preview)
+        payload["image"] = safe_decoded
+        print(ctx.json_text(payload))
+    else:
+        print("QR image decoded by {}.".format(decoded.get("decoder", "unknown")))
+        ctx.print_qr_preview(preview)
+    if not preview.get("ok"):
+        return 1
+    if not assume_yes:
+        answer = input("確認送出 QR 點名？[y/N] ").strip().lower()
+        if answer not in {"y", "yes"}:
+            print("Cancelled.")
+            return 0
+    return await (ctx.qr_fanout_command(str(decoded.get("payload") or "")) if fanout_all else ctx.qr_command(str(decoded.get("payload") or "")))
+
+
 async def qr_fanout_result(payload: str, provider: str='', submit_profile: ctx.Any=None) -> ctx.Dict[str, ctx.Any]:
     provider_key = ctx.normalize_text(provider) or ctx.get_active_provider_key()
     preview = ctx.build_qr_preview(payload, provider=provider_key)

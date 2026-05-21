@@ -1,4 +1,6 @@
 from __future__ import annotations
+from datetime import timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 try:  # pragma: no cover - package import path
     import troTHU.runtime_context as ctx
@@ -153,6 +155,18 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
         session_config = {}
         config['session'] = session_config
     session_config['cache_cookies'] = ctx.coerce_bool(session_config.get('cache_cookies', ctx.DEFAULT_CONFIG['session']['cache_cookies']), ctx.DEFAULT_CONFIG['session']['cache_cookies'])
+    auth_config = config.setdefault('auth', {})
+    if not isinstance(auth_config, dict):
+        auth_config = {}
+        config['auth'] = auth_config
+    browser_login = auth_config.setdefault('browser_assisted_login', {})
+    if not isinstance(browser_login, dict):
+        browser_login = {}
+        auth_config['browser_assisted_login'] = browser_login
+    default_browser_login = ctx.DEFAULT_CONFIG['auth']['browser_assisted_login']
+    browser_login['enabled'] = ctx.coerce_bool(browser_login.get('enabled', default_browser_login['enabled']), default_browser_login['enabled'])
+    browser_login['headless'] = ctx.coerce_bool(browser_login.get('headless', default_browser_login['headless']), default_browser_login['headless'])
+    browser_login['timeout_ms'] = min(180000, ctx.coerce_positive_int(browser_login.get('timeout_ms', default_browser_login['timeout_ms']), default_browser_login['timeout_ms'], minimum=5000))
     ux_config = config.setdefault('ux', {})
     if not isinstance(ux_config, dict):
         ux_config = {}
@@ -254,6 +268,15 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
         user_agents = []
     user_agents = [str(agent).strip() for agent in user_agents if str(agent).strip()]
     runtime_config['user-agent'] = user_agents or list(ctx.DEFAULT_USER_AGENTS)
+    time_config = config.setdefault('time', {})
+    if not isinstance(time_config, dict):
+        time_config = {}
+        config['time'] = time_config
+    timezone_name = ctx.normalize_text(time_config.get('timezone') or time_config.get('tz') or ctx.DEFAULT_CONFIG['time']['timezone'])
+    if _timezone_from_name(timezone_name) is None:
+        ctx.CONFIG_WARNINGS.append('time.timezone 無法載入，已改用 {}。'.format(ctx.DEFAULT_CONFIG['time']['timezone']))
+        timezone_name = ctx.DEFAULT_CONFIG['time']['timezone']
+    time_config['timezone'] = timezone_name
     number_config = config.setdefault('number', {})
     if not isinstance(number_config, dict):
         number_config = {}
@@ -298,11 +321,47 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
         if isinstance(raw_schedule, dict):
             if 'enable' in raw_schedule:
                 merged['enable'] = ctx.coerce_bool(raw_schedule['enable'], default_schedule['enable'])
-            if 'range' in raw_schedule:
-                merged['range'] = ctx.normalize_schedule_range(raw_schedule.get('range'), default_schedule['range'])
+            schedule_value = raw_schedule.get('ranges', raw_schedule.get('range'))
+            if 'range' in raw_schedule or 'ranges' in raw_schedule:
+                merged['range'] = ctx.normalize_schedule_range(schedule_value, default_schedule['range'])
+                merged['ranges'] = ctx.normalize_schedule_ranges(schedule_value, [default_schedule['range']])
+            else:
+                merged['ranges'] = ctx.normalize_schedule_ranges(merged.get('range'), [default_schedule['range']])
+        else:
+            merged['ranges'] = ctx.normalize_schedule_ranges(merged.get('range'), [default_schedule['range']])
         normalized_operating[day] = merged
     config['operating'] = normalized_operating
     return config
+
+
+def _timezone_from_name(name: str) -> ctx.Any:
+    normalized = ctx.normalize_text(name)
+    fixed_offsets = {
+        'UTC': timezone.utc,
+        'Etc/UTC': timezone.utc,
+        'Asia/Taipei': timezone(timedelta(hours=8), 'Asia/Taipei'),
+    }
+    if normalized in fixed_offsets:
+        return fixed_offsets[normalized]
+    try:
+        return ZoneInfo(normalized)
+    except (ZoneInfoNotFoundError, ValueError):
+        return None
+
+
+def get_config_timezone_name(config: ctx.Any = None) -> str:
+    source = config if isinstance(config, dict) else ctx.CONFIG
+    time_config = source.get('time', {}) if isinstance(source, dict) else {}
+    return ctx.normalize_text(time_config.get('timezone')) or ctx.DEFAULT_CONFIG['time']['timezone']
+
+
+def get_config_timezone(config: ctx.Any = None) -> ctx.Any:
+    name = get_config_timezone_name(config)
+    return _timezone_from_name(name) or _timezone_from_name(ctx.DEFAULT_CONFIG['time']['timezone']) or timezone.utc
+
+
+def current_datetime(config: ctx.Any = None) -> ctx.datetime:
+    return ctx.datetime.now(ctx.get_config_timezone(config))
 
 
 def ensure_config_exists() -> None:

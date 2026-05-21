@@ -50,8 +50,10 @@ RELEASE_NOTES*.md
 
 # Local Codex/user planning material. Do not publish these.
 .codex-worklog.md
+CLAUDE.md
 PLAN.md
 新文件*.txt
+競品分析與上位替代規劃.md
 
 # External reference projects are kept locally for Codex analysis only.
 其他專案參考/

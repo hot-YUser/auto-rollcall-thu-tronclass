@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 from urllib.parse import urlparse
+from urllib.parse import quote
 
 try:
     from troTHU.debug_capture import sanitize_debug_payload
@@ -18,6 +19,7 @@ SAFE_API_TARGETS = ("home", "rollcalls", "current_semester", "semester", "course
 CAPTURE_TARGETS = ("home", "rollcalls", "current_semester", "courses")
 TARGET_ALIASES = {"semester": "current_semester"}
 BROWSER_TARGETS = ("login", "home")
+RISKY_PROBE_TARGETS = ("student_rollcalls",)
 DENIED_TARGET_PARTS = (
     "student_rollcalls",
     "answer_number_rollcall",
@@ -35,6 +37,9 @@ RESEARCH_SENSITIVE_KEY_PARTS = (
     "body",
     "cookie",
     "data",
+    "answer",
+    "number_code",
+    "numbercode",
     "passwd",
     "password",
     "payload",
@@ -117,6 +122,7 @@ def build_research_status(config: Mapping[str, Any], *, provider: Any = None) ->
             "research": research,
             "provider": provider if isinstance(provider, Mapping) else {},
             "api_targets": list_research_api_targets(),
+            "risky_probe_targets": RISKY_PROBE_TARGETS,
             "browser_targets": BROWSER_TARGETS,
             "denied_patterns": DENIED_TARGET_PARTS,
             "safety": {
@@ -142,11 +148,26 @@ def ensure_research_allowed(config: Mapping[str, Any], capability: str) -> Dict[
             "browser_capture_disabled",
             "research.allow_browser_capture must be true.",
         )
+    if capability == "risky_probe":
+        if not research.get("allow_api_exploration"):
+            raise ResearchGateError(
+                "api_exploration_disabled",
+                "research.allow_api_exploration must be true.",
+            )
+        if not research.get("allow_risky_probe"):
+            raise ResearchGateError(
+                "risky_probe_disabled",
+                "research.allow_risky_probe must be true.",
+            )
     return research
 
 
 def list_research_api_targets() -> tuple[str, ...]:
     return SAFE_API_TARGETS
+
+
+def list_research_probe_targets() -> tuple[str, ...]:
+    return RISKY_PROBE_TARGETS
 
 
 def validate_research_target(target: Any) -> str:
@@ -215,6 +236,40 @@ def _json_summary(payload: Any) -> Dict[str, Any]:
     if isinstance(payload, list):
         return {"shape": "list", "item_count": len(payload)}
     return {"shape": type(payload).__name__}
+
+
+def _json_shape_summary(payload: Any) -> Dict[str, Any]:
+    if isinstance(payload, Mapping):
+        summary: Dict[str, Any] = {
+            "shape": "object",
+            "field_names": sorted(str(key) for key in payload.keys()),
+        }
+        list_summaries = {}
+        for key, item in payload.items():
+            if isinstance(item, list):
+                list_summaries[str(key)] = _json_shape_summary(item)
+        if list_summaries:
+            summary["list_fields"] = list_summaries
+        return summary
+    if isinstance(payload, list):
+        item_field_names = set()
+        for item in payload[:5]:
+            if isinstance(item, Mapping):
+                item_field_names.update(str(key) for key in item.keys())
+        return {
+            "shape": "list",
+            "item_count": len(payload),
+            "item_field_names": sorted(item_field_names),
+        }
+    return {"shape": type(payload).__name__}
+
+
+def _student_rollcalls_probe_url(endpoints: Any, rollcall_id: Any) -> str:
+    base_url = str(getattr(endpoints, "base_url", "") or "").rstrip("/")
+    safe_rollcall_id = quote(str(rollcall_id or "").strip(), safe="")
+    if not base_url or not safe_rollcall_id:
+        raise ResearchCaptureError("probe_target_incomplete", "base URL and rollcall id are required.")
+    return "{}/api/rollcall/{}/student_rollcalls".format(base_url, safe_rollcall_id)
 
 
 async def _capture_one(session: Any, target: str, *, endpoints: Any, request_ssl: Any = None) -> Dict[str, Any]:
@@ -300,6 +355,52 @@ async def capture_research_api_target(
             "warnings": warnings,
         }
     )
+
+
+async def capture_student_rollcalls_probe(
+    session: Any,
+    rollcall_id: Any,
+    *,
+    endpoints: Any,
+    config: Mapping[str, Any],
+    request_ssl: Any = None,
+) -> Dict[str, Any]:
+    ensure_research_allowed(config, "risky_probe")
+    url = _student_rollcalls_probe_url(endpoints, rollcall_id)
+    kwargs = {}
+    if request_ssl is not None:
+        kwargs["ssl"] = request_ssl
+    async with session.get(url, **kwargs) as response:
+        status_code = int(getattr(response, "status", 0) or 0)
+        content_type = str(getattr(response, "content_type", "") or "")
+        text = await response.text()
+
+    payload: Any = None
+    invalid_json = False
+    if text:
+        try:
+            payload = json.loads(text)
+        except ValueError:
+            invalid_json = True
+
+    content_summary = {"shape": "invalid_json", "content_type": content_type, "content_length": len(text)}
+    if not invalid_json:
+        content_summary = _json_shape_summary(payload)
+        content_summary["content_type"] = content_type
+
+    report = {
+        "status": _status_from_http(status_code, invalid_json=invalid_json),
+        "target": "student_rollcalls",
+        "probe_only": True,
+        "read_only": True,
+        "daily_runtime_import": False,
+        "rollcall_id": str(rollcall_id or ""),
+        "url_kind": "student_rollcalls",
+        "http_status": status_code,
+        "content_summary": content_summary,
+        "warnings": ["probe_only_no_answer_values_recorded"],
+    }
+    return sanitize_research_value(report)
 
 
 def append_research_capture(path: Path, record: Mapping[str, Any]) -> Path:

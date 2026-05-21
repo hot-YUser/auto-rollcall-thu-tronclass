@@ -290,7 +290,7 @@ def _readme_report(path: Path) -> Dict[str, Any]:
     lowered = text.lower()
     checks = [
         _check("README exists", path.exists(), path.name, severity="warn"),
-        _check("README alpha status", "v1.1-alpha.1" in text or "alpha" in text.lower(), "alpha status documented", severity="warn"),
+        _check("README alpha status", "v1.1-alpha.2" in text or "alpha" in text.lower(), "alpha status documented", severity="warn"),
         _check("README release-check", "release-check" in text, "release-check documented", severity="warn"),
         _check("README monitor console quickstart", "監控 console" in text and "run --no-input" in text, "monitor console quickstart documented", severity="warn"),
         _check("README current bot docs", "HTTP Interactions" in text and "optional Gateway" in text, "current Discord entrypoints documented", severity="warn"),

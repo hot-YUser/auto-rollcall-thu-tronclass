@@ -25,6 +25,9 @@ class FakeTronServer:
         self.number_attempts: List[Dict[str, Any]] = []
         self.radar_answers: List[Dict[str, Any]] = []
         self.qr_answers: List[Dict[str, Any]] = []
+        self.student_rollcalls: List[Dict[str, Any]] = [
+            {"student_id": 1, "number_code": self.correct_number_code, "status": "pending"}
+        ]
         self.radar_lite_payload: Dict[str, Any] = {
             "use_beacon": False,
             "beacon_nonce": "",
@@ -302,6 +305,15 @@ class FakeTronServer:
             return scripted
         return web.json_response({"ok": True})
 
+    async def student_rollcalls_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("student_rollcalls")
+        if scripted is not None:
+            return scripted
+        return web.json_response({"student_rollcalls": self.student_rollcalls})
+
     async def start(self) -> "FakeTronServer":
         if web is None:
             raise RuntimeError("aiohttp.web is required for FakeTronServer")
@@ -317,6 +329,7 @@ class FakeTronServer:
         app.router.add_get("/api/rollcall/{rollcall_id}/lite", self.radar_lite)
         app.router.add_put("/api/rollcall/{rollcall_id}/answer", self.answer_radar)
         app.router.add_put("/api/rollcall/{rollcall_id}/answer_qr_rollcall", self.answer_qr)
+        app.router.add_get("/api/rollcall/{rollcall_id}/student_rollcalls", self.student_rollcalls_api)
 
         self.runner = web.AppRunner(app)
         await self.runner.setup()

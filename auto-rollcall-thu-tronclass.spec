@@ -51,6 +51,7 @@ HIDDEN_IMPORTS = sorted(
             "troTHU.config_runtime",
             "troTHU.config_editor",
             "troTHU.config_view",
+            "troTHU.connection_probe",
             "troTHU.course_discovery",
             "troTHU.debug_capture",
             "troTHU.discord_adapter",

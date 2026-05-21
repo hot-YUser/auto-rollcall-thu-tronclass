@@ -105,6 +105,66 @@ async def research_api_command(args: ctx.argparse.Namespace) -> int:
     return 0 if report.get('status') in {'ok', 'partial'} else 1
 
 
+async def research_probe_command(args: ctx.argparse.Namespace) -> int:
+    probe_target = ctx.normalize_text(getattr(args, 'probe_target', 'student_rollcalls') or 'student_rollcalls').replace('-', '_')
+    if probe_target != 'student_rollcalls':
+        report = {'status': 'probe_target_not_allowed', 'target': probe_target, 'records': [], 'warnings': ['unknown_probe_target']}
+        if getattr(args, 'json', False):
+            print(ctx.json_text(report))
+        else:
+            print('Research probe blocked: {}'.format(report['status']))
+        return 1
+    try:
+        ctx.ensure_research_allowed(ctx.CONFIG, 'risky_probe')
+    except ctx.ResearchGateError as exc:
+        return ctx._research_gate_failure(exc, json_output=getattr(args, 'json', False))
+    rollcall_id = ctx.normalize_text(getattr(args, 'rollcall_id', ''))
+    if not rollcall_id:
+        report = {'status': 'probe_target_incomplete', 'target': probe_target, 'records': [], 'warnings': ['rollcall_id_required']}
+        if getattr(args, 'json', False):
+            print(ctx.json_text(report))
+        else:
+            print('Research probe requires --rollcall-id.')
+        return 1
+    output_arg = ctx.normalize_text(getattr(args, 'output', ''))
+    output_path = ctx.Path(output_arg) if output_arg else None
+    headers = {'User-Agent': ctx.random_ua()}
+    session_kwargs: ctx.Dict[str, ctx.Any] = {'connector': ctx.create_http_connector(), 'headers': headers, 'cookie_jar': ctx.aiohttp.CookieJar(unsafe=True)}
+    timeout = ctx.create_http_client_timeout()
+    if timeout is not None:
+        session_kwargs['timeout'] = timeout
+    active = ctx.get_active_profile(ctx.CONFIG)
+    async with ctx.aiohttp.ClientSession(**session_kwargs) as session:
+        if ctx.cookie_cache_enabled(ctx.CONFIG):
+            ctx.load_session_cookies(session, ctx.BASE_DIR, active.name)
+        if not ctx.has_session_cookie(session):
+            login_result = await ctx.login(session, research_context=True)
+            if not login_result.ok:
+                report = {'status': 'login_failed', 'target': probe_target, 'provider': ctx.provider_report().get('key'), 'profile': active.name, 'records': [], 'warnings': [login_result.status]}
+                if getattr(args, 'json', False):
+                    print(ctx.json_text(report))
+                else:
+                    print('Research probe failed: {}'.format(login_result.status))
+                return 1
+        try:
+            record = await ctx.capture_student_rollcalls_probe(session, rollcall_id, endpoints=ctx.get_active_http_endpoints(), config=ctx.CONFIG, request_ssl=ctx.get_ssl_request_setting())
+        except ctx.ResearchGateError as exc:
+            return ctx._research_gate_failure(exc, json_output=getattr(args, 'json', False))
+        except ctx.ResearchCaptureError as exc:
+            record = exc.to_dict()
+            record.update({'target': probe_target, 'warnings': [exc.status]})
+    report = {'status': record.get('status', 'unknown'), 'target': probe_target, 'provider': ctx.provider_report().get('key'), 'profile': active.name, 'records': [record], 'output_path': str(output_path) if output_path is not None else '', 'warnings': list(record.get('warnings', []))}
+    if output_path is not None:
+        ctx.append_research_capture(output_path, report)
+    if getattr(args, 'json', False):
+        print(ctx.json_text(report))
+    else:
+        print('Research probe {} for target {} (HTTP {}).'.format(record.get('status', 'unknown'), probe_target, record.get('http_status', 0)))
+        if output_path is not None:
+            print('Research probe written: {}'.format(output_path))
+    return 0 if record.get('status') in {'ok', 'unauthorized', 'unexpected_status', 'invalid_json'} else 1
+
+
 def research_browser_check_command(json_output: bool=False) -> int:
     report = ctx.build_browser_capture_metadata('home', provider=ctx.provider_report(), endpoints=ctx.get_active_http_endpoints())
     if json_output:

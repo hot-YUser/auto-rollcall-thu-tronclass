@@ -112,15 +112,23 @@ def validation_summary_command(json_output: bool=False) -> int:
     return 0 if summary.get('ready_for_r2') else 1
 
 
-def validation_local_smoke_command(json_output: bool=False) -> int:
+def validation_local_smoke_command(json_output: bool=False, record: bool=False) -> int:
     local_reports = {'status_report': ctx.status_report(), 'doctor_report': ctx.doctor_report(), 'dashboard_snapshot': ctx.build_observability_snapshot(ctx.status_report(), log_summary=ctx.summarize_logs(ctx.PATH), recent_logs=ctx.tail_log_records(ctx.PATH, 20), account_states=[ctx.account_state_report(profile.name) for profile in ctx.list_profiles(ctx.CONFIG)]), 'package_check': ctx.build_package_diagnostic_report(ctx.BASE_DIR, config=ctx.CONFIG), 'release_check': ctx.build_release_checklist(ctx.BASE_DIR, config=ctx.CONFIG), 'roadmap_audit': ctx.build_goal_distance_report(ctx.CONFIG)}
     report = ctx.run_local_validation_smoke(ctx.CONFIG, base_dir=ctx.BASE_DIR, local_reports=local_reports)
+    recorded = []
+    if record:
+        active = ctx.get_active_profile(ctx.CONFIG)
+        recorded = ctx.append_local_smoke_validation_records(ctx.BASE_DIR, report, profile=active.name, provider=ctx.get_active_provider_key())
+        report = dict(report)
+        report['recorded'] = recorded
     if json_output:
         print(ctx.json_text(report))
     else:
         print('Validation local smoke: {}'.format(report.get('status', 'unknown')))
         for name, status in report.get('checks', {}).items():
             print('- {}: {}'.format(name, status))
+        if recorded:
+            print('Recorded local validation cases: {}'.format(', '.join(item.get('case_id', '') for item in recorded)))
     return 0 if report.get('status') != 'fail' else 1
 
 

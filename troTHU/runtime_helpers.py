@@ -105,25 +105,72 @@ def format_time_value(value: Any) -> Optional[str]:
 
 
 def normalize_schedule_range(value: Any, default: Optional[List[str]] = None) -> List[str]:
-    fallback = list(default or DEFAULT_OPERATING_RANGE)
-    start_value: Any = None
-    end_value: Any = None
+    return normalize_schedule_ranges(value, [default or DEFAULT_OPERATING_RANGE])[0]
 
-    if isinstance(value, (list, tuple)) and len(value) == 2:
-        start_value, end_value = value
-    elif isinstance(value, dict):
-        start_value = value.get("start", value.get("from", value.get("begin")))
-        end_value = value.get("end", value.get("to", value.get("until")))
-    else:
-        matches = TIME_RANGE_PATTERN.findall(normalize_text(value))
-        if len(matches) >= 2:
-            start_value, end_value = matches[0], matches[1]
 
+def _time_pair_from_values(start_value: Any, end_value: Any) -> Optional[List[str]]:
     start = format_time_value(start_value)
     end = format_time_value(end_value)
     if start is None or end is None:
-        return fallback
+        return None
     return [start, end]
+
+
+def _normalize_one_schedule_range(value: Any) -> Optional[List[str]]:
+    if isinstance(value, dict):
+        return _time_pair_from_values(
+            value.get("start", value.get("from", value.get("begin"))),
+            value.get("end", value.get("to", value.get("until"))),
+        )
+    if isinstance(value, (list, tuple)) and len(value) == 2:
+        return _time_pair_from_values(value[0], value[1])
+    matches = TIME_RANGE_PATTERN.findall(normalize_text(value))
+    if len(matches) >= 2:
+        return _time_pair_from_values(matches[0], matches[1])
+    return None
+
+
+def normalize_schedule_ranges(value: Any, default: Optional[List[List[str]]] = None) -> List[List[str]]:
+    fallback = [list(item) for item in (default or [DEFAULT_OPERATING_RANGE])]
+    ranges: List[List[str]] = []
+
+    if isinstance(value, dict) and isinstance(value.get("ranges"), (list, tuple)):
+        value = value.get("ranges")
+
+    if isinstance(value, (list, tuple)):
+        if len(value) == 2 and _normalize_one_schedule_range(value) is not None:
+            ranges.append(_normalize_one_schedule_range(value) or list(DEFAULT_OPERATING_RANGE))
+        else:
+            pending_plain_times: List[str] = []
+            for item in value:
+                parsed = _normalize_one_schedule_range(item)
+                if parsed is not None:
+                    ranges.append(parsed)
+                    continue
+                plain_time = format_time_value(item)
+                if plain_time is not None:
+                    pending_plain_times.append(plain_time)
+                    if len(pending_plain_times) == 2:
+                        ranges.append([pending_plain_times[0], pending_plain_times[1]])
+                        pending_plain_times = []
+                    continue
+                matches = TIME_RANGE_PATTERN.findall(normalize_text(item))
+                if len(matches) >= 2:
+                    for index in range(0, len(matches) - 1, 2):
+                        ranges.append([format_time_value(matches[index]) or "00:00", format_time_value(matches[index + 1]) or "00:00"])
+    else:
+        matches = TIME_RANGE_PATTERN.findall(normalize_text(value))
+        if len(matches) >= 2:
+            for index in range(0, len(matches) - 1, 2):
+                parsed = _time_pair_from_values(matches[index], matches[index + 1])
+                if parsed is not None:
+                    ranges.append(parsed)
+        else:
+            parsed = _normalize_one_schedule_range(value)
+            if parsed is not None:
+                ranges.append(parsed)
+
+    return ranges or fallback
 
 
 def normalize_radar_boundary_points(
@@ -327,6 +374,16 @@ def parse_schedule_range(range_str: Any) -> Tuple[Any, Any]:
     )
 
 
+def parse_schedule_ranges(range_value: Any) -> List[Tuple[Any, Any]]:
+    return [
+        (
+            datetime.strptime(item[0], "%H:%M").time(),
+            datetime.strptime(item[1], "%H:%M").time(),
+        )
+        for item in normalize_schedule_ranges(range_value)
+    ]
+
+
 def is_within_schedule(start: Any, end: Any, current_time: Any) -> bool:
     # Matching start/end means "always on"; start > end supports overnight ranges.
     if start == end:
@@ -334,3 +391,7 @@ def is_within_schedule(start: Any, end: Any, current_time: Any) -> bool:
     if start < end:
         return start <= current_time <= end
     return current_time >= start or current_time <= end
+
+
+def is_within_any_schedule(ranges: Any, current_time: Any) -> bool:
+    return any(is_within_schedule(start, end, current_time) for start, end in parse_schedule_ranges(ranges))

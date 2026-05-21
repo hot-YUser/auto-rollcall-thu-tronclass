@@ -203,18 +203,20 @@ def status_report() -> ctx.Dict[str, ctx.Any]:
     active = ctx.get_active_profile(ctx.CONFIG)
     pending = [item.to_dict() for item in ctx.list_pending_qr(ctx.BASE_DIR)]
     provider = ctx.provider_report()
-    return {'provider': provider, 'provider_support': provider.get('support', {}), 'active_profile': active.name, 'user': active.user if ctx.has_real_credential(active.user) else '', 'credential': ctx.credential_report(active.name), 'cookie': ctx.cookie_report(active.name), 'log_dir': str(ctx.PATH), 'notifications': ctx.notification_report(), 'integrations': ctx.integration_report(), 'research': ctx.research_report(), 'course_discovery': ctx.course_discovery_report(), 'runtime_state': ctx.account_runtime_summary(active.name), 'pending_qr': pending, 'config_warnings': list(getattr(ctx, 'CONFIG_WARNINGS', [])), 'last_login': {'status': ctx.LAST_LOGIN_RESULT.status, 'credential_source': ctx.LAST_LOGIN_RESULT.credential_source, 'user': ctx.LAST_LOGIN_RESULT.user}}
+    now = ctx.current_datetime()
+    return {'provider': provider, 'provider_support': provider.get('support', {}), 'active_profile': active.name, 'user': active.user if ctx.has_real_credential(active.user) else '', 'credential': ctx.credential_report(active.name), 'cookie': ctx.cookie_report(active.name), 'log_dir': str(ctx.PATH), 'notifications': ctx.notification_report(), 'integrations': ctx.integration_report(), 'research': ctx.research_report(), 'course_discovery': ctx.course_discovery_report(), 'runtime_state': ctx.account_runtime_summary(active.name), 'pending_qr': pending, 'time': {'timezone': ctx.get_config_timezone_name(), 'now': now.isoformat(timespec='seconds'), 'weekday': now.weekday()}, 'config_warnings': list(getattr(ctx, 'CONFIG_WARNINGS', [])), 'last_login': {'status': ctx.LAST_LOGIN_RESULT.status, 'credential_source': ctx.LAST_LOGIN_RESULT.credential_source, 'user': ctx.LAST_LOGIN_RESULT.user}}
 
 
-def doctor_report() -> ctx.Dict[str, ctx.Any]:
+def doctor_report(network_probe: ctx.Optional[ctx.Mapping[str, ctx.Any]]=None) -> ctx.Dict[str, ctx.Any]:
     active = ctx.get_active_profile(ctx.CONFIG)
     provider = ctx.provider_report()
     provider_support = provider.get('support', {})
     research = ctx.research_report()
+    browser_login = ctx.browser_assisted_login_status()
     credential = ctx.credential_report(active.name)
     cookie = ctx.cookie_report(active.name)
     packaging = ctx.build_package_diagnostic_report(ctx.BASE_DIR, config=ctx.CONFIG)
-    checks = [ctx.check_item('provider', bool(provider_support.get('daily_ready')), '{} ({}) support: {}'.format(provider.get('key'), provider.get('label'), provider_support.get('support_level', provider.get('status'))), severity='warn'), ctx.check_item('provider fallback', not bool(provider.get('fallback_reason')), 'requested {} -> active {}'.format(provider.get('requested', provider.get('key')), provider.get('key')), severity='warn'), ctx.check_item('provider support level', provider_support.get('support_level') == 'ready', 'experimental providers require endpoint and login verification', severity='warn'), ctx.check_item('provider verification', provider.get('verification', {}).get('status') in {'not_required', 'fixture_valid'}, provider.get('verification', {}).get('status', 'not_verified'), severity='warn'), ctx.check_item('provider ready gate', provider.get('ready_gate', {}).get('status') in {'not_required', 'candidate_ready'}, provider.get('ready_gate', {}).get('status', 'blocked'), severity='warn'), ctx.check_item('provider fixture review', provider.get('fixture_review', {}).get('status') in {'not_required', 'candidate_ready_for_human_review'}, provider.get('fixture_review', {}).get('status', 'not_reviewed'), severity='warn'), ctx.check_item('config', ctx.CONFIG_PATH.exists(), str(ctx.CONFIG_PATH), severity='fail'), ctx.check_item('yaml', ctx.module_available('yaml'), 'PyYAML importable', severity='fail'), ctx.check_item('aiohttp', ctx.module_available('aiohttp'), 'aiohttp importable', severity='fail'), ctx.check_item('aiohttp.web', ctx.module_available('aiohttp.web'), 'needed for local QR scanner', severity='warn'), ctx.check_item('keyring', ctx.keyring_available(), 'optional password store', severity='warn'), ctx.check_item('active profile user', bool(credential.get('user_configured')), 'profile {} has a user'.format(active.name), severity='fail'), ctx.check_item('credential', credential.get('effective_source') != 'missing', 'effective source: {}'.format(credential.get('effective_source')), severity='warn'), ctx.check_item('cookie cache', not cookie['exists'] or bool(cookie['valid']), 'file: {} age: {}'.format(cookie['path'], cookie['age']), severity='warn'), ctx.check_item('verify_ssl', ctx.get_verify_ssl(), 'TLS verification should stay enabled', severity='warn'), ctx.check_item('course discovery', bool(ctx.course_discovery_report()['current_semester_endpoint']) and bool(ctx.course_discovery_report()['courses_endpoint']), 'read-only course endpoints configured', severity='warn'), ctx.check_item('research mode', not bool(research.get('enabled')), 'disabled for daily automation' if not bool(research.get('enabled')) else 'enabled; use only for explicit capture/API exploration', severity='warn'), ctx.check_item('log directory', ctx.PATH.exists() or ctx.os.access(str(ctx.BASE_DIR), ctx.os.W_OK), str(ctx.PATH), severity='warn')]
+    checks = [ctx.check_item('provider', bool(provider_support.get('daily_ready')), '{} ({}) support: {}'.format(provider.get('key'), provider.get('label'), provider_support.get('support_level', provider.get('status'))), severity='warn'), ctx.check_item('provider fallback', not bool(provider.get('fallback_reason')), 'requested {} -> active {}'.format(provider.get('requested', provider.get('key')), provider.get('key')), severity='warn'), ctx.check_item('provider support level', provider_support.get('support_level') == 'ready', 'experimental providers require endpoint and login verification', severity='warn'), ctx.check_item('provider verification', provider.get('verification', {}).get('status') in {'not_required', 'fixture_valid'}, provider.get('verification', {}).get('status', 'not_verified'), severity='warn'), ctx.check_item('provider ready gate', provider.get('ready_gate', {}).get('status') in {'not_required', 'candidate_ready'}, provider.get('ready_gate', {}).get('status', 'blocked'), severity='warn'), ctx.check_item('provider fixture review', provider.get('fixture_review', {}).get('status') in {'not_required', 'candidate_ready_for_human_review'}, provider.get('fixture_review', {}).get('status', 'not_reviewed'), severity='warn'), ctx.check_item('config', ctx.CONFIG_PATH.exists(), str(ctx.CONFIG_PATH), severity='fail'), ctx.check_item('timezone', bool(ctx.get_config_timezone_name()), 'IANA timezone: {}'.format(ctx.get_config_timezone_name()), severity='fail'), ctx.check_item('yaml', ctx.module_available('yaml'), 'PyYAML importable', severity='fail'), ctx.check_item('aiohttp', ctx.module_available('aiohttp'), 'aiohttp importable', severity='fail'), ctx.check_item('aiohttp.web', ctx.module_available('aiohttp.web'), 'needed for local QR scanner', severity='warn'), ctx.check_item('playwright', (not browser_login.get('enabled')) or bool(browser_login.get('playwright_available')), 'browser-assisted login {}'.format('available' if browser_login.get('playwright_available') else 'disabled/unavailable'), severity='warn'), ctx.check_item('keyring', ctx.keyring_available(), 'optional password store', severity='warn'), ctx.check_item('active profile user', bool(credential.get('user_configured')), 'profile {} has a user'.format(active.name), severity='fail'), ctx.check_item('credential', credential.get('effective_source') != 'missing', 'effective source: {}'.format(credential.get('effective_source')), severity='warn'), ctx.check_item('cookie cache', not cookie['exists'] or bool(cookie['valid']), 'file: {} age: {}'.format(cookie['path'], cookie['age']), severity='warn'), ctx.check_item('verify_ssl', ctx.get_verify_ssl(), 'TLS verification should stay enabled', severity='warn'), ctx.check_item('course discovery', bool(ctx.course_discovery_report()['current_semester_endpoint']) and bool(ctx.course_discovery_report()['courses_endpoint']), 'read-only course endpoints configured', severity='warn'), ctx.check_item('research mode', not bool(research.get('enabled')), 'disabled for daily automation' if not bool(research.get('enabled')) else 'enabled; use only for explicit capture/API exploration', severity='warn'), ctx.check_item('log directory', ctx.PATH.exists() or ctx.os.access(str(ctx.BASE_DIR), ctx.os.W_OK), str(ctx.PATH), severity='warn')]
     checks.extend(packaging.get('checks', []))
     for warning in ctx.BOOTSTRAP_WARNINGS:
         checks.append(ctx.check_item('bootstrap', False, warning, severity='warn'))
@@ -223,7 +225,10 @@ def doctor_report() -> ctx.Dict[str, ctx.Any]:
         status = 'fail'
     elif any((item['status'] == 'warn' for item in checks)):
         status = 'warn'
-    return {'status': status, 'base_dir': str(ctx.BASE_DIR), 'config_path': str(ctx.CONFIG_PATH), 'provider': provider, 'provider_support': provider_support, 'active_profile': active.name, 'checks': checks, 'http_timeout': ctx.get_http_timeout_seconds(), 'notification_timeout': ctx.get_notification_timeout_seconds(), 'cookie': cookie, 'notifications': ctx.notification_report(), 'integrations': ctx.integration_report(), 'research': research, 'course_discovery': ctx.course_discovery_report(), 'config_warnings': list(getattr(ctx, 'CONFIG_WARNINGS', [])), 'packaging': packaging}
+    probe = dict(network_probe or {"enabled": False, "status": "disabled"})
+    if probe.get("enabled") and probe.get("status") == "fail" and status == "ok":
+        status = "warn"
+    return {'status': status, 'base_dir': str(ctx.BASE_DIR), 'config_path': str(ctx.CONFIG_PATH), 'provider': provider, 'provider_support': provider_support, 'active_profile': active.name, 'checks': checks, 'time': {'timezone': ctx.get_config_timezone_name(), 'now': ctx.current_datetime().isoformat(timespec='seconds')}, 'http_timeout': ctx.get_http_timeout_seconds(), 'notification_timeout': ctx.get_notification_timeout_seconds(), 'cookie': cookie, 'notifications': ctx.notification_report(), 'integrations': ctx.integration_report(), 'research': research, 'browser_assisted_login': browser_login, 'course_discovery': ctx.course_discovery_report(), 'network_probe': probe, 'config_warnings': list(getattr(ctx, 'CONFIG_WARNINGS', [])), 'packaging': packaging}
 
 
 def print_status(json_output: bool=False) -> None:
@@ -237,6 +242,7 @@ def print_status(json_output: bool=False) -> None:
     provider = report['provider']
     provider_support = report.get('provider_support', {})
     print('Provider: {} ({}, daily_ready={})'.format(provider['key'], provider_support.get('support_level', provider.get('status')), 'yes' if provider_support.get('daily_ready') else 'no'))
+    print('Timezone: {}'.format(report.get('time', {}).get('timezone', ctx.get_config_timezone_name())))
     print('Active profile: {}'.format(active.name))
     print('User: {}'.format(active.user if ctx.has_real_credential(active.user) else '(not set)'))
     print('Credential source: {}'.format(credential.get('effective_source', 'missing')))
@@ -251,14 +257,27 @@ def print_status(json_output: bool=False) -> None:
     print('Log dir: {}'.format(ctx.PATH))
 
 
-def doctor(json_output: bool=False) -> int:
-    report = ctx.doctor_report()
+def doctor(json_output: bool=False, probe_url: str='', probe_count: int=3, probe_concurrency: int=1) -> int:
+    network_probe = {"enabled": False, "status": "disabled"}
+    if ctx.normalize_text(probe_url):
+        network_probe = ctx.asyncio.run(
+            ctx.run_connection_probe(
+                probe_url,
+                count=probe_count,
+                concurrency=probe_concurrency,
+                timeout_seconds=min(10.0, ctx.get_http_timeout_seconds()),
+            )
+        )
+    report = ctx.doctor_report(network_probe=network_probe)
     if json_output:
         print(ctx.json_text(report))
         return 0
     print('Config: {}'.format(ctx.CONFIG_PATH))
     print('Base dir: {}'.format(ctx.BASE_DIR))
     print(ctx.render_check_items(report['checks']))
+    if report.get('network_probe', {}).get('enabled'):
+        probe = report['network_probe']
+        print('network probe: {} ok={}/{} avg={}ms'.format(probe.get('status'), probe.get('ok_count'), probe.get('count'), probe.get('average_ms')))
     print('aiohttp timeout: {:.1f}s'.format(report['http_timeout']))
     print('notification timeout: {:.1f}s'.format(report['notification_timeout']))
     return 0

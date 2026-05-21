@@ -37,7 +37,7 @@ def status_print(msg: ctx.Any) -> None:
 
 
 def daily_log_path(today: ctx.Optional[ctx.datetime]=None) -> ctx.Path:
-    today = today or ctx.datetime.now()
+    today = today or ctx.current_datetime()
     return ctx.PATH / str(today.year) / str(today.month) / '{}.jsonl'.format(today.day)
 
 
@@ -49,7 +49,7 @@ def log(*, event: str, path: ctx.Optional[ctx.Path]=None, counter: int=-1, statu
     if not ctx.CONFIG['config']['enable_log']:
         return False
     try:
-        data = {'timestamp': ctx.datetime.now().isoformat(timespec='seconds'), 'event': event, 'counter': counter, 'status': status, 'url': url, 'http_status': http_status, 'rollcall_id': rollcall_id, 'rollcall_type': rollcall_type, 'message': message, 'payload_excerpt': ctx.make_payload_excerpt(payload_excerpt), 'error': ctx.normalize_text(error) or None}
+        data = {'timestamp': ctx.current_datetime().isoformat(timespec='seconds'), 'timezone': ctx.get_config_timezone_name(), 'event': event, 'counter': counter, 'status': status, 'url': url, 'http_status': http_status, 'rollcall_id': rollcall_id, 'rollcall_type': rollcall_type, 'message': message, 'payload_excerpt': ctx.make_payload_excerpt(payload_excerpt), 'error': ctx.normalize_text(error) or None}
         if extra:
             data.update(extra)
         path = path or ctx.daily_log_path()

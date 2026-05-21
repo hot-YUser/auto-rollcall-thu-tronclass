@@ -94,15 +94,16 @@ async def monitor_loop(session: ctx.aiohttp.ClientSession, shutdown_event: ctx.a
         if ctx.LAST_LOGIN_RESULT.ok and login_retry_attempt:
             login_retry_attempt = 0
             next_login_retry_at = 0.0
-        today = ctx.datetime.today().weekday()
+        configured_now = ctx.current_datetime()
+        today = configured_now.weekday()
         schedule = ctx.get_schedule_for_day(today)
-        start, end = ctx.parse_schedule_range(schedule.get('range'))
-        current_time = ctx.datetime.now().time()
+        schedule_ranges = schedule.get('ranges', schedule.get('range'))
+        current_time = configured_now.time()
         if not schedule.get('enable', False):
             ctx.status_print('今日非上課日 (休眠中)')
             await ctx.sleep_or_shutdown(shutdown_event, 60)
             continue
-        if ctx.is_within_schedule(start, end, current_time):
+        if ctx.is_within_any_schedule(schedule_ranges, current_time):
             if not flag_day_night:
                 flag_day_night = True
                 text = '進入上課時間，開始監控點名...\n'

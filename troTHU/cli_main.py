@@ -71,7 +71,12 @@ def main(argv: ctx.Optional[ctx.List[str]]=None) -> int:
         ctx.print_status(json_output=args.json)
         return 0
     if args.command == 'doctor':
-        return ctx.doctor(json_output=args.json)
+        return ctx.doctor(
+            json_output=args.json,
+            probe_url=getattr(args, 'probe_url', ''),
+            probe_count=getattr(args, 'probe_count', 3),
+            probe_concurrency=getattr(args, 'probe_concurrency', 1),
+        )
     if args.command == 'config':
         command = getattr(args, 'config_command', None) or 'show'
         if command == 'show':
@@ -107,7 +112,10 @@ def main(argv: ctx.Optional[ctx.List[str]]=None) -> int:
         if validation_command == 'summary':
             return ctx.validation_summary_command(json_output=getattr(args, 'json', False))
         if validation_command == 'local-smoke':
-            return ctx.validation_local_smoke_command(json_output=getattr(args, 'json', False))
+            return ctx.validation_local_smoke_command(
+                json_output=getattr(args, 'json', False),
+                record=getattr(args, 'record', False),
+            )
         parser.print_help()
         return 1
     if args.command == 'provider':
@@ -167,8 +175,19 @@ def main(argv: ctx.Optional[ctx.List[str]]=None) -> int:
     if args.command == 'qr':
         qr_args = list(args.qr_args or [])
         qr_action = qr_args[0].lower() if qr_args else ''
+        image_path = ctx.normalize_text(getattr(args, 'image', ''))
         if qr_action == 'pending':
             return ctx.print_pending_qr(json_output=args.json)
+        if qr_action == 'image' or (image_path and qr_action in {'', 'paste'}):
+            path = image_path or (' '.join(qr_args[1:]).strip() if qr_action == 'image' else '')
+            if not path:
+                print('QR image path is required.')
+                return 1
+            try:
+                return ctx.asyncio.run(ctx.qr_image_command(path, assume_yes=args.yes, json_output=args.json, fanout_all=args.fanout_all))
+            except Exception as exc:
+                print('QR image failed: {}'.format(exc))
+                return 1
         if qr_action == 'paste':
             payload = ' '.join(qr_args[1:]).strip()
             try:
@@ -212,6 +231,15 @@ def main(argv: ctx.Optional[ctx.List[str]]=None) -> int:
                     print(ctx.json_text({'status': 'failed', 'message': str(exc)}))
                 else:
                     print('Research API capture failed: {}'.format(exc))
+                return 1
+        if research_command == 'probe':
+            try:
+                return ctx.asyncio.run(ctx.research_probe_command(args))
+            except Exception as exc:
+                if getattr(args, 'json', False):
+                    print(ctx.json_text({'status': 'failed', 'message': str(exc)}))
+                else:
+                    print('Research probe failed: {}'.format(exc))
                 return 1
         if research_command == 'browser-check':
             return ctx.research_browser_check_command(json_output=getattr(args, 'json', False))

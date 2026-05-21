@@ -129,8 +129,6 @@ def parse_simple_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
                 value = _strip_value(value.split("//", 1)[0])
             entry = simple["operating"].setdefault(pending_range_day, {"enable": True, "range": []})
             values = list(entry.get("range", []))
-            if len(values) >= 2:
-                values = []
             values.append(value or "00:00")
             entry["range"] = values
             continue
@@ -202,14 +200,14 @@ def parse_simple_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
                 simple["operating"][current_day]["enable"] = ctx.coerce_bool(value, True)
             elif key == "range":
                 pending_range_day = current_day
+                simple["operating"].setdefault(current_day, {"enable": True, "range": []})
                 if value:
-                    simple["operating"].setdefault(current_day, {"enable": True, "range": ["00:00", "00:00"]})
                     simple["operating"][current_day]["range"] = ctx.normalize_schedule_range(value, ["00:00", "00:00"])
+                else:
+                    simple["operating"][current_day]["range"] = []
             elif key == "-" and pending_range_day is not None:
                 entry = simple["operating"].setdefault(pending_range_day, {"enable": True, "range": []})
                 values = list(entry.get("range", []))
-                if len(values) >= 2:
-                    values = []
                 values.append(value or "00:00")
                 entry["range"] = values
             continue
@@ -218,7 +216,9 @@ def parse_simple_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
     finish_group()
     for day in range(7):
         entry = simple["operating"].setdefault(day, {"enable": True, "range": ["00:00", "00:00"]})
-        entry["range"] = ctx.normalize_schedule_range(entry.get("range"), ["00:00", "00:00"])
+        ranges = ctx.normalize_schedule_ranges(entry.get("ranges", entry.get("range")), [["00:00", "00:00"]])
+        entry["range"] = ranges[0]
+        entry["ranges"] = ranges
     return simple
 
 
@@ -293,7 +293,14 @@ def merge_simple_and_advanced_config(simple: ctx.Mapping[str, ctx.Any], advanced
             continue
         operating[internal_day] = {
             "enable": ctx.coerce_bool(entry.get("enable", True), True) if isinstance(entry, dict) else True,
-            "range": ctx.normalize_schedule_range(entry.get("range") if isinstance(entry, dict) else None, ["00:00", "00:00"]),
+            "range": ctx.normalize_schedule_range(
+                entry.get("ranges", entry.get("range")) if isinstance(entry, dict) else None,
+                ["00:00", "00:00"],
+            ),
+            "ranges": ctx.normalize_schedule_ranges(
+                entry.get("ranges", entry.get("range")) if isinstance(entry, dict) else None,
+                [["00:00", "00:00"]],
+            ),
         }
     config["operating"] = operating
     config["_simple"] = {
@@ -394,14 +401,17 @@ def render_simple_config(config: ctx.Mapping[str, ctx.Any] | None = None) -> str
     for day in range(7):
         entry = operating.get(day, {"enable": True, "range": ["00:00", "00:00"]})
         enabled = ctx.coerce_bool(entry.get("enable", True), True) if isinstance(entry, dict) else True
-        start, end = ctx.normalize_schedule_range(entry.get("range") if isinstance(entry, dict) else None, ["00:00", "00:00"])
+        ranges = ctx.normalize_schedule_ranges(
+            entry.get("ranges", entry.get("range")) if isinstance(entry, dict) else None,
+            [["00:00", "00:00"]],
+        )
         lines.extend(
             [
                 "  {}:".format(day),
                 "    enable:{}".format("true" if enabled else "false"),
                 "    range:",
-                "    - {}".format(start),
-                "    - {}".format(end),
             ]
         )
+        for start, end in ranges:
+            lines.append("    - {} - {}".format(start, end))
     return "\n".join(lines).rstrip() + "\n"

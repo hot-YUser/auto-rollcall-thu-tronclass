@@ -4,10 +4,28 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "auto-rollcall-thu-tronclass"
-version = "1.1.0a1"
+version = "1.1.0a2"
 description = "THU TronClass auto rollcall helper"
 readme = "README.md"
 requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "troTHU contributors" },
+]
+keywords = ["tronclass", "ilearn", "thu", "rollcall", "attendance"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Education",
+  "License :: OSI Approved :: MIT License",
+  "Natural Language :: Chinese (Traditional)",
+  "Operating System :: Microsoft :: Windows",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Internet :: WWW/HTTP",
+]
 dependencies = [
   "aiohttp>=3.9.5",
   "PyYAML>=6.0.2",
@@ -17,7 +35,14 @@ dependencies = [
 [project.optional-dependencies]
 keyring = ["keyring>=24"]
 packaging = ["PyInstaller>=6"]
+qr-image = ["opencv-python-headless>=4.9"]
+browser = ["playwright>=1.44"]
 dev = ["PyInstaller>=6", "keyring>=24"]
+
+[project.urls]
+Homepage = "https://github.com/hot-YUser/auto-rollcall-thu-tronclass"
+Repository = "https://github.com/hot-YUser/auto-rollcall-thu-tronclass"
+Issues = "https://github.com/hot-YUser/auto-rollcall-thu-tronclass/issues"
 
 [project.scripts]
 trothu = "troTHU.tron:main"

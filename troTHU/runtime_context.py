@@ -97,6 +97,10 @@ try:
         build_shell_ui_model,
     )
     from troTHU.bot_runtime import normalize_admins_config
+    from troTHU.connection_probe import (
+        run_connection_probe,
+        sanitize_probe_url,
+    )
     from troTHU.course_discovery import (
         CourseDiscoveryError,
         discover_courses,
@@ -168,6 +172,7 @@ try:
         build_research_status,
         capture_browser_target_metadata,
         capture_research_api_target,
+        capture_student_rollcalls_probe,
         ensure_research_allowed,
     )
     from troTHU.webview_sync import (
@@ -204,7 +209,9 @@ try:
         run_release_build_pipeline,
     )
     from troTHU.real_validation import (
+        append_local_smoke_validation_records,
         append_real_validation_record,
+        build_local_smoke_validation_records,
         build_real_validation_checklist,
         format_real_validation_summary,
         run_local_validation_smoke,
@@ -220,6 +227,7 @@ try:
     from troTHU.tron_http import (
         LOGIN_URL,
         TRON,
+        LoginPageChangedError,
         LoginRejectedError,
         TronHttpClient,
         TronHttpError,
@@ -252,13 +260,16 @@ try:
         coerce_positive_int,
         format_found_code_banner,
         format_time_value,
+        is_within_any_schedule,
         is_within_schedule,
         make_payload_excerpt,
         normalize_radar_boundary_points as runtime_normalize_radar_boundary_points,
         normalize_schedule_range,
+        normalize_schedule_ranges,
         normalize_text,
         parse_radar_answer_result,
         parse_schedule_range,
+        parse_schedule_ranges,
         parse_time_value,
         render_big_digits,
     )
@@ -316,6 +327,10 @@ except ImportError:
         build_shell_ui_model,
     )
     from bot_runtime import normalize_admins_config
+    from connection_probe import (
+        run_connection_probe,
+        sanitize_probe_url,
+    )
     from course_discovery import (
         CourseDiscoveryError,
         discover_courses,
@@ -387,6 +402,7 @@ except ImportError:
         build_research_status,
         capture_browser_target_metadata,
         capture_research_api_target,
+        capture_student_rollcalls_probe,
         ensure_research_allowed,
     )
     from webview_sync import (
@@ -423,7 +439,9 @@ except ImportError:
         run_release_build_pipeline,
     )
     from real_validation import (
+        append_local_smoke_validation_records,
         append_real_validation_record,
+        build_local_smoke_validation_records,
         build_real_validation_checklist,
         format_real_validation_summary,
         run_local_validation_smoke,
@@ -439,6 +457,7 @@ except ImportError:
     from tron_http import (
         LOGIN_URL,
         TRON,
+        LoginPageChangedError,
         LoginRejectedError,
         TronHttpClient,
         TronHttpError,
@@ -471,13 +490,16 @@ except ImportError:
         coerce_positive_int,
         format_found_code_banner,
         format_time_value,
+        is_within_any_schedule,
         is_within_schedule,
         make_payload_excerpt,
         normalize_radar_boundary_points as runtime_normalize_radar_boundary_points,
         normalize_schedule_range,
+        normalize_schedule_ranges,
         normalize_text,
         parse_radar_answer_result,
         parse_schedule_range,
+        parse_schedule_ranges,
         parse_time_value,
         render_big_digits,
     )
@@ -564,6 +586,13 @@ DEFAULT_CONFIG = {
     "session": {
         "cache_cookies": True,
     },
+    "auth": {
+        "browser_assisted_login": {
+            "enabled": False,
+            "headless": True,
+            "timeout_ms": 45000,
+        },
+    },
     "ux": {
         "pending_qr_ttl_seconds": 600,
         "debug_bundle_log_limit": 50,
@@ -635,6 +664,9 @@ DEFAULT_CONFIG = {
         "notification_timeout": DEFAULT_NOTIFICATION_TIMEOUT_SECONDS,
         "verify_ssl": True,
         "user-agent": list(DEFAULT_USER_AGENTS),
+    },
+    "time": {
+        "timezone": "Asia/Taipei",
     },
     "number": {
         "concurrency": NUMBER_WORKER_COUNT,
@@ -752,6 +784,9 @@ _LEGACY_EXPORTS = {
     'bot_discord_sync_command': ('troTHU.cli_bot', 'bot_discord_sync_command'),
     'bot_serve_command': ('troTHU.cli_bot', 'bot_serve_command'),
     'build_arg_parser': ('troTHU.cli_parser', 'build_arg_parser'),
+    'browser_assisted_login': ('troTHU.auth_runtime', 'browser_assisted_login'),
+    'browser_assisted_login_available': ('troTHU.auth_runtime', 'browser_assisted_login_available'),
+    'browser_assisted_login_status': ('troTHU.auth_runtime', 'browser_assisted_login_status'),
     'build_fatal_error_report': ('troTHU.logging_runtime', 'build_fatal_error_report'),
     'build_notification_requests': ('troTHU.logging_runtime', 'build_notification_requests'),
     'build_qr_preview': ('troTHU.qr_runtime', 'build_qr_preview'),
@@ -771,16 +806,19 @@ _LEGACY_EXPORTS = {
     'cookie_report': ('troTHU.status_reports', 'cookie_report'),
     'course_discovery_report': ('troTHU.status_reports', 'course_discovery_report'),
     'courses_command': ('troTHU.cli_courses', 'courses_command'),
+    'capture_student_rollcalls_probe': ('troTHU.research_sandbox', 'capture_student_rollcalls_probe'),
     'create_client_timeout': ('troTHU.auth_runtime', 'create_client_timeout'),
     'create_http_client_timeout': ('troTHU.auth_runtime', 'create_http_client_timeout'),
     'create_http_connector': ('troTHU.auth_runtime', 'create_http_connector'),
     'create_notification_timeout': ('troTHU.auth_runtime', 'create_notification_timeout'),
     'create_tron_http_client': ('troTHU.auth_runtime', 'create_tron_http_client'),
     'credential_report': ('troTHU.status_reports', 'credential_report'),
+    'current_datetime': ('troTHU.config_runtime', 'current_datetime'),
     'daily_log_path': ('troTHU.logging_runtime', 'daily_log_path'),
     'dashboard_command': ('troTHU.cli_system', 'dashboard_command'),
     'debug_capture_command': ('troTHU.cli_research', 'debug_capture_command'),
     'decide_rollcall': ('troTHU.rollcall_runtime', 'decide_rollcall'),
+    'decode_qr_image_file': ('troTHU.qr_runtime', 'decode_qr_image_file'),
     'doctor': ('troTHU.status_reports', 'doctor'),
     'doctor_report': ('troTHU.status_reports', 'doctor_report'),
     'enable_insecure_ssl_fallback': ('troTHU.auth_runtime', 'enable_insecure_ssl_fallback'),
@@ -792,6 +830,9 @@ _LEGACY_EXPORTS = {
     'get_active_provider_config': ('troTHU.status_reports', 'get_active_provider_config'),
     'get_active_provider_definition': ('troTHU.status_reports', 'get_active_provider_definition'),
     'get_active_provider_key': ('troTHU.status_reports', 'get_active_provider_key'),
+    'get_browser_assisted_login_config': ('troTHU.auth_runtime', 'get_browser_assisted_login_config'),
+    'get_config_timezone': ('troTHU.config_runtime', 'get_config_timezone'),
+    'get_config_timezone_name': ('troTHU.config_runtime', 'get_config_timezone_name'),
     'get_environment_credentials': ('troTHU.config_runtime', 'get_environment_credentials'),
     'get_http_timeout_seconds': ('troTHU.auth_runtime', 'get_http_timeout_seconds'),
     'get_login_retry_delay': ('troTHU.auth_runtime', 'get_login_retry_delay'),
@@ -857,6 +898,7 @@ _LEGACY_EXPORTS = {
     'qr_command': ('troTHU.cli_qr', 'qr_command'),
     'qr_fanout_command': ('troTHU.qr_runtime', 'qr_fanout_command'),
     'qr_fanout_result': ('troTHU.qr_runtime', 'qr_fanout_result'),
+    'qr_image_command': ('troTHU.qr_runtime', 'qr_image_command'),
     'qr_paste_command': ('troTHU.qr_runtime', 'qr_paste_command'),
     'qr_scanner_submit': ('troTHU.qr_runtime', 'qr_scanner_submit'),
     'radar': ('troTHU.radar_runtime', 'radar'),
@@ -874,8 +916,10 @@ _LEGACY_EXPORTS = {
     'research_api_command': ('troTHU.cli_research', 'research_api_command'),
     'research_browser_capture_command': ('troTHU.cli_research', 'research_browser_capture_command'),
     'research_browser_check_command': ('troTHU.cli_research', 'research_browser_check_command'),
+    'research_probe_command': ('troTHU.cli_research', 'research_probe_command'),
     'research_report': ('troTHU.status_reports', 'research_report'),
     'research_status_command': ('troTHU.cli_research', 'research_status_command'),
+    'run_connection_probe': ('troTHU.connection_probe', 'run_connection_probe'),
     'reset_unsupported_rollcall_state': ('troTHU.rollcall_runtime', 'reset_unsupported_rollcall_state'),
     'resolve_credentials': ('troTHU.config_runtime', 'resolve_credentials'),
     'roadmap_audit_command': ('troTHU.cli_system', 'roadmap_audit_command'),
@@ -900,6 +944,8 @@ _LEGACY_EXPORTS = {
     'save_config': ('troTHU.config_runtime', 'save_config'),
     'sanitize_config_values': ('troTHU.input_safety', 'sanitize_config_values'),
     'sanitize_input_field': ('troTHU.input_safety', 'sanitize_input_field'),
+    'sanitize_probe_url': ('troTHU.connection_probe', 'sanitize_probe_url'),
+    'safe_qr_image_decode_report': ('troTHU.qr_runtime', 'safe_qr_image_decode_report'),
     'masked_password_input': ('troTHU.input_safety', 'masked_password_input'),
     'select_rollcall': ('troTHU.rollcall_runtime', 'select_rollcall'),
     'set_notification_sinks': ('troTHU.logging_runtime', 'set_notification_sinks'),

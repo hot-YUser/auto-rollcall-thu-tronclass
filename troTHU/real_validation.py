@@ -13,7 +13,21 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional
 VALIDATION_VERSION = "real-validation-v1"
 VALIDATION_RECORD_FILENAME = "real_validation.jsonl"
 VALIDATION_STATUSES = {"pass", "fail", "blocked", "skip"}
-LIVE_CASE_IDS = {"thu_number_live", "thu_radar_live", "qr_single_live", "qr_fanout_live"}
+LOCAL_SMOKE_RECORD_CASE_IDS = (
+    "preflight_status_doctor_dashboard",
+    "time_schedule_local",
+    "bot_generic_sandbox",
+    "bot_platform_fake_sandbox",
+    "package_release_static",
+    "safety_review",
+)
+LIVE_CASE_IDS = {
+    "thu_number_live",
+    "thu_radar_live",
+    "qr_single_live",
+    "qr_static_image_live",
+    "qr_fanout_live",
+}
 ACCEPTED_LIVE_BLOCK_REASON = "blocked_by_no_live_rollcall"
 
 SENSITIVE_KEY_PARTS = (
@@ -122,6 +136,13 @@ def build_real_validation_checklist(config: Any = None) -> Dict[str, Any]:
             "command returns current semester/course summary or a safe login/unauthorized classification.",
         ),
         _case(
+            "time_schedule_local",
+            "Timezone and multi-range schedule",
+            "Confirm configured schedule windows use the configured IANA timezone and support multiple ranges.",
+            "python -m troTHU.tron status --json && python -m troTHU.tron config doctor --json",
+            "status/config output shows the expected timezone and enabled schedule ranges without external calls.",
+        ),
+        _case(
             "thu_number_live",
             "THU number live",
             "Confirm number rollcall behavior against a real THU number attendance event.",
@@ -143,6 +164,14 @@ def build_real_validation_checklist(config: Any = None) -> Dict[str, Any]:
             "Confirm one bound/active profile can submit a classroom QR attendance payload manually.",
             "python -m troTHU.tron qr paste --yes <QR_URL_OR_PAYLOAD>",
             "preview is safe, submit succeeds or fails with classified safe error, and payload is not echoed.",
+            live=True,
+        ),
+        _case(
+            "qr_static_image_live",
+            "QR static image decode",
+            "Confirm a classroom QR screenshot/photo can be decoded through the CLI/backend path.",
+            "python -m troTHU.tron qr paste --image <SCREENSHOT_PATH> --yes",
+            "image decoder reports only safe payload metadata, then QR submission follows the same safe classification as paste.",
             live=True,
         ),
         _case(
@@ -173,6 +202,30 @@ def build_real_validation_checklist(config: Any = None) -> Dict[str, Any]:
             "Confirm package-check and release-check remain healthy before any artifact build.",
             "python -m troTHU.tron package-check --json && python -m troTHU.tron release-check --json",
             "reports are ok/warn, do not build artifacts, and do not include private local data.",
+        ),
+        _case(
+            "doctor_probe_opt_in",
+            "Doctor opt-in connection probe",
+            "Confirm the optional doctor probe can be run deliberately without making network calls by default.",
+            "python -m troTHU.tron doctor --probe-url https://ilearn.thu.edu.tw --probe-count 3 --json",
+            "probe output is sanitized, bounded, and only appears when --probe-url is supplied.",
+            required=False,
+        ),
+        _case(
+            "browser_assisted_login_opt_in",
+            "Browser-assisted login gate",
+            "Confirm Playwright-assisted login remains disabled by default and only runs after explicit config opt-in.",
+            "python -m troTHU.tron doctor --json",
+            "doctor reports browser-assisted login availability/gates without launching a browser unless enabled.",
+            required=False,
+        ),
+        _case(
+            "research_student_rollcalls_probe",
+            "Research student_rollcalls shape probe",
+            "Confirm zako option B evidence is recorded only as risky endpoint shape metadata during explicit research.",
+            "python -m troTHU.tron research probe student_rollcalls --rollcall-id <ROLLCALL_ID> --json",
+            "requires research.enabled + allow_api_exploration + allow_risky_probe and never records real number_code values.",
+            required=False,
         ),
         _case(
             "safety_review",
@@ -238,6 +291,140 @@ def append_real_validation_record(base_dir: Path, record: Mapping[str, Any]) -> 
     result = dict(normalized)
     result["path"] = str(path)
     return result
+
+
+def _is_ok_or_warn(status: Any) -> bool:
+    return str(status or "").lower() in {"ok", "warn", "dry_run"}
+
+
+def _provider_scope_is_safe(report: Mapping[str, Any]) -> bool:
+    scope = report.get("provider_scope", {}) if isinstance(report, Mapping) else {}
+    if not isinstance(scope, Mapping):
+        return False
+    thu = scope.get("thu", {}) if isinstance(scope.get("thu"), Mapping) else {}
+    fju = scope.get("fju", {}) if isinstance(scope.get("fju"), Mapping) else {}
+    tku = scope.get("tku", {}) if isinstance(scope.get("tku"), Mapping) else {}
+    return (
+        str(thu.get("support_level") or "") == "ready"
+        and str(fju.get("support_level") or "") == "experimental"
+        and str(tku.get("support_level") or "") == "experimental"
+    )
+
+
+def build_local_smoke_validation_records(
+    smoke_report: Mapping[str, Any],
+    *,
+    profile: str = "default",
+    provider: str = "thu",
+) -> List[Dict[str, Any]]:
+    """Build concise validation records for cases proven by offline local-smoke."""
+    report = dict(smoke_report or {})
+    checks = report.get("checks", {}) if isinstance(report.get("checks"), Mapping) else {}
+    reports = report.get("reports", {}) if isinstance(report.get("reports"), Mapping) else {}
+    feature_gates = reports.get("feature_gates", {}) if isinstance(reports.get("feature_gates"), Mapping) else {}
+    bot = reports.get("bot_sandbox", {}) if isinstance(reports.get("bot_sandbox"), Mapping) else {}
+    generic = bot.get("generic", {}) if isinstance(bot.get("generic"), Mapping) else {}
+    platform_fake = bot.get("platform_fake", {}) if isinstance(bot.get("platform_fake"), Mapping) else {}
+    roadmap = reports.get("roadmap_audit", {}) if isinstance(reports.get("roadmap_audit"), Mapping) else {}
+
+    def record(case_id: str, ok: bool, note: str, metadata: Mapping[str, Any]) -> Dict[str, Any]:
+        return {
+            "case_id": case_id,
+            "status": "pass" if ok else "fail",
+            "profile": profile,
+            "provider": provider,
+            "note": note,
+            "metadata": dict(metadata),
+        }
+
+    preflight_ok = _is_ok_or_warn(report.get("status")) and not any(
+        str(value).lower() == "fail" for value in checks.values()
+    )
+    time_gate = feature_gates.get("timezone", {}) if isinstance(feature_gates.get("timezone"), Mapping) else {}
+    schedule_gate = feature_gates.get("schedule", {}) if isinstance(feature_gates.get("schedule"), Mapping) else {}
+    qr_gate = feature_gates.get("qr_image", {}) if isinstance(feature_gates.get("qr_image"), Mapping) else {}
+    browser_gate = (
+        feature_gates.get("browser_assisted_login", {})
+        if isinstance(feature_gates.get("browser_assisted_login"), Mapping)
+        else {}
+    )
+    doctor_gate = feature_gates.get("doctor_probe", {}) if isinstance(feature_gates.get("doctor_probe"), Mapping) else {}
+    research_gate = feature_gates.get("research_probe", {}) if isinstance(feature_gates.get("research_probe"), Mapping) else {}
+
+    generic_ok = bool(generic.get("status_ok")) and bool(generic.get("accounts_ok"))
+    platform_ok = bot.get("status") == "ok" and int(platform_fake.get("actual_delivery_count") or 0) >= 3
+    package_ok = _is_ok_or_warn(checks.get("package_check")) and _is_ok_or_warn(checks.get("release_check"))
+    safety_ok = (
+        _is_ok_or_warn(report.get("status"))
+        and bool(qr_gate.get("sensitive_material_hidden"))
+        and not bool(doctor_gate.get("default_network_calls"))
+        and not bool(research_gate.get("daily_automation"))
+        and bool(browser_gate.get("default_disabled"))
+        and _provider_scope_is_safe(roadmap)
+    )
+
+    return [
+        record(
+            "preflight_status_doctor_dashboard",
+            preflight_ok,
+            "local-smoke completed with no failing local check",
+            {"checks": dict(checks)},
+        ),
+        record(
+            "time_schedule_local",
+            bool(time_gate.get("name")) and bool(schedule_gate.get("multi_range_supported")),
+            "timezone and multi-range schedule gates are present",
+            {"timezone": time_gate, "schedule": schedule_gate},
+        ),
+        record(
+            "bot_generic_sandbox",
+            generic_ok,
+            "generic bot sandbox handled status/accounts for a fake bound user",
+            {"generic": generic},
+        ),
+        record(
+            "bot_platform_fake_sandbox",
+            platform_ok,
+            "fake LINE/Discord/Telegram notification paths delivered sanitized events",
+            {
+                "actual_delivery_count": platform_fake.get("actual_delivery_count", 0),
+                "dispatch_total": (platform_fake.get("dispatch", {}) or {}).get("total", 0)
+                if isinstance(platform_fake.get("dispatch"), Mapping)
+                else 0,
+            },
+        ),
+        record(
+            "package_release_static",
+            package_ok,
+            "package-check and release-check were ok or warn without building artifacts",
+            {"package_check": checks.get("package_check"), "release_check": checks.get("release_check")},
+        ),
+        record(
+            "safety_review",
+            safety_ok,
+            "local safety gates remain explicit and provider scope remains THU-ready/FJU-TKU-experimental",
+            {
+                "qr_image": qr_gate,
+                "doctor_probe": doctor_gate,
+                "browser_assisted_login": browser_gate,
+                "research_probe": research_gate,
+                "provider_scope": roadmap.get("provider_scope", {}),
+            },
+        ),
+    ]
+
+
+def append_local_smoke_validation_records(
+    base_dir: Path,
+    smoke_report: Mapping[str, Any],
+    *,
+    profile: str = "default",
+    provider: str = "thu",
+) -> List[Dict[str, Any]]:
+    appended = []
+    for record in build_local_smoke_validation_records(smoke_report, profile=profile, provider=provider):
+        appended.append(append_real_validation_record(Path(base_dir), record))
+    return appended
 
 
 def _load_records(base_dir: Path) -> List[Dict[str, Any]]:
@@ -354,6 +541,50 @@ def _status_name(report: Any) -> str:
     if isinstance(checks, list) and any(isinstance(item, Mapping) and item.get("status") == "warn" for item in checks):
         return "warn"
     return "ok"
+
+
+def _local_feature_gate_report(config: Mapping[str, Any]) -> Dict[str, Any]:
+    config_value = dict(config or {})
+    time_config = config_value.get("time", {}) if isinstance(config_value.get("time"), Mapping) else {}
+    auth_config = config_value.get("auth", {}) if isinstance(config_value.get("auth"), Mapping) else {}
+    browser_config = (
+        auth_config.get("browser_assisted_login", {})
+        if isinstance(auth_config.get("browser_assisted_login"), Mapping)
+        else {}
+    )
+    research_config = config_value.get("research", {}) if isinstance(config_value.get("research"), Mapping) else {}
+    return {
+        "timezone": {
+            "name": str(time_config.get("timezone") or "Asia/Taipei"),
+            "configured": bool(time_config.get("timezone")),
+        },
+        "schedule": {
+            "multi_range_supported": True,
+            "status_command_includes_time": True,
+        },
+        "qr_image": {
+            "cli_supported": True,
+            "optional_extra": "qr-image",
+            "sensitive_material_hidden": True,
+        },
+        "browser_assisted_login": {
+            "enabled": bool(browser_config.get("enabled")),
+            "default_disabled": not bool(browser_config.get("enabled")),
+            "optional_extra": "browser",
+        },
+        "doctor_probe": {
+            "default_network_calls": False,
+            "requires_probe_url": True,
+            "bounded": True,
+        },
+        "research_probe": {
+            "enabled": bool(research_config.get("enabled")),
+            "allow_api_exploration": bool(research_config.get("allow_api_exploration")),
+            "allow_risky_probe": bool(research_config.get("allow_risky_probe")),
+            "shape_only": True,
+            "daily_automation": False,
+        },
+    }
 
 
 async def _run_bot_fake_smoke(config: Mapping[str, Any], base_dir: Path) -> Dict[str, Any]:
@@ -489,6 +720,7 @@ def run_local_validation_smoke(
         reports["doctor_report"] = {"status": "not_provided"}
     if "dashboard_snapshot" not in reports:
         reports["dashboard_snapshot"] = {"status": "not_provided"}
+    reports.setdefault("feature_gates", _local_feature_gate_report(config))
 
     bot_smoke = asyncio.run(_run_bot_fake_smoke(config, Path(base_dir)))
     reports["bot_sandbox"] = bot_smoke

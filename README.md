@@ -1,21 +1,23 @@
 # Auto-Rollcall-thu-Tronclass
 # 東海 TronClass / iLearn 自動點名輔助工具
 
-這是一個以東海大學 THU TronClass / iLearn 為主線的自動點名輔助工具。它支援單視窗監控輸出、舊版記事本設定流、number/radar/QR 點名處理、多帳號與群組設定、Bot webhook、LINE/Discord/Telegram 通知、本機 QR scanner、read-only companion shell、release build 與安全驗證流程。
+這是一個以東海大學 THU TronClass / iLearn 為主線的自動點名輔助工具。它支援單視窗監控輸出、舊版記事本設定流、IANA 時區排程、number/radar/QR 點名處理、靜態 QR 影像解碼、多帳號與群組設定、Bot webhook、LINE/Discord/Telegram 通知、本機 QR scanner、read-only companion shell、release build 與安全驗證流程。
 
 > 請只在你有權限、且符合學校與課程規範的情境下使用。不要分享帳密、token、cookie、`state/`、`log/`、真實 QR payload 或未遮蔽的 API 回應。不要把填好帳密的 `config.yaml` 傳給別人。
 
-## 版本狀態：v1.1-alpha.1
+## 版本狀態：v1.1-alpha.2
 
-`v1.1-alpha.1` 是目前功能整合版。主要能力已進入「理論完成 + 本地測試 + release artifact smoke」階段，但真實 THU number/radar/QR live acceptance 仍需要在有實際課堂點名時手動記錄，才適合宣稱 fully ready。
+`v1.1-alpha.2` 是目前功能整合版。主要能力仍屬 alpha，尚未完成真實 THU number/radar/QR live acceptance；請把這版視為未完整測試的預發布版本。
 
 目前重點：
 
 - 預設啟動會進入單視窗監控輸出：主視窗只逐行顯示事件；按任意鍵會用固定的 `C:\Windows\System32\notepad.exe` 開啟 `config.yaml`
 - `config.yaml` 是沒有註解的極簡人類格式，只保留 `now`、帳號、群組與上課時間；進階項放在同層 `config.advanced.yaml`
 - 常見輸入會自動修正前後空白與多餘空格；QR payload 只 trim 前後空白，不改內部內容
+- 排程可在 `config.advanced.yaml` 設定 IANA timezone；每日可有多段 range
 - THU provider 是 ready 主線；FJU/TKU 只有 experimental core 與 fixture review / ready gate，不承諾 daily-ready
 - Discord HTTP Interactions 是推薦 production 入口；optional Gateway、QR modal、schema sync 已有核心
+- research probe 只在明確 opt-in 下記錄高風險端點的 HTTP 狀態與欄位形狀，不記錄答案值，也不進 daily automation
 - Windows zip release build runner 會跑 unittest、PyInstaller、artifact validation 與 temp-extract smoke
 
 ## 5 分鐘快速開始
@@ -43,6 +45,7 @@ QR 點名可以貼 payload 或開本機 scanner：
 
 ```bash
 python -m troTHU.tron qr paste "貼上 QR URL 或 payload"
+python -m troTHU.tron qr paste --image screenshot.png --yes
 python -m troTHU.tron qr scan --open
 ```
 
@@ -63,7 +66,7 @@ python -m troTHU.tron validation local-smoke --json
 Release zip 名稱格式：
 
 ```text
-THU_Auto_Rollcall-v1.1.0a1-windows-x64.zip
+THU_Auto_Rollcall-v1.1.0a2-windows-x64.zip
 ```
 
 下載後請完整解壓縮，再在資料夾內執行 `auto-rollcall-thu-tronclass.exe`。不要直接在 zip 裡雙擊執行。第一次啟動會在 exe 同層建立或使用 `config.yaml`、`state/`、`log/`。
@@ -73,6 +76,8 @@ THU_Auto_Rollcall-v1.1.0a1-windows-x64.zip
 ```bash
 python -m pip install -r requirements.txt
 python -m pip install -e .[packaging]
+python -m pip install -e .[qr-image]   # 選用：靜態圖片 QR 解碼
+python -m pip install -e .[browser]    # 選用：Playwright browser-assisted login
 python -m troTHU.tron package-check --json
 ```
 
@@ -96,7 +101,7 @@ auto-rollcall-thu-tronclass doctor
 
 `config.yaml` 會保留為可追蹤的中文 placeholder 範例。它不是標準 YAML，而是本專案專用、對空格寬容的人類設定格式；冒號後有沒有空格都可以，`school` 大小寫不敏感，`group` 也相容過去草稿裡誤拼的 `grop`。
 
-一般使用者只需要改四塊：`now`、`account`、`group`、`operating`。number/radar/research/webview/provider endpoint/Bot token env 等進階設定放在 `config.advanced.yaml`，平常不用碰。
+一般使用者只需要改四塊：`now`、`account`、`group`、`operating`。number/radar/timezone/research/webview/provider endpoint/Bot token env 等進階設定放在 `config.advanced.yaml`，平常不用碰。
 
 常用命令：
 
@@ -130,11 +135,24 @@ operating:
   0:
     enable:true
     range:
-    - 00:00
-    - 00:00
+    - 00:00 - 00:00
 ```
 
-`now:S12345678` 會監控該帳號；`now:class A` 會使用 `group class:A`。如果只有一個有效帳號，`now` 可以留空，程式會自動使用那個帳號。`operating` 的星期採 `0=星期日 ... 6=星期六`。
+`now:S12345678` 會監控該帳號；`now:class A` 會使用 `group class:A`。如果只有一個有效帳號，`now` 可以留空，程式會自動使用那個帳號。`operating` 的星期採 `0=星期日 ... 6=星期六`；同一天可寫多個 `- 09:10 - 12:00` 形式的時段。
+
+`config.advanced.yaml` 可放進階設定，例如：
+
+```yaml
+time:
+  timezone: Asia/Taipei
+auth:
+  browser_assisted_login:
+    enabled: false
+research:
+  enabled: false
+  allow_api_exploration: false
+  allow_risky_probe: false
+```
 
 若不想把密碼放在 `config.yaml`，可改用環境變數、keyring 或互動輸入。
 
@@ -150,7 +168,7 @@ radar 使用 THU 幾何求解器，支援 lite/beacon payload、`radarSignal`、
 
 ### QR
 
-QR 支援 `_p` JSON、`p` compact、relative URL、query-only、pure JSON、pure compact、unknown field diagnostic。本機 scanner 使用短效 local token；preview/result 不回顯 raw payload 或 QR `data`。
+QR 支援 `_p` JSON、`p` compact、relative URL、query-only、pure JSON、pure compact、unknown field diagnostic，也可用 `qr paste --image <path>` 從截圖或照片解出 QR。影像解碼需要選用 extra；preview/result 不回顯 raw payload 或 QR `data`。
 
 ## Bot / 通知
 
@@ -220,6 +238,8 @@ THU 是 ready provider。FJU/TKU 只保留 experimental endpoint/config/fake-ser
 - `app serve --open`：開 localhost read-only companion shell，所有 `/app/api/*` 需要短效 local token。
 - `webview preview/import`：只做 cookie sync contract 與本地 cookie cache bridge；真正 import 必須同時開 config gate 與 `--save`。
 - `research status/api/browser-check/browser-capture`：明確 opt-in 的 read-only metadata capture；不查答案、不保存 raw body/header/cookie/token/QR。
+- `research probe student_rollcalls --rollcall-id <id>`：方案 B 的唯讀探測，只記 HTTP 狀態與欄位形狀；需要 `research.enabled=true`、`allow_api_exploration=true`、`allow_risky_probe=true`，且不會把 `number_code` 值寫入輸出。
+- `auth.browser_assisted_login.enabled=true`：當一般表單登入因 CAS 頁面改版失敗時，可選用 Playwright 後備登入；只匯入 session cookie，不保存 header/body。
 
 ## R1/R2/R3 驗收
 
@@ -228,9 +248,14 @@ R1 是真實 THU acceptance。沒有課堂點名時，可以先記 blocked，但
 ```bash
 python -m troTHU.tron validation checklist
 python -m troTHU.tron validation local-smoke --json
+python -m troTHU.tron validation local-smoke --record --json
 python -m troTHU.tron validation record thu_number_live --status blocked --reason blocked_by_no_live_rollcall --note "no live rollcall available"
 python -m troTHU.tron validation summary --json
 ```
+
+`local-smoke --record` 只會寫入本機可證明的非 live case：preflight、time schedule、Bot fake sandbox、package/release static、安全 gate。`auth_restore`、number/radar/QR live、靜態 QR live、fan-out live 仍需要真實 THU 情境，不會被自動假造。
+
+R1 checklist 也會列出本輪新增的非 UI 驗收面：`time_schedule_local`、`qr_static_image_live`、`doctor_probe_opt_in`、`browser_assisted_login_opt_in`、`research_student_rollcalls_probe`。其中 opt-in doctor / browser / research probe 不會在日常流程自動執行；若沒有真實課堂 QR 截圖或研究授權，就記錄為 blocked/skip，不要用假資料宣稱完成。
 
 R2 是 release build：
 
@@ -270,7 +295,7 @@ python -m troTHU.tron release-build --execute --json
 | --- | --- | --- |
 | 登入失敗 | 帳密來源、SSO 表單、TLS/SSL、cookie 是否過期 | `doctor --json`、`refresh`、`validation local-smoke --json` |
 | cookie 過期 | cookie cache、last login、是否需要 reauth | `status --json`、`account state --json`、`refresh` |
-| QR no match | pending QR provider + rollcall id 是否一致、fan-out 是否過期 | `qr pending --json`、`qr paste --json "..."` |
+| QR no match | pending QR provider + rollcall id 是否一致、fan-out 是否過期、圖片解碼是否安裝 optional extra | `qr pending --json`、`qr paste --json "..."`、`qr paste --image screenshot.png --json` |
 | radar 失敗 | 邊界設定、lite/beacon payload、距離回應、session expired 或 429/5xx | `doctor --json`、`app serve --open`、`logs summarize --limit 20` |
 | 監控 console 沒有反應 | 主視窗只輸出事件；按任意鍵會開啟 `config.yaml`；若用了 `--no-input` 則不監聽按鍵 | 檢查 `config.yaml` 的 `now`，必要時重啟 `python -m troTHU.tron run` |
 | 尚未登入訊息停住 | 程式會避免反覆刷屏；看到提示後請按任意鍵開啟 `config.yaml`，填好帳號密碼並關閉記事本 | 關閉記事本後會重新讀取設定並嘗試重新登入 |
@@ -278,6 +303,7 @@ python -m troTHU.tron release-build --execute --json
 | Discord signature 失敗 | public key env、timestamp/signature header、Endpoint URL 是否 HTTPS | `bot serve --adapter discord`、`bot discord-sync --dry-run --json` |
 | LINE signature 失敗 | channel secret env、reverse proxy 是否保留 raw body、Webhook URL | `bot serve --adapter line`、`doctor --json` |
 | PyInstaller missing | packaging extra 是否安裝、本機 Python 是否可 import PyInstaller | `python -m pip install -e .[packaging]`、`package-check --json` |
+| 網路品質不穩 | 只在需要時 opt-in 跑連線 probe，預設 doctor 不打外部網路 | `doctor --probe-url https://ilearn.thu.edu.tw --probe-count 3 --json` |
 | artifact unsafe | zip 內是否誤含 `config.yaml`、`state/`、`log/`、cookies、tests | `release-check --dist dist --json`、重跑 `release-build --execute --json` |
 
 ## 開發與測試
@@ -295,5 +321,6 @@ python -m troTHU.tron release-build --dry-run --json
 
 - R1 真實 THU live acceptance records 尚未補齊；功能已具備，但完整宣稱仍需 live validation。
 - FJU/TKU 仍是 experimental，不保證 daily automation ready。
-- native/mobile App、App-side encrypted vault、map SDK、QR image decoder 仍不是本版本目標。
+- native/mobile App、App-side encrypted vault、map SDK 仍不是本版本目標。
 - Telegram inbound command bot 不做；目前只提供 outbound notification sink。
+- 直接讀碼只保留 research probe；沒有真實 THU 探測證據前，不會做日常自動化或直接提交分支。
