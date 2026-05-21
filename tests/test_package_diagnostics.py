@@ -58,7 +58,6 @@ class PackageDiagnosticsTest(unittest.TestCase):
         self.assertIn("troTHU.real_validation", report["hidden_imports"])
         self.assertIn("troTHU.release_builder", report["hidden_imports"])
         self.assertIn("troTHU.release_checklist", report["hidden_imports"])
-        self.assertIn("troTHU.roadmap_audit", report["hidden_imports"])
         self.assertIn("troTHU.webview_sync", report["hidden_imports"])
         self.assertEqual(report["hidden_import_gaps"], [])
 
@@ -83,7 +82,6 @@ class PackageDiagnosticsTest(unittest.TestCase):
         self.assertIn("troTHU.real_validation", gaps)
         self.assertIn("troTHU.release_builder", gaps)
         self.assertIn("troTHU.release_checklist", gaps)
-        self.assertIn("troTHU.roadmap_audit", gaps)
         self.assertIn("troTHU.webview_sync", gaps)
 
     def test_package_report_is_safe_and_non_secret(self) -> None:

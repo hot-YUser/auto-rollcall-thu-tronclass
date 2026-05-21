@@ -219,11 +219,6 @@ try:
     )
     from troTHU.discord_adapter import sync_discord_command_schema
     from troTHU.discord_gateway import build_gateway_health, run_discord_gateway
-    from troTHU.roadmap_audit import (
-        build_goal_distance_report,
-        build_remaining_round_plan,
-        format_goal_distance_summary,
-    )
     from troTHU.tron_http import (
         LOGIN_URL,
         TRON,
@@ -449,11 +444,6 @@ except ImportError:
     )
     from discord_adapter import sync_discord_command_schema
     from discord_gateway import build_gateway_health, run_discord_gateway
-    from roadmap_audit import (
-        build_goal_distance_report,
-        build_remaining_round_plan,
-        format_goal_distance_summary,
-    )
     from tron_http import (
         LOGIN_URL,
         TRON,
@@ -922,8 +912,6 @@ _LEGACY_EXPORTS = {
     'run_connection_probe': ('troTHU.connection_probe', 'run_connection_probe'),
     'reset_unsupported_rollcall_state': ('troTHU.rollcall_runtime', 'reset_unsupported_rollcall_state'),
     'resolve_credentials': ('troTHU.config_runtime', 'resolve_credentials'),
-    'roadmap_audit_command': ('troTHU.cli_system', 'roadmap_audit_command'),
-    'roadmap_rounds_command': ('troTHU.cli_system', 'roadmap_rounds_command'),
     'merge_simple_and_advanced_config': ('troTHU.simple_config', 'merge_simple_and_advanced_config'),
     'split_normalized_config': ('troTHU.simple_config', 'split_normalized_config'),
     'is_simple_config_text': ('troTHU.simple_config', 'is_simple_config_text'),

@@ -54,32 +54,6 @@ def release_build_command(args: ctx.argparse.Namespace) -> int:
     return 0 if report.get('status') in {'ok', 'dry_run', 'warn'} else 1
 
 
-def roadmap_audit_command(json_output: bool=False) -> int:
-    report = ctx.build_goal_distance_report(ctx.CONFIG)
-    if json_output:
-        print(ctx.json_text(report))
-        return 0
-    print('\n'.join(ctx.format_goal_distance_summary(report)))
-    return 0
-
-
-def roadmap_rounds_command(json_output: bool=False) -> int:
-    plan = ctx.build_remaining_round_plan(ctx.CONFIG)
-    if json_output:
-        print(ctx.json_text(plan))
-        return 0
-    estimates = plan.get('total_estimates', {})
-    print('Minimum THU upper-replacement rounds: {}'.format(estimates.get('minimum_to_claim_thu_upper_replacement', 0)))
-    print('Strong polish rounds total: {}'.format(estimates.get('strong_polish_total', 0)))
-    print('Next recommended round: {}'.format(plan.get('next_recommended_round', '')))
-    for group in plan.get('groups', []):
-        print('')
-        print('{}: {}'.format(group.get('id', ''), group.get('label', '')))
-        for item in group.get('items', []):
-            print(' - {id}: {title} ({rounds} round{s})'.format(id=item.get('id', ''), title=item.get('title', ''), rounds=item.get('estimated_rounds', 0), s='' if item.get('estimated_rounds', 0) == 1 else 's'))
-    return 0
-
-
 def validation_checklist_command(json_output: bool=False) -> int:
     checklist = ctx.build_real_validation_checklist(ctx.CONFIG)
     if json_output:
@@ -113,7 +87,7 @@ def validation_summary_command(json_output: bool=False) -> int:
 
 
 def validation_local_smoke_command(json_output: bool=False, record: bool=False) -> int:
-    local_reports = {'status_report': ctx.status_report(), 'doctor_report': ctx.doctor_report(), 'dashboard_snapshot': ctx.build_observability_snapshot(ctx.status_report(), log_summary=ctx.summarize_logs(ctx.PATH), recent_logs=ctx.tail_log_records(ctx.PATH, 20), account_states=[ctx.account_state_report(profile.name) for profile in ctx.list_profiles(ctx.CONFIG)]), 'package_check': ctx.build_package_diagnostic_report(ctx.BASE_DIR, config=ctx.CONFIG), 'release_check': ctx.build_release_checklist(ctx.BASE_DIR, config=ctx.CONFIG), 'roadmap_audit': ctx.build_goal_distance_report(ctx.CONFIG)}
+    local_reports = {'status_report': ctx.status_report(), 'doctor_report': ctx.doctor_report(), 'dashboard_snapshot': ctx.build_observability_snapshot(ctx.status_report(), log_summary=ctx.summarize_logs(ctx.PATH), recent_logs=ctx.tail_log_records(ctx.PATH, 20), account_states=[ctx.account_state_report(profile.name) for profile in ctx.list_profiles(ctx.CONFIG)]), 'package_check': ctx.build_package_diagnostic_report(ctx.BASE_DIR, config=ctx.CONFIG), 'release_check': ctx.build_release_checklist(ctx.BASE_DIR, config=ctx.CONFIG)}
     report = ctx.run_local_validation_smoke(ctx.CONFIG, base_dir=ctx.BASE_DIR, local_reports=local_reports)
     recorded = []
     if record:

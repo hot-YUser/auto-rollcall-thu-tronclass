@@ -160,7 +160,6 @@ class RealValidationTest(unittest.TestCase):
                     "dashboard_snapshot": {"status": "ok"},
                     "package_check": {"status": "ok"},
                     "release_check": {"status": "ok"},
-                    "roadmap_audit": {"version": "roadmap-audit-v1"},
                 },
             )
             encoded = json.dumps(report, ensure_ascii=False).lower()
@@ -194,13 +193,10 @@ class RealValidationTest(unittest.TestCase):
                     "dashboard_snapshot": {"status": "ok"},
                     "package_check": {"status": "warn"},
                     "release_check": {"status": "warn"},
-                    "roadmap_audit": {
-                        "version": "roadmap-audit-v1",
-                        "provider_scope": {
-                            "thu": {"support_level": "ready"},
-                            "fju": {"support_level": "experimental"},
-                            "tku": {"support_level": "experimental"},
-                        },
+                    "provider_scope": {
+                        "thu": {"support_level": "ready"},
+                        "fju": {"support_level": "experimental"},
+                        "tku": {"support_level": "experimental"},
                     },
                 },
             )

@@ -95,14 +95,6 @@ def main(argv: ctx.Optional[ctx.List[str]]=None) -> int:
         return ctx.release_check_command(args)
     if args.command == 'release-build':
         return ctx.release_build_command(args)
-    if args.command == 'roadmap':
-        roadmap_command = getattr(args, 'roadmap_command', None) or 'audit'
-        if roadmap_command == 'audit':
-            return ctx.roadmap_audit_command(json_output=getattr(args, 'json', False))
-        if roadmap_command == 'rounds':
-            return ctx.roadmap_rounds_command(json_output=getattr(args, 'json', False))
-        parser.print_help()
-        return 1
     if args.command == 'validation':
         validation_command = getattr(args, 'validation_command', None) or 'checklist'
         if validation_command == 'checklist':

@@ -314,31 +314,6 @@ class TronCliSmokeTest(unittest.TestCase):
         self.assertEqual(payload["status"], "ok")
         self.assertEqual(payload["smoke"]["status"], "ok")
 
-    def test_roadmap_audit_json_command_dispatches(self) -> None:
-        outputs = []
-        with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):
-            result = tron.main(["roadmap", "audit", "--json"])
-
-        self.assertEqual(result, 0)
-        payload = json.loads(outputs[0])
-        self.assertEqual(payload["version"], "roadmap-audit-v1")
-        self.assertEqual(payload["competitor_count"], 8)
-        self.assertIn("capability_areas", payload)
-        self.assertEqual(payload["provider_scope"]["fju"]["support_level"], "experimental")
-
-    def test_roadmap_rounds_json_command_dispatches(self) -> None:
-        outputs = []
-        with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):
-            result = tron.main(["roadmap", "rounds", "--json"])
-
-        self.assertEqual(result, 0)
-        payload = json.loads(outputs[0])
-        self.assertEqual(payload["version"], "roadmap-audit-v1")
-        self.assertIn("groups", payload)
-        self.assertIn("total_estimates", payload)
-        self.assertIn("blockers", payload)
-        self.assertGreaterEqual(payload["total_estimates"]["minimum_to_claim_thu_upper_replacement"], 1)
-
     def test_validation_checklist_json_command_dispatches(self) -> None:
         outputs = []
         with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):

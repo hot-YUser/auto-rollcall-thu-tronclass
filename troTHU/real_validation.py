@@ -297,8 +297,9 @@ def _is_ok_or_warn(status: Any) -> bool:
     return str(status or "").lower() in {"ok", "warn", "dry_run"}
 
 
-def _provider_scope_is_safe(report: Mapping[str, Any]) -> bool:
-    scope = report.get("provider_scope", {}) if isinstance(report, Mapping) else {}
+def _provider_scope_is_safe(scope: Mapping[str, Any]) -> bool:
+    if isinstance(scope, Mapping) and isinstance(scope.get("provider_scope"), Mapping):
+        scope = scope.get("provider_scope", {})
     if not isinstance(scope, Mapping):
         return False
     thu = scope.get("thu", {}) if isinstance(scope.get("thu"), Mapping) else {}
@@ -325,7 +326,7 @@ def build_local_smoke_validation_records(
     bot = reports.get("bot_sandbox", {}) if isinstance(reports.get("bot_sandbox"), Mapping) else {}
     generic = bot.get("generic", {}) if isinstance(bot.get("generic"), Mapping) else {}
     platform_fake = bot.get("platform_fake", {}) if isinstance(bot.get("platform_fake"), Mapping) else {}
-    roadmap = reports.get("roadmap_audit", {}) if isinstance(reports.get("roadmap_audit"), Mapping) else {}
+    provider_scope = reports.get("provider_scope", {}) if isinstance(reports.get("provider_scope"), Mapping) else {}
 
     def record(case_id: str, ok: bool, note: str, metadata: Mapping[str, Any]) -> Dict[str, Any]:
         return {
@@ -360,7 +361,7 @@ def build_local_smoke_validation_records(
         and not bool(doctor_gate.get("default_network_calls"))
         and not bool(research_gate.get("daily_automation"))
         and bool(browser_gate.get("default_disabled"))
-        and _provider_scope_is_safe(roadmap)
+        and _provider_scope_is_safe(provider_scope)
     )
 
     return [
@@ -408,7 +409,7 @@ def build_local_smoke_validation_records(
                 "doctor_probe": doctor_gate,
                 "browser_assisted_login": browser_gate,
                 "research_probe": research_gate,
-                "provider_scope": roadmap.get("provider_scope", {}),
+                "provider_scope": provider_scope,
             },
         ),
     ]
@@ -708,12 +709,11 @@ def run_local_validation_smoke(
 ) -> Dict[str, Any]:
     from troTHU.package_diagnostics import build_package_diagnostic_report
     from troTHU.release_checklist import build_release_checklist
-    from troTHU.roadmap_audit import build_goal_distance_report
 
     reports = dict(local_reports or {})
     reports.setdefault("package_check", build_package_diagnostic_report(Path(base_dir), config=config))
     reports.setdefault("release_check", build_release_checklist(Path(base_dir), config=config))
-    reports.setdefault("roadmap_audit", build_goal_distance_report(config))
+    reports.setdefault("provider_scope", build_real_validation_checklist(config).get("provider_scope", {}))
     if "status_report" not in reports:
         reports["status_report"] = {"status": "not_provided"}
     if "doctor_report" not in reports:
@@ -730,7 +730,6 @@ def run_local_validation_smoke(
         "dashboard_snapshot": _status_name(reports.get("dashboard_snapshot")),
         "package_check": _status_name(reports.get("package_check")),
         "release_check": _status_name(reports.get("release_check")),
-        "roadmap_audit": "ok" if reports.get("roadmap_audit", {}).get("version") == "roadmap-audit-v1" else "fail",
         "bot_sandbox": bot_smoke.get("status", "fail"),
     }
     for local_only_name in ("status_report", "doctor_report", "dashboard_snapshot"):
