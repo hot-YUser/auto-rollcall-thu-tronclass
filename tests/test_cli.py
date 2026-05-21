@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 from troTHU import tron
+from troTHU.release_checklist import EXPECTED_WINDOWS_ZIP
 
 
 class TronCliSmokeTest(unittest.TestCase):
@@ -288,7 +289,7 @@ class TronCliSmokeTest(unittest.TestCase):
         self.assertEqual(payload["version"], "release-build-v1")
         self.assertFalse(payload["execute"])
         self.assertIn("preflight", payload)
-        self.assertIn("THU_Auto_Rollcall-v1.1.0a1-windows-x64.zip", payload["artifact"]["name"])
+        self.assertIn(EXPECTED_WINDOWS_ZIP, payload["artifact"]["name"])
 
     def test_release_build_execute_json_command_dispatches_with_fake_runner(self) -> None:
         outputs = []
@@ -296,7 +297,7 @@ class TronCliSmokeTest(unittest.TestCase):
             "version": "release-build-v1",
             "execute": True,
             "status": "ok",
-            "artifact": {"name": "THU_Auto_Rollcall-v1.1.0a1-windows-x64.zip", "sha256_short": "abc123"},
+            "artifact": {"name": EXPECTED_WINDOWS_ZIP, "sha256_short": "abc123"},
             "steps": [],
             "smoke": {"status": "ok"},
         }

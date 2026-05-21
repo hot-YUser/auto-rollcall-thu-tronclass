@@ -11,6 +11,7 @@ except ModuleNotFoundError:  # pragma: no cover
 
 from troTHU import tron
 from troTHU.package_diagnostics import (
+    PROJECT_VERSION,
     build_package_diagnostic_report,
     discover_hidden_import_gaps,
     validate_pyinstaller_spec,
@@ -24,7 +25,7 @@ class PackageDiagnosticsTest(unittest.TestCase):
         project = data["project"]
 
         self.assertEqual(project["name"], "auto-rollcall-thu-tronclass")
-        self.assertEqual(project["version"], "1.1.0a1")
+        self.assertEqual(project["version"], PROJECT_VERSION)
         self.assertEqual(project["scripts"]["trothu"], "troTHU.tron:main")
         self.assertEqual(project["scripts"]["auto-rollcall-thu-tronclass"], "troTHU.tron:main")
         self.assertIn("aiohttp>=3.9.5", project["dependencies"])

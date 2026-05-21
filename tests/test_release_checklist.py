@@ -6,6 +6,7 @@ from pathlib import Path
 
 from troTHU import tron
 from troTHU.release_checklist import (
+    EXPECTED_WINDOWS_ZIP,
     build_release_artifact_manifest,
     build_release_build_plan,
     build_release_checklist,
@@ -43,7 +44,7 @@ class ReleaseChecklistTest(unittest.TestCase):
     def test_validate_release_artifact_flags_unsafe_local_names(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            (root / "auto-rollcall-thu-tronclass-v1.1.0a1-windows-x64.zip").write_text("placeholder", encoding="utf-8")
+            (root / EXPECTED_WINDOWS_ZIP).write_text("placeholder", encoding="utf-8")
             (root / "config.yaml").write_text("user: should-not-ship", encoding="utf-8")
             (root / "state").mkdir()
             report = validate_release_artifact(root)
@@ -55,7 +56,7 @@ class ReleaseChecklistTest(unittest.TestCase):
     def test_validate_release_artifact_inspects_zip_member_names_safely(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            artifact = root / "THU_Auto_Rollcall-v1.1.0a1-windows-x64.zip"
+            artifact = root / EXPECTED_WINDOWS_ZIP
             with zipfile.ZipFile(artifact, "w") as archive:
                 archive.writestr("THU_Auto_Rollcall.exe", "placeholder")
                 archive.writestr("state/cookies/default.json", "do-not-ship")
@@ -67,7 +68,7 @@ class ReleaseChecklistTest(unittest.TestCase):
 
     def test_build_release_artifact_manifest_lists_names_hashes_and_sizes(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            artifact = Path(temp_dir) / "THU_Auto_Rollcall-v1.1.0a1-windows-x64.zip"
+            artifact = Path(temp_dir) / EXPECTED_WINDOWS_ZIP
             with zipfile.ZipFile(artifact, "w") as archive:
                 archive.writestr("THU_Auto_Rollcall.exe", "placeholder")
             manifest = build_release_artifact_manifest(artifact)
@@ -84,7 +85,7 @@ class ReleaseChecklistTest(unittest.TestCase):
         self.assertEqual(plan["version"], "release-build-plan-v1")
         self.assertFalse(plan["executes_build"])
         self.assertIn("python -m PyInstaller", "\n".join(plan["commands"]))
-        self.assertIn("THU_Auto_Rollcall-v1.1.0a1-windows-x64.zip", encoded)
+        self.assertIn(EXPECTED_WINDOWS_ZIP, encoded)
         self.assertNotIn("secret-token", encoded)
 
     def test_format_release_checklist_is_stable(self) -> None:
