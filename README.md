@@ -162,6 +162,8 @@ research:
 
 number 點名支援錯碼、成功、暫時性錯誤、限流、session expired 與未知回應分類。遇到 429/5xx 或暫時性錯誤會 cooldown、降併發，避免硬衝。
 
+number 點名會先嘗試**直接讀碼**：透過 `student_rollcalls` 端點讀出當次 `number_code` 後單發提交（旗標 `number.direct_code_lookup`，預設開）；只有在讀不到（端點未提供、過期或非預期回應）時才退回上述暴力猜碼路徑。因此正常情況下一次點名只需極少請求，並保有暴力猜碼作為不退化的後備。真實課堂行為以 R1 validation 記錄為準。
+
 ### radar
 
 radar 使用 THU 幾何求解器，支援 lite/beacon payload、`radarSignal`、距離回應 fixture compatibility、安全診斷與 Radar Assist map contract。真實課堂環境仍建議用 R1 validation 記錄結果。
@@ -238,7 +240,7 @@ THU、TKU 在預設使用者入口中是可見 ready provider；兩校都可啟�
 - `app serve --open`：開 localhost read-only companion shell，所有 `/app/api/*` 需要短效 local token。
 - `webview preview/import`：只做 cookie sync contract 與本地 cookie cache bridge；真正 import 必須同時開 config gate 與 `--save`。
 - `research status/api/browser-check/browser-capture`：明確 opt-in 的 read-only metadata capture；不查答案、不保存 raw body/header/cookie/token/QR。
-- `research probe student_rollcalls --rollcall-id <id>`：方案 B 的唯讀探測，只記 HTTP 狀態與欄位形狀；需要 `research.enabled=true`、`allow_api_exploration=true`、`allow_risky_probe=true`，且不會把 `number_code` 值寫入輸出。
+- `research probe student_rollcalls --rollcall-id <id>`：獨立的 shape-only **取證**探測（與日常直接讀碼分開），只記 HTTP 狀態與欄位形狀；需要 `research.enabled=true`、`allow_api_exploration=true`、`allow_risky_probe=true`，且不會把 `number_code` 值寫入輸出。
 - `auth.browser_assisted_login.enabled=true`：一般 provider 遇到 CAS/登入頁改版時，可手動啟用 Playwright 後備登入；TKU 預設先跑 HTTP fast SSO，必要時自動使用 Playwright 作為保底。兩者都不保存 header/body/密碼。
 
 ## R1/R2/R3 驗收
@@ -323,4 +325,4 @@ python -m troTHU.tron release-build --dry-run --json
 - TKU 的 `verification` ledger 尚待補齊 sanitized evidence；完整可用性仍需實際課堂環境驗收。
 - native/mobile App、App-side encrypted vault、map SDK 仍不是本版本目標。
 - Telegram inbound command bot 不做；目前只提供 outbound notification sink。
-- 直接讀碼只保留 research probe；沒有真實 THU 探測證據前，不會做日常自動化或直接提交分支。
+- number 直接讀碼已是日常能力（`number.direct_code_lookup`，預設開）：先讀 `student_rollcalls` 的 `number_code` 單發提交、讀不到再退回暴力猜碼；真實 THU live 行為仍待 R1 課堂驗收記錄。`research probe` 維持獨立的 shape-only 取證工具。

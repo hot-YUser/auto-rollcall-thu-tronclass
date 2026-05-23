@@ -1,7 +1,8 @@
 import json
+import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 
 class NumberAttemptStatus(str, Enum):
@@ -190,3 +191,88 @@ def classify_number_response(status_code: int, body_text: str = "") -> NumberAtt
         message or "unexpected HTTP response",
         payload,
     )
+
+
+_FOUR_DIGIT_CODE_RE = re.compile(r"^\d{4}$")
+
+
+@dataclass(frozen=True)
+class NumberCodeLookup:
+    """Result of reading a number_code directly from a student_rollcalls payload."""
+
+    code: Optional[str] = None
+    status: str = ""
+    end_time: str = ""
+    source: str = ""
+
+    @property
+    def has_code(self) -> bool:
+        return bool(self.code)
+
+
+def coerce_number_code(value: Any) -> Optional[str]:
+    """Return a normalized 4-digit code string, or None when not a valid code."""
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        text = "{:04d}".format(value) if 0 <= value <= 9999 else str(value)
+    else:
+        text = str(value).strip()
+    return text if _FOUR_DIGIT_CODE_RE.match(text) else None
+
+
+def parse_number_code_payload(payload: Any) -> NumberCodeLookup:
+    """Extract a usable 4-digit number_code from a student_rollcalls-style payload.
+
+    Robust to the real/observed TronClass shapes:
+      - rollcall object with top-level code: {"number_code": "0001", "status": ..., "end_time": ...}
+      - wrapped:                              {"data": {"number_code": ...}}
+      - rollcall object carrying a per-student array:
+                                              {"number_code": ..., "student_rollcalls": [...]}
+      - container of student items:           {"student_rollcalls": [{"number_code": ...}]}
+      - bare list of student items:           [{"number_code": ...}, ...]
+
+    Returns NumberCodeLookup(code=None, ...) when no valid 4-digit code is present, so
+    callers can fall back to the brute-force path without raising.
+    """
+    meta = {"status": "", "end_time": ""}
+
+    def _absorb_meta(obj: Any) -> None:
+        if isinstance(obj, dict):
+            if not meta["status"] and obj.get("status") not in (None, ""):
+                meta["status"] = str(obj.get("status"))
+            if not meta["end_time"] and obj.get("end_time") not in (None, ""):
+                meta["end_time"] = str(obj.get("end_time"))
+
+    def _result(code: Optional[str], source: str) -> NumberCodeLookup:
+        return NumberCodeLookup(code=code, status=meta["status"], end_time=meta["end_time"], source=source)
+
+    if isinstance(payload, dict):
+        _absorb_meta(payload)
+        code = coerce_number_code(payload.get("number_code"))
+        if code:
+            return _result(code, "number_code")
+        data = payload.get("data")
+        if isinstance(data, dict):
+            _absorb_meta(data)
+            code = coerce_number_code(data.get("number_code"))
+            if code:
+                return _result(code, "data.number_code")
+        for container_key in ("student_rollcalls", "data"):
+            items = payload.get(container_key)
+            if isinstance(items, list):
+                for item in items:
+                    if isinstance(item, dict):
+                        _absorb_meta(item)
+                        code = coerce_number_code(item.get("number_code"))
+                        if code:
+                            return _result(code, "{}[].number_code".format(container_key))
+    elif isinstance(payload, list):
+        for item in payload:
+            if isinstance(item, dict):
+                _absorb_meta(item)
+                code = coerce_number_code(item.get("number_code"))
+                if code:
+                    return _result(code, "list[].number_code")
+
+    return _result(None, "")

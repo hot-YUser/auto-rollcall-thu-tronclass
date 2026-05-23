@@ -41,6 +41,14 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
     current_concurrency = max(1, min(configured_concurrency, ctx.NUMBER_CODE_LIMIT))
     min_concurrency = max(1, min(configured_min_concurrency, current_concurrency))
     cooldowns_used = 0
+    direct_config = number_config.get('direct_code_lookup', {})
+    if not isinstance(direct_config, dict):
+        direct_config = {}
+    direct_lookup_enabled = ctx.coerce_bool(direct_config.get('enabled', True), True)
+    fallback_bruteforce = ctx.coerce_bool(direct_config.get('fallback_bruteforce', True), True)
+    provider_supports_direct = bool(ctx.provider_report().get('capabilities', {}).get('direct_code_lookup'))
+    direct_read_attempted = False
+    direct_read_status = ''
 
     async def try_number_code(session: ctx.aiohttp.ClientSession, try_code: int) -> str:
         nonlocal request_count, found_code, fatal_error, latest_try_code, last_transient_error
@@ -97,12 +105,37 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
                 await ctx.asyncio.wait_for(progress_done.wait(), timeout=ctx.NUMBER_PROGRESS_INTERVAL)
             except ctx.asyncio.TimeoutError:
                 continue
+
+    async def attempt_direct_code_lookup(session: ctx.aiohttp.ClientSession) -> bool:
+        nonlocal direct_read_attempted, direct_read_status
+        direct_read_attempted = True
+        try:
+            client = ctx.create_tron_http_client(session, request_ssl=ctx.get_ssl_request_setting())
+            payload = await client.fetch_student_rollcalls(rcid)
+        except (ctx.TronHttpError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError, ctx.ssl.SSLError) as exc:
+            direct_read_status = 'lookup_failed'
+            ctx.log(event='number_direct_lookup', path=ctx.number_log_path(rcid), status='lookup_failed', url=request_url, rollcall_id=rcid, rollcall_type='number', message='直接讀碼讀取失敗，改用暴力猜碼。', error=exc)
+            return False
+        lookup = ctx.parse_number_code_payload(payload)
+        if not lookup.has_code:
+            direct_read_status = 'no_code'
+            ctx.log(event='number_direct_lookup', path=ctx.number_log_path(rcid), status='no_code', rollcall_id=rcid, rollcall_type='number', message='student_rollcalls 未提供可用 number_code，改用暴力猜碼。', extra={'source': lookup.source, 'rollcall_status': lookup.status})
+            return False
+        ctx.log(event='number_direct_lookup', path=ctx.number_log_path(rcid), status='code_found', rollcall_id=rcid, rollcall_type='number', message='直接讀碼成功，單發提交點名碼。', extra={'source': lookup.source, 'rollcall_status': lookup.status})
+        submit_result = await try_number_code(session, int(lookup.code))
+        direct_read_status = 'success' if found_code != 'NA' else 'submit_{}'.format(submit_result)
+        return found_code != 'NA'
+
     session_kwargs: ctx.Dict[str, ctx.Any] = {'connector': ctx.create_http_connector(), 'headers': headers}
     timeout = ctx.create_http_client_timeout()
     if timeout is not None:
         session_kwargs['timeout'] = timeout
     async with ctx.aiohttp.ClientSession(**session_kwargs) as session:
         ctx.clone_session_cookies(main_session, session)
+        if direct_lookup_enabled and provider_supports_direct and (not stop_event.is_set()):
+            await attempt_direct_code_lookup(session)
+            if found_code == 'NA' and fatal_error is None and (not fallback_bruteforce):
+                stop_event.set()
         ctx.status_print(ctx.build_number_progress_message(rcid, request_count, latest_try_code, started_at))
         progress_task = ctx.asyncio.create_task(progress_reporter())
         try:
@@ -142,7 +175,8 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
     else:
         summary_status = 'completed'
         summary_message = '數字點名流程結束。'
-    ctx.log(event='number_rollcall_summary', path=ctx.number_log_path(rcid), status=summary_status, rollcall_id=rcid, rollcall_type='number', message=summary_message, extra={'spend_time_seconds': round(elapsed, 2), 'request_count': request_count, 'found_code': found_code, 'stopped_early': found_code != 'NA', 'fatal_error': ctx.normalize_text(fatal_error) or None, 'cooldowns_used': cooldowns_used, 'final_concurrency': current_concurrency})
+    resolution_method = 'direct_read' if direct_read_status == 'success' else ('brute_force' if found_code != 'NA' else 'none')
+    ctx.log(event='number_rollcall_summary', path=ctx.number_log_path(rcid), status=summary_status, rollcall_id=rcid, rollcall_type='number', message=summary_message, extra={'spend_time_seconds': round(elapsed, 2), 'request_count': request_count, 'found_code': found_code, 'stopped_early': found_code != 'NA', 'fatal_error': ctx.normalize_text(fatal_error) or None, 'cooldowns_used': cooldowns_used, 'final_concurrency': current_concurrency, 'method': resolution_method, 'direct_read_attempted': direct_read_attempted, 'direct_read_status': direct_read_status})
     if fatal_error is not None:
         raise fatal_error
     text = 'Total time: {:.2f}s\nTotal request: {}/{}{}\nCode: {}\n'.format(elapsed, request_count, ctx.NUMBER_CODE_LIMIT, ' (Stopped early)' if found_code != 'NA' else '', found_code)

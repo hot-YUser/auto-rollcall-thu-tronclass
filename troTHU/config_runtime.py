@@ -293,6 +293,14 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
     except (TypeError, ValueError):
         ratio = ctx.DEFAULT_CONFIG['number']['transient_failure_ratio']
     number_config['transient_failure_ratio'] = max(0.0, min(1.0, ratio))
+    direct_lookup_default = ctx.DEFAULT_CONFIG['number']['direct_code_lookup']
+    direct_lookup_config = number_config.get('direct_code_lookup', {})
+    if not isinstance(direct_lookup_config, dict):
+        direct_lookup_config = {}
+    number_config['direct_code_lookup'] = {
+        'enabled': ctx.coerce_bool(direct_lookup_config.get('enabled', direct_lookup_default['enabled']), direct_lookup_default['enabled']),
+        'fallback_bruteforce': ctx.coerce_bool(direct_lookup_config.get('fallback_bruteforce', direct_lookup_default['fallback_bruteforce']), direct_lookup_default['fallback_bruteforce']),
+    }
     radar_config = config.setdefault('radar', {})
     if not isinstance(radar_config, dict):
         radar_config = {}

@@ -466,6 +466,28 @@ class TronHttpClient:
 
         return RollcallsResult(url=url, status_code=status_code, payload=payload)
 
+    async def fetch_student_rollcalls(self, rollcall_id: Any, action: str = "") -> Any:
+        base = self.endpoints.base_url.rstrip("/")
+        url = "{}/api/rollcall/{}/student_rollcalls".format(base, str(rollcall_id).strip())
+        action_text = str(action or "").strip()
+        if action_text:
+            url = "{}?action={}".format(url, action_text)
+        async with self.session.get(url, **self.request_kwargs()) as resp:
+            response_url = str(resp.url)
+            status_code = resp.status
+            if status_code == 401 or "login" in response_url.lower():
+                raise UnauthorizedError("Cookie 已過期或導向登入頁。")
+            if status_code != 200:
+                body = await resp.text()
+                raise UnexpectedResponseError("HTTP {}: {}".format(status_code, body[:200]))
+            try:
+                return await resp.json(encoding="utf-8")
+            except (aiohttp.ContentTypeError, ValueError):
+                body = await resp.text()
+                raise UnexpectedResponseError(
+                    "Unexpected response body: {}".format(body[:200])
+                )
+
     async def fetch_current_semester(self) -> Dict[str, Any]:
         async with self.session.get(self.endpoints.current_semester_url, **self.request_kwargs()) as resp:
             url = str(resp.url)

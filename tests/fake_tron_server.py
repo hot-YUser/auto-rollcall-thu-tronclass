@@ -25,9 +25,16 @@ class FakeTronServer:
         self.number_attempts: List[Dict[str, Any]] = []
         self.radar_answers: List[Dict[str, Any]] = []
         self.qr_answers: List[Dict[str, Any]] = []
+        # Real TronClass shape: student_rollcalls is a per-student status array on the
+        # rollcall object; number_code is a top-level field on that object.
         self.student_rollcalls: List[Dict[str, Any]] = [
-            {"student_id": 1, "number_code": self.correct_number_code, "status": "pending"}
+            {"student_id": 1, "status": "pending", "rollcall_status": "on_call"}
         ]
+        # When False, the GET .../student_rollcalls response omits number_code so the
+        # runtime must fall back to brute-force (simulates a backend that blocks the leak).
+        self.student_rollcalls_leaks_code = True
+        self.student_rollcalls_status = "in_progress"
+        self.student_rollcalls_end_time = "2026-05-24T23:59:00+08:00"
         self.radar_lite_payload: Dict[str, Any] = {
             "use_beacon": False,
             "beacon_nonce": "",
@@ -312,7 +319,16 @@ class FakeTronServer:
         scripted = self._script_response("student_rollcalls")
         if scripted is not None:
             return scripted
-        return web.json_response({"student_rollcalls": self.student_rollcalls})
+        payload: Dict[str, Any] = {
+            "id": request.match_info["rollcall_id"],
+            "is_number": True,
+            "status": self.student_rollcalls_status,
+            "student_rollcalls": self.student_rollcalls,
+        }
+        if self.student_rollcalls_leaks_code:
+            payload["number_code"] = self.correct_number_code
+            payload["end_time"] = self.student_rollcalls_end_time
+        return web.json_response(payload)
 
     async def start(self) -> "FakeTronServer":
         if web is None:

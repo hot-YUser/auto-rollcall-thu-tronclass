@@ -153,7 +153,10 @@ try:
     )
     from troTHU.number_rollcall import (
         NumberAttemptStatus,
+        NumberCodeLookup,
         classify_number_response,
+        coerce_number_code,
+        parse_number_code_payload,
     )
     from troTHU.providers import (
         DEFAULT_PROVIDER,
@@ -380,7 +383,10 @@ except ImportError:
     )
     from number_rollcall import (
         NumberAttemptStatus,
+        NumberCodeLookup,
         classify_number_response,
+        coerce_number_code,
+        parse_number_code_payload,
     )
     from providers import (
         DEFAULT_PROVIDER,
@@ -671,6 +677,10 @@ DEFAULT_CONFIG = {
         "max_cooldowns": NUMBER_MAX_COOLDOWNS,
         "transient_failure_threshold": NUMBER_TRANSIENT_FAILURE_THRESHOLD,
         "transient_failure_ratio": NUMBER_TRANSIENT_FAILURE_RATIO,
+        "direct_code_lookup": {
+            "enabled": True,
+            "fallback_bruteforce": True,
+        },
     },
     "radar": {
         "boundary_points": [[lat, lon] for lat, lon in DEFAULT_BOUNDARY_POINTS],
