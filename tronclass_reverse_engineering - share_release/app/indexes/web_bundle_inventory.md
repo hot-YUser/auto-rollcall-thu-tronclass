@@ -1,0 +1,316 @@
+# Web Bundle Inventory
+
+- JS chunks scanned: `273`
+- Extracted webpack modules: `871`
+- Module output folder: `webview_modules/structured`
+
+## Chunks
+- `app.73d6a975.js`: 4585022 bytes, modules `12`, source map `none`
+- `chunk-mathjax-832c3b72.982fe107.js`: 1001084 bytes, modules `26`, source map `none`
+- `chunk-vendors-af4e84d4.50b2eb4a.js`: 784360 bytes, modules `48`, source map `none`
+- `chunk-vendors-3081da64.3c3c347e.js`: 704316 bytes, modules `0`, source map `none`
+- `chunk-vendors-b4a3a6fa.60b51e52.js`: 492804 bytes, modules `0`, source map `none`
+- `chunk-vendors-b85e1843.e10a4801.js`: 479759 bytes, modules `0`, source map `none`
+- `chunk-common-3e4dcf55.ac10b2ad.js`: 411376 bytes, modules `56`, source map `none`
+- `chunk-mathjax-bdfa1fd7.b355b28e.js`: 391020 bytes, modules `6`, source map `none`
+- `chunk-vendors-b9f70e77.d8ebf613.js`: 317747 bytes, modules `6`, source map `none`
+- `chunk-vendors-25c7288e.c973c9b7.js`: 286480 bytes, modules `0`, source map `none`
+- `chunk-vendors-c5c6856a.d868184e.js`: 281672 bytes, modules `0`, source map `none`
+- `chunk-vendors-8cbd2506.c3c97486.js`: 269303 bytes, modules `0`, source map `none`
+- `chunk-vendors-37a93c5f.4ab43754.js`: 248299 bytes, modules `5`, source map `none`
+- `chunk-vendors-0925edb1.b4b5dbad.js`: 243200 bytes, modules `0`, source map `none`
+- `chunk-vendors-48b8d778.3655d345.js`: 241600 bytes, modules `5`, source map `none`
+- `chunk-vendors-377fed06.988a5fc6.js`: 232018 bytes, modules `4`, source map `none`
+- `chunk-vendors-6b948b9f.8acc5838.js`: 226081 bytes, modules `0`, source map `none`
+- `chunk-common-4c120c8f.29a0a544.js`: 218423 bytes, modules `106`, source map `none`
+- `chunk-common-1fd36368.66fa28f7.js`: 218176 bytes, modules `58`, source map `none`
+- `chunk-common-9627c25b.3d6c02f1.js`: 197119 bytes, modules `35`, source map `none`
+- `chunk-vendors-3f88d8a8.f89638c5.js`: 192492 bytes, modules `0`, source map `none`
+- `chunk-mathjax-15f0c8d4.b035a753.js`: 167023 bytes, modules `58`, source map `none`
+- `chunk-common-14b21198.4bf44df8.js`: 153571 bytes, modules `15`, source map `none`
+- `chunk-common-d3871f1a.9af1aa91.js`: 127515 bytes, modules `24`, source map `none`
+- `chunk-vendors-c3943e85.7355e14a.js`: 127047 bytes, modules `5`, source map `none`
+- `chunk-vendors-6769e234.4edeceaa.js`: 120773 bytes, modules `0`, source map `none`
+- `chunk-vendors-aacc2dbb.deb34d08.js`: 117503 bytes, modules `23`, source map `none`
+- `chunk-vendors-289cff67.0a84cca0.js`: 115345 bytes, modules `1`, source map `none`
+- `chunk-common-d87c119a.ad41826a.js`: 109976 bytes, modules `12`, source map `none`
+- `chunk-vendors-945ce2fe.c0b42efd.js`: 103454 bytes, modules `0`, source map `none`
+- `2469.81f95758.js`: 81021 bytes, modules `7`, source map `none`
+- `chunk-vendors-3da24cc7.53ea8d8e.js`: 72499 bytes, modules `5`, source map `none`
+- `chunk-vendors-ca445505.d5a21ac2.js`: 70348 bytes, modules `0`, source map `none`
+- `chunk-mathjax-90bf9ff6.bc5ae2f5.js`: 66715 bytes, modules `34`, source map `none`
+- `chunk-vendors-bc050c32.9a44efdc.js`: 64773 bytes, modules `6`, source map `none`
+- `7453.090670e2.js`: 62583 bytes, modules `1`, source map `none`
+- `chunk-vendors-363ec994.b404b1c6.js`: 58430 bytes, modules `2`, source map `none`
+- `chunk-vendors-f945abb9.6643cd0b.js`: 48781 bytes, modules `6`, source map `none`
+- `chunk-vendors-b8e8c893.7b0e0494.js`: 48254 bytes, modules `18`, source map `none`
+- `chunk-vendors-af1a2782.2ffb3cfb.js`: 47771 bytes, modules `4`, source map `none`
+- `5920.54c79d60.js`: 44258 bytes, modules `1`, source map `none`
+- `chunk-vendors-c67ab43f.5f252752.js`: 42852 bytes, modules `0`, source map `none`
+- `5900.02e4dc25.js`: 42680 bytes, modules `1`, source map `none`
+- `968.c47a4c1a.js`: 41932 bytes, modules `1`, source map `none`
+- `chunk-mathjax-dac81fea.26f2848e.js`: 40616 bytes, modules `0`, source map `none`
+- `6923.aec6d442.js`: 40231 bytes, modules `1`, source map `none`
+- `chunk-vendors-0a15d5a9.f9571715.js`: 38505 bytes, modules `1`, source map `none`
+- `8123.5f4e98fe.js`: 37641 bytes, modules `1`, source map `none`
+- `6791.d845fe27.js`: 37220 bytes, modules `15`, source map `none`
+- `2664.4aa6b135.js`: 35944 bytes, modules `1`, source map `none`
+- `chunk-vendors-9fbf9f65.df175f3f.js`: 35498 bytes, modules `4`, source map `none`
+- `9834.c9f18684.js`: 32800 bytes, modules `15`, source map `none`
+- `3659.53627752.js`: 31624 bytes, modules `1`, source map `none`
+- `6419.359b563e.js`: 28828 bytes, modules `1`, source map `none`
+- `3404.e26e8ad4.js`: 27298 bytes, modules `0`, source map `none`
+- `9929.d048f2db.js`: 26890 bytes, modules `1`, source map `none`
+- `5809.3a249ab5.js`: 26854 bytes, modules `1`, source map `none`
+- `7370.cd7e04f5.js`: 26663 bytes, modules `1`, source map `none`
+- `8150.7a0302c7.js`: 26012 bytes, modules `1`, source map `none`
+- `curriculum.c4cc7b8d.js`: 25885 bytes, modules `1`, source map `none`
+- `2390.ef15cad2.js`: 24472 bytes, modules `1`, source map `none`
+- `8085.af38dd1b.js`: 24328 bytes, modules `1`, source map `none`
+- `7457.53a25c2a.js`: 24246 bytes, modules `1`, source map `none`
+- `3013.a75191ed.js`: 24107 bytes, modules `1`, source map `none`
+- `8699.ebe7d328.js`: 23958 bytes, modules `1`, source map `none`
+- `4070.9308f071.js`: 23229 bytes, modules `1`, source map `none`
+- `9416.fdbf4a37.js`: 21947 bytes, modules `1`, source map `none`
+- `9263.877499d4.js`: 21429 bytes, modules `1`, source map `none`
+- `4518.621016ec.js`: 21271 bytes, modules `1`, source map `none`
+- `6970.ae886286.js`: 21268 bytes, modules `1`, source map `none`
+- `1609.71df278d.js`: 20821 bytes, modules `1`, source map `none`
+- `4506.15c6d1d8.js`: 20811 bytes, modules `1`, source map `none`
+- `3605.c33615de.js`: 20798 bytes, modules `1`, source map `none`
+- `6581.c2d6e8fe.js`: 20287 bytes, modules `1`, source map `none`
+- `chunk-vendors-0cd98dd5.ed5508da.js`: 20037 bytes, modules `1`, source map `none`
+- `387.ada5a7e8.js`: 19965 bytes, modules `1`, source map `none`
+- `3258.6afad656.js`: 18235 bytes, modules `1`, source map `none`
+- `8674.e06f1221.js`: 18029 bytes, modules `1`, source map `none`
+- `2897.ea9bf47a.js`: 17960 bytes, modules `1`, source map `none`
+- `2852.ae9aa085.js`: 17886 bytes, modules `1`, source map `none`
+- `9625.8d48053b.js`: 17751 bytes, modules `1`, source map `none`
+- `2435.7e26e13b.js`: 17018 bytes, modules `1`, source map `none`
+- `public-curriculum-detail.e922513a.js`: 16750 bytes, modules `1`, source map `none`
+- `9178.4f5a10ff.js`: 16615 bytes, modules `1`, source map `none`
+- `1776.d3177ab7.js`: 15863 bytes, modules `1`, source map `none`
+- `23.05497abb.js`: 15664 bytes, modules `1`, source map `none`
+- `2994.ad4ebc84.js`: 15352 bytes, modules `1`, source map `none`
+- `3375.1aff36db.js`: 14985 bytes, modules `5`, source map `none`
+- `5266.6451013d.js`: 14831 bytes, modules `1`, source map `none`
+- `6195.84e60591.js`: 14775 bytes, modules `1`, source map `none`
+- `5251.b1bbf292.js`: 14634 bytes, modules `1`, source map `none`
+- `3901.9ba9899e.js`: 14559 bytes, modules `8`, source map `none`
+- `2645.438dd03b.js`: 14354 bytes, modules `1`, source map `none`
+- `6802.2401c341.js`: 14118 bytes, modules `1`, source map `none`
+- `5717.3ac3c793.js`: 13982 bytes, modules `1`, source map `none`
+- `1379.852ee09f.js`: 13879 bytes, modules `1`, source map `none`
+- `chunk-vendors-ec539670.3faed158.js`: 13560 bytes, modules `1`, source map `none`
+- `5326.61937130.js`: 13494 bytes, modules `1`, source map `none`
+- `8777.c0444010.js`: 13436 bytes, modules `1`, source map `none`
+- `9553.778f9953.js`: 12969 bytes, modules `1`, source map `none`
+- `6871.e6cf583a.js`: 12934 bytes, modules `1`, source map `none`
+- `9366.e49cc726.js`: 12934 bytes, modules `1`, source map `none`
+- `5060.f81ce402.js`: 12723 bytes, modules `1`, source map `none`
+- `public-live.1da2e09c.js`: 12679 bytes, modules `1`, source map `none`
+- `3797.6f70d5ce.js`: 12297 bytes, modules `1`, source map `none`
+- `89.6f0f4b95.js`: 12294 bytes, modules `1`, source map `none`
+- `4335.0ae93aec.js`: 12199 bytes, modules `1`, source map `none`
+- `3796.dac7ddab.js`: 12136 bytes, modules `1`, source map `none`
+- `2799.8728ad2d.js`: 12100 bytes, modules `1`, source map `none`
+- `3027.5fc2926f.js`: 12080 bytes, modules `1`, source map `none`
+- `2493.6a00466c.js`: 11809 bytes, modules `1`, source map `none`
+- `159.1a03dfa6.js`: 11665 bytes, modules `1`, source map `none`
+- `431.452c48e9.js`: 10718 bytes, modules `1`, source map `none`
+- `4875.51206e5c.js`: 10699 bytes, modules `1`, source map `none`
+- `3805.c039836c.js`: 10613 bytes, modules `1`, source map `none`
+- `2739.3f07bcd8.js`: 10483 bytes, modules `1`, source map `none`
+- `7903.5f33b69a.js`: 10078 bytes, modules `1`, source map `none`
+- `1754.d1712278.js`: 10068 bytes, modules `1`, source map `none`
+- `7317.a0728407.js`: 10008 bytes, modules `1`, source map `none`
+- `826.72213176.js`: 10005 bytes, modules `1`, source map `none`
+- `4339.abde8568.js`: 10002 bytes, modules `1`, source map `none`
+- `3288.31384614.js`: 9907 bytes, modules `1`, source map `none`
+- `8091.d8e3e795.js`: 9574 bytes, modules `1`, source map `none`
+- `7183.d76fa01e.js`: 9558 bytes, modules `1`, source map `none`
+- `3357.d84a95be.js`: 9446 bytes, modules `1`, source map `none`
+- `8140.3be61fc0.js`: 9367 bytes, modules `1`, source map `none`
+- `5896.80bb2828.js`: 9364 bytes, modules `1`, source map `none`
+- `3028.8746e194.js`: 9325 bytes, modules `1`, source map `none`
+- `chunk-mathjax-7c75637d.3367d5fe.js`: 9310 bytes, modules `11`, source map `none`
+- `2097.46c7df3e.js`: 9309 bytes, modules `1`, source map `none`
+- `610.1452388b.js`: 9257 bytes, modules `1`, source map `none`
+- `6371.c30f3c8f.js`: 9039 bytes, modules `1`, source map `none`
+- `7196.1c4bb694.js`: 8570 bytes, modules `1`, source map `none`
+- `6935.94e2855f.js`: 8449 bytes, modules `1`, source map `none`
+- `6578.26603f1b.js`: 8447 bytes, modules `1`, source map `none`
+- `3604.8ea28d74.js`: 8339 bytes, modules `1`, source map `none`
+- `8210.a7bb0cb3.js`: 8060 bytes, modules `1`, source map `none`
+- `763.f2f44757.js`: 8058 bytes, modules `1`, source map `none`
+- `7292.7f7602f2.js`: 7985 bytes, modules `1`, source map `none`
+- `9955.17ee6aaa.js`: 7976 bytes, modules `1`, source map `none`
+- `9154.d53d7d8d.js`: 7942 bytes, modules `1`, source map `none`
+- `8955.341268da.js`: 7927 bytes, modules `1`, source map `none`
+- `7748.981185fb.js`: 7881 bytes, modules `1`, source map `none`
+- `8734.033fa08b.js`: 7870 bytes, modules `1`, source map `none`
+- `2441.6865f713.js`: 7814 bytes, modules `1`, source map `none`
+- `5176.d82fd986.js`: 7733 bytes, modules `1`, source map `none`
+- `7184.d10ac211.js`: 7711 bytes, modules `1`, source map `none`
+- `1426.ead74c99.js`: 7685 bytes, modules `1`, source map `none`
+- `5021.8685066b.js`: 7560 bytes, modules `1`, source map `none`
+- `111.59122d9a.js`: 7548 bytes, modules `1`, source map `none`
+- `426.16afc93e.js`: 7148 bytes, modules `1`, source map `none`
+- `2558.e182a6cd.js`: 7139 bytes, modules `1`, source map `none`
+- `9721.7c565e11.js`: 7095 bytes, modules `1`, source map `none`
+- `4104.a260f136.js`: 7072 bytes, modules `1`, source map `none`
+- `2008.50e7fe3b.js`: 7060 bytes, modules `1`, source map `none`
+- `9021.9562cf2c.js`: 6993 bytes, modules `1`, source map `none`
+- `672.50bdf4a7.js`: 6929 bytes, modules `1`, source map `none`
+- `8424.7c6158a5.js`: 6770 bytes, modules `1`, source map `none`
+- `5485.ee01c41c.js`: 6684 bytes, modules `1`, source map `none`
+- `4887.0c0dc1bb.js`: 6571 bytes, modules `1`, source map `none`
+- `1008.ddcf0c10.js`: 6564 bytes, modules `1`, source map `none`
+- `3377.2ae8ebd4.js`: 6410 bytes, modules `1`, source map `none`
+- `9588.f224686d.js`: 6329 bytes, modules `1`, source map `none`
+- `5537.c53195ef.js`: 6315 bytes, modules `1`, source map `none`
+- `7182.1c09af62.js`: 6290 bytes, modules `1`, source map `none`
+- `8073.1a1f0944.js`: 6147 bytes, modules `1`, source map `none`
+- `1318.115c92c0.js`: 6111 bytes, modules `1`, source map `none`
+- `9468.e436ee21.js`: 6087 bytes, modules `1`, source map `none`
+- `3393.36b1f648.js`: 5870 bytes, modules `1`, source map `none`
+- `core-data-app-center.075989c4.js`: 5836 bytes, modules `1`, source map `none`
+- `6943.2c33d00a.js`: 5811 bytes, modules `1`, source map `none`
+- `1649.e32cc93e.js`: 5758 bytes, modules `1`, source map `none`
+- `1770.d45a315a.js`: 5663 bytes, modules `1`, source map `none`
+- `6227.31619be3.js`: 5643 bytes, modules `1`, source map `none`
+- `1374.63a1e437.js`: 5621 bytes, modules `1`, source map `none`
+- `998.ef202208.js`: 5620 bytes, modules `1`, source map `none`
+- `8196.d5520114.js`: 5506 bytes, modules `1`, source map `none`
+- `app-update.f8c21d5b.js`: 5456 bytes, modules `1`, source map `none`
+- `6743.8d1c5d0e.js`: 5450 bytes, modules `1`, source map `none`
+- `1027.8e57c853.js`: 5387 bytes, modules `1`, source map `none`
+- `2844.9cd451c9.js`: 5383 bytes, modules `1`, source map `none`
+- `8142.5f9800bd.js`: 5365 bytes, modules `1`, source map `none`
+- `6276.fc880396.js`: 5134 bytes, modules `1`, source map `none`
+- `1275.c7421af7.js`: 5049 bytes, modules `1`, source map `none`
+- `6358.0bbc6e24.js`: 5042 bytes, modules `1`, source map `none`
+- `9396.3d8f132d.js`: 5012 bytes, modules `1`, source map `none`
+- `8958.3593d324.js`: 5006 bytes, modules `1`, source map `none`
+- `4733.d34907ce.js`: 4929 bytes, modules `1`, source map `none`
+- `8724.13941836.js`: 4922 bytes, modules `1`, source map `none`
+- `7964.947d58ef.js`: 4902 bytes, modules `1`, source map `none`
+- `5621.f0a07eb8.js`: 4722 bytes, modules `1`, source map `none`
+- `5947.c2dda609.js`: 4669 bytes, modules `1`, source map `none`
+- `1490.915ce13a.js`: 4646 bytes, modules `1`, source map `none`
+- `8458.4a4a492e.js`: 4632 bytes, modules `2`, source map `none`
+- `4369.1b7d4d02.js`: 4610 bytes, modules `1`, source map `none`
+- `837.a2751765.js`: 4542 bytes, modules `1`, source map `none`
+- `372.52a3e79b.js`: 4442 bytes, modules `1`, source map `none`
+- `6453.680241b0.js`: 4440 bytes, modules `1`, source map `none`
+- `4816.3b36c6d0.js`: 4392 bytes, modules `1`, source map `none`
+- `7377.1c729819.js`: 4382 bytes, modules `1`, source map `none`
+- `zju-external-user-join-course.a83fc24d.js`: 4328 bytes, modules `1`, source map `none`
+- `4219.7a8b065e.js`: 4308 bytes, modules `1`, source map `none`
+- `1682.413c7a1e.js`: 4242 bytes, modules `1`, source map `none`
+- `chunk-vendors-248b84e0.f5d2a430.js`: 4193 bytes, modules `1`, source map `none`
+- `9638.a7271b34.js`: 4175 bytes, modules `1`, source map `none`
+- `7697.2110fa7a.js`: 4121 bytes, modules `1`, source map `none`
+- `7070.6e38293c.js`: 4115 bytes, modules `1`, source map `none`
+- `7140.5272bc01.js`: 4112 bytes, modules `1`, source map `none`
+- `4151.1140a56c.js`: 4068 bytes, modules `1`, source map `none`
+- `8882.579c5f6a.js`: 4066 bytes, modules `1`, source map `none`
+- `4793.16a7a62f.js`: 4038 bytes, modules `1`, source map `none`
+- `6823.79ea2c70.js`: 4016 bytes, modules `1`, source map `none`
+- `1566.905cadc3.js`: 3957 bytes, modules `1`, source map `none`
+- `157.cd78259b.js`: 3733 bytes, modules `1`, source map `none`
+- `7153.f0b69fdd.js`: 3716 bytes, modules `1`, source map `none`
+- `7870.1b0611a9.js`: 3572 bytes, modules `1`, source map `none`
+- `6391.db816d37.js`: 3541 bytes, modules `1`, source map `none`
+- `3916.bc360313.js`: 3528 bytes, modules `1`, source map `none`
+- `4563.f4cae925.js`: 3523 bytes, modules `1`, source map `none`
+- `8810.ffc266f6.js`: 3492 bytes, modules `1`, source map `none`
+- `8717.11e71918.js`: 3481 bytes, modules `1`, source map `none`
+- `5881.b58962d9.js`: 3437 bytes, modules `1`, source map `none`
+- `9809.9808baf7.js`: 3431 bytes, modules `1`, source map `none`
+- `9168.1cf63597.js`: 3418 bytes, modules `1`, source map `none`
+- `8231.a479a316.js`: 3386 bytes, modules `1`, source map `none`
+- `3032.103aa6eb.js`: 3364 bytes, modules `1`, source map `none`
+- `9250.e88263f5.js`: 3305 bytes, modules `1`, source map `none`
+- `503.8b1908b5.js`: 3295 bytes, modules `1`, source map `none`
+- `5851.19abbdcd.js`: 3233 bytes, modules `1`, source map `none`
+- `3387.706e3e53.js`: 3201 bytes, modules `1`, source map `none`
+- `2001.9a27cfcc.js`: 3194 bytes, modules `1`, source map `none`
+- `1793.c2c12981.js`: 3123 bytes, modules `1`, source map `none`
+- `3803.7954b850.js`: 2987 bytes, modules `1`, source map `none`
+- `3699.46bc7793.js`: 2932 bytes, modules `1`, source map `none`
+- `5728.cccbc189.js`: 2909 bytes, modules `1`, source map `none`
+- `3186.5017dee6.js`: 2825 bytes, modules `1`, source map `none`
+- `2916.9b1ac5dc.js`: 2799 bytes, modules `1`, source map `none`
+- `2260.64071786.js`: 2702 bytes, modules `1`, source map `none`
+- `4966.8d1880f9.js`: 2625 bytes, modules `1`, source map `none`
+- `7056.ba574977.js`: 2594 bytes, modules `1`, source map `none`
+- `5309.51d8cf7f.js`: 2466 bytes, modules `1`, source map `none`
+- `9591.a72aec71.js`: 2462 bytes, modules `1`, source map `none`
+- `1202.c535badf.js`: 2419 bytes, modules `1`, source map `none`
+- `9517.4a400274.js`: 2303 bytes, modules `1`, source map `none`
+- `6731.09cb3dfd.js`: 2284 bytes, modules `1`, source map `none`
+- `office-login.b5e77194.js`: 2237 bytes, modules `1`, source map `none`
+- `4585.7f192bb5.js`: 2228 bytes, modules `1`, source map `none`
+- `wps-plugin-login.13b54504.js`: 2175 bytes, modules `1`, source map `none`
+- `2287.d1cdac07.js`: 2139 bytes, modules `1`, source map `none`
+- `not-support-platform.9d5ca5ee.js`: 1946 bytes, modules `1`, source map `none`
+- `4568.e278114c.js`: 1927 bytes, modules `1`, source map `none`
+- `1083.33af1907.js`: 1751 bytes, modules `1`, source map `none`
+- `1488.203f5853.js`: 1749 bytes, modules `1`, source map `none`
+- `4964.ffe848c0.js`: 1628 bytes, modules `1`, source map `none`
+- `3060.def03cfa.js`: 1617 bytes, modules `1`, source map `none`
+- `144.0a6d72ee.js`: 1602 bytes, modules `1`, source map `none`
+- `9947.86d8152f.js`: 1572 bytes, modules `1`, source map `none`
+- `6396.d9461322.js`: 1475 bytes, modules `1`, source map `none`
+- `9400.88e868dd.js`: 1402 bytes, modules `1`, source map `none`
+- `7502.604f9c92.js`: 1291 bytes, modules `1`, source map `none`
+- `9657.3117082f.js`: 1140 bytes, modules `1`, source map `none`
+- `2125.2a2e0316.js`: 1107 bytes, modules `1`, source map `none`
+- `6033.96bf0c51.js`: 1030 bytes, modules `1`, source map `none`
+- `7638.3581b606.js`: 971 bytes, modules `1`, source map `none`
+- `5750.b254ae49.js`: 917 bytes, modules `1`, source map `none`
+- `6058.eae758e1.js`: 908 bytes, modules `1`, source map `none`
+- `2864.381f5014.js`: 905 bytes, modules `1`, source map `none`
+- `4241.5af46161.js`: 867 bytes, modules `1`, source map `none`
+- `3747.586772dc.js`: 799 bytes, modules `1`, source map `none`
+- `login-by-identity-token.2216e2da.js`: 770 bytes, modules `1`, source map `none`
+- `1871.e21af1ed.js`: 732 bytes, modules `1`, source map `none`
+- `1867.3fcba20a.js`: 680 bytes, modules `1`, source map `none`
+- `scanner-jumper.41bc35ae.js`: 408 bytes, modules `1`, source map `none`
+
+## Largest Extracted Modules
+- `76617` from `chunk-mathjax-832c3b72.982fe107.js`: 611471 bytes -> `webview_modules/structured/chunk-mathjax-832c3b72.982fe107/76617.js`
+- `12010` from `chunk-mathjax-832c3b72.982fe107.js`: 76625 bytes -> `webview_modules/structured/chunk-mathjax-832c3b72.982fe107/12010.js`
+- `34668` from `chunk-vendors-aacc2dbb.deb34d08.js`: 72760 bytes -> `webview_modules/structured/chunk-vendors-aacc2dbb.deb34d08/34668.js`
+- `76229` from `chunk-vendors-c3943e85.7355e14a.js`: 66797 bytes -> `webview_modules/structured/chunk-vendors-c3943e85.7355e14a/76229.js`
+- `36449` from `chunk-common-14b21198.4bf44df8.js`: 65411 bytes -> `webview_modules/structured/chunk-common-14b21198.4bf44df8/36449.js`
+- `50774` from `chunk-vendors-af4e84d4.50b2eb4a.js`: 62857 bytes -> `webview_modules/structured/chunk-vendors-af4e84d4.50b2eb4a/50774.js`
+- `7453` from `7453.090670e2.js`: 62481 bytes -> `webview_modules/structured/7453.090670e2/7453.js`
+- `42967` from `chunk-vendors-af4e84d4.50b2eb4a.js`: 52635 bytes -> `webview_modules/structured/chunk-vendors-af4e84d4.50b2eb4a/42967.js`
+- `79180` from `chunk-common-d87c119a.ad41826a.js`: 49308 bytes -> `webview_modules/structured/chunk-common-d87c119a.ad41826a/79180.js`
+- `54375` from `chunk-vendors-af4e84d4.50b2eb4a.js`: 46446 bytes -> `webview_modules/structured/chunk-vendors-af4e84d4.50b2eb4a/54375.js`
+- `85920` from `5920.54c79d60.js`: 44155 bytes -> `webview_modules/structured/5920.54c79d60/85920.js`
+- `16946` from `chunk-vendors-af4e84d4.50b2eb4a.js`: 42756 bytes -> `webview_modules/structured/chunk-vendors-af4e84d4.50b2eb4a/16946.js`
+- `65900` from `5900.02e4dc25.js`: 42577 bytes -> `webview_modules/structured/5900.02e4dc25/65900.js`
+- `60968` from `968.c47a4c1a.js`: 41830 bytes -> `webview_modules/structured/968.c47a4c1a/60968.js`
+- `20405` from `chunk-common-3e4dcf55.ac10b2ad.js`: 41406 bytes -> `webview_modules/structured/chunk-common-3e4dcf55.ac10b2ad/20405.js`
+- `46923` from `6923.aec6d442.js`: 40128 bytes -> `webview_modules/structured/6923.aec6d442/46923.js`
+- `57214` from `chunk-vendors-0a15d5a9.f9571715.js`: 38415 bytes -> `webview_modules/structured/chunk-vendors-0a15d5a9.f9571715/57214.js`
+- `28123` from `8123.5f4e98fe.js`: 37538 bytes -> `webview_modules/structured/8123.5f4e98fe/28123.js`
+- `2664` from `2664.4aa6b135.js`: 35842 bytes -> `webview_modules/structured/2664.4aa6b135/2664.js`
+- `3627` from `chunk-vendors-af4e84d4.50b2eb4a.js`: 35544 bytes -> `webview_modules/structured/chunk-vendors-af4e84d4.50b2eb4a/3627.js`
+- `56139` from `chunk-vendors-bc050c32.9a44efdc.js`: 32039 bytes -> `webview_modules/structured/chunk-vendors-bc050c32.9a44efdc/56139.js`
+- `79972` from `chunk-common-3e4dcf55.ac10b2ad.js`: 32037 bytes -> `webview_modules/structured/chunk-common-3e4dcf55.ac10b2ad/79972.js`
+- `24261` from `chunk-mathjax-832c3b72.982fe107.js`: 32033 bytes -> `webview_modules/structured/chunk-mathjax-832c3b72.982fe107/24261.js`
+- `22785` from `chunk-mathjax-15f0c8d4.b035a753.js`: 31843 bytes -> `webview_modules/structured/chunk-mathjax-15f0c8d4.b035a753/22785.js`
+- `93659` from `3659.53627752.js`: 31521 bytes -> `webview_modules/structured/3659.53627752/93659.js`
+- `15513` from `chunk-vendors-363ec994.b404b1c6.js`: 30536 bytes -> `webview_modules/structured/chunk-vendors-363ec994.b404b1c6/15513.js`
+- `52101` from `chunk-vendors-af1a2782.2ffb3cfb.js`: 29279 bytes -> `webview_modules/structured/chunk-vendors-af1a2782.2ffb3cfb/52101.js`
+- `54863` from `chunk-vendors-af4e84d4.50b2eb4a.js`: 28828 bytes -> `webview_modules/structured/chunk-vendors-af4e84d4.50b2eb4a/54863.js`
+- `16419` from `6419.359b563e.js`: 28725 bytes -> `webview_modules/structured/6419.359b563e/16419.js`
+- `68468` from `chunk-vendors-af4e84d4.50b2eb4a.js`: 27920 bytes -> `webview_modules/structured/chunk-vendors-af4e84d4.50b2eb4a/68468.js`
+
+## Source Map Status
+Most production chunks in this APK do not include source maps. Extracted modules are therefore the strongest local structure available without the original source-map artifacts.
+

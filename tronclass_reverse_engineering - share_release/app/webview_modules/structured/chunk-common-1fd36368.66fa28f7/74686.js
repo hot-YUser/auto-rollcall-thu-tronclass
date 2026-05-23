@@ -1,0 +1,3 @@
+// Extracted from decompiled/apktool/base/assets/public/js/chunk-common-1fd36368.66fa28f7.js
+// Webpack module id: 74686
+function(e,t,o){o.d(t,{Z:function(){return c}});var n=o(77577),l=(0,n.defineComponent)({__name:"folding-icon",props:{collapse:{type:Boolean,default:!0}},setup:function(e){return function(e,t){var o,l=(0,n.resolveComponent)("svg-icon");return(0,n.openBlock)(),(0,n.createBlock)(l,{name:"arrow-forward",class:(0,n.normalizeClass)((o={},o[e.$style.svgIcon]=!0,o[e.$style.collapse]=e.collapse,o))},null,8,["class"])}}}),a={svgIcon:"folding-icon__svgIcon-Gw9xx",collapse:"folding-icon__collapse-q9gqR"},i=o(46021);const r={};r["$style"]=a;const s=(0,i.Z)(l,[["__cssModules",r]]);var c=s}

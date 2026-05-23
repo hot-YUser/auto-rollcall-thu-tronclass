@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="64dp">
+    <RelativeLayout
+        android:id="@+id/os_bgimage_notif_bgimage_align_layout"
+        android:paddingLeft="0dp"
+        android:paddingRight="-2000dp"
+        android:layout_width="wrap_content"
+        android:layout_height="64dp"
+        android:layoutDirection="ltr">
+        <ImageView
+            android:id="@+id/os_bgimage_notif_bgimage"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:scaleType="fitStart"
+            android:adjustViewBounds="false"
+            android:cropToPadding="false"/>
+        <ImageView
+            android:id="@+id/os_bgimage_notif_bgimage_right_aligned"
+            android:visibility="gone"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:scaleType="fitEnd"
+            android:adjustViewBounds="false"
+            android:cropToPadding="false"/>
+    </RelativeLayout>
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:layout_marginLeft="@android:dimen/notification_large_icon_width"
+        android:textDirection="locale">
+        <TextView
+            android:textAppearance="@android:style/TextAppearance.StatusBar.EventContent.Title"
+            android:ellipsize="marquee"
+            android:id="@+id/os_bgimage_notif_title"
+            android:paddingTop="8dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Medium Text"
+            android:singleLine="true"
+            android:paddingStart="4dp"/>
+        <TextView
+            android:textAppearance="@android:style/TextAppearance.StatusBar.EventContent"
+            android:ellipsize="marquee"
+            android:id="@+id/os_bgimage_notif_body"
+            android:fadingEdge="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:text="Small Text"
+            android:singleLine="true"
+            android:layout_weight="1"
+            android:paddingStart="4dp"/>
+    </LinearLayout>
+</RelativeLayout>

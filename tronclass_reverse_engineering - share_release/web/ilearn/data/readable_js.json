@@ -1,0 +1,802 @@
+[
+  {
+    "source_file": "raw__ilearn.thu.edu.tw__chatbot__chatbot.umd.js",
+    "readable_path": "readable_js/raw__ilearn.thu.edu.tw__chatbot__chatbot.umd.pretty.js",
+    "source_bytes": 6492967,
+    "readable_bytes": 6675844,
+    "source_lines": 764,
+    "readable_lines": 40516
+  },
+  {
+    "source_file": "js__lms-main-898f71e6.js",
+    "readable_path": "readable_js/js__lms-main-898f71e6.pretty.js",
+    "source_bytes": 214265,
+    "readable_bytes": 435299,
+    "source_lines": 1,
+    "readable_lines": 12063
+  },
+  {
+    "source_file": "js__main-portal-cc072a5a.js",
+    "readable_path": "readable_js/js__main-portal-cc072a5a.pretty.js",
+    "source_bytes": 234067,
+    "readable_bytes": 372064,
+    "source_lines": 1,
+    "readable_lines": 9580
+  },
+  {
+    "source_file": "runtime~js__main-portal-86d88036.js",
+    "readable_path": "readable_js/runtime~js__main-portal-86d88036.pretty.js",
+    "source_bytes": 23141,
+    "readable_bytes": 26308,
+    "source_lines": 1,
+    "readable_lines": 331
+  },
+  {
+    "source_file": "18774-c8d49780.js",
+    "readable_path": "readable_js/18774-c8d49780.pretty.js",
+    "source_bytes": 4612809,
+    "readable_bytes": 4613411,
+    "source_lines": 1,
+    "readable_lines": 80
+  },
+  {
+    "source_file": "24549.cf667c52.js",
+    "readable_path": "readable_js/24549.cf667c52.pretty.js",
+    "source_bytes": 3621492,
+    "readable_bytes": 3642776,
+    "source_lines": 1,
+    "readable_lines": 828
+  },
+  {
+    "source_file": "js__mathjax__es5__tex-mml-svg.js",
+    "readable_path": "readable_js/js__mathjax__es5__tex-mml-svg.pretty.js",
+    "source_bytes": 2120598,
+    "readable_bytes": 2128545,
+    "source_lines": 1,
+    "readable_lines": 568
+  },
+  {
+    "source_file": "79278-2435c454.js",
+    "readable_path": "readable_js/79278-2435c454.pretty.js",
+    "source_bytes": 1975050,
+    "readable_bytes": 2023222,
+    "source_lines": 1,
+    "readable_lines": 4983
+  },
+  {
+    "source_file": "30803-7b1f840f.js",
+    "readable_path": "readable_js/30803-7b1f840f.pretty.js",
+    "source_bytes": 1055724,
+    "readable_bytes": 1077760,
+    "source_lines": 1,
+    "readable_lines": 1604
+  },
+  {
+    "source_file": "82017-1e48dc04.js",
+    "readable_path": "readable_js/82017-1e48dc04.pretty.js",
+    "source_bytes": 905233,
+    "readable_bytes": 1678930,
+    "source_lines": 1,
+    "readable_lines": 46502
+  },
+  {
+    "source_file": "61409-cf835457.js",
+    "readable_path": "readable_js/61409-cf835457.pretty.js",
+    "source_bytes": 786275,
+    "readable_bytes": 789265,
+    "source_lines": 1,
+    "readable_lines": 236
+  },
+  {
+    "source_file": "84027-f7869d26.js",
+    "readable_path": "readable_js/84027-f7869d26.pretty.js",
+    "source_bytes": 640160,
+    "readable_bytes": 946757,
+    "source_lines": 1,
+    "readable_lines": 22026
+  },
+  {
+    "source_file": "80575.32ea74f5.js",
+    "readable_path": "readable_js/80575.32ea74f5.pretty.js",
+    "source_bytes": 628972,
+    "readable_bytes": 661122,
+    "source_lines": 1,
+    "readable_lines": 2206
+  },
+  {
+    "source_file": "70650-b5e8d981.js",
+    "readable_path": "readable_js/70650-b5e8d981.pretty.js",
+    "source_bytes": 535857,
+    "readable_bytes": 578042,
+    "source_lines": 1,
+    "readable_lines": 3394
+  },
+  {
+    "source_file": "9862.d5cc01ba.js",
+    "readable_path": "readable_js/9862.d5cc01ba.pretty.js",
+    "source_bytes": 505450,
+    "readable_bytes": 582222,
+    "source_lines": 1,
+    "readable_lines": 4399
+  },
+  {
+    "source_file": "97620.c8167195.js",
+    "readable_path": "readable_js/97620.c8167195.pretty.js",
+    "source_bytes": 462784,
+    "readable_bytes": 478842,
+    "source_lines": 1,
+    "readable_lines": 1089
+  },
+  {
+    "source_file": "raw__www.googletagmanager.com__gtag__js__q_732b4fcc17.js",
+    "readable_path": "readable_js/raw__www.googletagmanager.com__gtag__js__q_732b4fcc17.pretty.js",
+    "source_bytes": 450988,
+    "readable_bytes": 854964,
+    "source_lines": 954,
+    "readable_lines": 21366
+  },
+  {
+    "source_file": "raw__www.googletagmanager.com__gtag__js__q_f844cdbeb7.js",
+    "readable_path": "readable_js/raw__www.googletagmanager.com__gtag__js__q_f844cdbeb7.pretty.js",
+    "source_bytes": 450968,
+    "readable_bytes": 854943,
+    "source_lines": 954,
+    "readable_lines": 21366
+  },
+  {
+    "source_file": "74927.c4fad5cf.js",
+    "readable_path": "readable_js/74927.c4fad5cf.pretty.js",
+    "source_bytes": 437507,
+    "readable_bytes": 441793,
+    "source_lines": 1,
+    "readable_lines": 284
+  },
+  {
+    "source_file": "27359.c8e5eebe.js",
+    "readable_path": "readable_js/27359.c8e5eebe.pretty.js",
+    "source_bytes": 436122,
+    "readable_bytes": 587921,
+    "source_lines": 1,
+    "readable_lines": 3285
+  },
+  {
+    "source_file": "14572-b07cd6d5.js",
+    "readable_path": "readable_js/14572-b07cd6d5.pretty.js",
+    "source_bytes": 423315,
+    "readable_bytes": 434041,
+    "source_lines": 1,
+    "readable_lines": 721
+  },
+  {
+    "source_file": "59925-af926177.js",
+    "readable_path": "readable_js/59925-af926177.pretty.js",
+    "source_bytes": 403033,
+    "readable_bytes": 426465,
+    "source_lines": 1,
+    "readable_lines": 1219
+  },
+  {
+    "source_file": "75360-6745dc29.js",
+    "readable_path": "readable_js/75360-6745dc29.pretty.js",
+    "source_bytes": 388486,
+    "readable_bytes": 391735,
+    "source_lines": 1,
+    "readable_lines": 285
+  },
+  {
+    "source_file": "56964-3b1e52ac.js",
+    "readable_path": "readable_js/56964-3b1e52ac.pretty.js",
+    "source_bytes": 383073,
+    "readable_bytes": 383118,
+    "source_lines": 1,
+    "readable_lines": 11
+  },
+  {
+    "source_file": "31076.a8c88684.js",
+    "readable_path": "readable_js/31076.a8c88684.pretty.js",
+    "source_bytes": 380140,
+    "readable_bytes": 404428,
+    "source_lines": 1,
+    "readable_lines": 1937
+  },
+  {
+    "source_file": "12159.7fb514eb.js",
+    "readable_path": "readable_js/12159.7fb514eb.pretty.js",
+    "source_bytes": 377956,
+    "readable_bytes": 691146,
+    "source_lines": 1,
+    "readable_lines": 18308
+  },
+  {
+    "source_file": "59576.7aadb53f.js",
+    "readable_path": "readable_js/59576.7aadb53f.pretty.js",
+    "source_bytes": 369118,
+    "readable_bytes": 382079,
+    "source_lines": 1,
+    "readable_lines": 804
+  },
+  {
+    "source_file": "88788.161d6b6a.js",
+    "readable_path": "readable_js/88788.161d6b6a.pretty.js",
+    "source_bytes": 367046,
+    "readable_bytes": 469990,
+    "source_lines": 1,
+    "readable_lines": 6503
+  },
+  {
+    "source_file": "15770.c0eea2d2.js",
+    "readable_path": "readable_js/15770.c0eea2d2.pretty.js",
+    "source_bytes": 349244,
+    "readable_bytes": 417204,
+    "source_lines": 1,
+    "readable_lines": 5481
+  },
+  {
+    "source_file": "58354.7f76f53b.js",
+    "readable_path": "readable_js/58354.7f76f53b.pretty.js",
+    "source_bytes": 310621,
+    "readable_bytes": 383873,
+    "source_lines": 1,
+    "readable_lines": 5105
+  },
+  {
+    "source_file": "72914-965f4ad4.js",
+    "readable_path": "readable_js/72914-965f4ad4.pretty.js",
+    "source_bytes": 304903,
+    "readable_bytes": 311223,
+    "source_lines": 1,
+    "readable_lines": 458
+  },
+  {
+    "source_file": "42753.47feb217.js",
+    "readable_path": "readable_js/42753.47feb217.pretty.js",
+    "source_bytes": 304677,
+    "readable_bytes": 521165,
+    "source_lines": 1,
+    "readable_lines": 14668
+  },
+  {
+    "source_file": "49294.50a0a8b3.js",
+    "readable_path": "readable_js/49294.50a0a8b3.pretty.js",
+    "source_bytes": 300827,
+    "readable_bytes": 578036,
+    "source_lines": 1,
+    "readable_lines": 16740
+  },
+  {
+    "source_file": "52507.583e35f3.js",
+    "readable_path": "readable_js/52507.583e35f3.pretty.js",
+    "source_bytes": 298951,
+    "readable_bytes": 581218,
+    "source_lines": 1,
+    "readable_lines": 16503
+  },
+  {
+    "source_file": "78435-bff624c3.js",
+    "readable_path": "readable_js/78435-bff624c3.pretty.js",
+    "source_bytes": 297415,
+    "readable_bytes": 435649,
+    "source_lines": 1,
+    "readable_lines": 8832
+  },
+  {
+    "source_file": "68924-a30f5597.js",
+    "readable_path": "readable_js/68924-a30f5597.pretty.js",
+    "source_bytes": 285956,
+    "readable_bytes": 290666,
+    "source_lines": 1,
+    "readable_lines": 305
+  },
+  {
+    "source_file": "69491.39eb865f.js",
+    "readable_path": "readable_js/69491.39eb865f.pretty.js",
+    "source_bytes": 278552,
+    "readable_bytes": 399716,
+    "source_lines": 1,
+    "readable_lines": 9412
+  },
+  {
+    "source_file": "93746.df010f77.js",
+    "readable_path": "readable_js/93746.df010f77.pretty.js",
+    "source_bytes": 265844,
+    "readable_bytes": 453833,
+    "source_lines": 1,
+    "readable_lines": 12945
+  },
+  {
+    "source_file": "24072.ab960016.js",
+    "readable_path": "readable_js/24072.ab960016.pretty.js",
+    "source_bytes": 252594,
+    "readable_bytes": 447652,
+    "source_lines": 1,
+    "readable_lines": 12402
+  },
+  {
+    "source_file": "raw__www.googletagmanager.com__gtag__js.js",
+    "readable_path": "readable_js/raw__www.googletagmanager.com__gtag__js.pretty.js",
+    "source_bytes": 233914,
+    "readable_bytes": 397967,
+    "source_lines": 490,
+    "readable_lines": 17132
+  },
+  {
+    "source_file": "3347-d08db718.js",
+    "readable_path": "readable_js/3347-d08db718.pretty.js",
+    "source_bytes": 233581,
+    "readable_bytes": 272912,
+    "source_lines": 1,
+    "readable_lines": 2507
+  },
+  {
+    "source_file": "68805.a47db79c.js",
+    "readable_path": "readable_js/68805.a47db79c.pretty.js",
+    "source_bytes": 227090,
+    "readable_bytes": 387319,
+    "source_lines": 1,
+    "readable_lines": 10346
+  },
+  {
+    "source_file": "82831.135ef996.js",
+    "readable_path": "readable_js/82831.135ef996.pretty.js",
+    "source_bytes": 222875,
+    "readable_bytes": 306556,
+    "source_lines": 1,
+    "readable_lines": 3847
+  },
+  {
+    "source_file": "js__main-public-course-aa8290d5.js",
+    "readable_path": "readable_js/js__main-public-course-aa8290d5.pretty.js",
+    "source_bytes": 214309,
+    "readable_bytes": 435362,
+    "source_lines": 1,
+    "readable_lines": 12065
+  },
+  {
+    "source_file": "56488.5dafa7c7.js",
+    "readable_path": "readable_js/56488.5dafa7c7.pretty.js",
+    "source_bytes": 209694,
+    "readable_bytes": 373825,
+    "source_lines": 1,
+    "readable_lines": 9657
+  },
+  {
+    "source_file": "72581.a741bb8b.js",
+    "readable_path": "readable_js/72581.a741bb8b.pretty.js",
+    "source_bytes": 208109,
+    "readable_bytes": 427559,
+    "source_lines": 1,
+    "readable_lines": 15437
+  },
+  {
+    "source_file": "51310.68c3f526.js",
+    "readable_path": "readable_js/51310.68c3f526.pretty.js",
+    "source_bytes": 204033,
+    "readable_bytes": 406249,
+    "source_lines": 1,
+    "readable_lines": 11400
+  },
+  {
+    "source_file": "8820-167f9e35.js",
+    "readable_path": "readable_js/8820-167f9e35.pretty.js",
+    "source_bytes": 202900,
+    "readable_bytes": 369863,
+    "source_lines": 1,
+    "readable_lines": 11229
+  },
+  {
+    "source_file": "39176-82f1062e.js",
+    "readable_path": "readable_js/39176-82f1062e.pretty.js",
+    "source_bytes": 195572,
+    "readable_bytes": 338508,
+    "source_lines": 1,
+    "readable_lines": 10485
+  },
+  {
+    "source_file": "44194.476375f7.js",
+    "readable_path": "readable_js/44194.476375f7.pretty.js",
+    "source_bytes": 193189,
+    "readable_bytes": 207143,
+    "source_lines": 1,
+    "readable_lines": 1016
+  },
+  {
+    "source_file": "21356.22ba888a.js",
+    "readable_path": "readable_js/21356.22ba888a.pretty.js",
+    "source_bytes": 191642,
+    "readable_bytes": 201735,
+    "source_lines": 1,
+    "readable_lines": 672
+  },
+  {
+    "source_file": "56029-a5e838cb.js",
+    "readable_path": "readable_js/56029-a5e838cb.pretty.js",
+    "source_bytes": 185096,
+    "readable_bytes": 255247,
+    "source_lines": 1,
+    "readable_lines": 3709
+  },
+  {
+    "source_file": "27148.dc9a1b6d.js",
+    "readable_path": "readable_js/27148.dc9a1b6d.pretty.js",
+    "source_bytes": 180392,
+    "readable_bytes": 268301,
+    "source_lines": 1,
+    "readable_lines": 5873
+  },
+  {
+    "source_file": "33489-328d8393.js",
+    "readable_path": "readable_js/33489-328d8393.pretty.js",
+    "source_bytes": 180301,
+    "readable_bytes": 248727,
+    "source_lines": 1,
+    "readable_lines": 5267
+  },
+  {
+    "source_file": "7930.cc04692e.js",
+    "readable_path": "readable_js/7930.cc04692e.pretty.js",
+    "source_bytes": 173654,
+    "readable_bytes": 196349,
+    "source_lines": 1,
+    "readable_lines": 1642
+  },
+  {
+    "source_file": "45286-6fefd965.js",
+    "readable_path": "readable_js/45286-6fefd965.pretty.js",
+    "source_bytes": 172039,
+    "readable_bytes": 238457,
+    "source_lines": 1,
+    "readable_lines": 3938
+  },
+  {
+    "source_file": "53701.67275a68.js",
+    "readable_path": "readable_js/53701.67275a68.pretty.js",
+    "source_bytes": 170833,
+    "readable_bytes": 174122,
+    "source_lines": 1,
+    "readable_lines": 272
+  },
+  {
+    "source_file": "44346.7b57b52e.js",
+    "readable_path": "readable_js/44346.7b57b52e.pretty.js",
+    "source_bytes": 169899,
+    "readable_bytes": 286066,
+    "source_lines": 1,
+    "readable_lines": 7707
+  },
+  {
+    "source_file": "48925.39b391b4.js",
+    "readable_path": "readable_js/48925.39b391b4.pretty.js",
+    "source_bytes": 165792,
+    "readable_bytes": 169814,
+    "source_lines": 1,
+    "readable_lines": 280
+  },
+  {
+    "source_file": "51217.afd18812.js",
+    "readable_path": "readable_js/51217.afd18812.pretty.js",
+    "source_bytes": 165556,
+    "readable_bytes": 290622,
+    "source_lines": 1,
+    "readable_lines": 11078
+  },
+  {
+    "source_file": "28413.2c9b36eb.js",
+    "readable_path": "readable_js/28413.2c9b36eb.pretty.js",
+    "source_bytes": 163326,
+    "readable_bytes": 169166,
+    "source_lines": 1,
+    "readable_lines": 408
+  },
+  {
+    "source_file": "49412.3bf7965d.js",
+    "readable_path": "readable_js/49412.3bf7965d.pretty.js",
+    "source_bytes": 159804,
+    "readable_bytes": 165458,
+    "source_lines": 1,
+    "readable_lines": 396
+  },
+  {
+    "source_file": "83170-1ffef691.js",
+    "readable_path": "readable_js/83170-1ffef691.pretty.js",
+    "source_bytes": 159219,
+    "readable_bytes": 286873,
+    "source_lines": 1,
+    "readable_lines": 8844
+  },
+  {
+    "source_file": "31651.9857c692.js",
+    "readable_path": "readable_js/31651.9857c692.pretty.js",
+    "source_bytes": 157301,
+    "readable_bytes": 179821,
+    "source_lines": 1,
+    "readable_lines": 1554
+  },
+  {
+    "source_file": "21892-03cda66b.js",
+    "readable_path": "readable_js/21892-03cda66b.pretty.js",
+    "source_bytes": 155425,
+    "readable_bytes": 156512,
+    "source_lines": 1,
+    "readable_lines": 73
+  },
+  {
+    "source_file": "21137.a69eb96c.js",
+    "readable_path": "readable_js/21137.a69eb96c.pretty.js",
+    "source_bytes": 154809,
+    "readable_bytes": 170358,
+    "source_lines": 1,
+    "readable_lines": 990
+  },
+  {
+    "source_file": "26296-0d2e8412.js",
+    "readable_path": "readable_js/26296-0d2e8412.pretty.js",
+    "source_bytes": 154801,
+    "readable_bytes": 154940,
+    "source_lines": 1,
+    "readable_lines": 18
+  },
+  {
+    "source_file": "42789-f3817b0b.js",
+    "readable_path": "readable_js/42789-f3817b0b.pretty.js",
+    "source_bytes": 153810,
+    "readable_bytes": 185121,
+    "source_lines": 1,
+    "readable_lines": 2079
+  },
+  {
+    "source_file": "15448.d1593c31.js",
+    "readable_path": "readable_js/15448.d1593c31.pretty.js",
+    "source_bytes": 153070,
+    "readable_bytes": 180694,
+    "source_lines": 1,
+    "readable_lines": 1696
+  },
+  {
+    "source_file": "28245.9d3509d0.js",
+    "readable_path": "readable_js/28245.9d3509d0.pretty.js",
+    "source_bytes": 152827,
+    "readable_bytes": 176159,
+    "source_lines": 1,
+    "readable_lines": 1685
+  },
+  {
+    "source_file": "60648.54941882.js",
+    "readable_path": "readable_js/60648.54941882.pretty.js",
+    "source_bytes": 150151,
+    "readable_bytes": 179963,
+    "source_lines": 1,
+    "readable_lines": 2072
+  },
+  {
+    "source_file": "69942.24c3a1ff.js",
+    "readable_path": "readable_js/69942.24c3a1ff.pretty.js",
+    "source_bytes": 149488,
+    "readable_bytes": 155136,
+    "source_lines": 1,
+    "readable_lines": 396
+  },
+  {
+    "source_file": "99393.17a82ead.js",
+    "readable_path": "readable_js/99393.17a82ead.pretty.js",
+    "source_bytes": 143387,
+    "readable_bytes": 148589,
+    "source_lines": 1,
+    "readable_lines": 367
+  },
+  {
+    "source_file": "19705.6a8993c5.js",
+    "readable_path": "readable_js/19705.6a8993c5.pretty.js",
+    "source_bytes": 141271,
+    "readable_bytes": 152797,
+    "source_lines": 1,
+    "readable_lines": 848
+  },
+  {
+    "source_file": "79001.978df930.js",
+    "readable_path": "readable_js/79001.978df930.pretty.js",
+    "source_bytes": 141228,
+    "readable_bytes": 225525,
+    "source_lines": 1,
+    "readable_lines": 5637
+  },
+  {
+    "source_file": "76756.7b06f21b.js",
+    "readable_path": "readable_js/76756.7b06f21b.pretty.js",
+    "source_bytes": 140517,
+    "readable_bytes": 220970,
+    "source_lines": 1,
+    "readable_lines": 5830
+  },
+  {
+    "source_file": "62115.535dac38.js",
+    "readable_path": "readable_js/62115.535dac38.pretty.js",
+    "source_bytes": 140328,
+    "readable_bytes": 161255,
+    "source_lines": 1,
+    "readable_lines": 1503
+  },
+  {
+    "source_file": "91915-54b34f10.js",
+    "readable_path": "readable_js/91915-54b34f10.pretty.js",
+    "source_bytes": 138902,
+    "readable_bytes": 150462,
+    "source_lines": 1,
+    "readable_lines": 455
+  },
+  {
+    "source_file": "52089.d0fdfa73.js",
+    "readable_path": "readable_js/52089.d0fdfa73.pretty.js",
+    "source_bytes": 137912,
+    "readable_bytes": 166132,
+    "source_lines": 1,
+    "readable_lines": 1950
+  },
+  {
+    "source_file": "47611.42ee6df9.js",
+    "readable_path": "readable_js/47611.42ee6df9.pretty.js",
+    "source_bytes": 134637,
+    "readable_bytes": 150774,
+    "source_lines": 1,
+    "readable_lines": 1176
+  },
+  {
+    "source_file": "15175.570cff7b.js",
+    "readable_path": "readable_js/15175.570cff7b.pretty.js",
+    "source_bytes": 134108,
+    "readable_bytes": 150244,
+    "source_lines": 1,
+    "readable_lines": 1176
+  },
+  {
+    "source_file": "70413.570cff7b.js",
+    "readable_path": "readable_js/70413.570cff7b.pretty.js",
+    "source_bytes": 134108,
+    "readable_bytes": 150244,
+    "source_lines": 1,
+    "readable_lines": 1176
+  },
+  {
+    "source_file": "92794.570cff7b.js",
+    "readable_path": "readable_js/92794.570cff7b.pretty.js",
+    "source_bytes": 134108,
+    "readable_bytes": 150244,
+    "source_lines": 1,
+    "readable_lines": 1176
+  },
+  {
+    "source_file": "58675.da882e8a.js",
+    "readable_path": "readable_js/58675.da882e8a.pretty.js",
+    "source_bytes": 133144,
+    "readable_bytes": 155523,
+    "source_lines": 1,
+    "readable_lines": 1611
+  },
+  {
+    "source_file": "76546.56ad0d6e.js",
+    "readable_path": "readable_js/76546.56ad0d6e.pretty.js",
+    "source_bytes": 132661,
+    "readable_bytes": 147664,
+    "source_lines": 1,
+    "readable_lines": 1128
+  },
+  {
+    "source_file": "77676.71559eab.js",
+    "readable_path": "readable_js/77676.71559eab.pretty.js",
+    "source_bytes": 131714,
+    "readable_bytes": 159071,
+    "source_lines": 1,
+    "readable_lines": 1872
+  },
+  {
+    "source_file": "23223-9b89ab86.js",
+    "readable_path": "readable_js/23223-9b89ab86.pretty.js",
+    "source_bytes": 130095,
+    "readable_bytes": 138924,
+    "source_lines": 1,
+    "readable_lines": 399
+  },
+  {
+    "source_file": "56834-67be8618.js",
+    "readable_path": "readable_js/56834-67be8618.pretty.js",
+    "source_bytes": 123442,
+    "readable_bytes": 153256,
+    "source_lines": 1,
+    "readable_lines": 2522
+  },
+  {
+    "source_file": "19552.d3ef0a6f.js",
+    "readable_path": "readable_js/19552.d3ef0a6f.pretty.js",
+    "source_bytes": 122095,
+    "readable_bytes": 138669,
+    "source_lines": 1,
+    "readable_lines": 1282
+  },
+  {
+    "source_file": "10188.0cd009aa.js",
+    "readable_path": "readable_js/10188.0cd009aa.pretty.js",
+    "source_bytes": 120227,
+    "readable_bytes": 135495,
+    "source_lines": 1,
+    "readable_lines": 1106
+  },
+  {
+    "source_file": "37336.084b8613.js",
+    "readable_path": "readable_js/37336.084b8613.pretty.js",
+    "source_bytes": 118723,
+    "readable_bytes": 183953,
+    "source_lines": 1,
+    "readable_lines": 4383
+  },
+  {
+    "source_file": "69624.cf0f0c03.js",
+    "readable_path": "readable_js/69624.cf0f0c03.pretty.js",
+    "source_bytes": 117741,
+    "readable_bytes": 132283,
+    "source_lines": 1,
+    "readable_lines": 1038
+  },
+  {
+    "source_file": "93281.cb5e4d75.js",
+    "readable_path": "readable_js/93281.cb5e4d75.pretty.js",
+    "source_bytes": 117636,
+    "readable_bytes": 120907,
+    "source_lines": 1,
+    "readable_lines": 235
+  },
+  {
+    "source_file": "61508.ff3d35a7.js",
+    "readable_path": "readable_js/61508.ff3d35a7.pretty.js",
+    "source_bytes": 111881,
+    "readable_bytes": 119785,
+    "source_lines": 1,
+    "readable_lines": 618
+  },
+  {
+    "source_file": "77547.1ee921ff.js",
+    "readable_path": "readable_js/77547.1ee921ff.pretty.js",
+    "source_bytes": 111799,
+    "readable_bytes": 126779,
+    "source_lines": 1,
+    "readable_lines": 1074
+  },
+  {
+    "source_file": "24598.127c6b42.js",
+    "readable_path": "readable_js/24598.127c6b42.pretty.js",
+    "source_bytes": 110826,
+    "readable_bytes": 116406,
+    "source_lines": 1,
+    "readable_lines": 390
+  },
+  {
+    "source_file": "3734.fcaf65a6.js",
+    "readable_path": "readable_js/3734.fcaf65a6.pretty.js",
+    "source_bytes": 109469,
+    "readable_bytes": 220185,
+    "source_lines": 1,
+    "readable_lines": 8174
+  },
+  {
+    "source_file": "9733.dbcbf3d9.js",
+    "readable_path": "readable_js/9733.dbcbf3d9.pretty.js",
+    "source_bytes": 109133,
+    "readable_bytes": 124002,
+    "source_lines": 1,
+    "readable_lines": 1063
+  },
+  {
+    "source_file": "13821.19c32f7f.js",
+    "readable_path": "readable_js/13821.19c32f7f.pretty.js",
+    "source_bytes": 108973,
+    "readable_bytes": 123711,
+    "source_lines": 1,
+    "readable_lines": 1052
+  },
+  {
+    "source_file": "13958-91152030.js",
+    "readable_path": "readable_js/13958-91152030.pretty.js",
+    "source_bytes": 108898,
+    "readable_bytes": 121825,
+    "source_lines": 1,
+    "readable_lines": 1046
+  }
+]

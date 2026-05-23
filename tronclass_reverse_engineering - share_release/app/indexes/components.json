@@ -1,0 +1,1656 @@
+[
+  {
+    "type": "activity",
+    "name": "com.wisdomgarden.trpc.MainActivity",
+    "exported": "true",
+    "permission": "",
+    "enabled": "",
+    "filters": [
+      {
+        "actions": [
+          "android.intent.action.MAIN"
+        ],
+        "categories": [
+          "android.intent.category.LAUNCHER"
+        ],
+        "data": []
+      },
+      {
+        "actions": [
+          "android.intent.action.VIEW"
+        ],
+        "categories": [
+          "android.intent.category.DEFAULT",
+          "android.intent.category.BROWSABLE"
+        ],
+        "data": [
+          {
+            "scheme": "tronclass",
+            "mimeType": "",
+            "host": "",
+            "path": ""
+          }
+        ]
+      },
+      {
+        "actions": [
+          "android.intent.action.VIEW"
+        ],
+        "categories": [
+          "android.intent.category.DEFAULT"
+        ],
+        "data": [
+          {
+            "scheme": "content",
+            "mimeType": "",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "text/csv",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "text/comma-separated-values",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/txt",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "text/plain",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/rar",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/zip",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/x-rar-compressed",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/x-tar",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/msword",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.ms-excel",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/msexcel",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.ms-powerpoint",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/mspowerpoint",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/pdf",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/rtf",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.oasis.opendocument.text",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.oasis.opendocument.presentation ",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.oasis.opendocument.spreadsheet",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/x-msvideo",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/quicktime",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/mp4",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/mpeg",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/x-matroska",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/webm",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/x-flv",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/x-mpeg",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/x-ms-wma",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/x-wav",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/mpeg",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/mp4",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/3gpp",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/mp4a-latm",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/x-ms-wmv",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/x-pn-realaudio",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "image/jpeg",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "image/png",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "image/webp",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "image/gif",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "image/bmp",
+            "host": "",
+            "path": ""
+          }
+        ]
+      },
+      {
+        "actions": [
+          "android.intent.action.VIEW"
+        ],
+        "categories": [
+          "android.intent.category.DEFAULT"
+        ],
+        "data": [
+          {
+            "scheme": "file",
+            "mimeType": "",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "text/csv",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "text/comma-separated-values",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/txt",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "text/plain",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/rar",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/zip",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/x-rar-compressed",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/x-tar",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/msword",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.ms-excel",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/msexcel",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.ms-powerpoint",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/mspowerpoint",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/pdf",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/rtf",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.oasis.opendocument.text",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.oasis.opendocument.presentation ",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.oasis.opendocument.spreadsheet",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/x-msvideo",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/quicktime",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/mp4",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/mpeg",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/x-matroska",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/webm",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/x-flv",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/x-mpeg",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/x-ms-wma",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/x-wav",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/mpeg",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/mp4",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/3gpp",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/mp4a-latm",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/x-ms-wmv",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/x-pn-realaudio",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "image/jpeg",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "image/png",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "image/webp",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "image/gif",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "image/bmp",
+            "host": "",
+            "path": ""
+          }
+        ]
+      },
+      {
+        "actions": [
+          "android.intent.action.SEND"
+        ],
+        "categories": [
+          "android.intent.category.DEFAULT"
+        ],
+        "data": [
+          {
+            "scheme": "",
+            "mimeType": "text/csv",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "text/comma-separated-values",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/txt",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "text/plain",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/rar",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/zip",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/x-rar-compressed",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/x-tar",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/msword",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.ms-excel",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/msexcel",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.ms-powerpoint",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/mspowerpoint",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/pdf",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/rtf",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.oasis.opendocument.text",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.oasis.opendocument.presentation ",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.oasis.opendocument.spreadsheet",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/x-msvideo",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/quicktime",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/mp4",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/mpeg",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/x-matroska",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/webm",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/x-flv",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/x-mpeg",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/x-ms-wma",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/x-wav",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/mpeg",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/mp4",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/3gpp",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/mp4a-latm",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/x-ms-wmv",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/x-pn-realaudio",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "image/jpeg",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "image/png",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "image/webp",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "image/gif",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "image/bmp",
+            "host": "",
+            "path": ""
+          }
+        ]
+      },
+      {
+        "actions": [
+          "android.intent.action.SEND_MULTIPLE"
+        ],
+        "categories": [
+          "android.intent.category.DEFAULT"
+        ],
+        "data": [
+          {
+            "scheme": "",
+            "mimeType": "text/csv",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "text/comma-separated-values",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/txt",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "text/plain",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/rar",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/zip",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/x-rar-compressed",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/x-tar",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/msword",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.ms-excel",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/msexcel",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.ms-powerpoint",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/mspowerpoint",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/pdf",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/rtf",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.oasis.opendocument.text",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.oasis.opendocument.presentation ",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "application/vnd.oasis.opendocument.spreadsheet",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/x-msvideo",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/quicktime",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/mp4",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/mpeg",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/x-matroska",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/webm",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "video/x-flv",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/x-mpeg",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/x-ms-wma",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/x-wav",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/mpeg",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/mp4",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/3gpp",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/mp4a-latm",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/x-ms-wmv",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "audio/x-pn-realaudio",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "image/jpeg",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "image/png",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "image/webp",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "image/gif",
+            "host": "",
+            "path": ""
+          },
+          {
+            "scheme": "",
+            "mimeType": "image/bmp",
+            "host": "",
+            "path": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "provider",
+    "name": "androidx.core.content.FileProvider",
+    "exported": "false",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "service",
+    "name": "com.getcapacitor.CapacitorFirebaseMessagingService",
+    "exported": "true",
+    "permission": "",
+    "enabled": "",
+    "filters": [
+      {
+        "actions": [
+          "com.google.firebase.MESSAGING_EVENT"
+        ],
+        "categories": [],
+        "data": []
+      }
+    ]
+  },
+  {
+    "type": "activity",
+    "name": "com.wisdomgarden.trpc.mediapicker.MediaPickerActivity",
+    "exported": "true",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "service",
+    "name": "com.getcapacitor.plugin.background.BackgroundTaskService",
+    "exported": "false",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "receiver",
+    "name": "com.getcapacitor.plugin.notification.TimedNotificationPublisher",
+    "exported": "",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "receiver",
+    "name": "com.getcapacitor.plugin.notification.NotificationDismissReceiver",
+    "exported": "",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "receiver",
+    "name": "com.getcapacitor.plugin.notification.LocalNotificationRestoreReceiver",
+    "exported": "false",
+    "permission": "",
+    "enabled": "",
+    "filters": [
+      {
+        "actions": [
+          "android.intent.action.LOCKED_BOOT_COMPLETED",
+          "android.intent.action.BOOT_COMPLETED",
+          "android.intent.action.QUICKBOOT_POWERON"
+        ],
+        "categories": [],
+        "data": []
+      }
+    ]
+  },
+  {
+    "type": "activity",
+    "name": "com.synconset.MultiImageChooserActivity",
+    "exported": "",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "activity",
+    "name": "com.sarriaroman.PhotoViewer.PhotoActivity",
+    "exported": "",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "provider",
+    "name": "org.apache.cordova.camera.FileProvider",
+    "exported": "false",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "provider",
+    "name": "de.sitewaerts.cordova.documentviewer.FileProvider",
+    "exported": "false",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "provider",
+    "name": "io.github.pwlin.cordova.plugins.fileopener2.FileProvider",
+    "exported": "false",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "receiver",
+    "name": "com.onesignal.FCMBroadcastReceiver",
+    "exported": "true",
+    "permission": "com.google.android.c2dm.permission.SEND",
+    "enabled": "",
+    "filters": [
+      {
+        "actions": [
+          "com.google.android.c2dm.intent.RECEIVE"
+        ],
+        "categories": [
+          "com.wisdomgarden.trpc"
+        ],
+        "data": []
+      }
+    ]
+  },
+  {
+    "type": "service",
+    "name": "com.onesignal.HmsMessageServiceOneSignal",
+    "exported": "false",
+    "permission": "",
+    "enabled": "",
+    "filters": [
+      {
+        "actions": [
+          "com.huawei.push.action.MESSAGING_EVENT"
+        ],
+        "categories": [],
+        "data": []
+      }
+    ]
+  },
+  {
+    "type": "activity",
+    "name": "com.onesignal.NotificationOpenedActivityHMS",
+    "exported": "true",
+    "permission": "",
+    "enabled": "",
+    "filters": [
+      {
+        "actions": [
+          "android.intent.action.VIEW"
+        ],
+        "categories": [],
+        "data": []
+      }
+    ]
+  },
+  {
+    "type": "service",
+    "name": "com.onesignal.FCMIntentService",
+    "exported": "false",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "service",
+    "name": "com.onesignal.FCMIntentJobService",
+    "exported": "false",
+    "permission": "android.permission.BIND_JOB_SERVICE",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "service",
+    "name": "com.onesignal.SyncService",
+    "exported": "false",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "service",
+    "name": "com.onesignal.SyncJobService",
+    "exported": "false",
+    "permission": "android.permission.BIND_JOB_SERVICE",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "activity",
+    "name": "com.onesignal.PermissionsActivity",
+    "exported": "false",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "receiver",
+    "name": "com.onesignal.NotificationDismissReceiver",
+    "exported": "true",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "receiver",
+    "name": "com.onesignal.BootUpReceiver",
+    "exported": "true",
+    "permission": "",
+    "enabled": "",
+    "filters": [
+      {
+        "actions": [
+          "android.intent.action.BOOT_COMPLETED",
+          "android.intent.action.QUICKBOOT_POWERON"
+        ],
+        "categories": [],
+        "data": []
+      }
+    ]
+  },
+  {
+    "type": "receiver",
+    "name": "com.onesignal.UpgradeReceiver",
+    "exported": "true",
+    "permission": "",
+    "enabled": "",
+    "filters": [
+      {
+        "actions": [
+          "android.intent.action.MY_PACKAGE_REPLACED"
+        ],
+        "categories": [],
+        "data": []
+      }
+    ]
+  },
+  {
+    "type": "activity",
+    "name": "com.onesignal.NotificationOpenedReceiver",
+    "exported": "true",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "activity",
+    "name": "com.onesignal.NotificationOpenedReceiverAndroid22AndOlder",
+    "exported": "true",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "service",
+    "name": "com.google.firebase.messaging.FirebaseMessagingService",
+    "exported": "false",
+    "permission": "",
+    "enabled": "",
+    "filters": [
+      {
+        "actions": [
+          "com.google.firebase.MESSAGING_EVENT"
+        ],
+        "categories": [],
+        "data": []
+      }
+    ]
+  },
+  {
+    "type": "service",
+    "name": "com.google.firebase.components.ComponentDiscoveryService",
+    "exported": "false",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "receiver",
+    "name": "com.google.firebase.iid.FirebaseInstanceIdReceiver",
+    "exported": "true",
+    "permission": "com.google.android.c2dm.permission.SEND",
+    "enabled": "",
+    "filters": [
+      {
+        "actions": [
+          "com.google.android.c2dm.intent.RECEIVE"
+        ],
+        "categories": [],
+        "data": []
+      }
+    ]
+  },
+  {
+    "type": "service",
+    "name": "androidx.camera.core.impl.MetadataHolderService",
+    "exported": "false",
+    "permission": "",
+    "enabled": "false",
+    "filters": []
+  },
+  {
+    "type": "provider",
+    "name": "com.google.firebase.provider.FirebaseInitProvider",
+    "exported": "false",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "activity",
+    "name": "com.google.android.gms.common.api.GoogleApiActivity",
+    "exported": "false",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "provider",
+    "name": "androidx.startup.InitializationProvider",
+    "exported": "false",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "service",
+    "name": "androidx.work.impl.background.systemalarm.SystemAlarmService",
+    "exported": "false",
+    "permission": "",
+    "enabled": "@bool/enable_system_alarm_service_default",
+    "filters": []
+  },
+  {
+    "type": "service",
+    "name": "androidx.work.impl.background.systemjob.SystemJobService",
+    "exported": "true",
+    "permission": "android.permission.BIND_JOB_SERVICE",
+    "enabled": "@bool/enable_system_job_service_default",
+    "filters": []
+  },
+  {
+    "type": "service",
+    "name": "androidx.work.impl.foreground.SystemForegroundService",
+    "exported": "false",
+    "permission": "",
+    "enabled": "@bool/enable_system_foreground_service_default",
+    "filters": []
+  },
+  {
+    "type": "receiver",
+    "name": "androidx.work.impl.utils.ForceStopRunnable$BroadcastReceiver",
+    "exported": "false",
+    "permission": "",
+    "enabled": "true",
+    "filters": []
+  },
+  {
+    "type": "receiver",
+    "name": "androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryChargingProxy",
+    "exported": "false",
+    "permission": "",
+    "enabled": "false",
+    "filters": [
+      {
+        "actions": [
+          "android.intent.action.ACTION_POWER_CONNECTED",
+          "android.intent.action.ACTION_POWER_DISCONNECTED"
+        ],
+        "categories": [],
+        "data": []
+      }
+    ]
+  },
+  {
+    "type": "receiver",
+    "name": "androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryNotLowProxy",
+    "exported": "false",
+    "permission": "",
+    "enabled": "false",
+    "filters": [
+      {
+        "actions": [
+          "android.intent.action.BATTERY_OKAY",
+          "android.intent.action.BATTERY_LOW"
+        ],
+        "categories": [],
+        "data": []
+      }
+    ]
+  },
+  {
+    "type": "receiver",
+    "name": "androidx.work.impl.background.systemalarm.ConstraintProxy$StorageNotLowProxy",
+    "exported": "false",
+    "permission": "",
+    "enabled": "false",
+    "filters": [
+      {
+        "actions": [
+          "android.intent.action.DEVICE_STORAGE_LOW",
+          "android.intent.action.DEVICE_STORAGE_OK"
+        ],
+        "categories": [],
+        "data": []
+      }
+    ]
+  },
+  {
+    "type": "receiver",
+    "name": "androidx.work.impl.background.systemalarm.ConstraintProxy$NetworkStateProxy",
+    "exported": "false",
+    "permission": "",
+    "enabled": "false",
+    "filters": [
+      {
+        "actions": [
+          "android.net.conn.CONNECTIVITY_CHANGE"
+        ],
+        "categories": [],
+        "data": []
+      }
+    ]
+  },
+  {
+    "type": "receiver",
+    "name": "androidx.work.impl.background.systemalarm.RescheduleReceiver",
+    "exported": "false",
+    "permission": "",
+    "enabled": "false",
+    "filters": [
+      {
+        "actions": [
+          "android.intent.action.BOOT_COMPLETED",
+          "android.intent.action.TIME_SET",
+          "android.intent.action.TIMEZONE_CHANGED"
+        ],
+        "categories": [],
+        "data": []
+      }
+    ]
+  },
+  {
+    "type": "receiver",
+    "name": "androidx.work.impl.background.systemalarm.ConstraintProxyUpdateReceiver",
+    "exported": "false",
+    "permission": "",
+    "enabled": "@bool/enable_system_alarm_service_default",
+    "filters": [
+      {
+        "actions": [
+          "androidx.work.impl.background.systemalarm.UpdateProxies"
+        ],
+        "categories": [],
+        "data": []
+      }
+    ]
+  },
+  {
+    "type": "receiver",
+    "name": "androidx.work.impl.diagnostics.DiagnosticsReceiver",
+    "exported": "true",
+    "permission": "android.permission.DUMP",
+    "enabled": "true",
+    "filters": [
+      {
+        "actions": [
+          "androidx.work.diagnostics.REQUEST_DIAGNOSTICS"
+        ],
+        "categories": [],
+        "data": []
+      }
+    ]
+  },
+  {
+    "type": "provider",
+    "name": "com.squareup.picasso.PicassoProvider",
+    "exported": "false",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "service",
+    "name": "com.google.android.datatransport.runtime.backends.TransportBackendDiscovery",
+    "exported": "false",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "service",
+    "name": "com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService",
+    "exported": "false",
+    "permission": "android.permission.BIND_JOB_SERVICE",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "receiver",
+    "name": "com.google.android.datatransport.runtime.scheduling.jobscheduling.AlarmManagerSchedulerBroadcastReceiver",
+    "exported": "false",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  },
+  {
+    "type": "receiver",
+    "name": "androidx.profileinstaller.ProfileInstallReceiver",
+    "exported": "true",
+    "permission": "android.permission.DUMP",
+    "enabled": "true",
+    "filters": [
+      {
+        "actions": [
+          "androidx.profileinstaller.action.INSTALL_PROFILE"
+        ],
+        "categories": [],
+        "data": []
+      },
+      {
+        "actions": [
+          "androidx.profileinstaller.action.SKIP_FILE"
+        ],
+        "categories": [],
+        "data": []
+      },
+      {
+        "actions": [
+          "androidx.profileinstaller.action.SAVE_PROFILE"
+        ],
+        "categories": [],
+        "data": []
+      },
+      {
+        "actions": [
+          "androidx.profileinstaller.action.BENCHMARK_OPERATION"
+        ],
+        "categories": [],
+        "data": []
+      }
+    ]
+  },
+  {
+    "type": "service",
+    "name": "androidx.room.MultiInstanceInvalidationService",
+    "exported": "false",
+    "permission": "",
+    "enabled": "",
+    "filters": []
+  }
+]

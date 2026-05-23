@@ -1,0 +1,16 @@
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	ANativeWindow_fromSurface
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	ANativeWindow_lock
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	ANativeWindow_release
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	ANativeWindow_setBuffersGeometry
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	ANativeWindow_unlockAndPost
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AndroidBitmap_lockPixels
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AndroidBitmap_unlockPixels
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__android_log_print
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__cxa_atexit
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__cxa_finalize
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__memcpy_chk
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__stack_chk_fail
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	free
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	malloc
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	memcpy
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	memmove

@@ -1,0 +1,3 @@
+// Extracted from decompiled/apktool/base/assets/public/js/1867.3fcba20a.js
+// Webpack module id: 21867
+function(r,e,n){n.r(e),n.d(e,{default:function(){return f}});var o=n(77577);function t(r,e,n,t,a,c){var l=(0,o.resolveComponent)("worm-loading");return(0,o.openBlock)(),(0,o.createBlock)(l,{error:r.error,retry:r.retry},null,8,["error","retry"])}n(74916),n(64765);var a=n(80129),c=n.n(a),l=n(24318),u=n(35524),i=(0,o.defineComponent)({name:"CasSpecialCallback",components:{WormLoading:l.Z},setup:function(){var r=c().parse(window.location.search.substr(1)).ticket,e=(0,u.Jc)(r),n=e.error,o=e.retry;return{error:n,retry:o}}}),s=n(46021);const p=(0,s.Z)(i,[["render",t]]);var f=p}

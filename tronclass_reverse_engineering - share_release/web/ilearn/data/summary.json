@@ -1,0 +1,14 @@
+{
+  "manifest_entries": 2197,
+  "assets_indexed": 2197,
+  "bundles_indexed": 1147,
+  "html_entrypoints": 319,
+  "api_occurrences": 7866,
+  "api_unique": 756,
+  "routes_occurrences": 2694,
+  "routes_unique": 332,
+  "external_urls": 3745,
+  "webpack_runtime_assets": 3042,
+  "webpack_runtime_missing": 0,
+  "readable_js_files": 100
+}

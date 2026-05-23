@@ -1,0 +1,1912 @@
+<!doctype html>
+<html lang="zh-TW" version="1.77.117541-hotfix-v1-77-7d747e6d" host="https://iclass.tku.edu.tw/">
+<head>
+<script>
+    let sentryClientKey = "";
+    let CONFIGS = {};
+    let MULTIMEDIA = {};
+    if (!window?.isConfigLoaded) {
+        window.isConfigLoaded = false;
+    }
+    const getConfig = function(){
+        fetch('/org/global-config')
+            .then(response => response.json())
+            .then((res) => {
+                    sentryClientKey = res.sentry_client_key;
+                    CONFIGS = {
+                        "sentryClientKey": res.sentry_client_key,
+                        "assetsPath": res.assets_path,
+                        "apm": res.apm,
+                    }
+                    MULTIMEDIA = {
+                        "supportedConvertDocumentFormats": res.supported_convert_document_formats,
+                        "uploadExtensionFormatAllowlist": res.upload_extension_format_allowlist,
+                    }
+                    window.isConfigLoaded = true;
+                    // To solve timing issues that sometimes occur, send event notifications to components.
+                    window.dispatchEvent(new Event("global-config-loaded"));
+                }
+            )
+            .catch(error => console.error('Fail fetching config, err:', error));
+    };
+    if (!window.isConfigLoaded) {
+        getConfig();
+    }
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="淡江大學">
+    <title>iClass</title>
+    <link rel="shortcut icon" href="/static/assets/images/b420ac72c8d99f097fad.ico">
+    <!-- Global site tag (gtag.js) - Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js"></script>
+<!--https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Clickjacking_Defense_Cheat_Sheet.md#best-for-now-legacy-browser-frame-breaking-script-->
+<style id="antiClickjack">
+    body{display:none !important;}
+</style>
+
+<script type="text/javascript">
+    if (self === top) {
+        var antiClickjack = document.getElementById("antiClickjack");
+        antiClickjack.parentNode.removeChild(antiClickjack);
+    } else {
+        top.location = self.location;
+    }
+</script>
+</head>
+<body -ng-app="portal" auto-scroll-to-last-position ng-class="'TKU'" on-modal-state-change ng-cloak style="visibility: hidden;">
+
+<div class="__pageLoading">
+    <span class="__loader"></span>
+</div>
+
+<style>
+.__pageLoading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    z-index: 999;
+    background: #f4f4f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.__loader {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--primary-brand-color, #000);
+    border-bottom-color: transparent;
+    border-radius: 50%;
+    display: inline-block;
+    box-sizing: border-box;
+    animation: rotation 1s linear infinite;
+}
+
+@keyframes rotation {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+</style>
+
+    <div class="wrapper ">
+        <div class="show-when-large-above" style="min-height: auto">
+<root-scope-variable name="currentUserName" value="[REDACTED_NAME]"></root-scope-variable>
+<div class="header header-autocollapse wg-header" ng-controller="HeaderCtrl"
+     ng-init="orgName='淡江大學'; orgLogoUrl='https://iclass.tku.edu.tw/api/uploads/131309/modified-image?thumbnail=0x272'; orgShowName='True';
+              orgShowLogo='True'; avatarSmallUrl = '';
+              langNames={'zh-TW': '繁體中文', 'zh-CN': '简体中文', 'zh-MO': '繁體中文 (澳門)', 'en-US': 'English (US)', 'en-GB': 'English (UK)', 'th-TH': 'ภาษาไทย', 'id-ID': 'Bahasa Indonesia', 'ms-MY': 'Bahasa Malaysia', 'vi-VN': 'Tiếng Việt', 'ta-IN': 'தமிழ்', 'pt-PT': 'Português', 'ko-KR': '한국어'};" ng-cloak>
+
+
+        <div class="sites-menu-entry left hide-in-small-size">
+            <a href="/user/sites-menu">
+                <span>
+                    <i class="icon icon-sites-menu"></i>
+                </span>
+            </a>
+        </div>
+
+    <div class="layout-row">
+            <a href="https://iclass.tku.edu.tw/iportal" ng-cloak>
+<img class="logo" ng-src="[[ getOrgLogo() ]]" ng-if="getOrgShowLogo() == 'True' && getOrgLogo()"/>
+<i class="logo default" ng-if="getOrgShowLogo() == 'True' && !getOrgLogo()"></i>
+<div class="school-name truncate-text" ng-show="getOrgShowName() == 'True'" ng-class="{'not-logo': !(getOrgShowLogo() == 'True' && getOrgLogo())}">
+    <span tipsy="getOrgName()" ng-bind="getOrgName()"></span>
+</div>            </a>
+    <li class="public-course autocollapse-item" ng-class="{'margin-left-shorter': lang.indexOf('en') == 0}">
+        <a class="resources header-item" ng-href="/public-course#/all">
+            發現課程
+        </a>
+    </li>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        <ul class="menu layout-menu">
+
+
+
+
+
+<li class="header-item hide-in-small-size hide-in-middle-size navigation"
+    ng-class="{'margin-left-shorter': lang.indexOf('en') == 0}">
+    <a ng-click="showNavigationList()" href="javascript:void(0)" onclick="return false;" class="entry" ng-blur="hideNavigationList()">
+        我的主頁
+        <i class="icon font font-down-arrow"></i>
+    </a>
+
+<div class="dropdown-list ng-cloak gtm-category" data-category="顶部导航" ng-show="ui.showNavigationList">
+    <ul ng-mouseleave="ui.inNavigationList=false" ng-mouseenter="ui.inNavigationList=true">
+        <li class="gtm-label" data-label="首页">
+            <a href="/user/index" target="_self">首頁</a>
+        </li>
+
+        <li class="gtm-label" data-label="我的课程">
+            <a href="/user/courses" target="_self">我的課程</a>
+        </li>
+
+        <li class="gtm-label" data-label="我的资源">
+            <a href="/user/resources/files" target="_self">
+                我的資源
+            </a>
+        </li>
+    </ul>
+</div></li>
+<li class="header-item hide-in-small-size hide-in-middle-size text-title"
+    ng-class="{'margin-left-shorter': lang.indexOf('en') == 0}" ng-if="firstChildTeachingClassesPage">
+    <a class="dashboard" ng-href="[[firstChildTeachingClassesPage]]">我的主頁</a>
+</li>
+<li class="header-vertical-split-line  header-item"></li>
+<li class="autocollapse-item header-item text-title hide-in-small-size hide-in-middle-size"
+    ng-class="{'margin-left-shorter': lang.indexOf('en') == 0}">
+
+    <a ng-click="toggleCalendar()">
+        <i class="icon font font-header-calendar" style="font-size: 17px;"></i>
+    </a>
+</li>
+
+
+<li class="notifications header-item" ng-class="{'margin-left-shorter': lang.indexOf('en') == 0}">
+<script id="notification-list-server-data" type="application/json">
+    {
+        "teachingUnitNames": {
+            "course": "課程",
+            "teaching_class": "班級"
+        },
+        "teachingUnitRoleNames": {
+            "student": "學生",
+            "instructor": "教師",
+            "instructor_assistant": "助教"
+        },
+        "notificationTypesAndText": {
+            "material": "參考檔案",
+            "web_link": "線上連結",
+            "online_video": "影音教材",
+            "slide": "微課程",
+            "lesson": "錄影教材",
+            "homework": "作業",
+            "forum": "討論區",
+            "chatroom": "iSlide 直播",
+            "questionnaire": "問卷調查",
+            "page": "頁面",
+            "course_invite": "課程邀請",
+            "scorm": "SCORM"
+        },
+        "weeklyDayTranslateForEnglish": {
+            "一": "Mon",
+            "二": "Tue",
+            "三": "Wed",
+            "四": "Thu",
+            "五": "Fri",
+            "六": "Sat",
+            "日": "Sun"
+        }
+    }
+</script>
+
+<div id="notification_container">
+    <translation :keys="{'view_all': '查看全部',
+                        'no_notification': '暫無動態'}">
+    </translation>
+    <notification-container></notification-container>
+</div></li>
+    <li class="manual header-item autocollapse-item hide-in-middle-size"
+         ng-class="{'margin-left-shorter': lang.indexOf('en') == 0}"
+         ng-controller="ManualListController" ng-init="manualUrlDict={
+                 'sysadmin': 'https://tronclass.com.tw/public-manual/TronclassManual_System_Admin.pdf',
+                 'admin': 'https://tronclass.com.tw/public-manual/TronclassManual_Administrator.pdf',
+                 'instructor': 'https://tronclass.com.tw/public-manual/manual-teacher.html',
+                 'student': 'https://tronclass.com.tw/public-manual/TronclassManual_Student.pdf',
+                 'app': 'https://tronclass.com.tw/public-manual/TronclassManual_App.pdf',
+                 'tutorial_video': '',
+                 'faq': 'https://support.tronclass.com'};">
+
+<div id="manual-viewer-popup" class="manual-viewer popup-1080 reveal-modal popup-area" resetable data-reveal popup-center-location>
+    <div class="popup-content" ng-if="manualType">
+        <div class="popup-header">
+            <span ng-if="manualType=='sysadmin'">管理員版</span>
+            <span ng-if="manualType=='admin'">教務版</span>
+            <span ng-if="manualType=='instructor'">教師版</span>
+            <span ng-if="manualType=='student'">學生版</span>
+            <span ng-if="manualType=='app'">App</span>
+            <span ng-if="manualType=='tutorial_video'">教學影片</span>
+            <a class="right" close-popup="manual-viewer-popup">
+                <i class="font font-close"></i>
+            </a>
+        </div>
+
+        <div id="manual-viewer" class="main-area file-previewer" ng-if='manualUrl'>
+            <div class="reader-wrapper">
+                <iframe id='pdf-viewer' width="100%" height='100%' frameborder="0"
+                        ng-src="[[trustAsResourceUrl(manualUrl)]]">
+                </iframe>
+<div class="toolbar-buttons"
+     ng-class="{'pdf-view': upload.type == 'document', 'none-border-toolbar':upload.status != 'ready' || upload.isTextFile }">
+
+    <a title="縮小" ng-click="zoomOut()" ng-if="upload.type == 'image' && upload.status != 'uploading'">
+        <i class="icon icon-file-preview-zoom-out"></i>
+    </a>
+    <span class="separator" ng-if="upload.type == 'image'"></span>
+    <a title="放大" ng-click="zoomIn()" ng-if="upload.type == 'image' && upload.status != 'uploading'">
+        <i class="icon icon-file-preview-zoom-in"></i>
+    </a>
+    <a title="逆時針旋轉" ng-click="rotateImg()" ng-if="upload.type == 'image' && upload.status != 'uploading'">
+        <i class="icon icon-file-preview-rotate"></i>
+    </a>
+    <a title="復原" ng-click="restoreImg()" ng-if="upload.type == 'image' && upload.status != 'uploading'">
+        <i class="icon icon-file-preview-restore"></i>
+    </a>
+    <a ng-if="forceShowDownloadButton && upload.id && upload.type != 'link' && !upload.isFromKnowledgeGraph"
+       ng-href="[['/api/uploads/'+upload.id+'/blob']]" title="下載" target="_blank">
+        <i class="icon icon-file-preview-download"></i>
+    </a>
+    <a ng-if="upload.from_project && upload.allow_download"
+       ng-href="[[ '/api/project/'+upload.project_id+'/share-resource/blob?upload_id='+upload.id+'&node_ids='+upload.node_ids+'&reference_id='+upload.ref_id ]]" title="下載"  target="_blank">
+        <i class="icon icon-file-preview-download"></i>
+    </a>
+    <a ng-if="!resource && !manualUrl && !canGuestPreview && upload.id && upload.type != 'link' && upload.status != 'cliping' && upload.status != 'clip_failed' && upload.status != 'uploading' && upload.status !='failed' && (upload.allow_download || (isInMyFileListPage && upload.owner_id == currentUserId)) && !upload.isFromKnowledgeGraph && !upload.from_project"
+       ng-href="[[ '/api/uploads/'+upload.id+'/blob' ]]" title="下載" ng-click="downloadBlob(activity, upload)" target="_blank">
+        <i class="icon icon-file-preview-download"></i>
+    </a>
+    <a ng-if="resource && resource.open_scope != 'group' && !resource.share_to_id && resource.allow_download && resource.upload.status != 'uploading'" ng-click="download(resource)" title="下載">
+        <i class="icon icon-file-preview-download"></i>
+    </a>
+    <a ng-if="resource && resource.open_scope == 'group' && resource.allow_download && resource.upload.status != 'uploading'" ng-href="/api/shared-resources/[[resource.id]]/blob" target="_self" title="下載">
+        <i class="icon icon-file-preview-download"></i>
+    </a>
+    <a ng-if="resource && resource.share_to_id && resource.allow_download && resource.upload.status != 'uploading'" ng-href="/api/shared-resources-to/[[resource.id]]/blob" target="_self" title="下載">
+        <i class="icon icon-file-preview-download"></i>
+    </a>
+    <a id="downloadManual" ng-if="!resource && manualUrl " ng-href="[[manualUrl]]"
+       target="_blank" title="下載" download="manual.pdf">
+        <i class="icon icon-file-preview-download"></i>
+    </a>
+    <a ng-if="(upload.type == 'image' || upload.type == 'document' || upload.type == 'scorm') && upload.status != 'uploading' && upload.status !='failed'" ng-hide="ui.fullScreen" ng-click="enterFullScreen('.file-previewer .reader-wrapper')"
+       title="全螢幕模式">
+        <i class="icon icon-file-preview-enter-full-screen"></i>
+    </a>
+    <a ng-if="(upload.type == 'image' || upload.type == 'document' || upload.type == 'scorm') && upload.status != 'uploading'" ng-show="ui.fullScreen" ng-click="exitFullScreen()"
+       title="退出全螢幕">
+        <i class="icon icon-file-preview-exit-full-screen"></i>
+    </a>
+     <a class="open-in-browser" ng-if="upload.type == 'link'" ng-href="[[ upload.link.url ]]" target="_blank" title="在瀏覽器中打開">
+        <i class="font font-open-in-browser-min"></i>
+    </a>
+</div>            </div>
+        </div>
+
+    </div>
+</div>
+        <a class="entry" ng-click="showManualList()" href="javascript:void(0)" onclick="return false;"
+           ng-blur="hideManualList()">
+            <i class="icon font font-header-help" style="font-size: 17px;"></i>
+        </a>
+        <div class="dropdown-list ng-cloak" ng-show="ui.showManualList"
+             ng-mouseleave="ui.inManualList=false" ng-mouseenter="ui.inManualList=true">
+            <ul>
+
+                    <li>
+                        <a ng-click="selectManual('instructor')" reveal-modal="manual-viewer-popup"
+                           ng-if="!isHtmlManual('instructor')">教師版</a>
+                        <a target="_blank" href="[[manualUrlDict.instructor]]"
+                           ng-if="isHtmlManual('instructor')">教師版</a>
+                    </li>
+                    <li>
+                        <a ng-click="selectManual('student')" reveal-modal="manual-viewer-popup"
+                           ng-if="!isHtmlManual('student')">學生版</a>
+                        <a target="_blank" href="[[manualUrlDict.student]]"
+                           ng-if="isHtmlManual('student')">學生版</a>
+                    </li>
+
+                <li ng-if="false">
+                    <a ng-click="selectManual('app')" reveal-modal="manual-viewer-popup"
+                       ng-if="!isHtmlManual('app')">App</a>
+                    <a target="_blank" href="[[manualUrlDict.app]]"
+                       ng-if="isHtmlManual('app')">App</a>
+                </li>
+                    <li>
+                        <a target="_blank" href="[[manualUrlDict.faq]]">幫助中心</a>
+                    </li>
+            </ul>
+        </div>
+    </li>
+<li class="header-vertical-split-line  header-item"></li>
+
+<li class="profile header-item hide-in-small-size hide-in-middle-size"
+    ng-class="{'margin-left-shorter': lang.indexOf('en') == 0}">
+    <a href="javascript:void(0)" onclick="return false;" class="entry profile-item"
+        ng-click="showUserOperationList($event)" ng-blur="hideUserOperationList()">
+        <div class="avatar">
+            <avatar src="avatarSmallUrl"></avatar>
+        </div>
+        <div class="current-user-name truncate-text">
+            <span id="userCurrentName" tipsy="currentUserName" ng-bind="currentUserName"></span>
+        </div>
+        <i class="icon font font-down-arrow"></i>
+    </a>
+
+    <div class="dropdown-list ng-cloak" ng-show="ui.showOperList">
+        <div class="user-dropdown-detail">
+            <div class="avatar">
+                <avatar src="avatarSmallUrl"></avatar>
+            </div>
+            <div class="user-info">
+                <div class="user-name" ng-bind="currentUserName"></div>
+                <div class="user-no">[REDACTED_USER_NO]</div>
+            </div>
+        </div>
+
+        <ul ng-mouseleave="ui.inOperList=false" ng-mouseenter="ui.inOperList=true" class="autocollapse-container"
+            has-second-level-menu expand-left="1">
+                <li class="operation operation-view-profile dropdown-item">
+                    <a ng-href="/user/settings" target="_self">個人設定</a>
+                </li>
+            <li class="operation operation-view-profile dropdown-item">
+                    <a href="javascript:void(0)" onclick="return false;" class="entry">
+                        APP
+                    </a>
+                    <i class="icon font font-arrow-right"></i>
+                    <ul class="second-level">
+                        <div class="app-QRCode ng-cloak" ng-class="{'app-zju': 'TKU' == 'ZJU' }"
+                            ng-init="cloudType='private'; locale = 'zh-TW'">
+                                    <qrcode class="QRCode" size="110" version="6" data="https://iclass.tku.edu.tw/market"></qrcode>
+                                <span>掃描 QR Code 下載 App</span>
+                        </div>
+                    </ul>
+            </li>
+            <li class="operation dropdown-item" >
+                <a>繁體中文</a>
+                <i class="icon font font-arrow-right"></i>
+                <ul class="second-level">
+                    <li class="language" ng-repeat="lang in ui.langList">
+                        <a ng-click="changeLanguage(lang)" ng-bind="langNames[lang]"></a>
+                    </li>
+                </ul>
+            </li>
+            <li class="split-line"></li>
+            <li class="operation operation-logout dropdown-item">
+                <a ng-href="/logout">登出</a>
+            </li>
+        </ul>
+    </div>
+</li>
+<div ng-if="isShowCalendar">
+    <div ng-controller="CalendarController"
+        before-controller="weekDayMap={0: '週日', 1: '週一', 2: '週二', 3: '週三', 4: '週四', 5: '週五', 6: '週六', 7: '週日'};">
+<div id="event-popup" class="reveal-modal popup-area popup-900" data-reveal resetable before-controller="calendarEventToAllCourses=false" ng-controller="CalendarEventController">
+    <div class="popup-content" ng-if="popupState.popupOpened">
+        <div class="popup-header">
+            <span ng-if="!event.id">新增日程</span>
+            <span ng-if="event.id">編輯日程</span>
+            <a class="right" close-popup="event-popup">
+                <i class="font font-close"></i>
+            </a>
+        </div>
+        <div class="main-area">
+            <form name="event_form" server-validated class="event-form">
+                <div class="form-items [[lang]]">
+                    <div class="item">
+                        <div class="label">
+                            <label class="required">標題</label>
+                        </div>
+                        <div class="input">
+                            <input type="text" name="title" ng-model="event.title" server-validated/>
+                        </div>
+                        <span error-for="title"></span>
+                    </div>
+                    <div class="item">
+                        <div class="label">
+                            <label class="required">時間</label>
+                        </div>
+                        <div class="input event-time-settings">
+                            <div class="datetimepicker-wrapper">
+                                <input type="text" name="start_time" ng-attr-id="event-start-time"
+                                       ng-model="event.start_time"
+                                       server-validated datetimepicker no-time readonly ng-if="event.all_day"/>
+                                <input type="text" name="start_time" ng-attr-id="event-start-time"
+                                       ng-model="event.start_time"
+                                       server-validated datetimepicker readonly ng-if="!event.all_day"/>
+                                <label for="event-start-time" class="calendar-icon"><i class="icon icon-date-picker"></i></label>
+                            </div>
+                            <i class="font font-tree-collapsed"></i>
+                            <div class="datetimepicker-wrapper">
+                                <input type="text" name="end_time" ng-attr-id="event-end-time"
+                                       ng-model="event.end_time"
+                                       server-validated datetimepicker no-time readonly ng-if="event.all_day"/>
+                                <input type="text" name="end_time" ng-attr-id="event-end-time"
+                                       ng-model="event.end_time"
+                                       server-validated datetimepicker readonly ng-if="!event.all_day"/>
+                                <label for="event-end-time" class="calendar-icon"><i class="icon icon-date-picker"></i></label>
+                            </div>
+                            <label>
+                                <input type="checkbox" name="all_day" ng-model="event.all_day" server-validated
+                                       ng-change="changeAllDay()"/>
+                                全天
+                            </label>
+                        </div>
+                        <span error-for="start_time"></span>
+                        <span error-for="end_time"></span>
+                    </div>
+                    <div class="item">
+                        <div class="label">
+                            <label>地點</label>
+                        </div>
+                        <div class="input">
+                            <input type="text" name="location" ng-model="event.location" server-validated/>
+                        </div>
+                        <span error-for="location"></span>
+                    </div>
+                    <div class="item">
+                        <div class="label">
+                            <label>說明</label>
+                        </div>
+                        <div class="input">
+                            <textarea sim-editor name="description"
+                                      ng-model="event.description"
+                                      rows="6" maxlength="2000"
+                                      server-validated>
+                            </textarea>
+                        </div>
+                        <span error-for="description"></span>
+                    </div>
+                    <div class="item">
+                        <div class="label">
+                            <label>附件</label>
+                        </div>
+                        <div class="input upload-wrapper" name="uploads" ng-model="uploads" server-validated>
+
+    <div class="file-upload">
+        <div class="select-file"  ng-class="{'select-file': !ui.hideAttachmentList, 'picture-select-file': ui.hideAttachmentList}">
+            <button type="button" ng-click="openFileSelectModal(fileSelectContext)" on-file-selected="addFiles" file-select-scope-id="[[ fileSelectScopeId ]]">
+                <i class="font font-file-select"></i><span>新增檔案</span>
+            </button>
+        </div>
+        <div ng-if="!ui.hideAttachmentList">
+<div class="attachments-wrapper" ng-if="uploads.length" stop-propagation check-upload-status>
+
+<div class="attachment-header clearfix">
+    <div class="attachment-column column" ng-class="{'large-11': false, 'large-15': !false}">
+        附件名
+    </div>
+    <div class="attachment-column column" ng-if="ui.videoType !=='sobey'"
+        ng-class="{'large-7': false, 'large-10': !false}">
+        檔案大小
+    </div>
+    <div class="attachment-column column large-3">&nbsp;</div>
+</div>    <div class="attachment-body">
+        <div ng-repeat="upload in uploads">
+        <div class="attachment-row preview-able clearfix" ng-if="canPreview(upload) && !upload.deleted && canShowResource(upload, isInstructorView)"
+             previewer="{uploads: uploads, currentFile: upload, activity: activity, isAttachment: isAttachment}" reveal-modal="file-previewer" ng-click="downloadBlob(activity, upload, 'view')">
+
+
+
+    <div class="attachment-column column large-10" ng-if="upload.type != 'slide'" ng-class="{'large-20':upload.source === 'sobey'}">
+        <div ng-if="upload.source == 'auto-generated-pdf'">
+            <svg class="file-text-content left">
+                <use xlink:href="#file-text-content"></use>
+            </svg>
+            <span class="file-name-wrapper truncate-text left">
+                <span class="file-name" title="[[ upload.name.split('.')[0] ]]">[[ upload.name.split('.')[0] ]]</span>
+            </span>
+        </div>
+        <div ng-if="upload.source !== 'auto-generated-pdf'" class="w-full flex">
+            <i class="font font-file-[[fileTypeByExtension(upload)]] left"></i>
+            <span class="file-name-wrapper truncate-text left">
+                <span class="file-name" title="[[ upload.name ]]" ng-bind="upload.name|fileName"></span>
+            </span>
+            <span class="file-extension left" ng-bind="upload.name|fileExtension"></span>
+        </div>
+    </div>
+    <div class="attachment-column column large-10" ng-if="upload.type == 'slide'">
+        <i class="font font-slide left"></i>
+        <span class="file-name-wrapper truncate-text left">
+            <span class="file-name" title="[[ upload.title ]]" ng-bind="upload.title|fileName"></span>
+        </span>
+    </div>
+        <div class="attachment-column column attachment-state" ng-if="!upload.deleted && upload.source !== 'sobey'"
+            ng-class="{'large-1': false, 'large-5': !false}">
+        <span ng-if="!upload.status || upload.status === 'ready' || (upload.status === 'processing' && (upload.type === 'video' || upload.videos)) || upload.status === 'none' || upload.deleted || wpsPreview(upload)">&nbsp;</span>
+        <span ng-if="(upload.status === 'failed' || uploadsStatus[upload.id] === 'failed') && !upload.deleted">&nbsp;</span>
+        <span ng-if="(upload.status === 'processing' || uploadsStatus[upload.id] === 'processing') && (upload.type != 'video' || !upload.videos) && !upload.deleted && !wpsPreview(upload)">&nbsp;</span>
+    </div>
+    <div class="attachment-column column attachment-deleted large-5" ng-if="upload.deleted">
+        <span>檔案已刪除</span>
+    </div>
+    <div class="attachment-column column attachment-size attachment-marked"
+         ng-class="{'large-7': false, 'large-10': !false}"
+         ng-init="isUploadFailed = (upload.status || uploadsStatus[upload.id]) == 'failed';
+                  isUploadProcessing = (upload.status || uploadsStatus[upload.id]) == 'processing';
+                  isNotVideo = upload.type != 'video' || !upload.videos;
+                  showFileSize = !isUploadFailed && !isUploadProcessing && upload.size >= 0">
+        <span ng-if="upload.source == 'LARK'" style="height: 1px;">——</span>
+        <span ng-if="upload.source != 'LARK' && showFileSize" ng-bind="upload.size|humanizeBytes"></span>
+        <span ng-if="upload.source != 'LARK' && !showFileSize && !upload.deleted">
+            <span ng-if="isUploadFailed" class="attachment-state-failed">
+                    轉碼失敗
+            </span>
+            <span ng-if="isUploadProcessing && isNotVideo && !wpsPreview(upload)" class="attachment-state-processing">
+                    正在轉碼中
+            </span>
+        </span>
+        <div ng-if="upload.type=='scorm' && upload.scorm">
+            教材大小:<span ng-bind="upload.scorm.files_size|humanizeBytes"></span>
+        </div>
+        <div ng-if="upload.type=='slide' && upload.duration">
+            时长:<span ng-bind="upload.duration | formatTime"></span>
+        </div>
+    </div>
+
+
+
+
+    <div class="attachment-column column"
+         ng-class="{'large-7': false, 'large-5': !false}">
+<span class="attachment-operations">
+        <div class="horizon">
+
+
+
+            <a ng-if="canCheckMarked(upload.id)" class="marked-details" ng-click="openMarkedDetail(upload)" stop-propagation>
+                查看批註
+            </a>
+            <a target="_blank" ng-if="upload.source == 'LARK'" ng-href="[[upload.url]]" title="預覽">
+                <i class="font font-table-edit-view-2"></i>
+            </a>
+            <a stop-propagation previewer="{uploads: uploads, currentFile: upload, activity: activity, isAttachment: isAttachment}" reveal-modal="file-previewer"
+                title="預覽" ng-click="downloadBlob(activity, upload, 'view')"
+                ng-if="upload.source != 'LARK' && canPreview(upload) && !upload.deleted && canShowResource(upload, isInstructorView) && upload.id > 0">
+                <i class="font font-table-edit-view-2"></i>
+            </a>
+        <a ng-click="openSobeyVideo()" ng-if="upload.source==='sobey'">
+            <i class="font font-table-edit-view-2"></i>
+        </a>
+        <a stop-propagation ng-click="deleteFile(upload, subject)" title="刪除" ng-hide="['auditing', 'agree'].includes(upload.audit_status)" ng-class="{'delete-btn-disabled': upload.viewCount > 0}">
+            <i class="font font-delete"></i>
+            <span class="dropdown-item dropdown-item-hide">刪除</span>
+        </a>
+        </div>
+</span>    </div>
+
+</div>
+
+<div class="attachment-row clearfix" ng-if="!canPreview(upload) || upload.deleted || !canShowResource(upload, isInstructorView)" ng-click="downloadWeDrive(upload)">
+
+
+    <div class="attachment-column column large-10" ng-if="upload.type != 'slide'" ng-class="{'large-20':upload.source === 'sobey'}">
+        <div ng-if="upload.source == 'auto-generated-pdf'">
+            <svg class="file-text-content left">
+                <use xlink:href="#file-text-content"></use>
+            </svg>
+            <span class="file-name-wrapper truncate-text left">
+                <span class="file-name" title="[[ upload.name.split('.')[0] ]]">[[ upload.name.split('.')[0] ]]</span>
+            </span>
+        </div>
+        <div ng-if="upload.source !== 'auto-generated-pdf'" class="w-full flex">
+            <i class="font font-file-[[fileTypeByExtension(upload)]] left"></i>
+            <span class="file-name-wrapper truncate-text left">
+                <span class="file-name" title="[[ upload.name ]]" ng-bind="upload.name|fileName"></span>
+            </span>
+            <span class="file-extension left" ng-bind="upload.name|fileExtension"></span>
+        </div>
+    </div>
+    <div class="attachment-column column large-10" ng-if="upload.type == 'slide'">
+        <i class="font font-slide left"></i>
+        <span class="file-name-wrapper truncate-text left">
+            <span class="file-name" title="[[ upload.title ]]" ng-bind="upload.title|fileName"></span>
+        </span>
+    </div>
+        <div class="attachment-column column attachment-state" ng-if="!upload.deleted && upload.source !== 'sobey'"
+            ng-class="{'large-1': false, 'large-5': !false}">
+        <span ng-if="!upload.status || upload.status === 'ready' || (upload.status === 'processing' && (upload.type === 'video' || upload.videos)) || upload.status === 'none' || upload.deleted || wpsPreview(upload)">&nbsp;</span>
+        <span ng-if="(upload.status === 'failed' || uploadsStatus[upload.id] === 'failed') && !upload.deleted">&nbsp;</span>
+        <span ng-if="(upload.status === 'processing' || uploadsStatus[upload.id] === 'processing') && (upload.type != 'video' || !upload.videos) && !upload.deleted && !wpsPreview(upload)">&nbsp;</span>
+    </div>
+    <div class="attachment-column column attachment-deleted large-5" ng-if="upload.deleted">
+        <span>檔案已刪除</span>
+    </div>
+    <div class="attachment-column column attachment-size attachment-marked"
+         ng-class="{'large-7': false, 'large-10': !false}"
+         ng-init="isUploadFailed = (upload.status || uploadsStatus[upload.id]) == 'failed';
+                  isUploadProcessing = (upload.status || uploadsStatus[upload.id]) == 'processing';
+                  isNotVideo = upload.type != 'video' || !upload.videos;
+                  showFileSize = !isUploadFailed && !isUploadProcessing && upload.size >= 0">
+        <span ng-if="upload.source == 'LARK'" style="height: 1px;">——</span>
+        <span ng-if="upload.source != 'LARK' && showFileSize" ng-bind="upload.size|humanizeBytes"></span>
+        <span ng-if="upload.source != 'LARK' && !showFileSize && !upload.deleted">
+            <span ng-if="isUploadFailed" class="attachment-state-failed">
+                    轉碼失敗
+            </span>
+            <span ng-if="isUploadProcessing && isNotVideo && !wpsPreview(upload)" class="attachment-state-processing">
+                    正在轉碼中
+            </span>
+        </span>
+        <div ng-if="upload.type=='scorm' && upload.scorm">
+            教材大小:<span ng-bind="upload.scorm.files_size|humanizeBytes"></span>
+        </div>
+        <div ng-if="upload.type=='slide' && upload.duration">
+            时长:<span ng-bind="upload.duration | formatTime"></span>
+        </div>
+    </div>
+
+
+
+
+    <div class="attachment-column column"
+         ng-class="{'large-7': false, 'large-5': !false}">
+<span class="attachment-operations">
+        <div class="horizon">
+
+
+
+            <a ng-if="canCheckMarked(upload.id)" class="marked-details" ng-click="openMarkedDetail(upload)" stop-propagation>
+                查看批註
+            </a>
+            <a target="_blank" ng-if="upload.source == 'LARK'" ng-href="[[upload.url]]" title="預覽">
+                <i class="font font-table-edit-view-2"></i>
+            </a>
+            <a stop-propagation previewer="{uploads: uploads, currentFile: upload, activity: activity, isAttachment: isAttachment}" reveal-modal="file-previewer"
+                title="預覽" ng-click="downloadBlob(activity, upload, 'view')"
+                ng-if="upload.source != 'LARK' && canPreview(upload) && !upload.deleted && canShowResource(upload, isInstructorView) && upload.id > 0">
+                <i class="font font-table-edit-view-2"></i>
+            </a>
+        <a ng-click="openSobeyVideo()" ng-if="upload.source==='sobey'">
+            <i class="font font-table-edit-view-2"></i>
+        </a>
+        <a stop-propagation ng-click="deleteFile(upload, subject)" title="刪除" ng-hide="['auditing', 'agree'].includes(upload.audit_status)" ng-class="{'delete-btn-disabled': upload.viewCount > 0}">
+            <i class="font font-delete"></i>
+            <span class="dropdown-item dropdown-item-hide">刪除</span>
+        </a>
+        </div>
+</span>    </div>
+
+</div>        </div>
+    </div>
+</div>        </div>
+    </div>
+                        </div>
+                        <div class="error">
+                            <span error-for="uploads"></span>
+                        </div>
+                    </div>
+                    <div class="item" ng-show="showTargetType()">
+                        <div class="label">
+                            <label>發布到</label>
+                        </div>
+                        <div class="input">
+                            <div class="select2-wrapper target-type">
+                                <select ui-select2="{dropdownCssClass: 'select2-drop-without-search'}"
+                                        ng-model="event.target_type"
+                                        ng-change="changeTargetType()">
+                                    <option value="self">自己</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="item">
+                        <div class="label">
+                            <label>提醒</label>
+                        </div>
+                        <div class="input">
+                            <div class="choice">
+                                <label>
+                                    <input type="radio" name="hasAlert"
+                                           ng-model="ui.hasAlert"
+                                           ng-change="changeHasAlert()"
+                                           ng-value="0"/>
+                                    無
+                                </label>
+                                <label>
+                                    <input type="radio" name="hasAlert"
+                                           ng-model="ui.hasAlert"
+                                           ng-change="changeHasAlert()"
+                                           ng-value="1"/>
+                                    到期提醒
+                                </label>
+                            </div>
+                            <div class="select2-wrapper alert" ng-show="ui.hasAlert">
+                                <select ui-select2="{dropdownCssClass: 'select2-drop-without-search'}"
+                                        ng-model="event.alert_id">
+                                    <option ng-repeat="alert in ui.alerts"
+                                            ng-value="alert.id" ng-bind="alert.text"></option>
+                                </select>
+                            </div>
+                            <label ng-if="ui.hasAlert">
+                                <input type="checkbox" name="send_alert_email" ng-model="event.send_alert_email" server-validated/>
+                                同時 Email 通知
+                            </label>
+                        </div>
+                    </div>
+                    <div class="item">
+                        <div class="label">
+                            <label class="required">類型</label>
+                        </div>
+                        <div class="input">
+                            <calendar-color-select ng-prop-tags="ui.tags" ng-prop-value="event.tag_id" name="tag_id"></calendar-color-select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-buttons text-center">
+<div class="loading-spinner" ng-show="loading">
+    <div class="spinner">
+        <div class="mask">
+            <div class="maskedCircle"></div>
+        </div>
+    </div>
+</div>                    <button class="button button-green medium" ng-hide="loading" ng-click="save()"
+                            type="button">儲存</button>
+                    <button type="button" class="button button-grey medium" ng-hide="loading"
+                            close-popup="event-popup">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+<div class="hide">
+    <span id="selected-text">已選擇 # 個&nbsp;&nbsp;&nbsp;&nbsp;</span>
+    <span id="selected-text-all">全部&nbsp;&nbsp;&nbsp;&nbsp;</span>
+    <span id="filter-placeholder">請輸入關鍵字</span>
+</div></div><div id="timetable-popup" class="reveal-modal popup-area popup-600" data-reveal resetable
+     ng-controller="CalendarTimetableController">
+    <div class="popup-content" ng-if="popupState.popupOpened">
+        <div class="popup-header">
+            <span ng-if="!timetable.id">新增課程</span>
+            <span ng-if="timetable.id">編輯課程</span>
+            <a class="right" close-popup="timetable-popup">
+                <i class="font font-close"></i>
+            </a>
+        </div>
+        <div class="main-area">
+            <form name="timetableForm" server-validated>
+                <div class="form-items [[lang]]">
+                    <div class="item" ng-if="!timetable.id">
+                        <div class="label">
+                            <label class="required">選擇課程</label>
+                        </div>
+                        <div class="input">
+                            <div class="select2-wrapper course">
+                                <select ui-select2="{placeholder: '選擇課程'}"
+                                        ng-model="timetable.course_id"
+                                        ng-change="changeCourse()"
+                                        name="course_id">
+                                    <option value=""></option>
+                                    <option ng-repeat="course in courses"
+                                            ng-value="course.id" ng-bind="course.display_text"></option>
+                                </select>
+                            </div>
+                        </div>
+                        <span error-for="course_id"></span>
+                    </div>
+                    <div class="item flex" ng-if="timetable.course_id &&!timetable.id">
+                        <div class="label">
+                        </div>
+                        <div class="course-info">
+                            <div>
+                                <span>課程名稱</span>:
+                                <span>[[timetable.course_title]]</span>
+                            </div>
+                            <div>
+                                <span>授課教師</span>:
+                                <span>[[timetable.instructors_names]]</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="item">
+                        <div class="label">
+                            <label class="required">上課時間</label>
+                        </div>
+                        <div class="input time-settings">
+                            <div class="datetimepicker-wrapper">
+                                <input type="text" name="start_time" id="timetable-start-time" datetimepicker
+                                       ng-model="timetable.start_time" server-validated />
+                                <label for="timetable-start-time" class="calendar-icon"><i class="icon icon-date-picker"></i></label>
+                            </div>
+                            <i class="font font-tree-collapsed"></i>
+                            <div class="datetimepicker-wrapper">
+                                <input type="text" name="end_time" id="timetable-end-time" datetimepicker
+                                       ng-model="timetable.end_time" server-validated />
+                                <label for="timetable-end-time" class="calendar-icon"><i class="icon icon-date-picker"></i></label>
+                            </div>
+                        </div>
+                        <span error-for="start_time"></span>
+                        <span error-for="end_time"></span>
+                    </div>
+                    <div class="item" ng-if="timetable.id">
+                        <div class="label">
+                            <label>範圍</label>
+                        </div>
+                        <div class="input">
+                            <div class="choice">
+                                <label>
+                                    <input type="radio" name="scope" ng-model="timetable.update_scope" value="current"/>
+                                    本節次
+                                </label>
+                                <label>
+                                    <input type="radio" name="scope" ng-model="timetable.update_scope" value="current_and_after"/>
+                                    本節次及後續節次
+                                </label>
+                                <label>
+                                    <input type="radio" name="scope" ng-model="timetable.update_scope" value="all"/>
+                                    所有節次
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div ng-if="!timetable.id || timetable.update_scope != 'current'">
+                        <div class="item">
+                            <div class="label">
+                                <label>重複頻率</label>
+                            </div>
+                            <div class="input frequency">
+                                <div class="select2-wrapper repeat-type">
+                                    <select ui-select2="{dropdownCssClass: 'select2-drop-without-search'}"
+                                            ng-model="timetable.repeat_type">
+                                        <option value="no_repeat">不重複</option>
+                                        <option value="day">每天</option>
+                                        <option value="week">每週</option>
+                                        <option value="custom">自訂</option>
+                                    </select>
+                                </div>
+                                <div ng-if="timetable.repeat_type=='custom'">
+                                    <input type="text" name="repeat_frequency" ng-model="timetable.repeat_frequency"
+                                           data-min="1" integer-limit server-validated />
+                                    <span>週</span>
+                                    <span class="frequency-error" error-for="repeat_frequency"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="item" ng-if="timetable.repeat_type=='week' || timetable.repeat_type=='custom'">
+                            <div class="label">
+                                <label class="required">重複時間</label>
+                            </div>
+                            <div class="input">
+                                <div class="weekly-day" ng-repeat="day in weeklyDays">
+                                    <input type="checkbox" name="days" ng-checked="timetable.repeat_weekly_days.indexOf(day.val) > -1">
+                                    <span ng-bind="day.name" ng-click="toggleSelectDay(day.val)"></span>
+                                </div>
+                            </div>
+                            <div ng-if="showWeeklyDaysError" class="error">此欄位為必填。</div>
+                        </div>
+                        <div class="item" ng-if="timetable.repeat_type!='no_repeat'">
+                            <div class="label">
+                                <label class="required">結束時間</label>
+                            </div>
+                            <div class="input course-end-date">
+                                <div class="datetimepicker-wrapper">
+                                    <input type="text" name="repeat_end_date" id="repeat-end-date" datepicker
+                                           ng-model="timetable.repeat_end_date" server-validated />
+                                    <label for="repeat-end-date" class="calendar-icon"><i class="icon icon-date-picker"></i></label>
+                                </div>
+                            </div>
+                            <span ng-if="timetable.course_end_date">課程結束日期：<span ng-bind="timetable.course_end_date"></span></span>
+                            <span error-for="repeat_end_date"></span>
+                        </div>
+                    </div>
+                    <div class="item">
+                        <div class="label">
+                            <label>地點</label>
+                        </div>
+                        <div class="input">
+                            <input class="location" type="text" name="location" ng-model="timetable.location" maxlength="255" server-validated/>
+                        </div>
+                        <span error-for="location"></span>
+                    </div>
+                    <div class="item">
+                        <div class="label">
+                            <label>說明</label>
+                        </div>
+                        <div class="input">
+                            <textarea class="description" name="description" ng-model="timetable.description"
+                                      maxlength="500" server-validated></textarea>
+                        </div>
+                        <span error-for="description"></span>
+                    </div>
+                    <div class="item" ng-if="timetable.id">
+                        <div class="label">
+                            <label>發調課通知</label>
+                        </div>
+                        <div class="input">
+                            <div class="choice send-ntf-choice">
+                                <label>
+                                    <input type="radio" name="sendNtf" ng-model="timetable.send_ntf" ng-value="false">
+                                    否
+                                </label>
+                                <label>
+                                    <input type="radio" name="sendNtf" ng-model="timetable.send_ntf" ng-value="true">
+                                    是
+                                </label>
+                            </div>
+                        </div>
+                        <div class="input ntf-content-wrapper" ng-if="timetable.send_ntf">
+                            <textarea class="ntf-content" name="ntf_content" ng-model="timetable.ntf_content" server-validated></textarea>
+                        </div>
+                        <span error-for="ntf_content"></span>
+                    </div>
+                </div>
+                <div class="form-buttons text-center">
+<div class="loading-spinner" ng-show="loading">
+    <div class="spinner">
+        <div class="mask">
+            <div class="maskedCircle"></div>
+        </div>
+    </div>
+</div>                    <button class="button button-green medium" ng-hide="loading" ng-click="save()"
+                            type="button">儲存</button>
+                    <button type="button" class="button button-grey medium" ng-hide="loading"
+                            close-popup="timetable-popup">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div><div id="calendar-detail-popup">
+    <div class="title-container" ng-style="{'background-color': currentCalendar.backgroundColor}">
+        <div class="operations right" ng-init="userId=0;">
+            <a ng-if="currentCalendar.editable" ng-hide="currentCalendar.data.audit_status === 'auditing'"
+               ng-click="editCalendar(currentCalendar)">
+                <i class="font font-edit"></i>
+            </a>
+            <a ng-if="currentCalendar.editable" ng-hide="['auditing', 'agree'].includes(currentCalendar.data.audit_status)"
+               ng-click="deleteCalendar(currentCalendar)">
+                <i class="font font-delete"></i>
+            </a>
+            <a ng-click="closeCalendarDetailPopover()">
+                <i class="font font-close"></i>
+            </a>
+        </div>
+        <div class="event-title title">
+            <span class="tag" ng-bind="currentCalendar.data.tag.name" ng-if="currentCalendar.data.tag" ng-style="{'background-color': currentCalendar.backgroundColor,'color':currentCalendar.data.tag.color,'border-color':currentCalendar.data.tag.color}"></span>
+            <span class="tag" ng-if="currentCalendar.type === 'timetable'" ng-style="{'background-color': currentCalendar.backgroundColor,'color':currentCalendar.data.color,'border-color':currentCalendar.data.color}">
+                課程
+            </span>
+            <span ng-bind="currentCalendar.title"></span>
+        </div>
+    </div>
+    <div class="form-items [[lang]]">
+        <div class="item">
+            <div class="item-name">
+                <i class="font font-calendar-clock"></i>時間
+            </div>
+            <div class="item-value">
+                <div class="time-range"><span ng-bind="currentCalendar.timeRange"></span></div>
+                <div class="all-day" ng-if="currentCalendar.allDay">全天</div>
+            </div>
+        </div>
+        <div class="item" ng-if="currentCalendar.data.instructors_names">
+            <div class="item-name">
+                <i class="font font-calendar-teacher"></i>教師
+            </div>
+            <div class="item-value">
+                <span class="instructors" ng-bind="currentCalendar.data.instructors_names"></span>
+            </div>
+        </div>
+        <div class="item" ng-if="currentCalendar.data.location">
+            <div class="item-name">
+                <i class="font font-calendar-location"></i>地點
+            </div>
+            <div class="item-value truncate-text">
+                <span class="location" ng-bind-html="currentCalendar.data.location | linkify: '_blank'"></span>
+            </div>
+        </div>
+        <div class="item" ng-if="currentCalendar.course && currentCalendar.course.name">
+            <div class="item-name">
+                <i class="font font-course"></i>課程
+            </div>
+            <div class="item-value truncate-text">
+                <span class="course" ng-bind="currentCalendar.course.name"></span>
+            </div>
+        </div>
+        <div class="item" ng-if="currentCalendar.room && currentCalendar.room.room_name">
+            <div class="item-name">
+                <i class="font font-room"></i>教室
+            </div>
+            <div class="item-value">
+               <span class="room" ng-bind="currentCalendar.room.room_name"></span>
+            </div>
+        </div>
+        <div class="item" ng-if="currentCalendar.alertTime">
+            <div class="item-name">
+                <i class="font font-unmute"></i>提醒
+            </div>
+            <div class="item-value">
+                <span>[[currentCalendar.alertTime]]</span>
+                <span ng-if="currentCalendar.data.send_alert_email">
+                    (同時 Email 通知)
+                </span>
+            </div>
+        </div>
+        <div class="item" ng-if="currentCalendar.data.created_by && !currentCalendar.isOwner">
+            <div class="item-name">
+                <i class="font font-user-group"></i>組織者
+            </div>
+            <div class="item-value">
+                <span>[[currentCalendar.data.created_by.name]]([[currentCalendar.data.created_by.user_no]])</span>
+            </div>
+        </div>
+        <div class="item" ng-if="currentCalendar.type === 'event'">
+            <div class="item-name">
+                <i class="font font-publish-course"></i>發布到
+            </div>
+            <div class="item-value">
+                <span ng-if="currentCalendar.data.target_data.department_ids">院系</span>
+                <span ng-if="currentCalendar.data.target_data.course_id || currentCalendar.data.target_data.course_ids">課程</span>
+                <span ng-if="!currentCalendar.data.target_data.department_ids && !currentCalendar.data.target_data.course_id && !currentCalendar.data.target_data.course_ids"> 自己 </span>
+            </div>
+        </div>
+        <div class="item" ng-if="currentCalendar.data.description">
+            <div class="item-name">
+                <i class="font font-calendar-remark"></i>說明
+            </div>
+            <div class="item-value description mobile-scrollbar">
+                <span ng-bind-html="currentCalendar.data.description | sanitizeHtml" ng-if="currentCalendar.type == 'event'"></span>
+                <span ng-bind-html="currentCalendar.data.description | linkify: '_blank'" ng-if="currentCalendar.type == 'timetable'"></span>
+            </div>
+        </div>
+        <div class="item attachment-list">
+                <div class="activity-attribute" ng-if="uploads.length">
+<div class="attachments-wrapper" ng-if="uploads.length" stop-propagation check-upload-status>
+
+<div class="attachment-header clearfix">
+    <div class="attachment-column column" ng-class="{'large-11': false, 'large-15': !false}">
+        附件名
+    </div>
+    <div class="attachment-column column" ng-if="ui.videoType !=='sobey'"
+        ng-class="{'large-7': false, 'large-10': !false}">
+        檔案大小
+    </div>
+    <div class="attachment-column column large-3">&nbsp;</div>
+</div>    <div class="attachment-body">
+        <div ng-repeat="upload in uploads">
+        <div class="attachment-row preview-able clearfix" ng-if="canPreview(upload) && !upload.deleted && canShowResource(upload, isInstructorView)"
+             previewer="{uploads: uploads, currentFile: upload, activity: activity, isAttachment: isAttachment}" reveal-modal="file-previewer" ng-click="downloadBlob(activity, upload, 'view')">
+
+    <!-- Transcoding failed or transcoding in progress -->
+    <div ng-if="((upload.status === 'failed' || uploadsStatus[upload.id] === 'failed') && !upload.deleted) || ((upload.status === 'processing' || uploadsStatus[upload.id] === 'processing') && (upload.type != 'video' || !upload.videos) && !upload.deleted && !wpsPreview(upload))">
+
+
+    <div class="attachment-column column large-10" ng-if="upload.type != 'slide'" ng-class="{'large-20':upload.source === 'sobey'}">
+        <div ng-if="upload.source == 'auto-generated-pdf'">
+            <svg class="file-text-content left">
+                <use xlink:href="#file-text-content"></use>
+            </svg>
+            <span class="file-name-wrapper truncate-text left">
+                <span class="file-name" title="[[ upload.name.split('.')[0] ]]">[[ upload.name.split('.')[0] ]]</span>
+            </span>
+        </div>
+        <div ng-if="upload.source !== 'auto-generated-pdf'" class="w-full flex">
+            <i class="font font-file-[[fileTypeByExtension(upload)]] left"></i>
+            <span class="file-name-wrapper truncate-text left">
+                <span class="file-name" title="[[ upload.name ]]" ng-bind="upload.name|fileName"></span>
+            </span>
+            <span class="file-extension left" ng-bind="upload.name|fileExtension"></span>
+        </div>
+    </div>
+    <div class="attachment-column column large-10" ng-if="upload.type == 'slide'">
+        <i class="font font-slide left"></i>
+        <span class="file-name-wrapper truncate-text left">
+            <span class="file-name" title="[[ upload.title ]]" ng-bind="upload.title|fileName"></span>
+        </span>
+    </div>
+    <div class="attachment-column column attachment-state large-5" style="margin-left:55px;">
+        <span ng-if="!upload.status || upload.status === 'ready' || (upload.status === 'processing' && (upload.type === 'video' || upload.videos)) || upload.status === 'none' || upload.deleted || wpsPreview(upload)">&nbsp;</span>
+        <span ng-if="(upload.status === 'failed' || uploadsStatus[upload.id] === 'failed') && !upload.deleted">&nbsp;</span>
+        <span ng-if="(upload.status === 'processing' || uploadsStatus[upload.id] === 'processing') && (upload.type != 'video' || !upload.videos) && !upload.deleted && !wpsPreview(upload)">&nbsp;</span>
+    </div>
+    <div class="attachment-column column attachment-deleted large-5" ng-if="upload.deleted">
+        <span>檔案已刪除</span>
+    </div>
+
+
+
+
+    <div class="attachment-column column"
+         ng-class="{'large-7': false, 'large-5': !false}">
+<span class="attachment-operations calender-right">
+        <div class="horizon">
+
+
+
+            <a ng-if="canCheckMarked(upload.id)" class="marked-details" ng-click="openMarkedDetail(upload)" stop-propagation>
+                查看批註
+            </a>
+            <a target="_blank" ng-if="upload.source == 'LARK'" ng-href="[[upload.url]]" title="預覽">
+                <i class="font font-table-edit-view-2"></i>
+            </a>
+            <a stop-propagation previewer="{uploads: uploads, currentFile: upload, activity: activity, isAttachment: isAttachment}" reveal-modal="file-previewer"
+                title="預覽" ng-click="downloadBlob(activity, upload, 'view')"
+                ng-if="upload.source != 'LARK' && canPreview(upload) && !upload.deleted && canShowResource(upload, isInstructorView) && upload.id > 0">
+                <i class="font font-table-edit-view-2"></i>
+            </a>
+        <a ng-click="openSobeyVideo()" ng-if="upload.source==='sobey'">
+            <i class="font font-table-edit-view-2"></i>
+        </a>
+                <a stop-propagation ng-href="/api/uploads/reference/[[upload.reference_id]]/blob" target="_blank"
+                    title="下載" ng-click="downloadBlob(activity, upload)"
+                    ng-if="upload.reference_id && !upload.deleted && upload.allow_download && canShowResource(upload, isInstructorView)">
+                    <i class="font font-table-edit-download"></i>
+                    <span class="dropdown-item">下載</span>
+                </a>
+                <a stop-propagation ng-href="/api/uploads/[[upload.id]]/blob?preview=true&activity_type=[[activity.type]]" target="_blank"
+                    title="下載" ng-click="downloadBlob(activity, upload)"
+                    ng-if="!upload.reference_id && !upload.deleted && upload.allow_download && !upload.source && canShowResource(upload, isInstructorView)">
+                    <i class="font font-table-edit-download"></i>
+                    <span class="dropdown-item">下載</span>
+                </a>
+                <a stop-propagation ng-href="[[upload.url]]/download" target="_blank"
+                    title="下載" ng-click="downloadBlob(activity, upload)"
+                    ng-if="upload.source && !['LARK', 'auto-generated-pdf', 'WEDRIVE'].includes(upload.source) && !upload.reference_id && !upload.deleted && upload.allow_download && canShowResource(upload, isInstructorView)">
+                    <i class="font font-table-edit-download"></i>
+                    <span class="dropdown-item">下載</span>
+                </a>
+                <!-- 针对特殊source类型 -->
+                <a stop-propagation ng-href="/api/uploads/[[upload.id]]/blob"
+                    title="下載" ng-click="downloadBlob(activity, upload)"
+                    ng-if="!upload.reference_id && !upload.deleted && upload.allow_download && ['auto-generated-pdf'].includes(upload.source) && canShowResource(upload, isInstructorView)">
+                    <i class="font font-table-edit-download"></i>
+                    <span class="dropdown-item">下載</span>
+                </a>
+                <a stop-propagation ng-href="/api/wedrive/file/[[upload.fileid]]"
+                    title="下載"
+                    ng-if="!upload.deleted && upload.allow_download && upload.source == 'WEDRIVE' && canShowResource(upload, isInstructorView)">
+                    <i class="font font-table-edit-download"></i>
+                    <span class="dropdown-item">下載</span>
+                </a>
+        </div>
+</span>    </div>
+
+    </div>
+    <div ng-if="!(((upload.status === 'failed' || uploadsStatus[upload.id] === 'failed') && !upload.deleted) || ((upload.status === 'processing' || uploadsStatus[upload.id] === 'processing') && (upload.type != 'video' || !upload.videos) && !upload.deleted && !wpsPreview(upload)))">
+
+
+    <div class="attachment-column column large-10" ng-if="upload.type != 'slide'" ng-class="{'large-20':upload.source === 'sobey'}">
+        <div ng-if="upload.source == 'auto-generated-pdf'">
+            <svg class="file-text-content left">
+                <use xlink:href="#file-text-content"></use>
+            </svg>
+            <span class="file-name-wrapper truncate-text left">
+                <span class="file-name" title="[[ upload.name.split('.')[0] ]]">[[ upload.name.split('.')[0] ]]</span>
+            </span>
+        </div>
+        <div ng-if="upload.source !== 'auto-generated-pdf'" class="w-full flex">
+            <i class="font font-file-[[fileTypeByExtension(upload)]] left"></i>
+            <span class="file-name-wrapper truncate-text left">
+                <span class="file-name" title="[[ upload.name ]]" ng-bind="upload.name|fileName"></span>
+            </span>
+            <span class="file-extension left" ng-bind="upload.name|fileExtension"></span>
+        </div>
+    </div>
+    <div class="attachment-column column large-10" ng-if="upload.type == 'slide'">
+        <i class="font font-slide left"></i>
+        <span class="file-name-wrapper truncate-text left">
+            <span class="file-name" title="[[ upload.title ]]" ng-bind="upload.title|fileName"></span>
+        </span>
+    </div>
+        <div class="attachment-column column attachment-state" ng-if="!upload.deleted && upload.source !== 'sobey'"
+            ng-class="{'large-1': false, 'large-5': !false}">
+        <span ng-if="!upload.status || upload.status === 'ready' || (upload.status === 'processing' && (upload.type === 'video' || upload.videos)) || upload.status === 'none' || upload.deleted || wpsPreview(upload)">&nbsp;</span>
+        <span ng-if="(upload.status === 'failed' || uploadsStatus[upload.id] === 'failed') && !upload.deleted">&nbsp;</span>
+        <span ng-if="(upload.status === 'processing' || uploadsStatus[upload.id] === 'processing') && (upload.type != 'video' || !upload.videos) && !upload.deleted && !wpsPreview(upload)">&nbsp;</span>
+    </div>
+    <div class="attachment-column column attachment-deleted large-5" ng-if="upload.deleted">
+        <span>檔案已刪除</span>
+    </div>
+    <div class="attachment-column column attachment-size attachment-marked"
+         ng-class="{'large-7': false, 'large-10': !false}"
+         ng-init="isUploadFailed = (upload.status || uploadsStatus[upload.id]) == 'failed';
+                  isUploadProcessing = (upload.status || uploadsStatus[upload.id]) == 'processing';
+                  isNotVideo = upload.type != 'video' || !upload.videos;
+                  showFileSize = !isUploadFailed && !isUploadProcessing && upload.size >= 0">
+        <span ng-if="upload.source == 'LARK'" style="height: 1px;">——</span>
+        <span ng-if="upload.source != 'LARK' && showFileSize" ng-bind="upload.size|humanizeBytes"></span>
+        <span ng-if="upload.source != 'LARK' && !showFileSize && !upload.deleted">
+            <span ng-if="isUploadFailed" class="attachment-state-failed">
+                    轉碼失敗
+            </span>
+            <span ng-if="isUploadProcessing && isNotVideo && !wpsPreview(upload)" class="attachment-state-processing">
+                    正在轉碼中
+            </span>
+        </span>
+        <div ng-if="upload.type=='scorm' && upload.scorm">
+            教材大小:<span ng-bind="upload.scorm.files_size|humanizeBytes"></span>
+        </div>
+        <div ng-if="upload.type=='slide' && upload.duration">
+            时长:<span ng-bind="upload.duration | formatTime"></span>
+        </div>
+    </div>
+
+
+
+
+    <div class="attachment-column column"
+         ng-class="{'large-7': false, 'large-5': !false}">
+<span class="attachment-operations calender-right">
+        <div class="horizon">
+
+
+
+            <a ng-if="canCheckMarked(upload.id)" class="marked-details" ng-click="openMarkedDetail(upload)" stop-propagation>
+                查看批註
+            </a>
+            <a target="_blank" ng-if="upload.source == 'LARK'" ng-href="[[upload.url]]" title="預覽">
+                <i class="font font-table-edit-view-2"></i>
+            </a>
+            <a stop-propagation previewer="{uploads: uploads, currentFile: upload, activity: activity, isAttachment: isAttachment}" reveal-modal="file-previewer"
+                title="預覽" ng-click="downloadBlob(activity, upload, 'view')"
+                ng-if="upload.source != 'LARK' && canPreview(upload) && !upload.deleted && canShowResource(upload, isInstructorView) && upload.id > 0">
+                <i class="font font-table-edit-view-2"></i>
+            </a>
+        <a ng-click="openSobeyVideo()" ng-if="upload.source==='sobey'">
+            <i class="font font-table-edit-view-2"></i>
+        </a>
+                <a stop-propagation ng-href="/api/uploads/reference/[[upload.reference_id]]/blob" target="_blank"
+                    title="下載" ng-click="downloadBlob(activity, upload)"
+                    ng-if="upload.reference_id && !upload.deleted && upload.allow_download && canShowResource(upload, isInstructorView)">
+                    <i class="font font-table-edit-download"></i>
+                    <span class="dropdown-item">下載</span>
+                </a>
+                <a stop-propagation ng-href="/api/uploads/[[upload.id]]/blob?preview=true&activity_type=[[activity.type]]" target="_blank"
+                    title="下載" ng-click="downloadBlob(activity, upload)"
+                    ng-if="!upload.reference_id && !upload.deleted && upload.allow_download && !upload.source && canShowResource(upload, isInstructorView)">
+                    <i class="font font-table-edit-download"></i>
+                    <span class="dropdown-item">下載</span>
+                </a>
+                <a stop-propagation ng-href="[[upload.url]]/download" target="_blank"
+                    title="下載" ng-click="downloadBlob(activity, upload)"
+                    ng-if="upload.source && !['LARK', 'auto-generated-pdf', 'WEDRIVE'].includes(upload.source) && !upload.reference_id && !upload.deleted && upload.allow_download && canShowResource(upload, isInstructorView)">
+                    <i class="font font-table-edit-download"></i>
+                    <span class="dropdown-item">下載</span>
+                </a>
+                <!-- 针对特殊source类型 -->
+                <a stop-propagation ng-href="/api/uploads/[[upload.id]]/blob"
+                    title="下載" ng-click="downloadBlob(activity, upload)"
+                    ng-if="!upload.reference_id && !upload.deleted && upload.allow_download && ['auto-generated-pdf'].includes(upload.source) && canShowResource(upload, isInstructorView)">
+                    <i class="font font-table-edit-download"></i>
+                    <span class="dropdown-item">下載</span>
+                </a>
+                <a stop-propagation ng-href="/api/wedrive/file/[[upload.fileid]]"
+                    title="下載"
+                    ng-if="!upload.deleted && upload.allow_download && upload.source == 'WEDRIVE' && canShowResource(upload, isInstructorView)">
+                    <i class="font font-table-edit-download"></i>
+                    <span class="dropdown-item">下載</span>
+                </a>
+        </div>
+</span>    </div>
+
+    </div>
+</div>
+
+<div class="attachment-row clearfix" ng-if="!canPreview(upload) || upload.deleted || !canShowResource(upload, isInstructorView)" ng-click="downloadWeDrive(upload)">
+
+
+    <div class="attachment-column column large-10" ng-if="upload.type != 'slide'" ng-class="{'large-20':upload.source === 'sobey'}">
+        <div ng-if="upload.source == 'auto-generated-pdf'">
+            <svg class="file-text-content left">
+                <use xlink:href="#file-text-content"></use>
+            </svg>
+            <span class="file-name-wrapper truncate-text left">
+                <span class="file-name" title="[[ upload.name.split('.')[0] ]]">[[ upload.name.split('.')[0] ]]</span>
+            </span>
+        </div>
+        <div ng-if="upload.source !== 'auto-generated-pdf'" class="w-full flex">
+            <i class="font font-file-[[fileTypeByExtension(upload)]] left"></i>
+            <span class="file-name-wrapper truncate-text left">
+                <span class="file-name" title="[[ upload.name ]]" ng-bind="upload.name|fileName"></span>
+            </span>
+            <span class="file-extension left" ng-bind="upload.name|fileExtension"></span>
+        </div>
+    </div>
+    <div class="attachment-column column large-10" ng-if="upload.type == 'slide'">
+        <i class="font font-slide left"></i>
+        <span class="file-name-wrapper truncate-text left">
+            <span class="file-name" title="[[ upload.title ]]" ng-bind="upload.title|fileName"></span>
+        </span>
+    </div>
+        <div class="attachment-column column attachment-state" ng-if="!upload.deleted && upload.source !== 'sobey'"
+            ng-class="{'large-1': false, 'large-5': !false}">
+        <span ng-if="!upload.status || upload.status === 'ready' || (upload.status === 'processing' && (upload.type === 'video' || upload.videos)) || upload.status === 'none' || upload.deleted || wpsPreview(upload)">&nbsp;</span>
+        <span ng-if="(upload.status === 'failed' || uploadsStatus[upload.id] === 'failed') && !upload.deleted">&nbsp;</span>
+        <span ng-if="(upload.status === 'processing' || uploadsStatus[upload.id] === 'processing') && (upload.type != 'video' || !upload.videos) && !upload.deleted && !wpsPreview(upload)">&nbsp;</span>
+    </div>
+    <div class="attachment-column column attachment-deleted large-5" ng-if="upload.deleted">
+        <span>檔案已刪除</span>
+    </div>
+    <div class="attachment-column column attachment-size attachment-marked"
+         ng-class="{'large-7': false, 'large-10': !false}"
+         ng-init="isUploadFailed = (upload.status || uploadsStatus[upload.id]) == 'failed';
+                  isUploadProcessing = (upload.status || uploadsStatus[upload.id]) == 'processing';
+                  isNotVideo = upload.type != 'video' || !upload.videos;
+                  showFileSize = !isUploadFailed && !isUploadProcessing && upload.size >= 0">
+        <span ng-if="upload.source == 'LARK'" style="height: 1px;">——</span>
+        <span ng-if="upload.source != 'LARK' && showFileSize" ng-bind="upload.size|humanizeBytes"></span>
+        <span ng-if="upload.source != 'LARK' && !showFileSize && !upload.deleted">
+            <span ng-if="isUploadFailed" class="attachment-state-failed">
+                    轉碼失敗
+            </span>
+            <span ng-if="isUploadProcessing && isNotVideo && !wpsPreview(upload)" class="attachment-state-processing">
+                    正在轉碼中
+            </span>
+        </span>
+        <div ng-if="upload.type=='scorm' && upload.scorm">
+            教材大小:<span ng-bind="upload.scorm.files_size|humanizeBytes"></span>
+        </div>
+        <div ng-if="upload.type=='slide' && upload.duration">
+            时长:<span ng-bind="upload.duration | formatTime"></span>
+        </div>
+    </div>
+
+
+
+
+    <div class="attachment-column column"
+         ng-class="{'large-7': false, 'large-5': !false}">
+<span class="attachment-operations calender-right">
+        <div class="horizon">
+
+
+
+            <a ng-if="canCheckMarked(upload.id)" class="marked-details" ng-click="openMarkedDetail(upload)" stop-propagation>
+                查看批註
+            </a>
+            <a target="_blank" ng-if="upload.source == 'LARK'" ng-href="[[upload.url]]" title="預覽">
+                <i class="font font-table-edit-view-2"></i>
+            </a>
+            <a stop-propagation previewer="{uploads: uploads, currentFile: upload, activity: activity, isAttachment: isAttachment}" reveal-modal="file-previewer"
+                title="預覽" ng-click="downloadBlob(activity, upload, 'view')"
+                ng-if="upload.source != 'LARK' && canPreview(upload) && !upload.deleted && canShowResource(upload, isInstructorView) && upload.id > 0">
+                <i class="font font-table-edit-view-2"></i>
+            </a>
+        <a ng-click="openSobeyVideo()" ng-if="upload.source==='sobey'">
+            <i class="font font-table-edit-view-2"></i>
+        </a>
+                <a stop-propagation ng-href="/api/uploads/reference/[[upload.reference_id]]/blob" target="_blank"
+                    title="下載" ng-click="downloadBlob(activity, upload)"
+                    ng-if="upload.reference_id && !upload.deleted && upload.allow_download && canShowResource(upload, isInstructorView)">
+                    <i class="font font-table-edit-download"></i>
+                    <span class="dropdown-item">下載</span>
+                </a>
+                <a stop-propagation ng-href="/api/uploads/[[upload.id]]/blob?preview=true&activity_type=[[activity.type]]" target="_blank"
+                    title="下載" ng-click="downloadBlob(activity, upload)"
+                    ng-if="!upload.reference_id && !upload.deleted && upload.allow_download && !upload.source && canShowResource(upload, isInstructorView)">
+                    <i class="font font-table-edit-download"></i>
+                    <span class="dropdown-item">下載</span>
+                </a>
+                <a stop-propagation ng-href="[[upload.url]]/download" target="_blank"
+                    title="下載" ng-click="downloadBlob(activity, upload)"
+                    ng-if="upload.source && !['LARK', 'auto-generated-pdf', 'WEDRIVE'].includes(upload.source) && !upload.reference_id && !upload.deleted && upload.allow_download && canShowResource(upload, isInstructorView)">
+                    <i class="font font-table-edit-download"></i>
+                    <span class="dropdown-item">下載</span>
+                </a>
+                <!-- 针对特殊source类型 -->
+                <a stop-propagation ng-href="/api/uploads/[[upload.id]]/blob"
+                    title="下載" ng-click="downloadBlob(activity, upload)"
+                    ng-if="!upload.reference_id && !upload.deleted && upload.allow_download && ['auto-generated-pdf'].includes(upload.source) && canShowResource(upload, isInstructorView)">
+                    <i class="font font-table-edit-download"></i>
+                    <span class="dropdown-item">下載</span>
+                </a>
+                <a stop-propagation ng-href="/api/wedrive/file/[[upload.fileid]]"
+                    title="下載"
+                    ng-if="!upload.deleted && upload.allow_download && upload.source == 'WEDRIVE' && canShowResource(upload, isInstructorView)">
+                    <i class="font font-table-edit-download"></i>
+                    <span class="dropdown-item">下載</span>
+                </a>
+        </div>
+</span>    </div>
+
+</div>        </div>
+    </div>
+</div>                </div>
+        </div>
+    </div>
+</div><div id="calendar-confirmation-popup" class="reveal-modal popup-area popup-480" data-reveal resetable>
+    <div class="popup-content">
+        <div class="popup-header">
+            <span ng-bind="ui.titleBind"></span>
+            <a class="right" close-popup="calendar-confirmation-popup">
+                <i class="font font-close"></i>
+            </a>
+        </div>
+        <div class="main-area">
+            <div ng-if="ui.messageBind"><span ng-bind="ui.messageBind"></span></div>
+            <div ng-if="!ui.messageBind">
+                <div class="scope-label">範圍</div>
+                <div class="scope-choice">
+                    <label>
+                        <input type="radio" name="scope" ng-model="ui.update_scope" value="current"/>本節次
+                    </label>
+                    <label>
+                        <input type="radio" name="scope" ng-model="ui.update_scope" value="current_and_after"/>本節次及後續節次
+                    </label>
+                    <label>
+                        <input type="radio" name="scope" ng-model="ui.update_scope" value="all"/>所有節次
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="popup-footer">
+            <div class="form-buttons">
+<div class="loading-spinner" ng-show="loading">
+    <div class="spinner">
+        <div class="mask">
+            <div class="maskedCircle"></div>
+        </div>
+    </div>
+</div>                <button class="button button-green medium" ng-click="confirm()"
+                        type="submit" ng-hide="loading">確認</button>
+                <button class="button button-grey medium" close-popup="calendar-confirmation-popup"
+                        type="button" ng-hide="loading">取消</button>
+            </div>
+        </div>
+    </div>
+</div>    <wg-calendar
+        first-day="1"
+        show-teaching-week="false"
+        ng-prop-is_show_calendar="isShowCalendar"
+    ></wg-calendar>    </div>
+</div>        </ul>
+    </div>
+</div>        </div>
+
+
+<rwd-portal
+    lang="zh-TW"
+    org-logo-url="https://iclass.tku.edu.tw/api/uploads/131309/modified-image?thumbnail=0x272"
+    org-show-logo="True"
+    org-show-name="True"
+    org-name="淡江大學"
+    portal-url="https://tc-ipt.tku.edu.tw"
+    portal-tenant-id="1"
+    portal-news-numbers="10"
+    stick-news-on-top="false"
+    has-wg-apps-panel-host="false"
+    enable-application-center="true"
+    show-management-button="false"
+    allow-public-course="true"
+    admin-public-course="false"
+    news-portal-image = "false"
+    enable-iportal-platform-info = "true"
+    ></rwd-portal>
+
+        <a class="scrollToTop" href="#">Scroll To Top</a>
+<span
+  id="userId"
+  data-id="[REDACTED_USER_ID]"
+  value="[REDACTED_USER_ID]"
+  class="ui-helper-hidden-accessible"
+></span>
+<span id="isVisitor" data-value="False" class="ui-helper-hidden-accessible"></span>
+<input type="hidden" id="dashboardTracking" value="False" />
+<span
+  id="notificationServerUrl"
+  data-url="/ntf"
+  class="ui-helper-hidden-accessible"
+></span>
+<input type="hidden" id="courseId" value="" />
+<input type="hidden" id="subCourseId" value="">
+<input
+  type="hidden"
+  id="enrollmentIsInstructor"
+  value=""
+/>
+<input
+  type="hidden"
+  id="enrollmentIsInstructorAssistant"
+  value=""
+/>
+
+<input
+  type="hidden"
+  id="enrollmentIsStudent"
+  value=""
+/>
+<input type="hidden" id="isSimulatingInCourse" value="False" />
+<input type="hidden" id="showNickname" value="False" />
+
+<input type="hidden" id="orgId" value="1" />
+    <input type="hidden" id="userRole" value="Student">
+ <input type="hidden" id="dotdotdotToggleCollapseI18n" ng-init="dotdotdotToggleCollapseI18n='收起'"> <input type="hidden" id="dotdotdotToggleExpandI18n" ng-init="dotdotdotToggleExpandI18n='更多...'">
+<root-scope-variable name="lang" value="zh-TW"></root-scope-variable>
+<root-scope-variable name="orgId" value="1"></root-scope-variable>
+<root-scope-variable name="currentOrgTip" value="本機構"></root-scope-variable>
+<root-scope-variable name="enableUpdateActivityDatetime" value="False"></root-scope-variable>
+<script>
+    var globalData = {
+        user: {
+            id: [REDACTED_USER_ID],
+            name: "[REDACTED_NAME]",
+            userNo: "[REDACTED_USER_NO]",
+            orgId: 1,
+            mobile: "None",
+            orgName: "淡江大學",
+            orgCode: "tku",
+            role: "Student",
+            hasAiAbility: false,
+        },
+        dept: {
+            id: "4574",
+            name: "風保系（日）",
+            code: "TLOXB",
+        },
+        isSimulatingVisitor: false,
+        courseRoles: [""],
+        deliveryOrg: "TKU",
+        orgNames: {},
+        faceServiceType: "",
+        enableLoginCheck: false,
+        enableLoginRollcallCheck: false,
+        hasJoinedVtrs: false,
+        sobotSrc: "",
+        hideGradeInfo: false,
+        lang: "zh-TW"
+    }
+</script>
+<script>
+    var featureToggles = {
+        "class_mode_casting": true,
+        "single_user_session_constraint": false,
+        "ongoing_course": true,
+        "face_recognition_service": false,
+        "face_photo_check_service": false,
+        "inclass.user_action_track": false,
+        "lesson_resource": false,
+        "lesson": false,
+        "cloud_classroom": false,
+        "onlineTeaching": false,
+        "customize_i18n": false,
+        "course_end_date_filter": false,
+        "vocabulary": false,
+        "wps_preview": false,
+        "yz_office_preview": false,
+        "editorActivityRefer": false,
+        "lazyLoadCourseSection": false,
+        "courseIndexDateFilter": false,
+        "outcomeBasedEducation": false,
+        "water_mark_by_vue_multi_player": false,
+        "enableProgram": false,
+        "examInvigilation": false,
+        "simditor_embed_video": false,
+        "simditor_attachment": false,
+        "course_module_required": false,
+        "publishScoreOfPartialStudents": false,
+        "courseNeedPublish": false,
+        "sortVideoAnalysis": false,
+        "zoom": false,
+        "microsoftTeamsMeeting": true,
+        "googleMeeting": false,
+        "welink": false,
+        "tencentMeeting": false,
+        "tencentMeetingPersonal": false,
+        "managementTencentMeeting": false,
+        "scorePublishItems": true,
+        "campusSubjectLib": false,
+        "sharedResourceAudit": false,
+        "scores": true,
+        "alert": false,
+        "managementLog": true,
+        "classin": false,
+        "dingtalkLive": false,
+        "lectureLive": false,
+        "webexMeeting": false,
+        "enableAuditorCourseRole": false,
+        "enableDingTalkChat": false,
+        "homeworkDuplicateDetect": false,
+        "homeworkCnkiDuplicateDetect": false,
+        "homeworkMarkNew": true,
+        "importExamSubjectByWord": true,
+        "exportSubjectLibExcel": true,
+        "canSubmitComment": false,
+        "canSubmitQuestion": false,
+        "danmu": false,
+        "course.stat.online_video_view_detail": false,
+        "excellentInstructorStudio": false,
+        "create_course_sis": false,
+        "scheduleCaptureAssociationDeletion": false,
+        "ustcMode": false,
+        "courseImportMoodle": false,
+        "phaseTeachingModel": false,
+        "courseImportCommonCartridge": false,
+        "aliyun_office": false,
+        "aliyun_office_edit": false,
+        "teaching_calendar": false,
+        "calendar_timetable": false,
+        "join_course": true,
+        "word_cloud": false,
+        "enableSobot": false,
+        "enable_howxm": false,
+        "inclass_report": false,
+        "enableTrainingLevelForAuthzRole": false,
+        "enableHomework": true,
+        "enableExam": true,
+        "enableOnlineVideo": true,
+        "enableLesson": false,
+        "enableMaterial": true,
+        "enableLink": true,
+        "enableForum": true,
+        "enableQuestionnaire": true,
+        "enableSlide": false,
+        "facebookLogin": false,
+        "googleLogin": false,
+        "analysisSubject": true,
+        "fillInBlankSubject": true,
+        "clozeSubject": false,
+        "matchingSubject": false,
+        "coursePackage": false,
+        "examIPControl": false,
+        "knowledgeGraph": false,
+        "knowledgeGraphBatchImportXmind": false,
+        "knowledgeGraphBatchImportExcel": false,
+        "knowledgeGraphBatchImportCourse": false,
+        "isCognitiveDimensionOpen": true,
+        "wecomChat": false,
+        "ccLicenseSetting": false,
+        "larkMeeting": false,
+        "wecomMeeting": false,
+        "dingtalkMeeting": false,
+        "chatRoom": false,
+        "virtualClassroom": false,
+        "enableCourseSubjectLib": false,
+        "enablePlayer2": false,
+        "enableIndependentCoTeachingPermission": false,
+        "interaction": true,
+        "airDocQuiz": false,
+        "airVideoQuiz": false,
+        "airClassroomQuiz": false,
+        "airChatbot": false,
+        "airGrading": false,
+        "airCreditManage": false,
+        "airQuizAnalyze": false,
+        "airTextOptimization": false,
+        "airExamQuiz": false,
+        "airSubjectLibQuiz": false,
+        "airCoursewareDiscussion": false,
+        "airLessonQuiz": false,
+        "airPlayerSyncTranslation": false,
+        "airSolver": false,
+        "enableKnowledgeReferenceCapture": false,
+        "enableKnowledgeReferencePublicResource": false,
+        "inclass.allow_download": true,
+        "examSubjectGroup": false,
+        "use_authz_role": true,
+        "inclass.allow_download": true,
+        "privateWpsOffice": false,
+        "enableRubrics": true,
+        "inclassModule": false,
+        "askQuestion": false,
+        "shareCourseTw": false,
+        "aiPpt": false,
+        "enableLecturerCourseRole": false,
+        "relationCourses": false,
+        "courseEstimate": true,
+        "courseEstimateWithoutScore": false,
+        "rollcallAbsenteesExcluded": false,
+        "newCourseHome": false,
+        "applicationCenter": false,
+        "userHomepage": true,
+        "addEnrollments": true,
+        "inviteAssistant": true,
+        "inviteUser": true,
+        "newCourseHomeTeachingData": true,
+        "moduleSettings": true,
+        "documentPreviewNotice": true,
+        "playerVideoChapter": false,
+        "playerVideoAiCaption": false,
+        "playerVideoAiTopic": false,
+        "quizImportSubjectByLib": true,
+        "enableMyGroup": false,
+        "myNote": false,
+        "enableScoreItemGroup": false,
+        "blueprintCourse": false,
+        "examRecordPlayProgress": false,
+        "courseIndex": false,
+        "leaveConsideredAbsence": false,
+        "H5RegisterAndJoinCourseWithName": false,
+        "disableEducationalAdminCourseEditing": false,
+    }
+</script><script>
+    var orgSettings = {
+        "waterMarkCustomizationInfo": "",
+        "wgVideoPlayerWatermarkConfig": {},
+        "orgStatsActivity":  false,
+        "gpt": "",
+        "conjure": "",
+        "howxmAppId": "",
+        "simditorMarkdown": {
+            "enable": false,
+            "defaultActive": false
+        },
+        "enableTextbook":false,
+        "moduleNotificationConfig":{
+            "days": [1, 3, 5, 7, 15],
+            "time": "8:00",
+        },
+        "enableOffCampusUserFlag":false,
+        "qrcodeRefreshInterval": 15.0,
+        "tencentMeetingOnlyCloudRecord": false,
+        "enableTencentMeetingUseUserNoAsUid": false,
+        "tencentMeetingRoomsEnabled": false,
+        "tencentMeetingRoomsPwd": "",
+        "maxFileCountInUploadFolder": 50.0,
+        "maxLevelInUploadFolder": 5.0,
+        "disableEditExternalScoreItemName": false,
+        "enableAhmuGetStudentsScore": false,
+        "xjtuKnowledgeMode": false,
+        "h5CoursewareCompleteness": false,
+        "isXjtuKnowledgeForestMode": false,
+        "copyTemplateCourseSettings": {
+            "enabledUpdateActivityDatetime": false,
+            "dayOffset": 14.0,
+            "minOffsetForStartTime": 5.0,
+            "minOffsetForEndTime": 5.0,
+        },
+        "hiddenGroup": false,
+        "hiddenRollcall": false,
+        "reverseClassmodeRollcallSort": false,
+        "hiddenQrcode": false,
+        "hideStudentAssistant": false,
+        "airTranslationSupportedLanguages": [],
+        "bvChatbot": {"enabled": false},
+        "allowFacetsAndFragments": false,
+        "enableChinamCloudGraph": false,
+        "selfKnowledgeGraphSourceName": '',
+        "externalKnowledgeGraphSourceName": '',
+        "externalKnowledgeGraphResourceName": '',
+        "enableTodayCourse": false,
+        "enableDesignatedInspectCourse": false,
+        "customizeTimetable": false,
+        "enterpriseMode": "custom",
+        "airOutputLocale": ['auto', 'zh-CN', 'en-US'],
+        "aiPpt": {},
+        "airChatbot": {},
+        "plusSupportedMimeTypes": [],
+        "enableTongjiCommunityLayout": false,
+        "enableTeachingScheduleAndOthers": false,
+        "disabledEditAndCopyCourseInfo": false,
+        "hideInviteUserInAddEnrollment": false,
+        "loginSettings": [],
+        "enableShowRetakeTag": false,
+        "enableHomeworkReferenceAnswer": false,
+        "enableDownloadCoursewareHelpFile": false,
+        "h5DownloadHelpFileUrl": '',
+        "scormDownloadHelpFileUrl": '',
+        "enableEditImportedCourseClassName": true,
+        "airSettings": {"air_course_guides_enable": false, "air_credit_mode": "credit_pool", "air_kb_allowed_video_type": true, "air_kb_max_size_of_upload_file": 524288000, "air_max_length_of_text": 4000, "air_max_num_of_quizzes": 40},
+        "disableManageEnrollmentInImportCourse": false,
+        "enableUseCourseNewBaseInfo": false,
+        "splitDepartmentsAndGradesAndHideClasses": false,
+        "enableFeedbackNewUi": false,
+        "hideAppStat": false,
+        "urpPendingSurvey": false,
+        "enableShanghaitechMeeting": false,
+        "enableAuditJoinPublishCourse": false,
+        "hideShTechCourseType": false,
+        "enableAutoRefreshUploadStatus": false,
+        "disableEmailHintInAddEnrollment": false,
+        "disabledEmailOnPlatform": false,
+        "formatSemesterName": false,
+        "enableCheckWpsUrlAccessibility": false,
+        "headerUsePublicCourseLabel": false,
+        "course_lesson_time_view": {},
+        "enableLamsLessonVirtualExperiment": false,
+    }
+</script>
+        <script type="text/javascript">
+            window.statisticsSettings = {
+                userId: "[REDACTED_USER_ID]",
+                orgId: "1",
+                departmentId: "4574",
+                    server: "/statistics",
+                mgsJwt: "QlpoOTFBWSZTWVH_Qa4AAW8fgAADf6A____wH_9L8DABWrM1DJI9RDTGpNHkEbTUN6k2U9MhhTQYkkbIhoAAAAABoaCKRJqabUGT1GmmgMhtJoPSeo9E06p1V4kXYV5bUXVrtzZwiAIiIfX97plEARDBVzqzUq1eT3QgnH6x0gAC3ThVNQJ0vHHpbwvZ8CeyxEYxlxOydDRtAw6OTwbrkXdScIEbjhBeSkb5TIhZJnFOYMmvxgCwiQH9CCWExfAwZBEEzQ-UuvnVQ_0IlOgDE6aasHOnztG1NCODQWWjg5ImVSPkliED6vAQSmOT0WfKOg8AlDBTFmfIClRdlLHUleXMgmR0pBLdxBPJzu_vHraTR-in2IJed5RbbG8X7p3Xw4IJUXTLHf97b7C3UWR2GD20GT4ppsBcLOWSrNuRZ0ImKuHz1asDkYwRXFdcxIMyPyQuZ4k-cdiRIR3mgQIjazSi6-_HXX-ZXEVAYEWD_F3JFOFCQUf9Brg",
+                idleThreshold: "30",
+                gaTrackingId: "G-YY6C7VCWEY,G-4EQ9Z50LKC",
+                gaVersion: "GA4",
+                enableMgsQueryCache: false            }
+        </script>
+
+    <link rel="stylesheet" href="/static/styles-base-040084be.css" media="none" onload="if(media!='all')media='all'"></link>
+<link rel="stylesheet" href="/static/24902-b98fc108.css" media="none" onload="if(media!='all')media='all'"></link>
+<link rel="stylesheet" href="/static/82199-6b4a37ed.css" media="none" onload="if(media!='all')media='all'"></link>
+<link rel="stylesheet" href="/static/78796-456055c5.css" media="none" onload="if(media!='all')media='all'"></link>
+<link rel="stylesheet" href="/static/js/main-portal-c353cedb.css" media="none" onload="if(media!='all')media='all'"></link>
+<link rel="stylesheet" href="/static/styles-iview-58339d95.css" media="none" onload="if(media!='all')media='all'"></link><script type="module" src="/static/runtime~js/main-portal-3cc2b87f.js"></script>
+<script type="module" src="/static/95093-78347e93.js"></script>
+<script type="module" src="/static/62893-20da0904.js"></script>
+<script type="module" src="/static/61409-cf835457.js"></script>
+<script type="module" src="/static/56662-98922b29.js"></script>
+<script type="module" src="/static/54989-20b6b615.js"></script>
+<script type="module" src="/static/84027-f7869d26.js"></script>
+<script type="module" src="/static/28921-c44e901e.js"></script>
+<script type="module" src="/static/25996-369ed60a.js"></script>
+<script type="module" src="/static/10246-494b2baa.js"></script>
+<script type="module" src="/static/23223-9b89ab86.js"></script>
+<script type="module" src="/static/21892-03cda66b.js"></script>
+<script type="module" src="/static/59925-af926177.js"></script>
+<script type="module" src="/static/91915-54b34f10.js"></script>
+<script type="module" src="/static/63343-78726a68.js"></script>
+<script type="module" src="/static/77639-1602a6c5.js"></script>
+<script type="module" src="/static/90887-960c0753.js"></script>
+<script type="module" src="/static/67888-d4f94fbf.js"></script>
+<script type="module" src="/static/13958-91152030.js"></script>
+<script type="module" src="/static/47959-8670e637.js"></script>
+<script type="module" src="/static/68924-a30f5597.js"></script>
+<script type="module" src="/static/42789-f3817b0b.js"></script>
+<script type="module" src="/static/73384-83ff3b27.js"></script>
+<script type="module" src="/static/43812-e1337cd5.js"></script>
+<script type="module" src="/static/42962-a2c070d7.js"></script>
+<script type="module" src="/static/40661-c706bf0b.js"></script>
+<script type="module" src="/static/30803-7b1f840f.js"></script>
+<script type="module" src="/static/23268-40f6b5e5.js"></script>
+<script type="module" src="/static/70050-769538b7.js"></script>
+<script type="module" src="/static/79392-680445ea.js"></script>
+<script type="module" src="/static/66491-8f0068cd.js"></script>
+<script type="module" src="/static/37519-03d899c1.js"></script>
+<script type="module" src="/static/56834-44a72033.js"></script>
+<script type="module" src="/static/48938-ac64b718.js"></script>
+<script type="module" src="/static/22541-d625efdb.js"></script>
+<script type="module" src="/static/13149-ab088423.js"></script>
+<script type="module" src="/static/56029-a5e838cb.js"></script>
+<script type="module" src="/static/45286-95a81a23.js"></script>
+<script type="module" src="/static/91962-12602e29.js"></script>
+<script type="module" src="/static/54964-f42ad8f2.js"></script>
+<script type="module" src="/static/98133-474d681d.js"></script>
+<script type="module" src="/static/46056-f975a1b2.js"></script>
+<script type="module" src="/static/95738-3a84cfeb.js"></script>
+<script type="module" src="/static/13067-3b42e012.js"></script>
+<script type="module" src="/static/75405-1f7d8532.js"></script>
+<script type="module" src="/static/55054-c6f7d5e3.js"></script>
+<script type="module" src="/static/75360-4667ba77.js"></script>
+<script type="module" src="/static/79278-3da74896.js"></script>
+<script type="module" src="/static/5667-301ee21f.js"></script>
+<script type="module" src="/static/24902-95548695.js"></script>
+<script type="module" src="/static/74254-72090235.js"></script>
+<script type="module" src="/static/56748-1ed951f8.js"></script>
+<script type="module" src="/static/82199-32c8112e.js"></script>
+<script type="module" src="/static/47485-34a61aef.js"></script>
+<script type="module" src="/static/60859-2c42871a.js"></script>
+<script type="module" src="/static/98108-8b9c8b37.js"></script>
+<script type="module" src="/static/29408-3283f5c7.js"></script>
+<script type="module" src="/static/js/main-portal-48fa8283.js"></script>
+
+        <script type="text/javascript">
+            window.onload = () => {
+                $(document).foundation();
+            };
+        </script>
+
+    </div>
+
+
+</body>
+</html>

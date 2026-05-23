@@ -1,0 +1,4382 @@
+(self.webpackChunklms=self.webpackChunklms||[
+]).push([
+  [
+    7796, 28492, 37336
+  ], {
+    9810:(e, t, r)=>{
+      var n=r(756029);
+      r(212106), r(708054), n.module("classroom", [
+        "common", "classroom-module", "exam"
+      ]).config([
+        "$routeProvider", e=>e.when("/", {
+          templateUrl:"classroom/classroom-exam/_subjects.html"
+        }).when("/preview", {
+          templateUrl:"classroom/classroom-exam/_instructor_preview.html"
+        }).when("/progress", {
+          templateUrl:"classroom/classroom-exam/_instructor_progress.html"
+        }).when("/submission/:submissionId", {
+          templateUrl:"subjects/_submission_detail.html"
+        }).when("/examinee/:examineeId/submission/:submissionId", {
+          templateUrl:"classroom/classroom-activity-page/_examinee_score.html"
+        })
+      ]).run([
+        "$rootScope", "fileSelectModel", (e, t)=>{
+          e.$on("fileSelectOpen", (()=>{
+            t.context.showPublicResource=!0
+          }))
+        }
+      ])
+    }, 31262:(e, t, r)=>{
+      r.d(t, {
+        A:()=>o
+      });
+      var n=r(595738);
+      const s=(0, n.pM)({
+        name:"SubjectControlTimeSelect", props:{
+          isTimed:{
+            type:Boolean, default:!1
+          }, time:{
+            type:String, default:""
+          }, error:{
+            type:Array, default:()=>[
+            ]
+          }
+        }, setup(e){
+          var t=(0, n.KR)(e.isTimed), r=(0, n.KR)(e.time), s="zh-CN"===document.documentElement.getAttribute("lang")?"zh-CN":"en-US", o=(0, n.EW)((()=>e.isTimed&&e.error&&e.error.length>0&&!r.value)), i=()=>{
+            var e=new CustomEvent("subject-control-time-change", {
+              detail:{
+                isTimed:t.value, time:r.value
+              }
+            });
+            window.dispatchEvent(e)
+          };
+          return(0, n.wB)((()=>e.isTimed), (e=>{
+            t.value=e
+          })), (0, n.wB)((()=>e.time), (e=>{
+            r.value=e
+          })), {
+            isTimeLimited:t, selectedTime:r, hasError:o, handleTimerChange:e=>{
+              t.value=e, t.value||(r.value=""), i()
+            }, handleTimeChange:e=>{
+              r.value=e, i()
+            }, lang:s
+          }
+        }
+      });
+      const o=(0, r(514486).A)(s, (function(){
+        var e=this, t=e.$createElement, r=e._self._c||t;
+        return r("div", {
+          staticClass:"time-option"
+        }, [
+          r("div", {
+            staticClass:"option"
+          }, [
+            r("label", {
+              staticClass:"radio-option"
+            }, [
+              r("input", {
+                attrs:{
+                  type:"radio", name:"timer"
+                }, domProps:{
+                  checked:!e.isTimeLimited
+                }, on:{
+                  change:function(t){
+                    return e.handleTimerChange(!1)
+                  }
+                }
+              }), e._v(" "), r("span", {
+                staticClass:"label-text"
+              }, [
+                e._v(e._s(e.$t("untimed")))
+              ])
+            ]), e._v(" "), r("div", {
+              staticClass:"radio-option", class:{
+                "has-error":e.hasError
+              }
+            }, [
+              r("label", [
+                r("input", {
+                  attrs:{
+                    type:"radio", name:"timer"
+                  }, domProps:{
+                    checked:e.isTimeLimited
+                  }, on:{
+                    change:function(t){
+                      return e.handleTimerChange(!0)
+                    }
+                  }
+                }), e._v(" "), r("span", {
+                  staticClass:"label-text"
+                }, [
+                  e._v(e._s(e.$t("timed")))
+                ])
+              ]), e._v(" "), r("div", {
+                staticClass:"time-picker-wrapper", on:{
+                  click:function(e){
+                    e.stopPropagation()
+                  }
+                }
+              }, [
+                e.isTimed?r("TimePicker", {
+                  staticClass:"time-picker", attrs:{
+                    confirm:"", placeholder:e.$t("select_date"), disabled:!e.isTimeLimited, value:e.selectedTime
+                  }, on:{
+                    "on-change":e.handleTimeChange
+                  }
+                }):e._e()
+              ], 1)
+            ])
+          ]), e._v(" "), e.hasError?r("div", {
+            staticClass:"error-message", class:{
+              en:"en-US"===e.lang
+            }
+          }, [
+            e._v(e._s(e.error[
+              0
+            ]))
+          ]):e._e()
+        ])
+      }), [
+      ], !1, null, "24eafc99", null).exports
+    }, 71819:(e, t, r)=>{
+      e.exports=r.p+"assets/audio/8d3d29385987dca9aa1c.mp3"
+    }, 82240:(e, t, r)=>{
+      r.d(t, {
+        A:()=>C
+      });
+      r(418665), r(700533), r(335231), r(168763), r(445708), r(43148), r(158649), r(658379), r(14602);
+      var n=r(592207), s=r.n(n), o=(r(207452), r(731904)), i=r(218831), a=r(539963), u=r(374302), c=r(966491);
+      function l(e, t, r, n, s, o, i){
+        try{
+          var a=e[
+            o
+          ]
+          (i), u=a.value
+        }
+        catch(e){
+          return void r(e)
+        }
+        a.done?t(u):Promise.resolve(u).then(n, s)
+      }
+      function d(e){
+        return function(){
+          var t=this, r=arguments;
+          return new Promise((function(n, s){
+            var o=e.apply(t, r);
+            function i(e){
+              l(o, n, s, i, a, "next", e)
+            }
+            function a(e){
+              l(o, n, s, i, a, "throw", e)
+            }
+            i(void 0)
+          }))
+        }
+      }
+      function m(e, t){
+        return function(e){
+          if(Array.isArray(e))return e
+        }
+        (e)||function(e, t){
+          if("undefined"==typeof Symbol||!(Symbol.iterator in Object(e)))return;
+          var r=[
+          ], n=!0, s=!1, o=void 0;
+          try{
+            for(var i, a=e[
+              Symbol.iterator
+            ]
+            ();
+            !(n=(i=a.next()).done)&&(r.push(i.value), !t||r.length!==t);
+            n=!0);
+          }
+          catch(e){
+            s=!0, o=e
+          }
+          finally{
+            try{
+              n||null==a.return||a.return()
+            }
+            finally{
+              if(s)throw o
+            }
+          }
+          return r
+        }
+        (e, t)||function(e, t){
+          if(!e)return;
+          if("string"==typeof e)return p(e, t);
+          var r=Object.prototype.toString.call(e).slice(8, -1);
+          "Object"===r&&e.constructor&&(r=e.constructor.name);
+          if("Map"===r||"Set"===r)return Array.from(e);
+          if("Arguments"===r||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(r))return p(e, t)
+        }
+        (e, t)||function(){
+          throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")
+        }
+        ()
+      }
+      function p(e, t){
+        (null==t||t>e.length)&&(t=e.length);
+        for(var r=0, n=new Array(t);
+        r<t;
+        r++)n[
+          r
+        ]
+        =e[
+          r
+        ];
+        return n
+      }
+      function f(e, t){
+        var r=Object.keys(e);
+        if(Object.getOwnPropertySymbols){
+          var n=Object.getOwnPropertySymbols(e);
+          t&&(n=n.filter((function(t){
+            return Object.getOwnPropertyDescriptor(e, t).enumerable
+          }))), r.push.apply(r, n)
+        }
+        return r
+      }
+      function b(e){
+        for(var t=1;
+        t<arguments.length;
+        t++){
+          var r=null!=arguments[
+            t
+          ]
+          ?arguments[
+            t
+          ]
+          :{
+          };
+          t%2?f(Object(r), !0).forEach((function(t){
+            v(e, t, r[
+              t
+            ])
+          })):Object.getOwnPropertyDescriptors?Object.defineProperties(e, Object.getOwnPropertyDescriptors(r)):f(Object(r)).forEach((function(t){
+            Object.defineProperty(e, t, Object.getOwnPropertyDescriptor(r, t))
+          }))
+        }
+        return e
+      }
+      function v(e, t, r){
+        return t in e?Object.defineProperty(e, t, {
+          value:r, enumerable:!0, configurable:!0, writable:!0
+        }):e[
+          t
+        ]
+        =r, e
+      }
+      var h=r(3449).v4, g=(e, t)=>{
+        var r=-1;
+        return(r=e.submitByGroup?e.submissionsOfHomework.findIndex((e=>e.group.id===t.currentMemberId)):e.submissionsOfHomework.findIndex((e=>e.student.id===t.currentMemberId)))<0?[
+        ]
+        :[
+          o._.cloneDeep(e.submissionsOfHomework[
+            r
+          ]), r
+        ]
+      }, y=()=>({
+        homework:{
+        }, currentMarkStatus:"all", currentAttachUploads:[
+        ], currentAttachUploadId:null, currentSubmissionId:0, currentMemberId:0, memberSubmissionsLoading:!1, submissionUploadsLoading:!1, currentSubmitStatuses:[
+        ], unmarkedMemberIds:new Set, currentSubmissions:[
+        ], isSkipUnmarkedPopup:!1
+      }), _={
+        setHomework(e, t){
+          e.homework=t
+        }, setMembers(e, t){
+          e.members=t
+        }, setUnmarkedMemberIds(e, t){
+          e.unmarkedMemberIds=t
+        }, setMemberMarked(e, t){
+          var r=e.members.findIndex((e=>e.id===t));
+          r<0||(e.members[
+            r
+          ].markStatus="marked")
+        }, setCurrentMarkStatus(e, t){
+          e.currentMarkStatus=t
+        }, setCurrentSubmitStatuses(e, t){
+          e.currentSubmitStatuses=t
+        }, setCurrentMemberId(e, t){
+          e.currentMemberId=t
+        }, setCurrentAttachUploads(e, t){
+          t=t.sort(((e, t)=>e.deleted-t.deleted)), e.currentAttachUploads=t
+        }, setSomeoneAttachUpload(e, t){
+          var r=e.currentAttachUploads.findIndex((e=>e.id===t.id));
+          r<0||e.currentAttachUploads.splice(r, 1, t)
+        }, setCurrentAttachUploadId(e, t){
+          e.currentAttachUploadId=t
+        }, setCurrentSubmissionId(e, t){
+          e.currentSubmissionId=t
+        }, setCurrentSubmissions(e, t){
+          e.currentSubmissions=t
+        }, setMemberSubmissionsLoading(e, t){
+          e.memberSubmissionsLoading=t
+        }, setSubmissionUploadsLoading(e, t){
+          e.submissionUploadsLoading=t
+        }, updateCurrentSubmission(e, t){
+          var r=t.submission, n=t.getters;
+          if(r.id===e.currentSubmissionId){
+            var s=e.currentSubmissions.findIndex((e=>e.id===r.id));
+            s<0||e.currentSubmissions.splice(s, 1, b(b({
+            }, n.currentSubmission), r))
+          }
+        }, updateHomeworkAnnounceMarkStatus(e, t){
+          e.homework.data.is_announce_mark=t.isAnnounceMark, e.homework.data.announce_score_type=t.announceScoreType, e.homework.data.announce_score_time=t.announceScoreTime
+        }, updateMemberMarkStatus(e, t){
+          var r=t.submission, n=t.getters;
+          if(n.submissionsOfHomework){
+            var s=-1;
+            if(!((s=n.submitByGroup?n.submissionsOfHomework.findIndex((t=>t.group.id===e.currentMemberId)):n.submissionsOfHomework.findIndex((t=>t.student.id===e.currentMemberId)))<0)){
+              var i="unmarked", u=o._.cloneDeep(n.submissionsOfHomework[
+                s
+              ]);
+              (o._.isEmpty(u.submission)||n.currentSubmission.is_latest_version)&&(i=(0, a.vB)(r)), n.submitByGroup?u.group.mark=i:u.student.mark=i, e.homework=o._.tap(o._.cloneDeep(e.homework), (e=>e.submissions.splice(s, 1, u)))
+            }
+          }
+        }, updateMemberStatus(e, t){
+          var r=t.getters, n=t.status;
+          if(r.submissionsOfHomework){
+            var s=m(g(r, e), 2), i=s[
+              0
+            ], a=s[
+              1
+            ];
+            i&&(r.submitByGroup?i.group.status=n:i.student.status=n, e.homework=o._.tap(o._.cloneDeep(e.homework), (e=>e.submissions.splice(a, 1, i))))
+          }
+        }, updateSubmissionRecommend(e, t){
+          var r=t.getters, n=t.status;
+          if(r.submissionsOfHomework){
+            var s=m(g(r, e), 2), i=s[
+              0
+            ], a=s[
+              1
+            ];
+            i&&(i.submission.recommend=n, e.homework=o._.tap(o._.cloneDeep(e.homework), (e=>e.submissions.splice(a, 1, i))))
+          }
+        }, updateSubmissionOfHomework(e, t){
+          var r, n=t.getters, s=t.submission;
+          if(n.submissionsOfHomework){
+            var i=m(g(n, e), 2), a=i[
+              0
+            ], u=i[
+              1
+            ];
+            if(a){
+              if(a.submission=b(b({
+              }, null!==(r=a.submission)&&void 0!==r?r:{
+              }), s), n.submitByGroup&&s.students){
+                var c=s.students.reduce(((e, t)=>b(b({
+                }, e), {
+                }, {
+                  [
+                    t.id
+                  ]
+                  :t
+                })), {
+                });
+                a.students=a.students.map((e=>{
+                  var t, r, n;
+                  return{
+                    student:b({
+                    }, e), final_score:b(b({
+                    }, null!==(t=e.final_score)&&void 0!==t?t:{
+                    }), null!==(r=c[
+                      null===(n=e.student)||void 0===n?void 0:n.id
+                    ])&&void 0!==r?r:{
+                    })
+                  }
+                }))
+              }
+              e.homework=o._.tap(o._.cloneDeep(e.homework), (e=>e.submissions.splice(u, 1, a)))
+            }
+          }
+        }, setSkipUnmarkedPopupStatus(e, t){
+          e.isSkipUnmarkedPopup=t
+        }, resetState(e){
+          var t=y();
+          Object.keys(t).forEach((r=>{
+            e[
+              r
+            ]
+            =t[
+              r
+            ]
+          }))
+        }
+      }, w={
+        setHomework(e, t){
+          (0, e.commit)("setHomework", t)
+        }, setMembers(e, t){
+          (0, e.commit)("setMembers", t)
+        }, setMemberMarked(e, t){
+          (0, e.commit)("setMemberMarked", t)
+        }, setCurrentSubmitStatuses(e, t){
+          var r=e.state, n=e.commit, s=e.getters, o=e.dispatch;
+          if(n("setCurrentSubmitStatuses", t.statuses), 0!==s.filteredMembers.length){
+            var i=s.filteredMembers.find((e=>e.id===r.currentMemberId));
+            o("setCurrentMemberId", i?i.id:s.filteredMembers[
+              0
+            ].id)
+          }
+          else o("setCurrentMemberId", 0)
+        }, setCurrentMarkStatus:(e, t)=>d(s().mark((function r(){
+          var n, o, i, a;
+          return s().wrap((function(r){
+            for(;
+            ;
+            )switch(r.prev=r.next){
+              case 0:if(n=e.state, o=e.dispatch, i=e.commit, a=e.getters, i("setCurrentMarkStatus", t), 0!==a.filteredMembers.length){
+                r.next=6;
+                break
+              }
+              return r.next=5, o("setCurrentMemberId", 0);
+              case 5:return r.abrupt("return");
+              case 6:if(!(a.filteredMembers.findIndex((e=>e.id===n.currentMemberId))<0)){
+                r.next=10;
+                break
+              }
+              return r.next=10, o("setCurrentMemberId", a.filteredMembers[
+                0
+              ].id);
+              case 10:case"end":return r.stop()
+            }
+          }), r)
+        })))(), setCurrentMemberId:(e, t)=>d(s().mark((function r(){
+          var n, o, i, a;
+          return s().wrap((function(r){
+            for(;
+            ;
+            )switch(r.prev=r.next){
+              case 0:if(n=e.dispatch, o=e.commit, i=e.getters, o("setMemberSubmissionsLoading", !0), o("setCurrentMemberId", t), o("setUnmarkedMemberIds", i.realUnmarkedMemberIds), t){
+                r.next=10;
+                break
+              }
+              return o("setCurrentSubmissions", [
+              ]), r.next=8, n("setCurrentSubmissionId", 0);
+              case 8:return o("setMemberSubmissionsLoading", !1), r.abrupt("return");
+              case 10:if(!i.submitByGroup){
+                r.next=16;
+                break
+              }
+              return r.next=13, (0, u.getGroupSubmissions)(i.homeworkId, t);
+              case 13:a=r.sent, r.next=19;
+              break;
+              case 16:return r.next=18, (0, u.getStudentSubmissions)(i.homeworkId, t);
+              case 18:a=r.sent;
+              case 19:if(o("setCurrentSubmissions", a.data.list), !(i.submissionsOfCurrentMember.length>0)){
+                r.next=25;
+                break
+              }
+              return r.next=23, n("setCurrentSubmissionId", i.submissionsOfCurrentMember[
+                0
+              ].id);
+              case 23:r.next=32;
+              break;
+              case 25:if(!i.submissionSubmitByInstructor){
+                r.next=30;
+                break
+              }
+              return r.next=28, n("setCurrentSubmissionId", i.submissionSubmitByInstructor.id);
+              case 28:r.next=32;
+              break;
+              case 30:return r.next=32, n("setCurrentSubmissionId", 0);
+              case 32:o("setMemberSubmissionsLoading", !1);
+              case 33:case"end":return r.stop()
+            }
+          }), r)
+        })))(), setCurrentAttachUploads(e, t){
+          var r=e.commit, n=e.getters;
+          r("setCurrentAttachUploads", [
+            ...t, ...o._.map(n.currentSubmission.other_resources||[
+            ], (e=>(e.id=h(), e.isSupportMark=!1, e)))
+          ])
+        }, setSomeoneAttachUpload(e, t){
+          (0, e.commit)("setSomeoneAttachUpload", t)
+        }, setCurrentAttachUploadId(e, t){
+          (0, e.commit)("setCurrentAttachUploadId", t)
+        }, setCurrentSubmissionId:(e, t)=>d(s().mark((function r(){
+          var n, i, a, l, d, p, f, v, h;
+          return s().wrap((function(r){
+            for(;
+            ;
+            )switch(r.prev=r.next){
+              case 0:if(n=e.dispatch, i=e.commit, e.getters, i("setSubmissionUploadsLoading", !0), i("setCurrentSubmissionId", t), t){
+                r.next=8;
+                break
+              }
+              return n("setCurrentAttachUploadId", 0), n("setCurrentAttachUploads", [
+              ]), i("setSubmissionUploadsLoading", !1), r.abrupt("return");
+              case 8:return r.next=10, (0, u.getSubmissionAttachements)(t);
+              case 10:a=r.sent, l=o._.map(a.data.marked_attachment_infos, (e=>{
+                var t=e.origin_upload.upload;
+                return(t=b(b({
+                }, t), e.origin_upload)).isSupportMark=c.canEditByPdfEditor(t), t.isMarked=!o._.isEmpty(e.marked_attachment), t.marked_attachment=e.marked_attachment, t
+              })), (d=o._.find(l, (e=>"auto-generated-pdf"===e.source)))&&(p=d.name.split("."), f=m(p, 1), v=f[
+                0
+              ], d.name=v), h=l.sort(((e, t)=>e.deleted-t.deleted)), n("setCurrentAttachUploads", h), o._.isEmpty(h)||h[
+                0
+              ].deleted?i("setCurrentAttachUploadId", 0):i("setCurrentAttachUploadId", h[
+                0
+              ].id), i("setSubmissionUploadsLoading", !1);
+              case 18:case"end":return r.stop()
+            }
+          }), r)
+        })))(), setCurrentSubmissions(e, t){
+          (0, e.commit)("setCurrentSubmissions", t)
+        }, updateCurrentSubmission(e, t){
+          var r=e.commit, n=e.getters, s=t.submission;
+          r("updateCurrentSubmission", {
+            submission:s, getters:n
+          }), r("updateMemberMarkStatus", {
+            submission:s, getters:n
+          }), r("updateSubmissionOfHomework", {
+            submission:s, getters:n
+          })
+        }, updateHomeworkAnnounceMarkStatus(e, t){
+          (0, e.commit)("updateHomeworkAnnounceMarkStatus", t)
+        }, updateMemberStatus(e, t){
+          (0, e.commit)("updateMemberStatus", {
+            getters:e.getters, status:t
+          })
+        }, updateSubmissionRecommend(e, t){
+          (0, e.commit)("updateSubmissionRecommend", {
+            getters:e.getters, status:t
+          })
+        }, updateSubmissionOfHomework(e, t){
+          (0, e.commit)("updateSubmissionOfHomework", {
+            getters:e.getters, submission:t
+          })
+        }, setSkipUnmarkedPopupStatus(e, t){
+          (0, e.commit)("setSkipUnmarkedPopupStatus", t)
+        }, resetState(e){
+          (0, e.commit)("resetState")
+        }, setCurrentSubmissionUploads(e, t){
+          var r=e.state, n=e.dispatch, s=o._.cloneDeep(r.currentSubmission);
+          s.submission_correct.uploads=t, n("setCurrentSubmission", s)
+        }
+      }, S={
+        currentMember:(e, t)=>!o._.isEmpty(t.filteredMembers)&&e.currentMemberId?o._.find(t.filteredMembers, {
+          id:e.currentMemberId
+        }):{
+        }, currentSubmission:e=>!o._.isEmpty(e.currentSubmissions)&&e.currentSubmissionId?o._.find(e.currentSubmissions, {
+          id:e.currentSubmissionId
+        }):{
+        }, currentAttachUpload:e=>!o._.isEmpty(e.currentAttachUploads)&&e.currentAttachUploadId?o._.find(e.currentAttachUploads, {
+          id:e.currentAttachUploadId
+        }):{
+        }, homeworkId:e=>o._.isEmpty(e.homework)?0:e.homework.id, submitByGroup:e=>!o._.isEmpty(e.homework)&&e.homework.submit_by_group, isResubmitOpen:e=>!o._.isEmpty(e.homework)&&e.homework.is_resubmit_open, members(e, t){
+          if(o._.isEmpty(e.homework))return[
+          ];
+          var r={
+            1:"submitted", 2:"makeUp", 3:"unsubmit", 4:"askedMakeUp", 5:"redo"
+          };
+          return o._.map(e.homework.submissions, (e=>{
+            var n, s=o._.cloneDeep(t.submitByGroup?e.group:e.student), i=t.submitByGroup?"":"(".concat(s.user_no, ")");
+            return s.label="".concat(s.name).concat(i), s.markedSubmitted=(null===(n=s.make_up_record)||void 0===n?void 0:n.submitted)||e.submission.marked_submitted, s.memberStatus=(0, a.eg)(t.isResubmitOpen, s), s.submitStatus=r[
+              s.status
+            ], s
+          }))
+        }, realUnmarkedMemberIds:(e, t)=>new Set(o._.filter(t.members, (e=>"unmarked"===e.mark)).map((e=>e.id))), filteredMembers(e, t){
+          var r=[
+          ];
+          r="unmarked"===e.currentMarkStatus?t.members.filter((t=>e.unmarkedMemberIds.has(t.id))):"all"===e.currentMarkStatus?t.members:o._.filter(t.members, (t=>t.mark===e.currentMarkStatus));
+          var n=e.currentSubmitStatuses.length;
+          return 0===n||4===n?r:o._.filter(r, (t=>e.currentSubmitStatuses.includes(t.submitStatus)))
+        }, submissionsOfCurrentMember:e=>o._.filter(e.currentSubmissions, a.bC), submissionSubmitByInstructor:e=>o._.find(e.currentSubmissions, a.$D), homeworkData:e=>o._.isEmpty(e.homework)?{
+        }
+        :(0, i.camelizeKeys)(e.homework.data), memberMarkedCount:(e, t)=>o._.filter(t.members, (e=>"marked"===e.mark)).length, memberUnmarkedCount:(e, t)=>o._.filter(t.members, (e=>"marked"!==e.mark)).length, submissionsOfHomework:e=>o._.isEmpty(e.homework)?[
+        ]
+        :e.homework.submissions, isLarkUpload(e, t){
+          var r;
+          return"LARK"===(null===(r=t.currentAttachUpload)||void 0===r?void 0:r.source)
+        }, submissionOfHomework:(e, t)=>t.submissionsOfHomework.find((r=>e.currentMemberId===(t.submitByGroup?r.group.id:r.student.id)))
+      };
+      const C={
+        namespaced:!0, state:y(), actions:w, getters:S, mutations:_
+      }
+    }, 154383:(e, t, r)=>{
+      var n=r(248124), s=r(302543), o=r(756029), i=r(793110);
+      r(215195), r(269193), r(67500);
+      var a=r(592207);
+      function u(e, t){
+        return function(e){
+          if(Array.isArray(e))return e
+        }
+        (e)||function(e, t){
+          if("undefined"==typeof Symbol||!(Symbol.iterator in Object(e)))return;
+          var r=[
+          ], n=!0, s=!1, o=void 0;
+          try{
+            for(var i, a=e[
+              Symbol.iterator
+            ]
+            ();
+            !(n=(i=a.next()).done)&&(r.push(i.value), !t||r.length!==t);
+            n=!0);
+          }
+          catch(e){
+            s=!0, o=e
+          }
+          finally{
+            try{
+              n||null==a.return||a.return()
+            }
+            finally{
+              if(s)throw o
+            }
+          }
+          return r
+        }
+        (e, t)||function(e, t){
+          if(!e)return;
+          if("string"==typeof e)return c(e, t);
+          var r=Object.prototype.toString.call(e).slice(8, -1);
+          "Object"===r&&e.constructor&&(r=e.constructor.name);
+          if("Map"===r||"Set"===r)return Array.from(e);
+          if("Arguments"===r||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(r))return c(e, t)
+        }
+        (e, t)||function(){
+          throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")
+        }
+        ()
+      }
+      function c(e, t){
+        (null==t||t>e.length)&&(t=e.length);
+        for(var r=0, n=new Array(t);
+        r<t;
+        r++)n[
+          r
+        ]
+        =e[
+          r
+        ];
+        return n
+      }
+      function l(e, t, r, n, s, o, i){
+        try{
+          var a=e[
+            o
+          ]
+          (i), u=a.value
+        }
+        catch(e){
+          return void r(e)
+        }
+        a.done?t(u):Promise.resolve(u).then(n, s)
+      }
+      r(207452);
+      var d=r(571478), m=r(966491);
+      e.exports=[
+        "$rootScope", "$scope", "$http", "$routeParams", "toastr", "modelHelper", "Course", "activityRepository", "$window", "$timeout", "classroomRepository", "$q", "commonApi", function(e, t, r, c, p, f, b, v, h, g, y, _, w){
+          var S, C, x=n("#courseId").val(), k=d(t);
+          t.enableScoreItemGroup=(null===(S=h.featureToggles)||void 0===S?void 0:S.enableScoreItemGroup)||!1, t.loading=!1, t.errors={
+          }, t.isAllowAddFeedback=!0;
+          var j=null;
+          t.scoreItemGroups=[
+          ];
+          var I=function(){
+            var e, n=(e=a.mark((function e(n){
+              var s;
+              return a.wrap((function(e){
+                for(;
+                ;
+                )switch(e.prev=e.next){
+                  case 0:s=function(e){
+                    t.scoreItemGroups=e.data.items, t.classroom.score_item_scored&&!t.classroom.score_item_group_id&&(t.classroom.score_item_group_id=t.scoreItemGroups[
+                      0
+                    ].id)
+                  }, r.get("/api/courses/".concat(n, "/score-item-groups?without_score_item=true")).then(s);
+                  case 2:case"end":return e.stop()
+                }
+              }), e)
+            })), function(){
+              var t=this, r=arguments;
+              return new Promise((function(n, s){
+                var o=e.apply(t, r);
+                function i(e){
+                  l(o, n, s, i, a, "next", e)
+                }
+                function a(e){
+                  l(o, n, s, i, a, "throw", e)
+                }
+                i(void 0)
+              }))
+            });
+            return function(e){
+              return n.apply(this, arguments)
+            }
+          }
+          ();
+          t.enableScoreItemGroup&&I(x), t.$watch("classroom.score_item_scored", (()=>{
+            t.classroom&&(t.classroom.score_item_scored?t.classroom.score_item_group_id||(t.classroom.score_item_group_id=t.scoreItemGroups[
+              0
+            ].id):t.classroom.score_item_group_id=0)
+          }));
+          var P=function(e){
+            return t.errors=e.errors, t.errors.chapter_id=e.errors.module_id, e.errors.subjects_rule&&e.errors.subjects_rule.duration&&(t.subjects_rule.duration=null), k.hide()
+          }, A=function(e){
+            var r;
+            return e.syllabus_id?r=s.find(t.modulesAndSyllabuses, {
+              id:e.syllabus_id, type:"syllabus"
+            }):e.module_id&&(r=s.find(t.modulesAndSyllabuses, {
+              id:e.module_id, type:"module"
+            })), e.syllabus_summary=r?r.name:""
+          };
+          t.save=function(){
+            k.show();
+            var e=s.find(t.modulesAndSyllabuses, {
+              value:t.chapter.id
+            });
+            return e?(t.classroom.syllabus_id=e.syllabusId, t.classroom.module_id=e.moduleId):(delete t.classroom.syllabus_id, delete t.classroom.module_id), t.classroom.using_phase=t.usingPhase, t.classroom.teaching_model=t.activityTeachingModel, "classroom"===t.classroom.type?E():T()
+          };
+          var E=function(){
+            return t.classroom.subjects_rule=t.subjects_rule, t.$broadcast("getSubjectControlData", (e=>{
+              t.classroom.subject_control_rule=e
+            })), t.classroom.subjects_rule&&!t.classroom.subjects_rule.subject_by_subject_control&&(t.classroom.subjects_rule.is_timed=t.classroom.subject_control_rule.is_timed, t.classroom.subjects_rule.duration=m.hmsToSeconds(t.classroom.subject_control_rule.duration_hms)), t.classroom.isQuizPublic=t.subjects_rule.public, t.classroom.isQuizControlBySubject=t.subjects_rule.subject_by_subject_control, t.classroom.announce_answer_status=t.ui.announce_answer_status, "timed_announce"===t.classroom.announce_answer_status&&(t.classroom.announce_answer_time=t.ui.announce_answer_time), t.classroom.id?r.put("/api/classroom-exams/".concat(t.classroom.id), t.classroom).success(p.decorateSuccess((function(){
+              return t.ui.selectedActivityId?t.isBlueprintCourse?h.location.href="/course/".concat(x, "/learning-activity/full-screen#/classroom/").concat(t.classroom.id):h.location.href="/course/".concat(x, "/learning-activity#/classroom/").concat(t.classroom.id):(k.hide(), n("#classroom-exam-popup").foundation("reveal", "close"), A(t.classroom), t.$emit("activityUpdated", t.classroom), e.$emit("refreshClassroomData", t.classroom))
+            }))).error(p.decorateError(P)):r.post("/api/courses/".concat(x, "/classroom-exams"), t.classroom).success(p.decorateSuccess((function(e){
+              return statistics.track({
+                activity_id:e.id, activity_type:"classroom_exam", action:statistics.enums.Action.create, mode:statistics.enums.Mode.normal, channel:statistics.enums.Channel.web
+              }), k.hide(), n("#classroom-exam-popup").foundation("reveal", "close"), t.isBlueprintCourse?h.location.href="/course/".concat(x, "/learning-activity/full-screen#/classroom/").concat(e.id):h.location.href="/course/".concat(x, "/learning-activity#/classroom/").concat(e.id)
+            }))).error(p.decorateError(P))
+          }, T=function(s, o){
+            return t.classroom.is_allow_add_feedback=t.isAllowAddFeedback, s=function(e){
+              return statistics.track({
+                activity_id:e.id, activity_type:"feedback", action:statistics.enums.Action.create, mode:statistics.enums.Mode.normal, channel:statistics.enums.Channel.web, point:1
+              }), k.hide(), n("#feedback-popup").foundation("reveal", "close"), t.isBlueprintCourse?h.location.href="/course/".concat(x, "/learning-activity/full-screen#/feedback/").concat(e.id):h.location.href="/course/".concat(x, "/learning-activity#/feedback/").concat(e.id)
+            }, o=function(r){
+              return statistics.track({
+                activity_id:t.classroom.id, activity_type:"feedback", action:statistics.enums.FeedbackAction.update, mode:statistics.enums.Mode.normal, channel:statistics.enums.Channel.web
+              }), t.ui.selectedActivityId?t.isBlueprintCourse?h.location.href="/course/".concat(x, "/learning-activity/full-screen#/feedback/").concat(t.classroom.id):h.location.href="/course/".concat(x, "/learning-activity#/feedback/").concat(t.classroom.id):(k.hide(), n("#feedback-popup").foundation("reveal", "close"), t.classroom.data.is_allow_add_feedback=r.is_allow_add_feedback, A(t.classroom), t.$emit("activityUpdated", t.classroom), e.$emit("refreshFeedbackData", t.classroom))
+            }, t.classroom.id?r.put("/api/feedback-activities/".concat(t.classroom.id), t.classroom).success(p.decorateSuccess(o)).error(p.decorateError(P)):r.post("/api/courses/".concat(x, "/feedback-activities"), t.classroom).success(p.decorateSuccess(s)).error(p.decorateError(P))
+          }, M=function(e){
+            return t.inPopup=!1, t.course=o.copy(t.$parent.course), t.modulesAndSyllabuses=null, g((()=>t.modulesAndSyllabuses=f.modulesAndSyllabuses(t.course))), e()
+          }, $=function(e){
+            t.ui={
+              selectedActivityId:0
+            }, t.activitiesNotInModule=s.filter(t.course.activities, (t=>t.type===e&&!t.module_id)), t.usingPhase="unspecified", t.activityTeachingModel="online";
+            return D().then((function(){
+              t.subjects_rule.is_timed=!1
+            })), v.initPublishInfo(t, t.classroom), C()
+          }, U=function(e){
+            var r, n=arguments.length>1&&void 0!==arguments[
+              1
+            ]
+            ?arguments[
+              1
+            ]
+            :0;
+            return j=e.id, t.classroom=e, t.currentActivity=t.classroom, t.ui={
+              selectedActivityId:n
+            }, t.isAllowAddFeedback=!1!==(null===(r=e.data)||void 0===r?void 0:r.is_allow_add_feedback), t.usingPhase=t.classroom.using_phase?t.classroom.using_phase:"unspecified", t.activityTeachingModel=t.classroom.teaching_model?t.classroom.teaching_model:"online", D(), v.initPublishInfo(t, t.classroom), C()
+          };
+          t.IsSubjectControlReadOnly=e=>e&&[
+            "start", "finish"
+          ].includes(e.status), t.changeActivity=function(e){
+            if(0===t.ui.selectedActivityId)return $(e);
+            var r=s.find(t.activitiesNotInModule, {
+              id:t.ui.selectedActivityId
+            });
+            return U(o.copy(r), t.ui.selectedActivityId)
+          };
+          var z=function(e, r){
+            return t.showSelectActivity=e&&e.showSelectActivity, M((function(){
+              return t.classroom={
+                title:"", syllabus_id:e.syllabusId, module_id:e.moduleId, score_percentage:"0", type:r, score_item_group_id:0, score_item_scored:!1
+              }, w.getCourseScoreType(t.course.id, "classroom").then((e=>{
+                t.classroom.score_type=e.data.score_type
+              })), $(r)
+            }))
+          };
+          t.$on("bindClassroomForNew", ((e, t)=>z(t, "classroom"))), t.$on("bindFeedbackForNew", ((e, t)=>z(t, "feedback")));
+          var O=function(e, r){
+            t.showSelectActivity=!1;
+            var n=o.copy(r);
+            return M((()=>U(n)))
+          };
+          t.$on("bindClassroomForEdit", O), t.$on("bindFeedbackForEdit", O), t.reset=()=>t.errors={
+          }, t.validateSliderModel=e=>""!==e&&!m.endsWith(e, "."), t.verifySliderModel=e=>parseFloat(e)>t.leftScorePercentage;
+          var D=function(){
+            if("classroom"===t.classroom.type){
+              var e=y.initSubjectsRule(j), r=v.getLeftScorePercentage(x);
+              return _.all([
+                e, r
+              ]).then((function(){
+                var e=Array.from(arguments.length<=0?void 0:arguments[
+                  0
+                ]), r=u(e, 2), n=r[
+                  0
+                ], o=r[
+                  1
+                ];
+                t.subjects_rule=n, t.classroom.subjects_rule=n;
+                var a=new i(t.classroom.score_percentage);
+                return t.leftScorePercentage=new i(s.min([
+                  o.plus(a), 100
+                ]))
+              }))
+            }
+          };
+          return C=function(){
+            if("classroom"===t.classroom.type)return t.ui.announce_answer_status=t.classroom.announce_answer_status||"immediate_announce", t.ui.announce_answer_time=t.classroom.announce_answer_time||""
+          }
+        }
+      ]
+    }, 161788:(e, t, r)=>{
+      var n=r(248124), s=r(302543), o=r(793110);
+      function i(e, t){
+        return function(e){
+          if(Array.isArray(e))return e
+        }
+        (e)||function(e, t){
+          if("undefined"==typeof Symbol||!(Symbol.iterator in Object(e)))return;
+          var r=[
+          ], n=!0, s=!1, o=void 0;
+          try{
+            for(var i, a=e[
+              Symbol.iterator
+            ]
+            ();
+            !(n=(i=a.next()).done)&&(r.push(i.value), !t||r.length!==t);
+            n=!0);
+          }
+          catch(e){
+            s=!0, o=e
+          }
+          finally{
+            try{
+              n||null==a.return||a.return()
+            }
+            finally{
+              if(s)throw o
+            }
+          }
+          return r
+        }
+        (e, t)||function(e, t){
+          if(!e)return;
+          if("string"==typeof e)return a(e, t);
+          var r=Object.prototype.toString.call(e).slice(8, -1);
+          "Object"===r&&e.constructor&&(r=e.constructor.name);
+          if("Map"===r||"Set"===r)return Array.from(e);
+          if("Arguments"===r||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(r))return a(e, t)
+        }
+        (e, t)||function(){
+          throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")
+        }
+        ()
+      }
+      function a(e, t){
+        (null==t||t>e.length)&&(t=e.length);
+        for(var r=0, n=new Array(t);
+        r<t;
+        r++)n[
+          r
+        ]
+        =e[
+          r
+        ];
+        return n
+      }
+      r(215195), r(700533), e.exports=[
+        "$rootScope", "$scope", "$routeParams", "toastr", "classroomRepository", "$q", "ExamHelper", "$window", "classroomApi", function(e, t, r, a, u, c, l, d, m){
+          delete e.progressUi;
+          var p=n("#userRole").val();
+          e.context||(e.context={
+          }), e.$on("refreshClassroomData", ((e, t)=>f(t)));
+          var f=e=>t.classroom=t.currentActivity=e;
+          t.saveSubjectsToLib=()=>e.$broadcast("saveSubjectsToLib", {
+            classroomId:t.classroomId, subjectCount:t.subjects.length
+          }), t.showSubjectsSummary=(e, t, r)=>l.getSubjectsSummary(e, t, r), t.manageSubjects=function(e){
+            return m.getClassroomExam(e.id, (function(r){
+              return r.status&&[
+                "start", "finish"
+              ].includes(r.status)?(a.error(t.classroomStatusChangedMessage), u.deleteClassroomCache(e.id), b()):d.location.href="/course/classroom-exam/".concat(e.id, "/subjects")
+            }), (function(){
+            }))
+          }, t.startClassroom=function(e){
+            return u.startClassroom(e.id, (function(r){
+              return statistics.track({
+                activity_id:e.id, activity_type:"classroom_exam", action:statistics.enums.Action.start, mode:statistics.enums.Mode.normal, channel:statistics.enums.Channel.web
+              }), e.is_quiz_control_by_subject?t.progressClassroom(e):(r.syllabus_summary=e.syllabus_summary, r.isQuizPublic=t.subjects_rule.public, r.isQuizControlBySubject=t.subjects_rule.subject_by_subject_control, f(r))
+            }), (()=>b()))
+          }, t.finishClassroom=function(e){
+            return u.finishClassroom(e.id, (r=>{
+              r.syllabus_summary=e.syllabus_summary, r.isQuizPublic=t.subjects_rule.public, r.isQuizControlBySubject=t.subjects_rule.subject_by_subject_control, f(r), statistics.track({
+                activity_id:e.id, activity_type:"classroom_exam", action:statistics.enums.Action.end, mode:statistics.enums.Mode.normal, channel:statistics.enums.Channel.web
+              })
+            }), (()=>b()))
+          }, t.progressClassroom=e=>d.location.href="/course/classroom-exam/".concat(e.id, "/subjects#/progress");
+          var b=function(){
+            var r=u.initClassroom(t.classroomId), n=u.initSubjectsRule(t.classroomId);
+            return u.initSubjects(t.classroomId).then((function(e){
+              return t.subjects=e.subjects, t.groupedSubjects=l.groupSubjects(e.subjects), t.totalScore=s.reduce(e.subjects, ((e, t)=>e.plus(new o(t.point))), new o(0))
+            })), c.all([
+              r, n
+            ]).then((function(){
+              var r=Array.from(arguments.length<=0?void 0:arguments[
+                0
+              ]), n=i(r, 2), s=n[
+                0
+              ], o=n[
+                1
+              ];
+              o&&s&&("Student"===p&&t.$emit("onActivityLoaded", s), t.subjects_rule=o, e.context.classroomId=s.id, e.context.classroom=t.classroom=s, t.currentActivity=t.classroom, t.classroom.isQuizPublic=t.subjects_rule.public, t.classroom.isQuizControlBySubject=t.subjects_rule.subject_by_subject_control)
+            }))
+          };
+          b()
+        }
+      ]
+    }, 173447:(e, t, r)=>{
+      var n=r(302543);
+      e.exports=[
+        "$http", "toastr", function(e, t){
+          return{
+            getStorageUsed:r=>e.get("/api/user/storage-used").success(r).error(t.decorateError()), createLink:t=>e.post("/api/user/links", t), editLink:(t, r)=>e.put("/api/user/links/".concat(t), r), getUploadReferenceDetail(t, r, s, o, i){
+              var a=arguments.length>5&&void 0!==arguments[
+                5
+              ]
+              ?arguments[
+                5
+              ]
+              :n.noop;
+              return e.get("/api/uploads/".concat(t, "/references"), {
+                params:{
+                  page:r, page_size:s, conditions:o
+                }
+              }).success(i).error(a)
+            }, getResourceReferenceDetail(t, r, s, o, i){
+              var a=arguments.length>5&&void 0!==arguments[
+                5
+              ]
+              ?arguments[
+                5
+              ]
+              :n.noop;
+              return e.get("/api/resources/".concat(t, "/activities"), {
+                params:{
+                  page:r, page_size:s, conditions:o
+                }
+              }).success(i).error(a)
+            }, uploadFolder:(t, r, n, s)=>e.post("/api/uploads", {
+              parent_id:t, name:r, is_folder:n
+            }).error(s)
+          }
+        }
+      ]
+    }, 189495:(e, t, r)=>{
+      r(269193);
+      var n=r(966491);
+      e.exports=[
+        "$scope", "$window", (e, t)=>{
+          e.subject_control_rule={
+            is_timed:!1, duration_hms:null
+          }, e.duration_error=null, e.$watch("errors", (t=>{
+            t&&t.subjects_rule&&t.subjects_rule.duration&&(e.duration_error=t.subjects_rule.duration)
+          }), !0), e.subjectControlTimeChange=t=>{
+            var r=t.detail[
+              0
+            ];
+            e.subject_control_rule.is_timed=r.isTimed, e.subject_control_rule.duration_hms=r.time, e.$apply()
+          }, e.loadComponents=()=>{
+            Promise.all([
+              r.e(57216), r.e(95738), r.e(79278), r.e(1561), r.e(36972)
+            ]).then(r.bind(r, 678264))
+          }, e.$watch("subjects_rule.is_timed", (t=>{
+            void 0!==t&&(e.subject_control_rule.is_timed=t||!1)
+          })), e.$watch("subjects_rule.duration", (t=>{
+            void 0!==t&&(e.subject_control_rule.duration_hms=t?n.secondsToHms(t, !0):null)
+          })), e.$watch("subjects_rule.subject_by_subject_control", (t=>{
+            !0===t&&(e.subject_control_rule={
+              is_timed:!1, duration_hms:null
+            }, e.duration_error=null, e.errors.subjects_rule=null)
+          })), e.initSubjectControlRule=()=>{
+            e.classroom&&e.classroom.subject_control_rule?e.subject_control_rule=e.classroom.subject_control_rule:e.subject_control_rule={
+              is_timed:!1, duration_hms:null
+            }
+          }, e.getSubjectControlData=()=>e.subject_control_rule, t.addEventListener("subject-control-time-change", (t=>{
+            t.detail&&(e.subject_control_rule.is_timed=t.detail.isTimed, e.subject_control_rule.duration_hms=t.detail.time, e.$apply())
+          })), e.$on("getSubjectControlData", ((t, r)=>{
+            r(e.getSubjectControlData())
+          }))
+        }
+      ]
+    }, 240328:(e, t, r)=>{
+      r(158649);
+      var n=r(966491);
+      e.exports=[
+        "$rootScope", "$scope", "$timeout", "toastr", "filesApi", function(e, t, r, s, o){
+          var i;
+          t.humanizeBytes=n.humanizeBytes, t.usedStorage="--", t.assignedStorage="--", t.unusedStorage="--", t.storageUsageRate="0%", r((function(){
+            return i()
+          })), e.$on("refreshStorageBar", (()=>i()));
+          var a=function(e, t){
+            var r=Math.round(e/t*100);
+            return r>100?"100%":"".concat(r, "%")
+          };
+          t.calcBgColor=()=>{
+            var e=t.storageUsageRate.split("%")[
+              0
+            ];
+            return e<80?"used":e>=80&&e<100?"warning":"insufficient"
+          };
+          return i=function(){
+            return o.getStorageUsed((function(e){
+              var n=e.storage_used, s=t.maxSize;
+              return t.ui={
+                usedPercent:()=>a(n, s), unusedPercent(){
+                  return e=n, t=s, (r=Math.round((t-e)/t*100))<0?"0%":"".concat(r, "%");
+                  var e, t, r
+                }, backgroundColor(){
+                  return(e=n)/(t=s)<.8?"#20bec8":e/t<1&&e/t>=.8?"#ff9700":"#f85353";
+                  var e, t
+                }, usedRadius:()=>function(e, t){
+                  if(Math.round(e/t*100)>=100)return"3px"
+                }
+                (n, s), unusedRadius:()=>function(e, t){
+                  if(Math.round(e/t*100)<=0)return"3px"
+                }
+                (n, s), unUsedSpace:()=>function(e, t){
+                  return t-e
+                }
+                (n, s)
+              }, r((function(){
+                return function(e, r){
+                  t.usedStorage=t.humanizeBytes(e, !1, "floor"), t.assignedStorage=t.humanizeBytes(r, !1, "floor"), t.storageUsageRate=a(e, r), t.unusedStorage=t.humanizeBytes(r-e, !1, "floor")
+                }
+                (n, s)
+              }))
+            }))
+          }
+        }
+      ]
+    }, 280748:e=>{
+      e.exports=[
+        "$http", "toastr", function(e, t){
+          return{
+            getBulletins(r, n, s, o, i){
+              var a={
+                bulletin_id:arguments.length>5&&void 0!==arguments[
+                  5
+                ]
+                ?arguments[
+                  5
+                ]
+                :null, page:r, page_size:n, conditions:s
+              };
+              return e.get("/api/org-bulletin/bulletins", {
+                params:a
+              }).success(o).error(t.decorateError(i))
+            }, getUnreadBulletins:(r, n)=>e.get("/api/org-bulletin/bulletins?fields=id", {
+              params:{
+                conditions:{
+                  unread:!0
+                }
+              }
+            }).success(r).error(t.decorateError(n)), getDepartments(r, n){
+              var s=arguments.length>3&&void 0!==arguments[
+                3
+              ]
+              ?arguments[
+                3
+              ]
+              :"", o="fields=id,name,stopped&no-intercept=true&for-management=true&permission_obj=".concat(arguments.length>2&&void 0!==arguments[
+                2
+              ]
+              ?arguments[
+                2
+              ]
+              :"", "&permission_act=").concat(s);
+              return e.get("/api/departments?".concat(o)).success(r).error(t.decorateError(n))
+            }, getClassifications:(r, n)=>e.get("/api/org-bulletin/classifications").success(r).error(t.decorateError(n)), addBulletin:(r, n, s)=>e.post("/api/org-bulletin/bulletins", r).success(t.decorateSuccess(n)).error(t.decorateError(s)), deleteBulletin:(r, n, s)=>e.delete("/api/org-bulletin/bulletins/".concat(r)).success(t.decorateSuccess(n)).error(t.decorateError(s)), editBulletin:(r, n, s)=>e.put("/api/org-bulletin/bulletins/".concat(r.id), r).success(t.decorateSuccess(n)).error(t.decorateError(s)), markBulletinAsRead:(r, n, s)=>e.post("/api/org-bulletin/bulletins/".concat(r, "/read")).success(t.decorateSuccess(n)).error(t.decorateError(s))
+          }
+        }
+      ]
+    }, 326834:(e, t, r)=>{
+      var n=r(248124), s=r(302543), o=r(287092);
+      r(219693), r(334867), r(269193), r(640173);
+      var i=r(592207);
+      function a(e, t){
+        var r;
+        if("undefined"==typeof Symbol||null==e[
+          Symbol.iterator
+        ]){
+          if(Array.isArray(e)||(r=function(e, t){
+            if(!e)return;
+            if("string"==typeof e)return u(e, t);
+            var r=Object.prototype.toString.call(e).slice(8, -1);
+            "Object"===r&&e.constructor&&(r=e.constructor.name);
+            if("Map"===r||"Set"===r)return Array.from(e);
+            if("Arguments"===r||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(r))return u(e, t)
+          }
+          (e))||t&&e&&"number"==typeof e.length){
+            r&&(e=r);
+            var n=0, s=function(){
+            };
+            return{
+              s, n:function(){
+                return n>=e.length?{
+                  done:!0
+                }
+                :{
+                  done:!1, value:e[
+                    n++
+                  ]
+                }
+              }, e:function(e){
+                throw e
+              }, f:s
+            }
+          }
+          throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")
+        }
+        var o, i=!0, a=!1;
+        return{
+          s:function(){
+            r=e[
+              Symbol.iterator
+            ]
+            ()
+          }, n:function(){
+            var e=r.next();
+            return i=e.done, e
+          }, e:function(e){
+            a=!0, o=e
+          }, f:function(){
+            try{
+              i||null==r.return||r.return()
+            }
+            finally{
+              if(a)throw o
+            }
+          }
+        }
+      }
+      function u(e, t){
+        (null==t||t>e.length)&&(t=e.length);
+        for(var r=0, n=new Array(t);
+        r<t;
+        r++)n[
+          r
+        ]
+        =e[
+          r
+        ];
+        return n
+      }
+      function c(e, t, r, n, s, o, i){
+        try{
+          var a=e[
+            o
+          ]
+          (i), u=a.value
+        }
+        catch(e){
+          return void r(e)
+        }
+        a.done?t(u):Promise.resolve(u).then(n, s)
+      }
+      function l(e){
+        return function(){
+          var t=this, r=arguments;
+          return new Promise((function(n, s){
+            var o=e.apply(t, r);
+            function i(e){
+              c(o, n, s, i, a, "next", e)
+            }
+            function a(e){
+              c(o, n, s, i, a, "throw", e)
+            }
+            i(void 0)
+          }))
+        }
+      }
+      r(207452);
+      var d=r(571478);
+      r(552979).default;
+      e.exports=[
+        "$rootScope", "$scope", "$routeParams", "$http", "toastr", "ExamHelper", "ExamSubject", "classroomRepository", "$q", function(e, t, r, u, c, m, p, f){
+          t.inExam=!0, t.examId=r.examId||n("#examId").val(), t.classroomId=r.classroomId||n("#classroomId").val(), e.viewSubmissionDetail=!0, t.examineesId=r.examineeId, t.submissionId=r.submissionId, t.subjects=[
+          ], t.currentExaminee=null, t.ui=m.getUIHelper(), t.submissionData={
+          };
+          var b=d(t), v=function(){
+            t.classroomId&&f.getClassroomExamSubmissions(t.classroomId, t.submissionId).then((function(e){
+              t.instanceId=e.instance_id, t.subjects=s.map(e.subjects_data.subjects, (e=>p.createSubjectBySavedSubject(e, !1))), t.auto_mark=e.auto_mark;
+              var r=e.submission_data.subjects, n=e.correct_answers_data.correct_answers, o=e.submission_score_data, i=e.submission_comment_data;
+              return m.updateSubjectsDetailData(t.subjects, r, n, o, i), g(), y()
+            }))
+          }, h=function(){
+            var r=l(i.mark((function r(){
+              var n, s;
+              return i.wrap((function(r){
+                for(;
+                ;
+                )switch(r.prev=r.next){
+                  case 0:return r.next=2, f.initExaminees(t.classroomId, !0, [
+                    t.examineesId
+                  ], !0);
+                  case 2:return(n=r.sent).length>0&&(e.currentExaminee=t.currentExaminee=n[
+                    0
+                  ], (s=t.currentExaminee.submissions[
+                    0
+                  ])&&(!s.score&&t.currentExaminee.score&&(s.score=t.currentExaminee.score), t.submissionData=s, e.submissionData=s)), r.abrupt("return", t.currentExaminee);
+                  case 5:case"end":return r.stop()
+                }
+              }), r)
+            })));
+            return function(){
+              return r.apply(this, arguments)
+            }
+          }
+          (), g=function(){
+            t.subjectList=[
+            ];
+            var e, r=0, n=a(t.subjects);
+            try{
+              for(n.s();
+              !(e=n.n()).done;
+              ){
+                var s=e.value;
+                "text"!==s.type&&(r+=1, s.number="".concat(r), t.subjectList.push(s))
+              }
+            }
+            catch(e){
+              n.e(e)
+            }
+            finally{
+              n.f()
+            }
+            return t.rowList=o.range(0, Math.ceil(t.subjectList.length/5)-1, !0), t.columnList=[
+              0, 1, 2, 3, 4
+            ]
+          }, y=function(){
+            var e=0, r=0, n=0, o=0, i=0, a=0;
+            t.manualEditMark=!0, s.each(t.subjectList, (function(t){
+              if("short_answer"!==t.type){
+                var u=parseFloat(t.score);
+                return s.isFinite(u)&&(a+=1), n+=1, e+=parseFloat(t.score||0)
+              }
+              o+=1;
+              var c=parseFloat(t.score);
+              if(s.isFinite(c))return r+=c, i+=1
+            }));
+            var u=n>0, c=o>0&&o===i, l=0===o||c;
+            0===o&&(t.manualEditMark=a===n&&null!==t.submissionData.score), t.objectiveQuestionScore=u?parseFloat(e.toFixed(1)):"--", t.objectiveQuestionScore=parseFloat(e.toFixed(1)), t.subjectiveQuestionScore=c?parseFloat(r.toFixed(1)):"--", t.score="--", t.manualEditMark&&(t.score=l?parseFloat((e+r).toFixed(1)):"--")
+          };
+          t.getSubjectIndex=function(e, r){
+            if(t.subjects)return m.getSubjectIndex(e, r, t.subjects)
+          }, t.isNoScore=function(e){
+            return!(!e||void 0!==e.score&&""!==e.score&&null!==e.score)
+          }, t.getIndex=(e, t)=>5*e+t, t.scrollTo=function(e){
+            var t, r=n("li#subject-".concat(e).replace(".", "\\.")).offset().top;
+            t="1"===e||e.indexOf(".1")>0?133:100;
+            var s=r+n("div#left-frame").scrollTop()-t;
+            return n("div#left-frame").animate({
+              scrollTop:s
+            }, 500), !0
+          };
+          var _=function(e){
+            var r=arguments.length>1&&void 0!==arguments[
+              1
+            ]
+            &&arguments[
+              1
+            ];
+            r&&(t.submissionData.id=e), h()
+          }, w=function(e, t){
+            if(!t.parent_id)return s.find(e, {
+              id:t.subject_id
+            });
+            var r=s.find(e, {
+              id:t.parent_id
+            });
+            return s.find(r.sub_subjects, {
+              id:t.subject_id
+            })
+          }, S=(e, r)=>(()=>{
+            for(var n=[
+            ], o=0;
+            o<e.length;
+            o++){
+              var i=e[
+                o
+              ];
+              if(i.score){
+                var a=s.find(t.subjects, (e=>e.id===r[
+                  o
+                ].subject_id));
+                a=w(t.subjects, r[
+                  o
+                ]), n.push(a.error=i.score)
+              }
+              else n.push(void 0)
+            }
+            return n
+          })(), C=(e, t, r)=>statistics.track({
+            activity_id:e, activity_type:"classroom", action:statistics.enums.Action.give_score, mode:statistics.enums.Mode.normal, channel:statistics.enums.Channel.web, target_info:{
+              id:t, type:r, is_student:!0
+            }
+          }), x=function(e){
+            var r, n=[
+            ];
+            return r=e?[
+              e
+            ]
+            :t.subjects, s.each(r, (function(e){
+              "short_answer"!==e.type&&"fill_in_blank"!==e.type||n.push((e=>({
+                subject_id:e.id, score:e.score, instance_id:t.instanceId, parent_id:e.parent_id
+              }))(e))
+            })), n
+          };
+          return t.autoSaveScore=function(e, r){
+            return function(){
+              var e=arguments.length>1?arguments[
+                1
+              ]
+              :void 0, r=arguments.length>2?arguments[
+                2
+              ]
+              :void 0, n=x(arguments.length>0&&void 0!==arguments[
+                0
+              ]
+              &&arguments[
+                0
+              ]), o=function(e){
+                if(b.hide(), e.message&&c.warning(e.message), r&&r(), e.errors)return S(e.errors.graded_subjects, n)
+              }, i=function(r){
+                b.hide(), c.success();
+                var n=t.currentExaminee;
+                n.score=r.exam_score;
+                var o=s.find(t.currentExaminee.submissions, {
+                  id:parseInt(t.submissionData.id)
+                });
+                if(o.score=r.submission_score, o.marked=r.marked, n.waitingForScore=!1, _(o.id), v(), C(t.classroomId, t.currentExaminee.id, "personal"), t.$emit("saveScoreSuccess"), e)return e()
+              }, a=()=>({
+                examinee_id:t.currentExaminee.id, graded_subjects:n, submission_id:t.submissionData.id
+              });
+              return b.show(), u.post("/api/classroom/".concat(t.classroomId, "/give-score"), a()).success(i).error(o)
+            }
+            (e, r)
+          }, t.$on("$destroy", (()=>{
+            document.body.style.overflow="auto"
+          })), function(){
+            var e=l(i.mark((function e(){
+              return i.wrap((function(e){
+                for(;
+                ;
+                )switch(e.prev=e.next){
+                  case 0:return v(), document.body.style.overflow="hidden", e.next=4, h();
+                  case 4:case"end":return e.stop()
+                }
+              }), e)
+            })));
+            return function(){
+              return e.apply(this, arguments)
+            }
+          }
+          ()()
+        }
+      ]
+    }, 474880:(e, t, r)=>{
+      r(9810)
+    }, 491494:(e, t, r)=>{
+      var n=r(248124), s=r(756029);
+      r(640173), r(850785), e.exports=function(e, t, r){
+        var o, i=!(arguments.length>3&&void 0!==arguments[
+          3
+        ])||arguments[
+          3
+        ], a=!(arguments.length>4&&void 0!==arguments[
+          4
+        ])||arguments[
+          4
+        ], u=arguments.length>5&&void 0!==arguments[
+          5
+        ]
+        &&arguments[
+          5
+        ], c=arguments.length>6&&void 0!==arguments[
+          6
+        ]
+        &&arguments[
+          6
+        ], l=null!==(o=e.attr("data-title"))&&void 0!==o?o:e.attr("placeholder"), d=()=>{
+          var e=0;
+          return n(".ms-drop ul li span span").each((function(){
+            e=this.offsetWidth>e?this.offsetWidth:e
+          })), n(".ms-drop").css("width", "".concat(e+45, "px")), e+45
+        };
+        e.multipleSelect({
+          filter:a, minimumCountSelected:1, placeholder:l, single:!i, filterPlaceholder:n("#filter-placeholder").text(), selectAll:u, formatCountSelected:(e, t)=>n("#selected-text").text().replace("#", e), formatAllSelected:()=>n("#selected-text-all").text(), textTemplate:function(e){
+            var t=e[
+              0
+            ].title.length>0?e[
+              0
+            ].title:e.html(), r=e[
+              0
+            ].value;
+            return'<span title="'.concat(t, '" value=').concat(r, ">").concat(e.html(), "</span>")
+          }, formatNoMatchesFound:()=>"", onClick:function(){
+            var t=s.element(e).controller("ngModel");
+            t.$viewValue=e.multipleSelect("getSelects"), t.$commitViewValue();
+            var r=e.scope();
+            r.$emit("multiSelect.changed"), "function"!=typeof r.search||r.disbaleSearch||r.$applyAsync((()=>r.search()))
+          }, onOpen:function(){
+            c&&d()
+          }
+        })
+      }
+    }, 494082:(e, t, r)=>{
+      r.d(t, {
+        P:()=>i
+      });
+      r(540590), r(418665), r(269193), r(14602);
+      var n=r(962893), s=function(e, t, r, n){
+        return new(r||(r=Promise))((function(s, o){
+          function i(e){
+            try{
+              u(n.next(e))
+            }
+            catch(e){
+              o(e)
+            }
+          }
+          function a(e){
+            try{
+              u(n.throw(e))
+            }
+            catch(e){
+              o(e)
+            }
+          }
+          function u(e){
+            var t;
+            e.done?s(e.value):(t=e.value, t instanceof r?t:new r((function(e){
+              e(t)
+            }))).then(i, a)
+          }
+          u((n=n.apply(e, t||[
+          ])).next())
+        }))
+      }, o=function(e, t){
+        var r, n, s, o, i={
+          label:0, sent:function(){
+            if(1&s[
+              0
+            ])throw s[
+              1
+            ];
+            return s[
+              1
+            ]
+          }, trys:[
+          ], ops:[
+          ]
+        };
+        return o={
+          next:a(0), throw:a(1), return:a(2)
+        }, "function"==typeof Symbol&&(o[
+          Symbol.iterator
+        ]
+        =function(){
+          return this
+        }), o;
+        function a(a){
+          return function(u){
+            return function(a){
+              if(r)throw new TypeError("Generator is already executing.");
+              for(;
+              o&&(o=0, a[
+                0
+              ]
+              &&(i=0)), i;
+              )try{
+                if(r=1, n&&(s=2&a[
+                  0
+                ]
+                ?n.return:a[
+                  0
+                ]
+                ?n.throw||((s=n.return)&&s.call(n), 0):n.next)&&!(s=s.call(n, a[
+                  1
+                ])).done)return s;
+                switch(n=0, s&&(a=[
+                  2&a[
+                    0
+                  ], s.value
+                ]), a[
+                  0
+                ]){
+                  case 0:case 1:s=a;
+                  break;
+                  case 4:return i.label++, {
+                    value:a[
+                      1
+                    ], done:!1
+                  };
+                  case 5:i.label++, n=a[
+                    1
+                  ], a=[
+                    0
+                  ];
+                  continue;
+                  case 7:a=i.ops.pop(), i.trys.pop();
+                  continue;
+                  default:if(!(s=i.trys, (s=s.length>0&&s[
+                    s.length-1
+                  ])||6!==a[
+                    0
+                  ]
+                  &&2!==a[
+                    0
+                  ])){
+                    i=0;
+                    continue
+                  }
+                  if(3===a[
+                    0
+                  ]
+                  &&(!s||a[
+                    1
+                  ]
+                  >s[
+                    0
+                  ]
+                  &&a[
+                    1
+                  ]
+                  <s[
+                    3
+                  ])){
+                    i.label=a[
+                      1
+                    ];
+                    break
+                  }
+                  if(6===a[
+                    0
+                  ]
+                  &&i.label<s[
+                    1
+                  ]){
+                    i.label=s[
+                      1
+                    ], s=a;
+                    break
+                  }
+                  if(s&&i.label<s[
+                    2
+                  ]){
+                    i.label=s[
+                      2
+                    ], i.ops.push(a);
+                    break
+                  }
+                  s[
+                    2
+                  ]
+                  &&i.ops.pop(), i.trys.pop();
+                  continue
+                }
+                a=t.call(e, i)
+              }
+              catch(e){
+                a=[
+                  6, e
+                ], n=0
+              }
+              finally{
+                r=s=0
+              }
+              if(5&a[
+                0
+              ])throw a[
+                1
+              ];
+              return{
+                value:a[
+                  0
+                ]
+                ?a[
+                  1
+                ]
+                :void 0, done:!0
+              }
+            }
+            ([
+              a, u
+            ])
+          }
+        }
+      }, i=function(e, t, r){
+        return s(void 0, void 0, void 0, (function(){
+          var s;
+          return o(this, (function(o){
+            return s=function(){
+              return t().then((function(e){
+                return e.default
+              }))
+            }, n.default.customElement(e, s, r), [
+              2
+            ]
+          }))
+        }))
+      }
+    }, 528492:(e, t, r)=>{
+      r.r(t), r.d(t, {
+        clearTargetCredits:()=>y, createCreditAudit:()=>$, createTargetCredits:()=>v, exportCoursesCredits:()=>x, exportUsersCredits:()=>C, fetchCourseCreditAudit:()=>M, fetchCreditAuditList:()=>z, fetchCurrentSemesterCourseByInstructor:()=>R, fetchDepartments:()=>m, fetchOrgCreditState:()=>p, fetchRoles:()=>d, fetchUserCreditAudit:()=>T, fetchUserStateList:()=>f, fetchUsers:()=>b, getAcademicYears:()=>k, getCourseCreditState:()=>P, getCourseCreditStatistic:()=>w, getCourses:()=>I, getCreditStatisticInfos:()=>S, getOrgSettings:()=>A, getUserCreditStatistic:()=>_, modifyUsageLimit:()=>E, mySemesters:()=>j, switchAirCreditAuditRead:()=>U, switchTargetCreditsStatus:()=>g, updateCreditAudit:()=>O, updateCreditAudits:()=>D, updateTargetCredits:()=>h
+      });
+      r(540590), r(418665), r(169218), r(269193), r(14602);
+      var n=r(272505), s=r.n(n), o=r(218831), i=r(920453), a=r(448941), u=function(){
+        return(u=Object.assign||function(e){
+          for(var t, r=1, n=arguments.length;
+          r<n;
+          r++)for(var s in t=arguments[
+            r
+          ])Object.prototype.hasOwnProperty.call(t, s)&&(e[
+            s
+          ]
+          =t[
+            s
+          ]);
+          return e
+        }).apply(this, arguments)
+      }, c=function(e, t, r, n){
+        return new(r||(r=Promise))((function(s, o){
+          function i(e){
+            try{
+              u(n.next(e))
+            }
+            catch(e){
+              o(e)
+            }
+          }
+          function a(e){
+            try{
+              u(n.throw(e))
+            }
+            catch(e){
+              o(e)
+            }
+          }
+          function u(e){
+            var t;
+            e.done?s(e.value):(t=e.value, t instanceof r?t:new r((function(e){
+              e(t)
+            }))).then(i, a)
+          }
+          u((n=n.apply(e, t||[
+          ])).next())
+        }))
+      }, l=function(e, t){
+        var r, n, s, o, i={
+          label:0, sent:function(){
+            if(1&s[
+              0
+            ])throw s[
+              1
+            ];
+            return s[
+              1
+            ]
+          }, trys:[
+          ], ops:[
+          ]
+        };
+        return o={
+          next:a(0), throw:a(1), return:a(2)
+        }, "function"==typeof Symbol&&(o[
+          Symbol.iterator
+        ]
+        =function(){
+          return this
+        }), o;
+        function a(a){
+          return function(u){
+            return function(a){
+              if(r)throw new TypeError("Generator is already executing.");
+              for(;
+              o&&(o=0, a[
+                0
+              ]
+              &&(i=0)), i;
+              )try{
+                if(r=1, n&&(s=2&a[
+                  0
+                ]
+                ?n.return:a[
+                  0
+                ]
+                ?n.throw||((s=n.return)&&s.call(n), 0):n.next)&&!(s=s.call(n, a[
+                  1
+                ])).done)return s;
+                switch(n=0, s&&(a=[
+                  2&a[
+                    0
+                  ], s.value
+                ]), a[
+                  0
+                ]){
+                  case 0:case 1:s=a;
+                  break;
+                  case 4:return i.label++, {
+                    value:a[
+                      1
+                    ], done:!1
+                  };
+                  case 5:i.label++, n=a[
+                    1
+                  ], a=[
+                    0
+                  ];
+                  continue;
+                  case 7:a=i.ops.pop(), i.trys.pop();
+                  continue;
+                  default:if(!(s=i.trys, (s=s.length>0&&s[
+                    s.length-1
+                  ])||6!==a[
+                    0
+                  ]
+                  &&2!==a[
+                    0
+                  ])){
+                    i=0;
+                    continue
+                  }
+                  if(3===a[
+                    0
+                  ]
+                  &&(!s||a[
+                    1
+                  ]
+                  >s[
+                    0
+                  ]
+                  &&a[
+                    1
+                  ]
+                  <s[
+                    3
+                  ])){
+                    i.label=a[
+                      1
+                    ];
+                    break
+                  }
+                  if(6===a[
+                    0
+                  ]
+                  &&i.label<s[
+                    1
+                  ]){
+                    i.label=s[
+                      1
+                    ], s=a;
+                    break
+                  }
+                  if(s&&i.label<s[
+                    2
+                  ]){
+                    i.label=s[
+                      2
+                    ], i.ops.push(a);
+                    break
+                  }
+                  s[
+                    2
+                  ]
+                  &&i.ops.pop(), i.trys.pop();
+                  continue
+                }
+                a=t.call(e, i)
+              }
+              catch(e){
+                a=[
+                  6, e
+                ], n=0
+              }
+              finally{
+                r=s=0
+              }
+              if(5&a[
+                0
+              ])throw a[
+                1
+              ];
+              return{
+                value:a[
+                  0
+                ]
+                ?a[
+                  1
+                ]
+                :void 0, done:!0
+              }
+            }
+            ([
+              a, u
+            ])
+          }
+        }
+      };
+      function d(){
+        return c(this, void 0, void 0, (function(){
+          return l(this, (function(e){
+            switch(e.label){
+              case 0:return[
+                4, s().get("/api/authz/roles")
+              ];
+              case 1:return[
+                2, e.sent().data
+              ]
+            }
+          }))
+        }))
+      }
+      function m(){
+        return s().get("/api/departments")
+      }
+      var p=function(){
+        return c(void 0, void 0, void 0, (function(){
+          var e;
+          return l(this, (function(t){
+            switch(t.label){
+              case 0:return[
+                4, s().get("/api/air-credit/org/credit-state-info")
+              ];
+              case 1:return e=t.sent().data, [
+                2, (0, i.plainToClass)(a.Lp, e)
+              ]
+            }
+          }))
+        }))
+      };
+      function f(e, t, r){
+        return c(this, void 0, void 0, (function(){
+          var n;
+          return l(this, (function(u){
+            switch(u.label){
+              case 0:return[
+                4, s().get("/api/air-credit/user/credit-states", {
+                  params:{
+                    page:e, page_size:t, conditions:JSON.stringify((0, o.decamelizeKeys)(r))
+                  }
+                })
+              ];
+              case 1:return n=u.sent().data, [
+                2, (0, i.plainToClassFromExist)(new a.VA(a.mU), n)
+              ]
+            }
+          }))
+        }))
+      }
+      function b(e, t, r){
+        return c(this, void 0, void 0, (function(){
+          var n;
+          return l(this, (function(c){
+            switch(c.label){
+              case 0:return[
+                4, s().post("/api/users?page=".concat(e, "&page_size=").concat(t, "&for_management=true&need_ai_activated=true"), u({
+                }, (0, o.decamelizeKeys)(r)))
+              ];
+              case 1:return(n=c.sent().data).items=n.users, [
+                2, (0, i.plainToClassFromExist)(new a.VA(a.KJ), n)
+              ]
+            }
+          }))
+        }))
+      }
+      function v(e){
+        return c(this, void 0, void 0, (function(){
+          var t;
+          return l(this, (function(r){
+            switch(r.label){
+              case 0:return t={
+                assignments:(0, o.decamelizeKeys)(e)
+              }, [
+                4, s().post("/api/air-credit/credits", t)
+              ];
+              case 1:return[
+                2, r.sent().data
+              ]
+            }
+          }))
+        }))
+      }
+      function h(e){
+        return c(this, void 0, void 0, (function(){
+          var t;
+          return l(this, (function(r){
+            switch(r.label){
+              case 0:return t={
+                assignments:(0, o.decamelizeKeys)(e)
+              }, [
+                4, s().put("/api/air-credit/credits", t)
+              ];
+              case 1:return[
+                2, r.sent().data
+              ]
+            }
+          }))
+        }))
+      }
+      function g(e, t, r, n){
+        return void 0===n&&(n=!1), c(this, void 0, void 0, (function(){
+          var o;
+          return l(this, (function(i){
+            switch(i.label){
+              case 0:return o={
+                assign_ids:e, assign_type:t, status:r, refunded:n
+              }, [
+                4, s().put("/api/air-credit/credits/status", o)
+              ];
+              case 1:return[
+                2, i.sent().data
+              ]
+            }
+          }))
+        }))
+      }
+      function y(e, t){
+        return c(this, void 0, void 0, (function(){
+          var r;
+          return l(this, (function(n){
+            switch(n.label){
+              case 0:return r={
+                assign_id:e, assign_type:t
+              }, [
+                4, s().put("/api/air-credit/credits/clear-remaining-credits", r)
+              ];
+              case 1:return[
+                2, n.sent().data
+              ]
+            }
+          }))
+        }))
+      }
+      var _=function(e, t, r, n, u){
+        return void 0===n&&(n=1), void 0===u&&(u=10), c(void 0, void 0, void 0, (function(){
+          var c, d, m;
+          return l(this, (function(l){
+            switch(l.label){
+              case 0:return c=(0, o.decamelizeKeys)({
+                startDate:e, endDate:t, page:n, pageSize:u, conditions:r, type:"user"
+              }), [
+                4, s().get("/api/air-credit/credit-states-stats", {
+                  params:c
+                })
+              ];
+              case 1:return d=l.sent(), m=(0, i.plainToClass)(a.Zd, d.data.items), [
+                2, {
+                  page:d.data.page, pageSize:d.data.page_size, pages:d.data.pages, total:d.data.total, items:m
+                }
+              ]
+            }
+          }))
+        }))
+      }, w=function(e, t, r, n, u){
+        return void 0===n&&(n=1), void 0===u&&(u=10), c(void 0, void 0, void 0, (function(){
+          var c, d, m;
+          return l(this, (function(l){
+            switch(l.label){
+              case 0:return c=(0, o.decamelizeKeys)({
+                startDate:e, endDate:t, page:n, pageSize:u, conditions:r, type:"course"
+              }), [
+                4, s().get("/api/air-credit/credit-states-stats", {
+                  params:c
+                })
+              ];
+              case 1:return d=l.sent(), m=(0, i.plainToClass)(a.BM, d.data.items), [
+                2, {
+                  page:d.data.page, pageSize:d.data.page_size, pages:d.data.pages, total:d.data.total, items:m
+                }
+              ]
+            }
+          }))
+        }))
+      };
+      function S(e){
+        return s().get("/api/air-credit/credit-states-summary", {
+          params:{
+            type:e
+          }
+        })
+      }
+      function C(e, t, r){
+        return c(this, void 0, void 0, (function(){
+          return l(this, (function(n){
+            switch(n.label){
+              case 0:return n.trys.push([
+                0, 2, , 3
+              ]), [
+                4, s().post("/api/air-credit/user/credit-states-stats/export", u({
+                }, (0, o.decamelizeKeys)(u({
+                  startDate:e, endDate:t
+                }, r))), {
+                  responseType:"blob"
+                })
+              ];
+              case 1:return[
+                2, n.sent().data
+              ];
+              case 2:return n.sent(), [
+                2, null
+              ];
+              case 3:return[
+                2
+              ]
+            }
+          }))
+        }))
+      }
+      function x(e, t, r){
+        return c(this, void 0, void 0, (function(){
+          return l(this, (function(n){
+            switch(n.label){
+              case 0:return n.trys.push([
+                0, 2, , 3
+              ]), [
+                4, s().post("/api/air-credit/course/credit-states-stats/export", u({
+                }, (0, o.decamelizeKeys)(u({
+                  startDate:e, endDate:t
+                }, r))), {
+                  responseType:"blob"
+                })
+              ];
+              case 1:return[
+                2, n.sent().data
+              ];
+              case 2:return n.sent(), [
+                2, null
+              ];
+              case 3:return[
+                2
+              ]
+            }
+          }))
+        }))
+      }
+      var k=function(){
+        return c(void 0, void 0, void 0, (function(){
+          return l(this, (function(e){
+            switch(e.label){
+              case 0:return[
+                4, s().get("/api/academic-years?fields=id,name,sort,is_active")
+              ];
+              case 1:return[
+                2, e.sent().data.academic_years
+              ]
+            }
+          }))
+        }))
+      }, j=function(e){
+        return c(void 0, void 0, void 0, (function(){
+          var t, r;
+          return l(this, (function(n){
+            switch(n.label){
+              case 0:return t="/api/my-semesters-all", r="", e.length>0&&(r=e.map((function(e){
+                return"academic_year_ids=".concat(e)
+              })).join("&"), t="".concat(t, "?").concat(r, "?fields=id,name,sort,is_active")), [
+                4, s().get("".concat(t))
+              ];
+              case 1:return[
+                2, n.sent().data.semesters
+              ]
+            }
+          }))
+        }))
+      }, I=function(e, t, r){
+        return c(void 0, void 0, void 0, (function(){
+          var n;
+          return l(this, (function(c){
+            switch(c.label){
+              case 0:return[
+                4, s().post("/api/courses?page=".concat(e, "&page_size=").concat(t), u(u({
+                }, (0, o.decamelizeKeys)(r)), {
+                  fields:"id,name,academic_year,course_code,semester,department(id,name),klass(id,name),instructors(id,name),ai_activation,course_type,imported_from"
+                }))
+              ];
+              case 1:return(n=c.sent().data).items=n.courses, [
+                2, (0, i.plainToClassFromExist)(new a.VA(a.ae), n)
+              ]
+            }
+          }))
+        }))
+      }, P=function(e, t, r){
+        return c(void 0, void 0, void 0, (function(){
+          var n, u;
+          return l(this, (function(c){
+            switch(c.label){
+              case 0:return n=(0, o.decamelizeKeys)({
+                page:e, pageSize:t, conditions:r
+              }), [
+                4, s().get("/api/air-credit/course/credit-states", {
+                  params:n
+                })
+              ];
+              case 1:return u=c.sent().data, [
+                2, (0, i.plainToClassFromExist)(new a.VA(a.aN), u)
+              ]
+            }
+          }))
+        }))
+      }, A=function(){
+        return c(void 0, void 0, void 0, (function(){
+          var e, t;
+          return l(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, s().get("/api/orgs/".concat(null===(t=window.globalData)||void 0===t?void 0:t.user.orgId, "/settings"))
+              ];
+              case 1:return e=r.sent().data, [
+                2, (0, o.camelizeKeys)(e)
+              ]
+            }
+          }))
+        }))
+      }, E=function(e){
+        return s().put("/api/air-credit/course/usage-limit", {
+          usage_limit:e
+        })
+      }, T=function(e){
+        return c(void 0, void 0, void 0, (function(){
+          var t;
+          return l(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, s().get("/api/air-credit/users/".concat(e, "/audit"))
+              ];
+              case 1:return t=r.sent().data, [
+                2, (0, i.plainToClass)(a.i3, t)
+              ]
+            }
+          }))
+        }))
+      }, M=function(e){
+        return c(void 0, void 0, void 0, (function(){
+          var t;
+          return l(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, s().get("/api/air-credit/courses/".concat(e, "/audit"))
+              ];
+              case 1:return t=r.sent().data, [
+                2, (0, i.plainToClass)(a.IT, t)
+              ]
+            }
+          }))
+        }))
+      };
+      function $(e, t, r, n){
+        return c(this, void 0, void 0, (function(){
+          return l(this, (function(i){
+            switch(i.label){
+              case 0:return[
+                4, s().post("/api/air-credit/audits", u({
+                }, (0, o.decamelizeKeys)({
+                  targetId:e, targetType:t, credits:r, reason:n
+                })))
+              ];
+              case 1:return[
+                2, i.sent().data
+              ]
+            }
+          }))
+        }))
+      }
+      function U(e, t){
+        return void 0===t&&(t=!0), s().put("/api/air-credit/audits/".concat(e, "/read"), u({
+        }, (0, o.decamelizeKeys)({
+          read:t
+        })))
+      }
+      function z(e, t, r){
+        return c(this, void 0, void 0, (function(){
+          var n;
+          return l(this, (function(u){
+            switch(u.label){
+              case 0:return[
+                4, s().get("/api/air-credit/audits", {
+                  params:{
+                    page:e, page_size:t, conditions:JSON.stringify((0, o.decamelizeKeys)(r))
+                  }
+                })
+              ];
+              case 1:return(n=u.sent().data).items=n.items.map((function(e){
+                return"course"===e.target_type?(0, i.plainToClass)(a.IT, e):(0, i.plainToClass)(a.i3, e)
+              })), [
+                2, n
+              ]
+            }
+          }))
+        }))
+      }
+      function O(e, t, r, n){
+        return c(this, void 0, void 0, (function(){
+          return l(this, (function(i){
+            switch(i.label){
+              case 0:return[
+                4, s().put("/api/air-credit/audits/".concat(e), u({
+                }, (0, o.decamelizeKeys)({
+                  action:t, approvedCredits:r, remark:n
+                })))
+              ];
+              case 1:return[
+                2, i.sent().data
+              ]
+            }
+          }))
+        }))
+      }
+      function D(e, t, r){
+        return void 0===r&&(r=""), c(this, void 0, void 0, (function(){
+          return l(this, (function(n){
+            switch(n.label){
+              case 0:return[
+                4, s().put("/api/air-credit/audits", u({
+                }, (0, o.decamelizeKeys)({
+                  auditIds:e, action:t, remark:r
+                })))
+              ];
+              case 1:return[
+                2, n.sent().data
+              ]
+            }
+          }))
+        }))
+      }
+      function R(e){
+        return void 0===e&&(e=[
+        ]), s().get("/api/air-credit/instructors/current-semester-courses", {
+          params:{
+            user_ids:e.join(",")
+          }
+        })
+      }
+    }, 590815:(e, t, r)=>{
+      r.d(t, {
+        A:()=>n
+      });
+      const n={
+        state:()=>{
+          var e, t;
+          return{
+            isLoading:!0, courseId:(null===(e=window.globalData)||void 0===e||null===(t=e.course)||void 0===t?void 0:t.id)||null, courseName:null, currentUser:{
+              id:null, userNo:null, role:null
+            }
+          }
+        }, actions:{
+          setCourseInfo(e, t){
+            (0, e.commit)("setCourseInfo", t)
+          }, setCurrentUser(e, t){
+            (0, e.commit)("setCurrentUser", t)
+          }
+        }, getters:{
+        }, mutations:{
+          setCourseInfo(e, t){
+            var r=t.courseId, n=t.courseName;
+            e.courseId=r, e.courseName=n
+          }, setCurrentUser(e, t){
+            var r=t.userId, n=t.userNo, s=t.userRole;
+            e.currentUser.id=r, e.currentUser.userNo=n, e.currentUser.role=s
+          }
+        }
+      }
+    }, 606913:(e, t, r)=>{
+      r.r(t), r.d(t, {
+        deleteInteraction:()=>u, getCourseUsers:()=>a, getDanmuActivity:()=>o, getDanmuConfig:()=>i
+      });
+      var n=r(272505), s=r.n(n), o=function(e, t){
+        return s().get("/api/courses/interactions/".concat(e, "?conditions=").concat(JSON.stringify(t)))
+      }, i=function(e){
+        return s().get("/api/courses/danmu/".concat(e, "/config"))
+      }, a=function(e, t){
+        return s().post("/api/course/".concat(e, "/enrollments"), t)
+      }, u=function(e){
+        return s().delete("/api/interactions/".concat(e))
+      }
+    }, 628593:e=>{
+      e.exports=[
+        "$scope", "$routeParams", "$window", function(e, t, r){
+          e.vueParam={
+            voteId:Number(t.voteId)
+          }, r.addEventListener("on-load-vote", (t=>{
+            e.$emit("activityLoaded", t.detail.data), e.$apply()
+          }))
+        }
+      ]
+    }, 645374:(e, t, r)=>{
+      var n=r(248124), s=r(302543);
+      r(868329), r(658379), e.exports=[
+        "$rootScope", "$scope", "$routeParams", "classroomRepository", "activityRepository", "toastr", "classroomApi", "$timeout", function(e, t, r, o, i, a, u, c){
+          var l;
+          delete e.progressUi;
+          e.context||(e.context={
+          }), e.$on("refreshFeedbackData", ((e, r)=>t.classroom=t.currentActivity=r));
+          var d=null;
+          t.canAddFeedbackItem=()=>t.classroom&&[
+            "none", "start"
+          ].includes(t.classroom.status)&&null===d, t.canEditFeedbackItem=e=>[
+            "none", "start"
+          ].includes(t.classroom.status)&&null===d&&0===e.votes&&(e.created_by_id===t.currentUserId||0===e.created_by_id);
+          var m=()=>c((function(){
+            n("input.feedback-input").focus()
+          }));
+          t.addFeedbackItem=function(){
+            if(null===d){
+              var e={
+                id:null, created_by_id:0, title:"", votes:0
+              };
+              return d=e, t.classroom.feedbacks.push(e), m()
+            }
+          }, t.isEditing=e=>null!==d&&e.id===d.id, t.editingFeedback=function(e){
+            return d=e, m()
+          };
+          var p=function(){
+            return o.deleteFeedbackCache(t.classroom.id), g()
+          };
+          t.deleteFeedback=function(e){
+            return u.deleteFeedback(e, (()=>p()), (function(){
+            }))
+          }, t.saveFeedback=function(e){
+            var r=function(e){
+              return d=null, t.classroom.feedbacks=e.feedbacks, statistics.track({
+                activity_id:t.activity.id, activity_type:t.activity.type, action:statistics.enums.FeedbackAction.add_item, mode:statistics.enums.Mode.normal, channel:statistics.enums.Channel.web
+              }), h(t.classroom.feedbacks)
+            }, n=function(e){
+              if(e.errors&&e.errors.title)return a.error(e.errors.title[
+                0
+              ])
+            };
+            return e&&e.id>0?f(e)?void a.error(t.feedbackAlreadyExistMsg):u.updateFeedback(t.classroom.id, e.id, {
+              title:e.title
+            }, r, n):""===e.title.trim()?(d=null, void t.classroom.feedbacks.pop()):f(e)?void a.error(t.feedbackAlreadyExistMsg):u.createFeedback(t.classroom.id, {
+              title:e.title
+            }, r, n)
+          }, t.onKeyDown=function(e, r){
+            if(13===e.keyCode)return t.saveFeedback(r)
+          };
+          var f=e=>s.find(t.classroom.feedbacks, (function(t){
+            return t.id!==e.id&&e.title===t.title
+          })), b=function(e){
+            var r={
+              start:"start", finish:"end"
+            }
+            [
+              e.status
+            ];
+            return statistics.track({
+              activity_type:"feedback", activity_id:t.classroom.id, action:statistics.enums.Action[
+                r
+              ], mode:statistics.enums.Mode.normal, channel:statistics.enums.Channel.web, point:"start"===r?1:0
+            }), t.classroom.status=e.status
+          }, v=()=>p();
+          t.startFeedbackActivity=()=>o.startClassroom(t.classroom.id, b, v), t.finishFeedbackActivity=()=>o.finishClassroom(t.classroom.id, b, v), t.isStudent=null===(l=window.globalData)||void 0===l?void 0:l.courseRoles.some((e=>[
+            "student", "student_assistant"
+          ].includes(e)));
+          var h=e=>s.forEach(e, (e=>e.title=e.title in t.preset?t.preset[
+            e.title
+          ]
+          :e.title)), g=()=>o.initFeedbackActivity(r.classroomId).then((function(r){
+            return t.enableFeedbackNewUi&&(r.feedbacks=r.feedbacks.filter((e=>!t.isStudent||!e.created_by_id||e.created_by_id===t.currentUserId||e.voted))), e.context.classroomId=r.id, e.context.classroom=t.classroom=r, h(t.classroom.feedbacks), i.initPublishInfo(t, t.classroom), t.$emit("activityLoaded", r)
+          }));
+          return g()
+        }
+      ]
+    }, 649467:(e, t, r)=>{
+      var n=r(302543);
+      e.exports=[
+        "$http", "toastr", function(e, t){
+          return{
+            getResourceGroups(t){
+              var r=arguments.length>1&&void 0!==arguments[
+                1
+              ]
+              ?arguments[
+                1
+              ]
+              :n.noop;
+              return e.get("/api/resource-groups").success(t).error(r)
+            }, getPagedResourceGroups:(r, n, s, o, i)=>e.post("/api/resource-groups?page=".concat(r, "&page_size=").concat(n), s).success(o).error(t.decorateError(i)), get:(r, n, s)=>e.get("/api/resource-groups/".concat(r)).success(n).error(t.decorateError(s)), save:(r, n, s)=>e.post("/api/resource-group", r).success(t.decorateSuccess(n)).error(s), update:(r, n, s)=>e.put("/api/resource-group/".concat(r.id), r).success(t.decorateSuccess(n)).error(t.decorateError(s)), delete:(r, n, s)=>e.delete("/api/resource-group/".concat(r)).success(t.decorateSuccess(n)).error(t.decorateError(s)), getResourceGroupMembers:(r, n, s)=>e.get("/api/resource-groups/".concat(r, "/members")).success(n).error(t.decorateError(s)), getPagedResourceGroupMembers:(r, n, s, o, i)=>e.get("/api/resource-groups/".concat(r, "/members?page=").concat(n, "&page_size=").concat(s)).success(o).error(t.decorateError(i)), deleteMembers:(r, n, s, o)=>e.delete("/api/resource-groups/".concat(r, "/member"), {
+              data:n
+            }).success(t.decorateSuccess(s)).error(t.decorateError(o)), getPagedResourceGroupFolders:(r, n, s, o, i, a)=>e.get("/api/resource-groups/".concat(r, "/folders"), {
+              params:{
+                page:n, page_size:s, conditions:o
+              }
+            }).success(i).error(t.decorateError(a)), getVtrses(r, n, s, o, i){
+              e.get("/api/vtrses", {
+                params:{
+                  conditions:r, needStat:n, fields:s
+                }
+              }).success(o).error(t.decorateError(i))
+            }, getAllPagedResourceGroupFolders:(r, n, s, o, i)=>e.get("/api/resource-groups/folders", {
+              params:{
+                page:r, page_size:n, conditions:s
+              }
+            }).success(o).error(t.decorateError(i)), deleteResourceGroupFolder:(r, n, s, o)=>e.delete("/api/resource-groups/".concat(r, "/folders/").concat(n)).success(t.decorateSuccess(s)).error(t.decorateError(o)), getResourceGroupResources:(r, n, s)=>e.get("/api/resource-groups/".concat(r, "/resources")).success(n).error(t.decorateError(s)), getPagedResourceGroupResources:(r, n, s, o, i, a)=>e.get("/api/resource-groups/".concat(r, "/resources"), {
+              params:{
+                page:n, page_size:s, conditions:o
+              }
+            }).success(i).error(t.decorateError(a)), getPagedResourceGroupRubrics:(r, n, s, o, i, a)=>e.get("/api/resource-groups/".concat(r, "/rubrics"), {
+              params:{
+                page:n, page_size:s, conditions:o
+              }
+            }).success(i).error(t.decorateError(a)), getAllPagedResourceGroupResources:(r, n, s, o, i)=>e.get("/api/resource-groups/resources", {
+              params:{
+                page:r, page_size:n, conditions:s
+              }
+            }).success(o).error(t.decorateError(i)), getPagedResourceGroupSubjectLibs:(r, n, s, o, i, a)=>e.get("/api/resource-groups/".concat(r, "/subject-libs"), {
+              params:{
+                page:n, page_size:s, conditions:o
+              }
+            }).success(i).error(t.decorateError(a)), updateResourceGroupResource(t, r, s){
+              var o=arguments.length>3&&void 0!==arguments[
+                3
+              ]
+              ?arguments[
+                3
+              ]
+              :n.noop;
+              return e.put("/api/resource-groups/".concat(t, "/resource/").concat(r.id), {
+                name:r.name, allow_download:r.allow_download, cc_license_name:r.cc_license_name
+              }).success(s).error(o)
+            }, deleteResourceGroupResource(t, r){
+              var s=arguments.length>2&&void 0!==arguments[
+                2
+              ]
+              ?arguments[
+                2
+              ]
+              :n.noop;
+              return e.delete("/api/shared-resources/".concat(t)).success(r).error(s)
+            }, leaveGroup:(r, n, s)=>e.post("/api/resource-groups/".concat(r, "/leave")).success(t.decorateSuccess(n)).error(t.decorateError(s)), deleteResourceGroupSubjectLib(t, r){
+              var s=arguments.length>2&&void 0!==arguments[
+                2
+              ]
+              ?arguments[
+                2
+              ]
+              :n.noop;
+              return e.delete("/api/subject-libs/".concat(t)).success(r).error(s)
+            }
+          }
+        }
+      ]
+    }, 659090:(e, t, r)=>{
+      var n=r(302543);
+      r(658379);
+      var s=r(592207);
+      function o(e, t, r, n, s, o, i){
+        try{
+          var a=e[
+            o
+          ]
+          (i), u=a.value
+        }
+        catch(e){
+          return void r(e)
+        }
+        a.done?t(u):Promise.resolve(u).then(n, s)
+      }
+      r(207452);
+      var i=r(606913), a=i.getDanmuActivity, u=i.getDanmuConfig, c=i.getCourseUsers, l=r(111172), d=r(966491);
+      e.exports=[
+        "$rootScope", "$scope", "$http", "ExamHelper", "$routeParams", "toastr", "$location", "classroomApi", function(e, t, r, i, m, p, f){
+          t.classroom={
+          }, t.classroomTitle="", t.deleteMessage="", t.pageSize=10, t.pageIndex=1, t.pagination=l(t, f, "items");
+          var b=[
+          ];
+          t.getDeleteMessage=()=>t.$t("danmuActivity.message.delete");
+          var v=(e, s, o)=>{
+            var i="".concat(o, "/danmus/interaction-").concat(e, "?page=").concat(t.pageIndex, "&perPage=").concat(t.pageSize, "&token=").concat(s);
+            r.get(i).then((e=>{
+              var r, s;
+              t.result=e.data, t.result.page_size=e.data.perPage, t.result.pages=Math.ceil(e.data.total/t.result.page_size), t.ui.pageIndexInput=t.result.page, t.classroom.danmu=(r=e.data.items, s=[
+              ], r.forEach((e=>{
+                var t=n.find(b, {
+                  id:e.user.userId
+                });
+                t&&s.push({
+                  id:e._id, studentName:t.name, studentNo:t.user_no, content:e.text, sendTime:d.formatDatetime(e.createdAt, "YYYY.MM.DD HH:mm")
+                })
+              })), s)
+            }))
+          }, h=function(){
+            var e, t=(e=s.mark((function e(){
+              var t, r, n;
+              return s.wrap((function(e){
+                for(;
+                ;
+                )switch(e.prev=e.next){
+                  case 0:return e.next=2, u(m.danmuActivityId);
+                  case 2:t=e.sent, r=t.data.token, n=t.data.server, v(m.danmuActivityId, r, n);
+                  case 6:case"end":return e.stop()
+                }
+              }), e)
+            })), function(){
+              var t=this, r=arguments;
+              return new Promise((function(n, s){
+                var i=e.apply(t, r);
+                function a(e){
+                  o(i, n, s, a, u, "next", e)
+                }
+                function u(e){
+                  o(i, n, s, a, u, "throw", e)
+                }
+                a(void 0)
+              }))
+            });
+            return function(){
+              return t.apply(this, arguments)
+            }
+          }
+          ();
+          t.updatePageSize=e=>{
+            t.pageSize=e, t.pagination.changePage(t.pageIndex, h, n.noop)
+          }, t.changePage=e=>{
+            t.pageIndex=e, t.pagination.changePage(e, h, n.noop)
+          }, t.deleteDanmu=e=>{
+            u(m.danmuActivityId).then((t=>{
+              var n=t.data.token, s=t.data.server;
+              ((e, t, n)=>{
+                var s="".concat(n, "/danmus/").concat(e, "?token=").concat(t);
+                r.delete(s).then((()=>{
+                  v(m.danmuActivityId, t, n)
+                }))
+              })(e, n, s)
+            })).catch()
+          };
+          var g;
+          g=e=>{
+            e.data.enrollments.forEach((e=>{
+              b.push(e.user)
+            })), h()
+          }, a(m.danmuActivityId, {
+            with_detail:!0
+          }).then((e=>{
+            t.classroom=e.data.interaction, t.$emit("activityLoaded", t.classroom), null==t.classroom.end_time?t.classroom.isInProgress=!0:t.classroom.isInProgress=!1, t.classroomTitle="".concat(t.$t("activityType.danmu"), " ").concat(t.classroom.title), c(t.classroom.course_id, {
+              fields:"user(id,name,user_no)"
+            }).then(g)
+          })).catch()
+        }
+      ]
+    }, 660470:(e, t, r)=>{
+      var n=r(302543);
+      e.exports=[
+        "$rootScope", "$scope", "$http", "ExamHelper", "examRepository", "toastr", "ExamSubject", "classroomApi", function(e, t, r, s, o, i, a, u){
+          e.progressUi||(e.progressUi={
+            answeredNum:0, subjectsNum:0, inProgress:!1
+          }), t.calProgress=function(){
+            e.progressUi.answeredNum=c(t.subjects);
+            var r=e.progressUi.answeredNum/e.progressUi.subjectsNum*100;
+            return e.progressUi.progress=0<=r&&r<=100?"".concat(r, "%"):"0%"
+          }, t.calSubjectsPointValue=s.calSubjectsPointValue, t.ui=s.getUIHelper(), t.getSubjectIndex=function(e, r){
+            if(t.subjects)return s.getSubjectIndex(e, r, t.subjects)
+          }, t.startSubject=function(e){
+            var r="start";
+            return u.updateClassroomSubjectStatus(t.classroomId, e.id, r, (()=>e.settings.status=r), (()=>d()))
+          }, t.finishSubject=function(e){
+            var r="finish";
+            return u.updateClassroomSubjectStatus(t.classroomId, e.id, r, (function(){
+              return e.settings.status=r, l(), m(e)
+            }), (()=>d()))
+          };
+          var c=e=>n.filter(e, (e=>"finish"===e.settings.status)).length, l=function(){
+            return t.calProgress(), t.currentSubjectIndex=c(t.subjects)
+          }, d=()=>r.get("/api/classrooms/".concat(t.classroomId, "/subjects-stat")).success((e=>p(e))).error((function(){
+          })), m=function(e){
+            return r.get("/api/classrooms/".concat(t.classroomId, "/subject-stat/").concat(e.id)).success((function(t){
+              if(t)return e.num_of_correct_answers=t.num_of_correct_answers, e.num_of_wrong_answers=t.num_of_wrong_answers, e.num_of_not_answered=t.num_of_not_answered, e.accuracy=t.accuracy, e.options=t.options
+            })).error((function(){
+            }))
+          }, p=function(r){
+            var o=n(r.subjects).sortBy("sort").map((function(e){
+              return e.settings.options_layout="vertical", a.createSubjectBySavedSubject(e, !1)
+            })).value();
+            return e.progressUi.subjects=o, t.subjects=o, t.examPaperInstanceId=r.exam_paper_instance_id, e.progressUi.subjectsNum=s.getSubjectsNum(t.subjects), l()
+          };
+          return r.get("/api/classroom-exams/".concat(t.classroomId)).success((function(r){
+            return e.context.classroomId=r.id, e.context.classroom=t.classroom=r, e.progressUi.inProgress="start"===r.status&&r.is_quiz_control_by_subject, t.currentActivity=t.classroom
+          })).error(i.decorateError()), d()
+        }
+      ]
+    }, 678264:(e, t, r)=>{
+      r.r(t);
+      r(269193);
+      var n=r(846413), s=r(384027), o=r.n(s), i=r(962893), a=r(494082), u=r(979278);
+      r(382014), r(704468);
+      i.default.use(o()), i.default.use(n.A), i.default.component("SvgIcon", u.A), i.default.component("user-authz-role-manage", (function(){
+        return Promise.all([
+          r.e(49123), r.e(13821), r.e(97786), r.e(339), r.e(18774), r.e(75360), r.e(93392), r.e(64060)
+        ]).then(r.bind(r, 38732))
+      })), i.default.component("authz-role-permissions", (function(){
+        return Promise.all([
+          r.e(8919), r.e(6696), r.e(59127)
+        ]).then(r.bind(r, 261530))
+      })), i.default.component("differentiated-form", (function(){
+        return Promise.all([
+          r.e(56662), r.e(58675), r.e(79392), r.e(66491), r.e(7796), r.e(18774), r.e(75360), r.e(74302), r.e(51708), r.e(48941), r.e(90625)
+        ]).then(r.bind(r, 649320))
+      })), i.default.component("activity-target-list", (function(){
+        return Promise.all([
+          r.e(25996), r.e(13067), r.e(74e3), r.e(37873)
+        ]).then(r.bind(r, 237873))
+      })), i.default.component("date-picker-ext", (function(){
+        return Promise.all([
+          r.e(18774), r.e(75360), r.e(92082)
+        ]).then(r.bind(r, 454985))
+      })), i.default.component("meeting-status", (function(){
+        return r.e(89163).then(r.bind(r, 389163))
+      })), i.default.component("teaching-team", (function(){
+        return r.e(79067).then(r.bind(r, 279067))
+      })), i.default.component("inclass-report", (function(){
+        return Promise.all([
+          r.e(25996), r.e(13067), r.e(27724), r.e(86826), r.e(64524)
+        ]).then(r.bind(r, 286826))
+      })), i.default.component("course-score-setting", (function(){
+        return Promise.all([
+          r.e(5587), r.e(73096), r.e(18774), r.e(75360), r.e(74302), r.e(3738), r.e(60797)
+        ]).then(r.bind(r, 28298))
+      })), i.default.component("course-score", (function(){
+        return Promise.all([
+          r.e(5587), r.e(18774), r.e(75360), r.e(4742)
+        ]).then(r.bind(r, 656163))
+      })), i.default.component("wg-slider", (function(){
+        return r.e(34019).then(r.bind(r, 634019))
+      })), i.default.component("sub-course-list", (function(){
+        return Promise.all([
+          r.e(84010), r.e(79055), r.e(31734)
+        ]).then(r.bind(r, 734132))
+      })), i.default.component("moodle-course-import", (function(){
+        return Promise.all([
+          r.e(40002), r.e(18774), r.e(75360), r.e(18283)
+        ]).then(r.bind(r, 782124))
+      })), i.default.component("cc-license-multiple-select", (function(){
+        return r.e(38480).then(r.bind(r, 638480))
+      })), i.default.component("orgs-resource-management", (function(){
+        return Promise.all([
+          r.e(45683), r.e(3738), r.e(88465)
+        ]).then(r.bind(r, 151424))
+      })), i.default.component("department-filter", (function(){
+        return Promise.all([
+          r.e(18774), r.e(75360), r.e(7974), r.e(61813)
+        ]).then(r.bind(r, 654207))
+      })), i.default.component("selects", (function(){
+        return r.e(56238).then(r.bind(r, 556238))
+      })), i.default.component("online-teaching-list", (function(){
+        return Promise.all([
+          r.e(56662), r.e(49123), r.e(32655), r.e(66498), r.e(79392), r.e(66491), r.e(339), r.e(12855), r.e(18774), r.e(75360), r.e(74302), r.e(15134), r.e(79055), r.e(3738), r.e(26132), r.e(21093), r.e(49009), r.e(34673), r.e(70397)
+        ]).then(r.bind(r, 278080))
+      })), i.default.component("config-alert-method-popup", (function(){
+        return Promise.all([
+          r.e(31066), r.e(31552)
+        ]).then(r.bind(r, 31552))
+      })), i.default.component("select-member-popup", (function(){
+        return Promise.all([
+          r.e(67888), r.e(18774), r.e(75360), r.e(7974), r.e(94862), r.e(40251)
+        ]).then(r.bind(r, 106140))
+      })), i.default.component("select-course-timetable", (function(){
+        return Promise.all([
+          r.e(56863), r.e(18774), r.e(75360), r.e(79055), r.e(57492)
+        ]).then(r.bind(r, 85481))
+      })), i.default.component("vote-detail", (function(){
+        return Promise.all([
+          r.e(56662), r.e(26359), r.e(53105), r.e(79392), r.e(66491), r.e(18774), r.e(75360), r.e(9217)
+        ]).then(r.bind(r, 50212))
+      })), i.default.component("score-list-modal", (function(){
+        return Promise.all([
+          r.e(61141), r.e(18774), r.e(75360), r.e(74302), r.e(59241)
+        ]).then(r.bind(r, 252587))
+      })), i.default.component("rollcall-filter-popup", (function(){
+        return Promise.all([
+          r.e(17621), r.e(18774), r.e(75360), r.e(2105)
+        ]).then(r.bind(r, 45176))
+      })), (0, a.P)("homework-duplicate-detail", (function(){
+        return Promise.all([
+          r.e(56662), r.e(79392), r.e(66491), r.e(97786), r.e(339), r.e(18774), r.e(75360), r.e(74302), r.e(6485), r.e(45685)
+        ]).then(r.bind(r, 6485))
+      })), (0, a.P)("homework-duplicate-lib", (function(){
+        return Promise.all([
+          r.e(56662), r.e(77444), r.e(79392), r.e(66491), r.e(97786), r.e(339), r.e(18774), r.e(75360), r.e(84769)
+        ]).then(r.bind(r, 820994))
+      })), (0, a.P)("cloud-classroom-rule-setting", (function(){
+        return Promise.all([
+          r.e(38329), r.e(15134), r.e(87899)
+        ]).then(r.bind(r, 220037))
+      })), (0, a.P)("zip-score-popup", (function(){
+        return Promise.all([
+          r.e(69624), r.e(18774), r.e(75360), r.e(37291)
+        ]).then(r.bind(r, 811606))
+      })), (0, a.P)("calendar-meeting-popup", (function(){
+        return Promise.all([
+          r.e(49123), r.e(32655), r.e(12855), r.e(74302), r.e(49009), r.e(44184)
+        ]).then(r.bind(r, 520035))
+      })), (0, a.P)("lark-group-chat-operate-result-popup", (function(){
+        return Promise.all([
+          r.e(7145), r.e(18774), r.e(75360), r.e(74648)
+        ]).then(r.bind(r, 985845))
+      })), (0, a.P)("pdf-preview-shim", (function(){
+        return Promise.all([
+          r.e(56662), r.e(79392), r.e(66491), r.e(48938), r.e(7796), r.e(78435), r.e(339), r.e(18774), r.e(75360), r.e(74302), r.e(51708), r.e(48941), r.e(26645), r.e(28245)
+        ]).then(r.bind(r, 143587))
+      })), (0, a.P)("water-mark", (function(){
+        return r.e(5247).then(r.bind(r, 505247))
+      })), (0, a.P)("subject-download", (function(){
+        return Promise.all([
+          r.e(15225), r.e(18774), r.e(75360), r.e(51262)
+        ]).then(r.bind(r, 414261))
+      })), (0, a.P)("home-page-setting", (function(){
+        return Promise.all([
+          r.e(35675), r.e(25223), r.e(85059)
+        ]).then(r.bind(r, 231998))
+      })), (0, a.P)("home-page", (function(){
+        return Promise.all([
+          r.e(32622), r.e(18774), r.e(75360), r.e(15134), r.e(79055), r.e(31510)
+        ]).then(r.bind(r, 905771))
+      })), (0, a.P)("subject-mark", (function(){
+        return Promise.all([
+          r.e(56662), r.e(83825), r.e(79392), r.e(66491), r.e(48938), r.e(97786), r.e(339), r.e(18774), r.e(75360), r.e(51708), r.e(48941), r.e(28492), r.e(46706), r.e(22924), r.e(9371), r.e(39591), r.e(67016), r.e(24059), r.e(96674), r.e(32436)
+        ]).then(r.bind(r, 383602))
+      })), (0, a.P)("student-study-analysis", (function(){
+        return Promise.all([
+          r.e(25996), r.e(39176), r.e(96431), r.e(33489), r.e(6641), r.e(14891), r.e(55789), r.e(19326), r.e(8820), r.e(83170), r.e(50625), r.e(27783), r.e(10188), r.e(13067), r.e(339), r.e(18774), r.e(75360), r.e(74302), r.e(48987), r.e(10257), r.e(8870), r.e(27724), r.e(31110)
+        ]).then(r.bind(r, 621280))
+      })), (0, a.P)("word-cloud", (function(){
+        return Promise.all([
+          r.e(3347), r.e(84764), r.e(18774), r.e(75360), r.e(8937)
+        ]).then(r.bind(r, 442004))
+      })), (0, a.P)("tencent-meeting-list", (function(){
+        return Promise.all([
+          r.e(83522), r.e(18774), r.e(75360), r.e(15134), r.e(19707)
+        ]).then(r.bind(r, 183189))
+      })), (0, a.P)("signup-info", (function(){
+        return Promise.all([
+          r.e(75513), r.e(92455)
+        ]).then(r.bind(r, 989589))
+      })), (0, a.P)("videos-analysis", (function(){
+        return Promise.all([
+          r.e(25996), r.e(13067), r.e(18774), r.e(75360), r.e(48987), r.e(10257), r.e(52751), r.e(24418), r.e(77547)
+        ]).then(r.bind(r, 439209))
+      })), (0, a.P)("instructor-study-analysis", (function(){
+        return Promise.all([
+          r.e(56662), r.e(7930), r.e(79392), r.e(66491), r.e(48938), r.e(22541), r.e(7796), r.e(97786), r.e(339), r.e(18774), r.e(75360), r.e(74302), r.e(38579), r.e(51708), r.e(65238), r.e(5636), r.e(48941), r.e(89616)
+        ]).then(r.bind(r, 288795))
+      })), (0, a.P)("save-to-library-modal", (function(){
+        return Promise.all([
+          r.e(44703), r.e(76679)
+        ]).then(r.bind(r, 976679))
+      })), (0, a.P)("subject-lib-statistic", (function(){
+        return Promise.all([
+          r.e(25996), r.e(15225), r.e(66832), r.e(13067), r.e(18774), r.e(75360), r.e(7974), r.e(94299)
+        ]).then(r.bind(r, 311962))
+      })), (0, a.P)("visits-stat-study-analysis", (function(){
+        return Promise.all([
+          r.e(25996), r.e(39176), r.e(96431), r.e(33489), r.e(6641), r.e(14891), r.e(55789), r.e(19326), r.e(8820), r.e(83170), r.e(50625), r.e(27783), r.e(9733), r.e(97786), r.e(13067), r.e(339), r.e(18774), r.e(75360), r.e(48987), r.e(15134), r.e(10257), r.e(51517), r.e(93707)
+        ]).then(r.bind(r, 5235))
+      })), (0, a.P)("subject-lib-course-list", (function(){
+        return Promise.all([
+          r.e(25996), r.e(46169), r.e(13067), r.e(18774), r.e(75360), r.e(74679), r.e(90179), r.e(62698)
+        ]).then(r.bind(r, 133296))
+      })), (0, a.P)("course-subject-lib-tab", (function(){
+        return Promise.all([
+          r.e(16831), r.e(74679), r.e(13944)
+        ]).then(r.bind(r, 878594))
+      })), (0, a.P)("course-subject-lib-folder-tab", (function(){
+        return Promise.all([
+          r.e(46169), r.e(18774), r.e(75360), r.e(71296)
+        ]).then(r.bind(r, 259508))
+      })), (0, a.P)("questionnaire-subject-stat", (function(){
+        return Promise.all([
+          r.e(10067), r.e(18774), r.e(75360), r.e(39370)
+        ]).then(r.bind(r, 45205))
+      })), (0, a.P)("image-preview", (function(){
+        return Promise.all([
+          r.e(18774), r.e(75360), r.e(53517)
+        ]).then(r.bind(r, 635864))
+      })), (0, a.P)("subject-knowledge-node-filter", (function(){
+        return Promise.all([
+          r.e(6411), r.e(18774), r.e(75360), r.e(7974), r.e(37192)
+        ]).then(r.bind(r, 718592))
+      })), (0, a.P)("vtrs-audit", (function(){
+        return Promise.all([
+          r.e(25996), r.e(67888), r.e(44893), r.e(97786), r.e(13067), r.e(339), r.e(18774), r.e(75360), r.e(80123), r.e(87056)
+        ]).then(r.bind(r, 356807))
+      })), (0, a.P)("vtrs-stat", (function(){
+        return Promise.all([
+          r.e(18041), r.e(18774), r.e(75360), r.e(53360)
+        ]).then(r.bind(r, 538789))
+      })), (0, a.P)("vtrs-manage", (function(){
+        return Promise.all([
+          r.e(25996), r.e(67888), r.e(48458), r.e(13067), r.e(17224), r.e(18774), r.e(75360), r.e(80123), r.e(4899)
+        ]).then(r.bind(r, 994818))
+      })), (0, a.P)("share-course-modal", (function(){
+        return Promise.all([
+          r.e(7623), r.e(18774), r.e(75360), r.e(10383)
+        ]).then(r.bind(r, 475272))
+      })), (0, a.P)("exam-submit-ip-check-failed-popup", (function(){
+        return Promise.all([
+          r.e(62383), r.e(18774), r.e(75360), r.e(48423)
+        ]).then(r.bind(r, 985038))
+      })), i.default.component("no-data", (function(){
+        return r.e(44443).then(r.bind(r, 166824))
+      })), (0, a.P)("department-stat-by-user", (function(){
+        return Promise.all([
+          r.e(25996), r.e(47611), r.e(13067), r.e(17224), r.e(18774), r.e(75360), r.e(44404)
+        ]).then(r.bind(r, 469313))
+      })), (0, a.P)("department-user-attendance", (function(){
+        return Promise.all([
+          r.e(25996), r.e(15175), r.e(13067), r.e(17224), r.e(18774), r.e(75360), r.e(35918)
+        ]).then(r.bind(r, 168553))
+      })), (0, a.P)("department-user-alert-statistic", (function(){
+        return Promise.all([
+          r.e(25996), r.e(92794), r.e(13067), r.e(17224), r.e(18774), r.e(75360), r.e(83176)
+        ]).then(r.bind(r, 700005))
+      })), (0, a.P)("department-user-alert-detail", (function(){
+        return Promise.all([
+          r.e(25996), r.e(70413), r.e(13067), r.e(17224), r.e(18774), r.e(75360), r.e(93366)
+        ]).then(r.bind(r, 458295))
+      })), (0, a.P)("download-print-permissions-form", (function(){
+        return Promise.all([
+          r.e(30646), r.e(79055), r.e(58684)
+        ]).then(r.bind(r, 26860))
+      })), (0, a.P)("exam-stat-score", (function(){
+        return Promise.all([
+          r.e(56662), r.e(39176), r.e(96431), r.e(33489), r.e(6641), r.e(14891), r.e(55789), r.e(19326), r.e(8820), r.e(83170), r.e(50625), r.e(27783), r.e(62115), r.e(79392), r.e(66491), r.e(48938), r.e(22541), r.e(7796), r.e(93780), r.e(97786), r.e(339), r.e(18774), r.e(75360), r.e(74302), r.e(38579), r.e(51708), r.e(65238), r.e(5636), r.e(48941), r.e(77136), r.e(15682)
+        ]).then(r.bind(r, 593372))
+      })), (0, a.P)("homework-statistics", (function(){
+        return Promise.all([
+          r.e(56662), r.e(39176), r.e(96431), r.e(33489), r.e(6641), r.e(14891), r.e(55789), r.e(19326), r.e(8820), r.e(83170), r.e(50625), r.e(27783), r.e(62115), r.e(79392), r.e(66491), r.e(48938), r.e(22541), r.e(7796), r.e(93780), r.e(97786), r.e(339), r.e(18774), r.e(75360), r.e(74302), r.e(38579), r.e(51708), r.e(65238), r.e(5636), r.e(48941), r.e(77136), r.e(74613)
+        ]).then(r.bind(r, 811153))
+      })), i.default.customElement("subject-control-time-select", r(31262).A), i.default.customElement("vue-time-picker", r(689044).A), (0, a.P)("related-knowledge-points-modal", (function(){
+        return Promise.all([
+          r.e(56662), r.e(95034), r.e(79392), r.e(66491), r.e(22541), r.e(18774), r.e(75360), r.e(38579), r.e(51708), r.e(5636), r.e(48941), r.e(4488)
+        ]).then(r.bind(r, 806698))
+      }))
+    }, 689044:(e, t, r)=>{
+      r.d(t, {
+        A:()=>o
+      });
+      var n=r(595738);
+      const s=(0, n.pM)({
+        name:"vueTimePicker", props:{
+          time:{
+            type:String, default:""
+          }
+        }, setup(e){
+          var t=(0, n.KR)(e.time);
+          return(0, n.wB)((()=>e.time), (e=>{
+            t.value=e
+          })), {
+            selectedTime:t, handleTimeChange:e=>{
+              var r;
+              t.value=e, r=new CustomEvent("vue-time-picker-change", {
+                detail:{
+                  time:t.value
+                }
+              }), window.dispatchEvent(r)
+            }
+          }
+        }
+      });
+      const o=(0, r(514486).A)(s, (function(){
+        var e=this, t=e.$createElement;
+        return(e._self._c||t)("TimePicker", {
+          staticStyle:{
+            width:"168px", "margin-left":"8px"
+          }, attrs:{
+            confirm:"", placeholder:e.$t("select_date"), value:e.selectedTime
+          }, on:{
+            "on-change":e.handleTimeChange
+          }
+        })
+      }), [
+      ], !1, null, "7cc0aa46", null).exports
+    }, 708054:(e, t, r)=>{
+      var n=r(756029);
+      r(678218), e.exports=n.module("classroom-module", [
+        "common"
+      ]).factory("api", r(427373)).factory("classroomApi", r(612849)).factory("classroomRepository", r(746798)).factory("EnrollmentFilter", r(827829)).factory("Department", r(860019)).factory("examRepository", r(489442)).controller("ExamContentController", r(688750)).controller("ExamPreviewController", r(948261)).controller("ClassroomController", r(925789)).controller("EditClassroomController", r(154383)).controller("ShowClassroomController", r(161788)).controller("FeedbackActivityController", r(645374)).controller("SubjectsEditController", r(541565)).controller("SubjectEditController", r(343246)).controller("ExamScoreListController", r(356092)).controller("ClassroomPagedStudentStats", r(859862)).controller("ClassroomExamineeSubmissionController", r(326834)).controller("ExamSubmissionListController", r(655744)).controller("ClassroomExamController", r(878850)).controller("ClassroomExamProgressController", r(660470)).controller("StatClassroomScoreDistributionController", r(761106)).controller("DanmuActivityController", r(659090)).controller("VoteActivityController", r(628593)).controller("SubjectControlTimeController", r(189495))
+    }, 755805:(e, t, r)=>{
+      r.d(t, {
+        A:()=>l
+      });
+      r(269193);
+      var n=r(592207), s=r.n(n), o=(r(207452), r(302543)), i=r.n(o), a=r(951708);
+      function u(e, t, r, n, s, o, i){
+        try{
+          var a=e[
+            o
+          ]
+          (i), u=a.value
+        }
+        catch(e){
+          return void r(e)
+        }
+        a.done?t(u):Promise.resolve(u).then(n, s)
+      }
+      function c(e){
+        return function(){
+          var t=this, r=arguments;
+          return new Promise((function(n, s){
+            var o=e.apply(t, r);
+            function i(e){
+              u(o, n, s, i, a, "next", e)
+            }
+            function a(e){
+              u(o, n, s, i, a, "throw", e)
+            }
+            i(void 0)
+          }))
+        }
+      }
+      const l={
+        namespaced:!0, state:{
+          userCreditState:{
+          }, courseCreditState:{
+          }
+        }, actions:{
+          fetchCurrentUserState:e=>c(s().mark((function t(){
+            var r, n;
+            return s().wrap((function(t){
+              for(;
+              ;
+              )switch(t.prev=t.next){
+                case 0:return r=e.commit, t.next=3, (0, a.getCurrentUserCredits)();
+                case 3:n=t.sent, r("setUserCreditState", n);
+                case 5:case"end":return t.stop()
+              }
+            }), t)
+          })))(), fetchCurrentCourseState:(e, t)=>c(s().mark((function r(){
+            var n, o, i;
+            return s().wrap((function(r){
+              for(;
+              ;
+              )switch(r.prev=r.next){
+                case 0:return n=e.commit, o=t.courseId, r.next=4, (0, a.getCurrentCourseCredits)(o);
+                case 4:i=r.sent, n("setCourseCreditState", i);
+                case 6:case"end":return r.stop()
+              }
+            }), r)
+          })))()
+        }, getters:{
+          userRemainingCredits:e=>i().isEmpty(e.userCreditState)?0:e.userCreditState.creditRemaining||0, hasRemainingCredits:(e, t)=>t.userRemainingCredits>0, courseRemainingCredits:e=>i().isEmpty(e.courseCreditState)?0:e.courseCreditState.creditRemaining||0, hasCourseRemainingCredits:(e, t)=>t.courseRemainingCredits>0
+        }, mutations:{
+          setUserCreditState(e, t){
+            e.userCreditState=t
+          }, setCourseCreditState(e, t){
+            e.courseCreditState=t
+          }
+        }
+      }
+    }, 761106:(e, t, r)=>{
+      var n=r(248124), s=r(302543);
+      r(990345), r(269193), r(850785);
+      var o=r(592207);
+      function i(e, t, r, n, s, o, i){
+        try{
+          var a=e[
+            o
+          ]
+          (i), u=a.value
+        }
+        catch(e){
+          return void r(e)
+        }
+        a.done?t(u):Promise.resolve(u).then(n, s)
+      }
+      function a(e){
+        return function(){
+          var t=this, r=arguments;
+          return new Promise((function(n, s){
+            var o=e.apply(t, r);
+            function a(e){
+              i(o, n, s, a, u, "next", e)
+            }
+            function u(e){
+              i(o, n, s, a, u, "throw", e)
+            }
+            a(void 0)
+          }))
+        }
+      }
+      r(207452);
+      var u=r(825315);
+      e.exports=[
+        "$scope", "$routeParams", "$timeout", "statRepository", function(e, t, r, i){
+          e.classroomId=t.classroomId||n("#classroomId").val(), e.ui={
+            showChart:!0
+          }, e.noData=!0, e.condition={
+            class_ids:[
+            ], section_ids:[
+            ]
+          }, e.$on("drawChart", (function(){
+            if(e.ui.showChart)return r((()=>l()))
+          })), e.hasData=()=>!s.isEmpty(e.scoreDatas), e.toggleShowChart=function(){
+            if(e.ui.showChart=!e.ui.showChart, e.ui.showChart)return r((()=>l()))
+          };
+          var c=function(){
+            var t=a(o.mark((function t(){
+              var r;
+              return o.wrap((function(t){
+                for(;
+                ;
+                )switch(t.prev=t.next){
+                  case 0:return t.next=2, i.initClassroomScoreDistribution(e.classroomId, e.condition);
+                  case 2:r=t.sent, e.data=r.data, e.noData=!(Object.keys(e.data.distributions).length>0);
+                  case 5:case"end":return t.stop()
+                }
+              }), t)
+            })));
+            return function(){
+              return t.apply(this, arguments)
+            }
+          }
+          (), l=function(){
+            var t=a(o.mark((function t(){
+              return o.wrap((function(t){
+                for(;
+                ;
+                )switch(t.prev=t.next){
+                  case 0:return t.next=2, c();
+                  case 2:r((()=>{
+                    u.drawBarChart(e.xAxis, e.seriesName, Object.values(e.data.distributions))
+                  }));
+                  case 3:case"end":return t.stop()
+                }
+              }), t)
+            })));
+            return function(){
+              return t.apply(this, arguments)
+            }
+          }
+          ();
+          e.search=()=>{
+            l()
+          };
+          return function(){
+            if(e.ui.showChart)return l()
+          }
+          ()
+        }
+      ]
+    }, 815134:(e, t, r)=>{
+      r.r(t), r.d(t, {
+        addCourse:()=>k, assignActivityToModule:()=>M, assignUploadsToCourse:()=>$, combineCourse:()=>A, combineCourseContent:()=>T, getAllMyCoursesByConditions:()=>O, getAvaLives:()=>b, getCanBeCombinedCourses:()=>E, getCourse:()=>v, getCourseEducators:()=>y, getCourseHosts:()=>g, getCourseInstructors:()=>h, getCourseLives:()=>f, getCourseModules:()=>p, getCoursesAuditResource:()=>C, getCoursesToMerged:()=>U, getCoursesWithResourceNum:()=>S, getMyAcademicYears:()=>P, getMyCoursesByPage:()=>j, getMySemesters:()=>I, getOnoCourseVisitStat:()=>x, getSubCourses:()=>z, getUsersByGroupName:()=>_, inspectCourse:()=>w
+      });
+      r(540590), r(418665), r(169218), r(269193), r(14602);
+      var n=r(272505), s=r.n(n), o=r(920453), i=r(218831), a=r(448743), u=r(765321), c=r(731904), l=function(){
+        return(l=Object.assign||function(e){
+          for(var t, r=1, n=arguments.length;
+          r<n;
+          r++)for(var s in t=arguments[
+            r
+          ])Object.prototype.hasOwnProperty.call(t, s)&&(e[
+            s
+          ]
+          =t[
+            s
+          ]);
+          return e
+        }).apply(this, arguments)
+      }, d=function(e, t, r, n){
+        return new(r||(r=Promise))((function(s, o){
+          function i(e){
+            try{
+              u(n.next(e))
+            }
+            catch(e){
+              o(e)
+            }
+          }
+          function a(e){
+            try{
+              u(n.throw(e))
+            }
+            catch(e){
+              o(e)
+            }
+          }
+          function u(e){
+            var t;
+            e.done?s(e.value):(t=e.value, t instanceof r?t:new r((function(e){
+              e(t)
+            }))).then(i, a)
+          }
+          u((n=n.apply(e, t||[
+          ])).next())
+        }))
+      }, m=function(e, t){
+        var r, n, s, o, i={
+          label:0, sent:function(){
+            if(1&s[
+              0
+            ])throw s[
+              1
+            ];
+            return s[
+              1
+            ]
+          }, trys:[
+          ], ops:[
+          ]
+        };
+        return o={
+          next:a(0), throw:a(1), return:a(2)
+        }, "function"==typeof Symbol&&(o[
+          Symbol.iterator
+        ]
+        =function(){
+          return this
+        }), o;
+        function a(a){
+          return function(u){
+            return function(a){
+              if(r)throw new TypeError("Generator is already executing.");
+              for(;
+              o&&(o=0, a[
+                0
+              ]
+              &&(i=0)), i;
+              )try{
+                if(r=1, n&&(s=2&a[
+                  0
+                ]
+                ?n.return:a[
+                  0
+                ]
+                ?n.throw||((s=n.return)&&s.call(n), 0):n.next)&&!(s=s.call(n, a[
+                  1
+                ])).done)return s;
+                switch(n=0, s&&(a=[
+                  2&a[
+                    0
+                  ], s.value
+                ]), a[
+                  0
+                ]){
+                  case 0:case 1:s=a;
+                  break;
+                  case 4:return i.label++, {
+                    value:a[
+                      1
+                    ], done:!1
+                  };
+                  case 5:i.label++, n=a[
+                    1
+                  ], a=[
+                    0
+                  ];
+                  continue;
+                  case 7:a=i.ops.pop(), i.trys.pop();
+                  continue;
+                  default:if(!(s=i.trys, (s=s.length>0&&s[
+                    s.length-1
+                  ])||6!==a[
+                    0
+                  ]
+                  &&2!==a[
+                    0
+                  ])){
+                    i=0;
+                    continue
+                  }
+                  if(3===a[
+                    0
+                  ]
+                  &&(!s||a[
+                    1
+                  ]
+                  >s[
+                    0
+                  ]
+                  &&a[
+                    1
+                  ]
+                  <s[
+                    3
+                  ])){
+                    i.label=a[
+                      1
+                    ];
+                    break
+                  }
+                  if(6===a[
+                    0
+                  ]
+                  &&i.label<s[
+                    1
+                  ]){
+                    i.label=s[
+                      1
+                    ], s=a;
+                    break
+                  }
+                  if(s&&i.label<s[
+                    2
+                  ]){
+                    i.label=s[
+                      2
+                    ], i.ops.push(a);
+                    break
+                  }
+                  s[
+                    2
+                  ]
+                  &&i.ops.pop(), i.trys.pop();
+                  continue
+                }
+                a=t.call(e, i)
+              }
+              catch(e){
+                a=[
+                  6, e
+                ], n=0
+              }
+              finally{
+                r=s=0
+              }
+              if(5&a[
+                0
+              ])throw a[
+                1
+              ];
+              return{
+                value:a[
+                  0
+                ]
+                ?a[
+                  1
+                ]
+                :void 0, done:!0
+              }
+            }
+            ([
+              a, u
+            ])
+          }
+        }
+      };
+      function p(e){
+        return d(this, void 0, void 0, (function(){
+          var t;
+          return m(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, s().get("/api/courses/".concat(e, "/modules"))
+              ];
+              case 1:return t=r.sent(), [
+                2, (0, o.plainToClass)(a.Module, t.data.modules)
+              ]
+            }
+          }))
+        }))
+      }
+      function f(e, t){
+        return d(this, void 0, void 0, (function(){
+          var r, n;
+          return m(this, (function(u){
+            switch(u.label){
+              case 0:return[
+                4, s().get("/api/courses/".concat(e, "/extension-lives?source=").concat(t))
+              ];
+              case 1:return r=u.sent(), n=(0, i.camelizeKeys)(r.data.lives), [
+                2, (0, o.plainToClass)(a.ChinamCloudLive, n)
+              ]
+            }
+          }))
+        }))
+      }
+      function b(e, t, r, n){
+        return d(this, void 0, void 0, (function(){
+          var u, l, d;
+          return m(this, (function(m){
+            switch(m.label){
+              case 0:return c._.assign(n, {
+                pageIndex:e, pageSize:t
+              }), [
+                4, s().get("/api/courses/".concat(r, "/extension-lives"), {
+                  params:n
+                })
+              ];
+              case 1:return u=m.sent(), l=(0, i.camelizeKeys)(u.data.items), d=(0, o.plainToClass)(a.AvaLiveInfo, l), [
+                2, {
+                  page:e, pageSize:t, pages:u.data.pages, total:u.data.total, start:u.data.start, end:u.data.end, items:d
+                }
+              ]
+            }
+          }))
+        }))
+      }
+      function v(e, t){
+        return d(this, void 0, void 0, (function(){
+          var r;
+          return m(this, (function(n){
+            switch(n.label){
+              case 0:return[
+                4, s().get("/api/courses/".concat(e), {
+                  params:{
+                    fields:t
+                  }
+                })
+              ];
+              case 1:return r=n.sent().data, [
+                2, (0, o.plainToClass)(a.BaseCourse, (0, i.camelizeKeys)(r))
+              ]
+            }
+          }))
+        }))
+      }
+      function h(e){
+        return d(this, void 0, void 0, (function(){
+          var t;
+          return m(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, s().get("/api/courses/".concat(e, "/instructors"))
+              ];
+              case 1:return t=r.sent(), [
+                2, (0, o.plainToClass)(u.KJ, t.data.instructors)
+              ]
+            }
+          }))
+        }))
+      }
+      function g(e, t){
+        return d(this, void 0, void 0, (function(){
+          var r;
+          return m(this, (function(n){
+            switch(n.label){
+              case 0:return[
+                4, s().get("/api/courses/".concat(e, "/hosts?type=").concat(t))
+              ];
+              case 1:return r=n.sent(), [
+                2, (0, o.plainToClass)(u.KJ, (0, i.camelizeKeys)(r.data.hosts), {
+                  excludeExtraneousValues:!0
+                })
+              ]
+            }
+          }))
+        }))
+      }
+      function y(e, t){
+        return void 0===t&&(t=""), d(this, void 0, void 0, (function(){
+          var r, n, a;
+          return m(this, (function(c){
+            switch(c.label){
+              case 0:return r="/api/courses/".concat(e, "/educators"), t&&(r="".concat(r, "?fields=").concat(t)), [
+                4, s().get(r)
+              ];
+              case 1:return n=c.sent(), a=(0, i.camelizeKeys)(n.data.enrollments), [
+                2, (0, o.plainToClass)(u.Gw, a)
+              ]
+            }
+          }))
+        }))
+      }
+      function _(e, t){
+        return d(this, void 0, void 0, (function(){
+          var r;
+          return m(this, (function(n){
+            switch(n.label){
+              case 0:return[
+                4, s().get("/api/courses/".concat(e, "/group-users?group_name=").concat(t))
+              ];
+              case 1:return r=n.sent(), [
+                2, (0, o.plainToClass)(u.KJ, r.data.result)
+              ]
+            }
+          }))
+        }))
+      }
+      function w(e){
+        return d(this, void 0, void 0, (function(){
+          return m(this, (function(t){
+            return[
+              2, s().put("/api/courses/".concat(e, "/inspect"))
+            ]
+          }))
+        }))
+      }
+      var S=function(e, t, r){
+        return d(void 0, void 0, void 0, (function(){
+          var n, u, c, l;
+          return m(this, (function(d){
+            switch(d.label){
+              case 0:return n=(0, i.decamelizeKeys)({
+                page:e, pageSize:t, conditions:r, includeChildrenTenant:1
+              }), [
+                4, s().get("/api/courses/statistic/resource-audit", {
+                  params:n
+                })
+              ];
+              case 1:return u=d.sent(), c=(0, i.camelizeKeys)(u.data.courses), l=(0, o.plainToClass)(a.CourseWithResourceNum, c, {
+                excludeExtraneousValues:!0
+              }), [
+                2, {
+                  page:e, pageSize:t, pages:u.data.pages, total:u.data.total, start:u.data.start, end:u.data.end, items:l
+                }
+              ]
+            }
+          }))
+        }))
+      }, C=function(e, t, r, n){
+        return d(void 0, void 0, void 0, (function(){
+          var u, c, l, d;
+          return m(this, (function(m){
+            switch(m.label){
+              case 0:return u=(0, i.decamelizeKeys)({
+                page:t, pageSize:r, conditions:n
+              }), [
+                4, s().get("/api/courses/".concat(e, "/resource-audit"), {
+                  params:u
+                })
+              ];
+              case 1:return c=m.sent(), l=(0, i.camelizeKeys)(c.data.audit_references), d=(0, o.plainToClass)(a.CourseAuditReference, l, {
+                excludeExtraneousValues:!0
+              }), [
+                2, {
+                  page:t, pageSize:r, pages:c.data.pages, total:c.data.total, start:c.data.start, end:c.data.end, items:d
+                }
+              ]
+            }
+          }))
+        }))
+      };
+      function x(e, t, r, n, u){
+        return d(this, void 0, void 0, (function(){
+          var c, l, d;
+          return m(this, (function(m){
+            switch(m.label){
+              case 0:return c=(0, i.decamelizeKeys)({
+                courseIds:e, startDate:r, endDate:n, statType:t, conditions:u
+              }), [
+                4, s().get("/api/courses/tpdoe/stat-students?", {
+                  params:c
+                })
+              ];
+              case 1:return l=m.sent(), d=(0, i.camelizeKeys)(l.data.result), [
+                2, (0, o.plainToClass)(a.OnoCourseStatUser, d)
+              ]
+            }
+          }))
+        }))
+      }
+      function k(e){
+        return d(this, void 0, void 0, (function(){
+          var t;
+          return m(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, s().post("/api/course", e)
+              ];
+              case 1:return t=r.sent(), [
+                2, (0, i.camelizeKeys)(t.data)
+              ]
+            }
+          }))
+        }))
+      }
+      function j(e, t, r, n){
+        return void 0===e&&(e=1), void 0===t&&(t=100), void 0===r&&(r=""), void 0===n&&(n={
+        }), d(this, void 0, void 0, (function(){
+          var o, a;
+          return m(this, (function(u){
+            switch(u.label){
+              case 0:return o=(0, i.decamelizeKeys)({
+                page:e, pageSize:t, fields:r, conditions:l({
+                }, n)
+              }), [
+                4, s().post("/api/my-courses", o)
+              ];
+              case 1:return a=u.sent(), [
+                2, (0, i.camelizeKeys)(a.data)
+              ]
+            }
+          }))
+        }))
+      }
+      function I(e){
+        return void 0===e&&(e={
+        }), d(this, void 0, void 0, (function(){
+          var t;
+          return m(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, s().get("/api/my-semesters", {
+                  params:(0, i.decamelizeKeys)(e)
+                })
+              ];
+              case 1:return t=r.sent(), [
+                2, (0, i.camelizeKeys)(t.data.semesters)
+              ]
+            }
+          }))
+        }))
+      }
+      function P(e){
+        return void 0===e&&(e={
+        }), d(this, void 0, void 0, (function(){
+          var t;
+          return m(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, s().get("/api/my-academic-years", {
+                  params:(0, i.decamelizeKeys)(e)
+                })
+              ];
+              case 1:return t=r.sent(), [
+                2, (0, i.camelizeKeys)(t.data.academic_years||t.data)
+              ]
+            }
+          }))
+        }))
+      }
+      function A(e){
+        return d(this, void 0, void 0, (function(){
+          var t;
+          return m(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, s().post("/api/combine-courses", (0, i.decamelizeKeys)(e))
+              ];
+              case 1:return t=r.sent(), [
+                2, (0, i.camelizeKeys)(t.data)
+              ]
+            }
+          }))
+        }))
+      }
+      function E(e){
+        return d(this, void 0, void 0, (function(){
+          var t;
+          return m(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, s().get("/api/combine-courses", {
+                  params:{
+                    conditions:(0, i.decamelizeKeys)(e)
+                  }
+                })
+              ];
+              case 1:return t=r.sent(), [
+                2, (0, i.camelizeKeys)(t.data)
+              ]
+            }
+          }))
+        }))
+      }
+      function T(e, t){
+        return d(this, void 0, void 0, (function(){
+          return m(this, (function(r){
+            return[
+              2, s().post("/api/combine-courses/".concat(e, "/combine-contents"), t)
+            ]
+          }))
+        }))
+      }
+      function M(e, t){
+        return d(this, void 0, void 0, (function(){
+          return m(this, (function(r){
+            return[
+              2, s().post("/api/courses/".concat(e, "/assign-activity-to-module"), t)
+            ]
+          }))
+        }))
+      }
+      function $(e){
+        return d(this, void 0, void 0, (function(){
+          return m(this, (function(t){
+            return[
+              2, s().post("/api/uploads/share-to-courses", e)
+            ]
+          }))
+        }))
+      }
+      function U(e){
+        return d(this, void 0, void 0, (function(){
+          var t;
+          return m(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, s().get("/api/combine-courses/".concat(e, "/courses-to-merged"))
+              ];
+              case 1:return t=r.sent(), [
+                2, (0, i.camelizeKeys)(t.data).courses
+              ]
+            }
+          }))
+        }))
+      }
+      function z(e, t){
+        return d(this, void 0, void 0, (function(){
+          var r, n, o;
+          return m(this, (function(a){
+            switch(a.label){
+              case 0:return r="/api/combine-courses/".concat(e, "/sub-courses"), n={
+              }, t&&(n.fields=t), [
+                4, s().get(r, {
+                  params:n
+                })
+              ];
+              case 1:return o=a.sent(), [
+                2, (0, i.camelizeKeys)(o.data).subCourses
+              ]
+            }
+          }))
+        }))
+      }
+      function O(e, t){
+        return void 0===e&&(e=""), void 0===t&&(t={
+        }), d(this, void 0, void 0, (function(){
+          var r, n;
+          return m(this, (function(o){
+            switch(o.label){
+              case 0:return r=(0, i.decamelizeKeys)({
+                fields:e, conditions:l({
+                }, t)
+              }), [
+                4, s().post("/api/my-courses", r)
+              ];
+              case 1:return n=o.sent(), [
+                2, (0, i.camelizeKeys)(n.data)
+              ]
+            }
+          }))
+        }))
+      }
+    }, 830031:(e, t, r)=>{
+      r.d(t, {
+        b:()=>o
+      });
+      var n=r(738645), s=function(e, t, r, n){
+        var s, o=arguments.length, i=o<3?t:null===n?n=Object.getOwnPropertyDescriptor(t, r):n;
+        if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)i=Reflect.decorate(e, t, r, n);
+        else for(var a=e.length-1;
+        a>=0;
+        a--)(s=e[
+          a
+        ])&&(i=(o<3?s(i):o>3?s(t, r, i):s(t, r))||i);
+        return o>3&&i&&Object.defineProperty(t, r, i), i
+      }, o=function(){
+        function e(){
+          this.userId=0, this.userNo="", this.userName="", this.department="", this.role="", this.usageCount=0
+        }
+        return s([
+          (0, n.v)({
+            name:"user_id"
+          })
+        ], e.prototype, "userId", void 0), s([
+          (0, n.v)({
+            name:"user_no"
+          })
+        ], e.prototype, "userNo", void 0), s([
+          (0, n.v)({
+            name:"user_name"
+          })
+        ], e.prototype, "userName", void 0), s([
+          (0, n.v)({
+            name:"usage_count"
+          })
+        ], e.prototype, "usageCount", void 0), e
+      }
+      ()
+    }, 859862:(e, t, r)=>{
+      var n=r(248124), s=r(302543);
+      r(215195), r(269193), r(850785);
+      var o=r(592207);
+      function i(e, t){
+        return function(e){
+          if(Array.isArray(e))return e
+        }
+        (e)||function(e, t){
+          if("undefined"==typeof Symbol||!(Symbol.iterator in Object(e)))return;
+          var r=[
+          ], n=!0, s=!1, o=void 0;
+          try{
+            for(var i, a=e[
+              Symbol.iterator
+            ]
+            ();
+            !(n=(i=a.next()).done)&&(r.push(i.value), !t||r.length!==t);
+            n=!0);
+          }
+          catch(e){
+            s=!0, o=e
+          }
+          finally{
+            try{
+              n||null==a.return||a.return()
+            }
+            finally{
+              if(s)throw o
+            }
+          }
+          return r
+        }
+        (e, t)||function(e, t){
+          if(!e)return;
+          if("string"==typeof e)return a(e, t);
+          var r=Object.prototype.toString.call(e).slice(8, -1);
+          "Object"===r&&e.constructor&&(r=e.constructor.name);
+          if("Map"===r||"Set"===r)return Array.from(e);
+          if("Arguments"===r||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(r))return a(e, t)
+        }
+        (e, t)||function(){
+          throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")
+        }
+        ()
+      }
+      function a(e, t){
+        (null==t||t>e.length)&&(t=e.length);
+        for(var r=0, n=new Array(t);
+        r<t;
+        r++)n[
+          r
+        ]
+        =e[
+          r
+        ];
+        return n
+      }
+      function u(e, t, r, n, s, o, i){
+        try{
+          var a=e[
+            o
+          ]
+          (i), u=a.value
+        }
+        catch(e){
+          return void r(e)
+        }
+        a.done?t(u):Promise.resolve(u).then(n, s)
+      }
+      function c(e){
+        return function(){
+          var t=this, r=arguments;
+          return new Promise((function(n, s){
+            var o=e.apply(t, r);
+            function i(e){
+              u(o, n, s, i, a, "next", e)
+            }
+            function a(e){
+              u(o, n, s, i, a, "throw", e)
+            }
+            i(void 0)
+          }))
+        }
+      }
+      r(207452);
+      var l=r(966491);
+      e.exports=[
+        "$scope", "$routeParams", "$timeout", "statRepository", "classroomRepository", "filter", "$q", function(e, t, r, a, u, d, m){
+          var p, f, b=null===(p=window.globalData)||void 0===p||null===(f=p.course)||void 0===f?void 0:f.orgId, v=n("#courseId").val();
+          e.courseId=v, e.classroomId=t.classroomId||n("#classroomId").val(), e.condition={
+            org_id:null, department_ids:[
+            ], grade_ids:[
+            ], class_ids:[
+            ], section_ids:[
+            ], statuses:[
+            ], keyword:"", learning_center:!0
+          }, e.preOrgId=null, e.vueParam={
+            disabled:!0, departments:[
+            ]
+          }, e.vueMethods={
+            updateConditionDepartmentIds:t=>{
+              r((()=>{
+                e.condition.department_ids=t, e.search()
+              }))
+            }
+          }, e.elementId="#org-select-open-university", e.noStatusFilter=!0, e.noSort=!0, e.pagedStudentIds=[
+          ], e.groups=[
+          ], e.finalCalculate={
+            multiplier:1, plusScore:0
+          }, e.pageSize=100, e.loading=!1;
+          var h=function(t){
+            e.pages=t.pages, e.pageIndex=t.page, e.result=t
+          };
+          e.changePage=function(){
+            var e=c(o.mark((function e(t){
+              var r;
+              return o.wrap((function(e){
+                for(;
+                ;
+                )switch(e.prev=e.next){
+                  case 0:return e.next=2, g(t);
+                  case 2:r=e.sent, h(r);
+                  case 4:case"end":return e.stop()
+                }
+              }), e)
+            })));
+            return function(t){
+              return e.apply(this, arguments)
+            }
+          }
+          ();
+          var g=function(){
+            var t=c(o.mark((function t(r){
+              var n;
+              return o.wrap((function(t){
+                for(;
+                ;
+                )switch(t.prev=t.next){
+                  case 0:return e.pageIndex=r, t.next=3, a.initPagedStudents(e);
+                  case 3:return n=t.sent, e.filteredExaminees=n.enrollments, e.pagedStudentIds=n.enrollments.map((e=>e.user_id)), t.next=8, S();
+                  case 8:return t.abrupt("return", n);
+                  case 9:case"end":return t.stop()
+                }
+              }), t)
+            })));
+            return function(e){
+              return t.apply(this, arguments)
+            }
+          }
+          (), y=function(t){
+            return e.examinees=s.map(t, (function(e){
+              return e.studentInfo=[
+                e.department.name, e.grade.name, e.klass.name
+              ].join(""), e.waitingForScore=e.submitted&&null===e.score, e.score=l.formatFloat(e.score), e.status=e.submitted?1:2, e
+            })), e.pagedExaminees=e.examinees, e.examinees
+          };
+          e.ui.containsSubmissionNoScore=e=>s.some(e.submissions, (e=>null===e.score));
+          e.search=function(){
+            e.vueParam.disabled=Boolean(!e.condition.org_id);
+            var t=Number(e.condition.org_id), r=e.preOrgId;
+            return e.condition&&null!==e.condition.org_id?t!==r&&(C(t), e.preOrgId=t, e.condition.department_ids=[
+            ], e.condition.grade_ids=[
+            ], e.condition.class_ids=[
+            ], e.condition.section_ids=[
+            ], e.condition.keyword="", e.condition.statuses=[
+            ], e.vueParam.departments=[
+            ], e.$broadcast("refreshTreeViewModel")):e.preOrgId&&(e.preOrgId=null, d.clearFilter(e)), e.changePage(1)
+          };
+          var _, w, S=function(){
+            var t=c(o.mark((function t(){
+              return o.wrap((function(t){
+                for(;
+                ;
+                )switch(t.prev=t.next){
+                  case 0:if(0!==e.pagedStudentIds.length){
+                    t.next=4;
+                    break
+                  }
+                  examinees=[
+                  ], t.next=7;
+                  break;
+                  case 4:return t.next=6, u.initExaminees(e.classroomId, !0, e.pagedStudentIds, !0);
+                  case 6:examinees=t.sent;
+                  case 7:y(examinees);
+                  case 8:case"end":return t.stop()
+                }
+              }), t)
+            })));
+            return function(){
+              return t.apply(this, arguments)
+            }
+          }
+          ();
+          _=u.initClassroom(e.classroomId), w=u.initSubjectsRule(e.classroomId), m.all([
+            _, w
+          ]).then((function(){
+            var t=Array.from(arguments.length<=0?void 0:arguments[
+              0
+            ]), r=i(t, 2), n=r[
+              0
+            ], s=r[
+              1
+            ];
+            return e.subjects_rule=s, e.classroom=n, e.classroom.isQuizPublic=e.subjects_rule.public, e.classroom.isQuizControlBySubject=e.subjects_rule.subject_by_subject_control
+          }));
+          var C=function(t){
+            d.clearFilter(e), d.initOrgDepartments(e, t).then((()=>{
+              e.vueParam.departments=s.cloneDeep(e.departments)
+            })), d.initCourseOrgs(e, v, "student")
+          };
+          return C(b), e.changePage(1)
+        }
+      ]
+    }, 864274:(e, t, r)=>{
+      var n=r(302543), s=r(756029), o=r(248124);
+      r(540590), r(335231), r(43148), r(678636);
+      var i=r(363838);
+      e.exports=[
+        "ExamSubject", "$http", "toastr", function(e, t, r){
+          var a=function(e){
+            var t=e.url;
+            return{
+              name:e.name, size:e.size, deleted:!1, description:e.description, end_time:e.submit_closed_time, status:"ready", source:e.source, type:e.type, video_urls:{
+                QVGA:"".concat(t, "/360p.mp4"), VGA:"".concat(t, "/480p.mp4"), HD:"".concat(t, "/720p.mp4")
+              }
+            }
+          }, u=function(t, r, o, i, a){
+            t.timestamp=b(), t.subjectTypes=c(), "SHTVU"===t.upload.source?(t.ui.isLongerThanHour=!1, t.ui.duration=null):(t.ui.isLongerThanHour=m(t.upload)>=3600, t.ui.duration=m(t.upload)), t.allow_forward_seeking=a, r.subjects_timestamp=r.subjects_timestamp||{
+            }, t.subjectsTimestamp=r.subjects_timestamp, t.updateTimestampList&&t.updateTimestampList(), t.repoSubjects=o, t.subjects=n.map(s.copy(o), (t=>e.createSubjectBySavedSubject(t, i))), t.subjectsForCurrentTime=[
+            ], t.ui.isVideoPaused=!0, t.ui.intToChar=_, t.ui.calcOptionWidth=w, t.ui.getCorrectOptions=v, t.getSubjectIndex=(e, t)=>t+1, t.closeForReplay=function(){
+              var e=h(t)-.4;
+              e<0&&(e=0), g(t, e), t.subjectsForCurrentTime=[
+              ], t.errors={
+              }
+            }, t.close=function(){
+              t.subjectsForCurrentTime=[
+              ], t.errors={
+              }
+            }
+          }, c=function(){
+            return{
+              mapping:[
+                {
+                  value:1, name:"single_selection"
+                }, {
+                  value:2, name:"multiple_selection"
+                }, {
+                  value:3, name:"true_or_false"
+                }
+              ], getName(e){
+                return n.find(this.mapping, {
+                  value:parseFloat(e)
+                }).name
+              }, getValue(e){
+                if(e)return n.find(this.mapping, {
+                  name:e
+                }).value
+              }
+            }
+          }, l=function(e){
+            if(e&&e.length>=1){
+              var n=e[
+                0
+              ];
+              return n.videos&&n.videos.length>0?n.video_urls=i.getUrls(n):n.third_part_referrer_id&&t.get("/api/uploads/".concat(n.id, "?preview=true")).success((function(e){
+                return n.video_urls=e.video_urls, n.duration=e.duration
+              })).error(r.decorateError((function(){
+              }))), n
+            }
+            return null
+          }, d=function(e){
+            var t=e.match(/^(\d{
+              2
+            })([
+              0-5
+            ]
+            \d)([
+              0-5
+            ]
+            \d)$/);
+            return t?3600*parseInt(t[
+              1
+            ])+60*parseInt(t[
+              2
+            ])+parseInt(t[
+              3
+            ]):null
+          }, m=function(e){
+            return!e||e.deleted?0:e.third_part_referrer_id||e.source&&![
+              "mbz_import", "imscc_import"
+            ].includes(e.source)?e.duration||0:e.videos[
+              0
+            ].duration
+          }, p=function(e, t, r, n, s){
+            o(".vjs-control-bar .vjs-progress-control .timestamp-point").remove();
+            var i=o(".vjs-control-bar .vjs-progress-control");
+            if(s){
+              var a="#video-quiz-player .mvp-replay-player-all-controls .mvp-progress-control .mvp-progress-holder";
+              o("".concat(a, " .timestamp-point")).remove(), i=o(a)
+            }
+            var u=m(e);
+            return(()=>{
+              var e=[
+              ];
+              for(var s in t){
+                var a=d(s);
+                if(a>=0&&a<=u){
+                  var c=Math.round(a/u*1e4)/100, l=o("<div class='timestamp-point' style='left:calc(".concat(c, "% - 8px);'><i class='icon icon-time-point'></i></div>"));
+                  n&&(l=o(n(c))), i.append(l), r?e.push(l.click(r(a))):e.push(void 0)
+                }
+                else e.push(void 0)
+              }
+              return e
+            })()
+          }, f=function(e){
+            var t=n.parseInt(e)||0;
+            return t>9?"".concat(t):"0".concat(t)
+          }, b=function(){
+            return{
+              hour:0, minute:0, second:0, asKey(){
+                return"".concat(f(this.hour)).concat(f(this.minute)).concat(f(this.second))
+              }, parseTime(e){
+                this.second=Math.floor(e%3600%60), this.minute=Math.floor(e%3600/60), this.hour=Math.floor(e/3600)
+              }
+            }
+          }, v=function(e){
+            var t=n.filter(e.options, (e=>e.isCorrect||e.is_answer));
+            return n.map(t, (e=>P.intToChar(e.sort))).sort().join(" ")
+          }, h=function(e){
+            return n.isFunction(e.player.currentTime)?e.player.currentTime():e.player.currentTime
+          }, g=function(e, t){
+            if(n.isFunction(e.player.currentTime))return e.player.currentTime(t);
+            e.player.currentTime=t
+          }, y=function(e, t, r, s, o){
+            var i=null, a=null;
+            e.player=t;
+            var u=function(){
+              var t=h(e);
+              e.timestamp.parseTime(t);
+              var r=e.timestamp.asKey();
+              e.subjectsTimestamp[
+                r
+              ]
+              &&(r!==a||t<.4)&&(a=r, e.player.pause())
+            }, c=()=>r((function(){
+              var t, r=h(e);
+              if(e.timestamp.parseTime(r), a=e.timestamp.asKey(), r>.1)return t=e.subjectsTimestamp[
+                a
+              ]
+              ||[
+              ], e.subjectsForCurrentTime=n.map(t, (t=>n.find(e.subjects, {
+                id:t
+              }))), o()
+            }));
+            e.updateCurrentTimestamp=c;
+            var l=function(){
+              i&&(s.cancel(i), i=null), e.ui.isVideoPaused=!0, c()
+            };
+            t.requestFullscreen=function(){
+            };
+            t.on("play", (function(){
+              e.ui.isVideoPaused=!1, c(), i||(i=s(u, 250))
+            })), t.on("ended", l), t.on("pause", l)
+          }, _=e=>String.fromCharCode(65+e%26), w=function(e, t){
+            return"vertical"!==t&&e&&0!==e.length?"".concat(Math.max(25, 100/e.length), "%"):"auto"
+          }, S=-1, C=0, x=1, k=2, j=(e, t, r)=>{
+            var s, o, i;
+            return"multiple_selection"===r.type?s=function(e, t, r){
+              var s=e.settings.point_rule, o=n.intersection(t, r).length, i=n.difference(t, r).length, a=e.point, u=0;
+              "correct_count"===s?0===i&&(u=o===r.length?a:a/r.length*o):s&&"all_correct"!==s?"more_than_correct"===s&&(u=o>=e.settings.point_rule_minimum_count&&0===i?a:0):u=n.isEqual(t, r)?a:0;
+              return 0===t.length?S:0===u?C:u>0&&u<a?k:x
+            }
+            (r, e, t):(i=t, s=0===(o=e).length?S:n.isEqual(o, i)?x:C), s
+          }, I=e=>n.filter(e.subjectsForCurrentTime, (e=>!e.hasValidAnswer)).map((function(e){
+            var t, r=n(e.options).filter({
+              is_answer:!0
+            }).map("id").value();
+            return t="multiple_selection"===e.type?n(e.options).filter({
+              checked:!0
+            }).map("id").value():e.answeredOption?[
+              Number(e.answeredOption)
+            ]
+            :[
+            ], e.answerState=j(t, r, e), n.map(e.options, (e=>e.isChosen=t.includes(e.id)))
+          })), P={
+            initForInteraction:function(e, t, r, n){
+              var s=!(arguments.length>4&&void 0!==arguments[
+                4
+              ])||arguments[
+                4
+              ];
+              if(e.ui=e.ui||{
+              }, e.activity=t, t.interaction_activity_attributes&&t.interaction_activity_attributes.video_quiz)return e.videoQuiz=t.interaction_activity_attributes.video_quiz, e.videoQuizId=e.videoQuiz.id, e.ui.isOrgTransferArrears=t.is_transfer_arrears, e.ui.videoDescription=t.data.description, t.data.other_resource?e.upload=a(t.data.other_resource):e.upload=l(t.interaction_activity_attributes.video_quiz.uploads), u(e, e.videoQuiz, r, n, s)
+            }, initForVideoQuiz:function(e, t, r, n){
+              return e.ui=e.ui||{
+              }, e.videoQuiz=t, e.upload=l(t.uploads), e.upload.video_src_type=t.video_src_type, e.ui.isOrgTransferArrears=t.is_transfer_arrears, e.ui.videoDescription=e.upload.name, u(e, t, r, n, !0)
+            }, initForPreview:function(e, t, r, n, s){
+              t.ui=t.ui||{
+              }, t.ui.shouldShowAnswerAtTheCurrentTime=!1, e.inPreview=!0;
+              var o=r.defer();
+              t.answeredTimePoints=[
+              ];
+              var i=function(){
+                var e;
+                return t.ui.shouldShowAnswerAtTheCurrentTime=(e=t.timestamp.asKey(), t.answeredTimePoints.includes(e))
+              }, a=e=>"<div class='timestamp-point' style='left:calc(".concat(e, "% - 4px);'><i class='icon icon-time-point'></i></div>");
+              t.playerInitiated=function(e){
+                return y(t, e, n, s, i), o.resolve(e)
+              }, t.submit=function(){
+                return t.answeredTimePoints.push(t.timestamp.asKey()), t.ui.shouldShowAnswerAtTheCurrentTime=!0, I(t)
+              }, t.continue=()=>t.player.play();
+              var u=e=>function(r){
+                g(t, e), r.stopPropagation(), t.player.pause()
+              };
+              return o.promise.then((()=>p(t.upload, t.subjectsTimestamp, u, a, t.usePlayer2)))
+            }, updateControlProgressPoints:p, timestampAsDuration:d, getSubjectAnswerState:j, getCorrectOptions:v, Timestamp:b, initiatePlayer:y, intToChar:_, calcOptionWidth:w, showAnswerExplanationWithInstructor:I, checkCanContinueBySubject:e=>{
+              var t, r=e.activity.interaction_activity_attributes.answer_limit;
+              return t=e.subjectsForCurrentTime.length, n(e.subjectsForCurrentTime).filter({
+                answerState:1
+              }).value().length==t&&"answer_correctly_to_continue"==r||"unlimited"==r
+            }
+          };
+          return P
+        }
+      ]
+    }, 878850:(e, t, r)=>{
+      var n=r(302543), s=r(793110);
+      function o(e, t){
+        return function(e){
+          if(Array.isArray(e))return e
+        }
+        (e)||function(e, t){
+          if("undefined"==typeof Symbol||!(Symbol.iterator in Object(e)))return;
+          var r=[
+          ], n=!0, s=!1, o=void 0;
+          try{
+            for(var i, a=e[
+              Symbol.iterator
+            ]
+            ();
+            !(n=(i=a.next()).done)&&(r.push(i.value), !t||r.length!==t);
+            n=!0);
+          }
+          catch(e){
+            s=!0, o=e
+          }
+          finally{
+            try{
+              n||null==a.return||a.return()
+            }
+            finally{
+              if(s)throw o
+            }
+          }
+          return r
+        }
+        (e, t)||function(e, t){
+          if(!e)return;
+          if("string"==typeof e)return i(e, t);
+          var r=Object.prototype.toString.call(e).slice(8, -1);
+          "Object"===r&&e.constructor&&(r=e.constructor.name);
+          if("Map"===r||"Set"===r)return Array.from(e);
+          if("Arguments"===r||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(r))return i(e, t)
+        }
+        (e, t)||function(){
+          throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")
+        }
+        ()
+      }
+      function i(e, t){
+        (null==t||t>e.length)&&(t=e.length);
+        for(var r=0, n=new Array(t);
+        r<t;
+        r++)n[
+          r
+        ]
+        =e[
+          r
+        ];
+        return n
+      }
+      r(215195), r(700533), e.exports=[
+        "$rootScope", "$scope", "$routeParams", "$q", "ExamHelper", "classroomRepository", function(e, t, r, i, a, u){
+          var c=r.classroomId;
+          t.saveSubjectsToLib=()=>e.$broadcast("saveSubjectsToLib", {
+            classroomId:c, subjectCount:t.subjects.length
+          });
+          var l, d;
+          return t.showSubjectsSummary=(e, t, r)=>a.getSubjectsSummary(e, t, r), l=u.initClassroom(c), d=u.initSubjectsRule(c), i.all([
+            l, d
+          ]).then((function(){
+            var e=Array.from(arguments.length<=0?void 0:arguments[
+              0
+            ]), r=o(e, 2), n=r[
+              0
+            ], s=r[
+              1
+            ];
+            return t.subjects_rule=s, t.classroom=n, t.classroom.isQuizPublic=t.subjects_rule.public, t.classroom.isQuizControlBySubject=t.subjects_rule.subject_by_subject_control
+          })), u.initSubjects(c).then((function(e){
+            return t.subjects=e.subjects, t.groupedSubjects=a.groupSubjects(e.subjects), t.totalScore=n.reduce(e.subjects, ((e, t)=>e.plus(new s(t.point))), new s(0))
+          }))
+        }
+      ]
+    }, 882602:(e, t, r)=>{
+      r.r(t), r.d(t, {
+        useAiPpt:()=>U, useAiPptUsage:()=>$
+      });
+      r(540590), r(418665), r(269193), r(906048), r(43148), r(14602);
+      var n, s, o, i, a, u, c, l, d, m, p, f, b, v, h, g=r(921396), y=r.n(g), _=r(272505), w=r.n(_), S=r(595738), C=r(722720), x=r(369115), k=function(e, t, r, n){
+        return new(r||(r=Promise))((function(s, o){
+          function i(e){
+            try{
+              u(n.next(e))
+            }
+            catch(e){
+              o(e)
+            }
+          }
+          function a(e){
+            try{
+              u(n.throw(e))
+            }
+            catch(e){
+              o(e)
+            }
+          }
+          function u(e){
+            var t;
+            e.done?s(e.value):(t=e.value, t instanceof r?t:new r((function(e){
+              e(t)
+            }))).then(i, a)
+          }
+          u((n=n.apply(e, t||[
+          ])).next())
+        }))
+      }, j=function(e, t){
+        var r, n, s, o, i={
+          label:0, sent:function(){
+            if(1&s[
+              0
+            ])throw s[
+              1
+            ];
+            return s[
+              1
+            ]
+          }, trys:[
+          ], ops:[
+          ]
+        };
+        return o={
+          next:a(0), throw:a(1), return:a(2)
+        }, "function"==typeof Symbol&&(o[
+          Symbol.iterator
+        ]
+        =function(){
+          return this
+        }), o;
+        function a(a){
+          return function(u){
+            return function(a){
+              if(r)throw new TypeError("Generator is already executing.");
+              for(;
+              o&&(o=0, a[
+                0
+              ]
+              &&(i=0)), i;
+              )try{
+                if(r=1, n&&(s=2&a[
+                  0
+                ]
+                ?n.return:a[
+                  0
+                ]
+                ?n.throw||((s=n.return)&&s.call(n), 0):n.next)&&!(s=s.call(n, a[
+                  1
+                ])).done)return s;
+                switch(n=0, s&&(a=[
+                  2&a[
+                    0
+                  ], s.value
+                ]), a[
+                  0
+                ]){
+                  case 0:case 1:s=a;
+                  break;
+                  case 4:return i.label++, {
+                    value:a[
+                      1
+                    ], done:!1
+                  };
+                  case 5:i.label++, n=a[
+                    1
+                  ], a=[
+                    0
+                  ];
+                  continue;
+                  case 7:a=i.ops.pop(), i.trys.pop();
+                  continue;
+                  default:if(!(s=i.trys, (s=s.length>0&&s[
+                    s.length-1
+                  ])||6!==a[
+                    0
+                  ]
+                  &&2!==a[
+                    0
+                  ])){
+                    i=0;
+                    continue
+                  }
+                  if(3===a[
+                    0
+                  ]
+                  &&(!s||a[
+                    1
+                  ]
+                  >s[
+                    0
+                  ]
+                  &&a[
+                    1
+                  ]
+                  <s[
+                    3
+                  ])){
+                    i.label=a[
+                      1
+                    ];
+                    break
+                  }
+                  if(6===a[
+                    0
+                  ]
+                  &&i.label<s[
+                    1
+                  ]){
+                    i.label=s[
+                      1
+                    ], s=a;
+                    break
+                  }
+                  if(s&&i.label<s[
+                    2
+                  ]){
+                    i.label=s[
+                      2
+                    ], i.ops.push(a);
+                    break
+                  }
+                  s[
+                    2
+                  ]
+                  &&i.ops.pop(), i.trys.pop();
+                  continue
+                }
+                a=t.call(e, i)
+              }
+              catch(e){
+                a=[
+                  6, e
+                ], n=0
+              }
+              finally{
+                r=s=0
+              }
+              if(5&a[
+                0
+              ])throw a[
+                1
+              ];
+              return{
+                value:a[
+                  0
+                ]
+                ?a[
+                  1
+                ]
+                :void 0, done:!0
+              }
+            }
+            ([
+              a, u
+            ])
+          }
+        }
+      }, I=null!==(o=null===(s=null===(n=window.globalData)||void 0===n?void 0:n.course)||void 0===s?void 0:s.isSimulatingInstructor)&&void 0!==o&&o, P=null!==(a=null===(i=window.globalData)||void 0===i?void 0:i.isSimulatingVisitor)&&void 0!==a&&a, A=null!==(c=null===(u=window.featureToggles)||void 0===u?void 0:u.aiPpt)&&void 0!==c&&c, E=null!==(d=null===(l=window.globalData)||void 0===l?void 0:l.courseRoles)&&void 0!==d?d:[
+      ], T=null!==(f=null===(p=null===(m=window.orgSettings)||void 0===m?void 0:m.aiPpt)||void 0===p?void 0:p.api_secret)&&void 0!==f?f:"", M=null!==(h=null===(v=null===(b=window.orgSettings)||void 0===b?void 0:b.aiPpt)||void 0===v?void 0:v.api_key)&&void 0!==h?h:"", $=(0, C.F)((function(){
+        var e, t, r, n=(0, S.KR)(null!==(r=null===(t=null===(e=window.orgSettings)||void 0===e?void 0:e.aiPpt)||void 0===t?void 0:t.daily_usage_limit)&&void 0!==r?r:0), s=(0, S.KR)(0), o=(0, S.EW)((function(){
+          return n.value-s.value<=0?0:n.value-s.value
+        }));
+        return{
+          dailyUsageLimit:n, usedTimes:s, remainingTimes:o
+        }
+      })), U=function(){
+        var e=$().usedTimes, t=function(){
+          return!(P||I||!A)&&(!!/course\//.test(window.location.href)&&(!(!T||!M)&&!!function(){if(E.every((function(e){return!e})))return!1;var e=E.includes("student"),t=E.includes("student_assistant");return!e&&!t}()))},r=function(r){return void 0===r&&(r=!1),k(void 0,void 0,void 0,(function(){var n,s;return j(this,(function(o){switch(o.label){case 0:return t()||r?[4,(0,x.uA)()]:[2];case 1:return n=o.sent(),e.value=null!==(s=n.counts)&&void 0!==s?s:0,localStorage.setItem("aiPptUsedTimes",e.value.toString()),[2]}}))}))},n=null;return window.addEventListener("storage",(function(t){if("aiPptUsedTimes"===t.key){var r=t.newValue;e.value=null!==r?Number(r):0}})),{enableAiPpt:t,initAiPptIframe:function(){return k(void 0,void 0,void 0,(function(){var e,t,s,o,i,a,u;return j(this,(function(c){switch(c.label){case 0:return n=null,e=null!==(i=null===(o=window.globalData)||void 0===o?void 0:o.user.userNo)&&void 0!==i?i:null===(u=null===(a=window.orgSettings)||void 0===a?void 0:a.aiPpt)||void 0===u?void 0:u.uid,[4,w().get("https://co.aippt.cn/api/grant/code?uid=".concat(e,"&channel="),{headers:(l=Math.floor((new Date).getTime()/1e3),d="GET@/api/grant/code/@".concat(l),m=y().HmacSHA1(d,T),p=y().enc.Base64.stringify(m),{"x-api-key":M,"x-timestamp":l,"x-signature":p})})];case 1:if(200!==(t=c.sent()).status)return[3,5];c.label=2;case 2:return c.trys.push([2,4,,5]),[4,AipptIframe.show({appkey:t.data.data.api_key,routerOptions:{list:["generate","editor"]},channel:"",code:t.data.data.code,onMessage:function(e,t){console.log(e,t),"CHARGING"===e&&t.charge&&k(void 0,void 0,void 0,(function(){return j(this,(function(e){switch(e.label){case 0:return[4,(0,x.cl)()];case 1:return e.sent()&&r(!0),[2]}}))}))}})];case 3:return c.sent(),n||(n=setInterval((function(){document.getElementById("aippt-iframe-modal")||(clearInterval(n),window.close(),document.body.style.overflow="auto")}),1e3)),document.getElementById("aippt-iframe-modal")&&(document.getElementById("aippt-iframe-modal").style.zIndex="2000",document.body.style.overflow="hidden"),[3,5];case 4:return s=c.sent(),console.error(s),[3,5];case 5:return[2]}var l,d,m,p}))}))},initUsage:r}}},924659:(e,t,r)=>{r.r(t),r.d(t,{airCreditStatus:()=>V,checkEnableAirChatbot:()=>Z,courseId:()=>R,createAirChatbotScript:()=>X,enableAirChatbot:()=>U,enabledBvBot:()=>N,hasAiAbility:()=>z,hasUserAiAbility:()=>O,initAnyCourseAiAbility:()=>Y,isSimulatingInstructor:()=>F,lang:()=>$,role:()=>M,userPlatformRole:()=>D});r(418665),r(169218),r(979073),r(906048),r(43148),r(14602);var n,s,o,i,a,u,c,l,d,m,p,f,b,v,h,g,y,_,w,S,C,x,k,j,I=r(592207),P=r.n(I),A=(r(207452),r(951708)),E=r(248124);function T(e,t,r,n,s,o,i){try{var a=e[o](i),u=a.value}catch(e){return void r(e)}a.done?t(u):Promise.resolve(u).then(n,s)}var M=null===(n=window.globalData)||void 0===n?void 0:n.user.role,$=E("html").attr("lang"),U=(null===(s=window.featureToggles)||void 0===s?void 0:s.airChatbot)&&!(null!==(o=window.globalData)&&void 0!==o&&o.isSimulatingVisitor),z=null!==(i=null===(a=window.globalData)||void 0===a||null===(u=a.course)||void 0===u?void 0:u.hasAiAbility)&&void 0!==i&&i,O=null!==(c=null===(l=window.globalData)||void 0===l||null===(d=l.user)||void 0===d?void 0:d.hasAiAbility)&&void 0!==c&&c,D=null!==(m=null===(p=window.globalData)||void 0===p||null===(f=p.user)||void 0===f?void 0:f.role)&&void 0!==m?m:null,R=null===(b=window.globalData)||void 0===b||null===(v=b.course)||void 0===v?void 0:v.id,F=null!==(h=null===(g=window.globalData)||void 0===g||null===(y=g.course)||void 0===y?void 0:y.isSimulatingInstructor)&&void 0!==h&&h,L=null!==(_=null===(w=window.orgSettings)||void 0===w?void 0:w.airChatbot)&&void 0!==_?_:{},B=L.url,K=void 0===B?"":B,G=L.block_platform_roles,H=void 0===G?[]:G,N=((null===(S=window.orgSettings)||void 0===S?void 0:S.bvChatbot)||{}).enabled,V=null!==(C=null===(x=window.globalData)||void 0===x||null===(k=x.course)||void 0===k?void 0:k.airCreditStatus)&&void 0!==C?C:null,Q=!1,q=!1,W=[{path:/^\/exam\/\d+\/subjects/,hash:/take/},{path:/^\/portal\/?$/},{path:/^\/course\/\d+\/online-videos\/\d+/},{path:/^\/course\/\d+\/knowledge-graph/},{path:/^\/files\/previewer\/\d+\/.*/}],J=Boolean(null===(j=window.orgSettings)||void 0===j?void 0:j.aiWorkbenchUrl)?[...W,{path:/^\/user\/index/}]:W,Y=function(){var e,t=(e=P().mark((function e(){var t;return P().wrap((function(e){for(;;)switch(e.prev=e.next){case 0:if(!q){e.next=2;break}return e.abrupt("return");case 2:return e.next=4,(0,A.getUserHasAnyCourseAiAbility)();case 4:t=e.sent,Q=t.hasAnyCourseAiAbility,q=!0;case 7:case"end":return e.stop()}}),e)})),function(){var t=this,r=arguments;return new Promise((function(n,s){var o=e.apply(t,r);function i(e){T(o,n,s,i,a,"next",e)}function a(e){T(o,n,s,i,a,"throw",e)}i(void 0)}))});return function(){return t.apply(this,arguments)}}(),Z=()=>{if(window.top!==window)return!1;if(H.includes(D))return!1;if(!O&&!Q||F)return!1;if(void 0!==R){var e,t=null==V||null===(e=V.toLowerCase)||void 0===e?void 0:e.call(V);if(null==t||!["active","inactive"].includes(t))return!1}return!(!(K&&M&&$&&U)||(r=window.location,n=r.pathname,s=r.hash,J.some((e=>{var t=e.path,r=e.hash,o=t instanceof RegExp?t.test(n):t===n,i=r instanceof RegExp?r.test(s):r===s;return(!t||o)&&(!r||i)}))));var r,n,s};function X(){if(!document.getElementById("airChatbotScript")){var e=document.createElement("script");e.async=!0,e.id="airChatbotScript",e.src=K,window.airChatbotConfig||(window.airChatbotConfig={launchEnv:"embed"}),Object.assign(window.airChatbotConfig,{isBvChat:N,lang:$}),document.head.appendChild(e)}}},925789:(e,t,r)=>{var n=r(248124);r(215195),r(219693),r(714913),r(269193),r(906048),r(640173);var s=r(592207);function o(e,t,r,n,s,o,i){try{var a=e[o](i),u=a.value}catch(e){return void r(e)}a.done?t(u):Promise.resolve(u).then(n,s)}function i(e){return function(){var t=this,r=arguments;return new Promise((function(n,s){var i=e.apply(t,r);function a(e){o(i,n,s,a,u,"next",e)}function u(e){o(i,n,s,a,u,"throw",e)}a(void 0)}))}}function a(e,t){return function(e){if(Array.isArray(e))return e}(e)||function(e,t){if("undefined"==typeof Symbol||!(Symbol.iterator in Object(e)))return;var r=[],n=!0,s=!1,o=void 0;try{for(var i,a=e[Symbol.iterator]();!(n=(i=a.next()).done)&&(r.push(i.value),!t||r.length!==t);n=!0);}catch(e){s=!0,o=e}finally{try{n||null==a.return||a.return()}finally{if(s)throw o}}return r}(e,t)||function(e,t){if(!e)return;if("string"==typeof e)return u(e,t);var r=Object.prototype.toString.call(e).slice(8,-1);"Object"===r&&e.constructor&&(r=e.constructor.name);if("Map"===r||"Set"===r)return Array.from(e);if("Arguments"===r||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(r))return u(e,t)}(e,t)||function(){throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}()}function u(e,t){(null==t||t>e.length)&&(t=e.length);for(var r=0,n=new Array(t);r<t;r++)n[r]=e[r];return n}r(207452);var c=r(181769),l=c.canEditActivity,d=c.hasEditPermissionForBlueprint,m=r(5782).default,p=r(674814).A;e.exports=["$rootScope","$scope","$routeParams","modelHelper","$http","$timeout","$location","$q","classroomRepository","activityRepository","ExamHelper","$window","toastr",function(e,t,o,u,c,f,b,v,h,g,y,_,w){e.context=e.context||{},e.submissionData={},t.activityReferrer=window.sessionStorage.getItem("activityReferrer"),t.batchDeleteItems={batchOperation:!1},t.examineeList=[],t.canShowOperations=e=>l(e),t.canEditActivitySelf=e=>d(e),-1!==b.path().indexOf("/score-list")?t.tabView=["classroom-score-stats","classroom-subject-stats","classroom-paged-student-stats"].includes(o.view)?o.view:"classroom-student-stats":(-1!==b.path().indexOf("/subjects")?t.tabView="classroom-exam":t.tabView="classroom-basic-info",t.redirectByUrl=()=>window.location.replace(t.goToUrl),t.$on("onBackToSpecificUrl",(()=>t.redirectByUrl())),t.hasUnsavedSubjects=function(e,r){return t.goToUrl=e,t.confirmTitle=r,"/"===b.path()?t.$broadcast("checkUnsavedSubject"):t.redirectByUrl()},t.closePopup=function(){return n("#exit-subjects-confirmation-popup").foundation("reveal","close"),!1}),t.addClassroomSubject=e=>t.$broadcast("addSubject",e),t.getSubjectAnswerState=e=>y.getSubjectAnswerState(e),t.finishClassroom=function(e){var r=()=>_.location.href="/course/".concat(t.courseId,"/learning-activity#/classroom/").concat(e.id);return h.finishClassroom(e.id,r,r)},t.updateFinalScore=function(e){var t={classroom_id:e.exam_id,examinee_id:e.id,score:e.score};return e.score=e.score.toString(),c.post("/api/classroom/",t).success(w.decorateSuccess((function(){}))).error(w.decorateError((function(){})))},t.traceExport=()=>{statistics.track({activity_id:t.activity.id,activity_type:t.activity.type,mode:statistics.enums.Mode.normal,channel:statistics.enums.Channel.web,action:"export"})};t.openBatchOperation=()=>{t.batchDeleteItems.batchOperation=!0},t.closeBatchOperation=()=>{t.batchDeleteItems.batchOperation=!1,t.$broadcast("close-batch-operation")},t.batchDelete=()=>{t.$broadcast("batch-delete")},function(){var r=n("#classroomId").val();if(o.classroomId||r){t.classroomId=o.classroomId||r;var s=h.initClassroom(t.classroomId),i=h.initSubjectsRule(t.classroomId);v.all([s,i]).then((function(){var r,n=Array.from(arguments.length<=0?void 0:arguments[0]),s=a(n,2),o=s[0],i=s[1];i&&o&&(g.initPublishInfo(t,o),t.subjects_rule=i,t.classroom=t.activity=t.activity=o,t.classroom.isQuizPublic=t.subjects_rule.public,t.classroom.isQuizControlBySubject=t.subjects_rule.subject_by_subject_control,e.context.classroomId=t.classroomId,e.context.classroom=t.classroom,t.$emit("activityLoaded",o),null!==(r=window.featureToggles)&&void 0!==r&&r.lazyLoadCourseSection&&e.$broadcast("loadingActivityFinished",{activityResponse:t.classroom,activitiesRead:{}}))}))}}(),t.aiGenerateSubject=i(s.mark((function e(){var r;return s.wrap((function(e){for(;;)switch(e.prev=e.next){case 0:return e.next=2,h.initClassroom(t.classroomId);case 2:r=e.sent,m(p,{context:{targetId:r.id,targetType:"classroom",isLearningActivity:!0,courseId:t.courseId,moduleId:r.module_id},airMaxTextLength:t.airMaxTextLength,destroyComponent:!0});case 4:case"end":return e.stop()}}),e)}))),t.lastOne=()=>{var e;return(null===(e=t.examineeList[0])||void 0===e?void 0:e.id)===t.currentExaminee.id?"unclickable":"clickable"},t.nextOne=()=>{var e;return(null===(e=t.examineeList.slice().pop())||void 0===e?void 0:e.id)===t.currentExaminee.id?"unclickable":"clickable"},t.goToLastOne=()=>{if(!t.isFirstExaminee){var e=t.examineeList.findIndex((e=>t.currentExaminee.id===e.id))-1;t.currentOne.id=t.examineeList[e].id}},t.goToNextOne=()=>{if(!t.isLastExaminee){var e=t.examineeList.findIndex((e=>t.currentExaminee.id===e.id))+1;t.currentOne.id=t.examineeList[e].id}},t.refreshSubmissionCount=()=>{h.getSubmissionCountStatus(t.classroomId).then((e=>{t.allSubmissionCount=e.all_submission_count,t.submissionHasMarkedCount=e.submission_has_marked_count}))},t.$watch("currentExaminee.id",((e,r)=>{parseInt(e)!==parseInt(r)&&e&&!r&&(0===t.examineeList.length?h.getExamineesList(t.classroomId).then((r=>{t.examineeList=r,t.currentOne={id:e},r.length>0&&(t.isFirstExaminee=r[0].id===t.currentExaminee.id,t.isLastExaminee=r[r.length-1].id===t.currentExaminee.id)})):t.currentOne={id:e},t.refreshSubmissionCount())})),t.$watch("currentOne.id",((e,r)=>{if(parseInt(e)!==parseInt(r)&&e&&r){var n=t.examineeList.find((t=>t.id===e));t.isFirstExaminee=t.examineeList[0].id===e,t.isLastExaminee=t.examineeList[t.examineeList.length-1].id===e,b.path("/examinee/".concat(e,"/submission/").concat(n.submission_id))}})),t.$on("saveScoreSuccess",(()=>{t.refreshSubmissionCount()})),t.loadComponents=()=>{Promise.all([r.e(7612),r.e(15471),r.e(10035),r.e(92702)]).then(r.bind(r,207612))}}]}}]);

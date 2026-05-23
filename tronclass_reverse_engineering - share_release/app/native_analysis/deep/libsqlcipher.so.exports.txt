@@ -1,0 +1,400 @@
+0x4b23c	9588	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_pragma
+0x4d7b0	280	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_mprintf
+0x4d8c8	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_fips_status
+0x4ded0	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_set_store_pass
+0x4df0c	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_get_store_pass
+0x4df48	416	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_cipher_profile
+0x4e0e8	576	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_add_random
+0x4e374	2132	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_migrate
+0x4ebc8	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_get_cipher_provider
+0x4ec14	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_get_provider_version
+0x4ec60	300	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_log
+0x4ed8c	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_get_cipher
+0x4edd8	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_set_default_kdf_iter
+0x4ee18	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_get_default_kdf_iter
+0x4ee58	96	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_set_kdf_iter
+0x4eeb8	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_get_kdf_iter
+0x4eef4	96	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_set_fast_kdf_iter
+0x4ef54	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_get_fast_kdf_iter
+0x4ef90	228	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_set_pagesize
+0x4f074	144	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_set_error
+0x4f104	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_get_pagesize
+0x4f140	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_set_default_pagesize
+0x4f180	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_get_default_pagesize
+0x4f1c0	84	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_set_default_use_hmac
+0x4f214	68	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_get_default_use_hmac
+0x4f258	172	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_set_use_hmac
+0x4f304	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_get_use_hmac
+0x4f344	72	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_unset_flag
+0x4f38c	72	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_set_flag
+0x4f3d4	68	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_get_flag
+0x4f418	172	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_strnicmp
+0x4f4c4	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_set_hmac_salt_mask
+0x4f504	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_get_hmac_salt_mask
+0x4f544	116	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_set_plaintext_header_size
+0x4f5b8	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_get_plaintext_header_size
+0x4f5f4	68	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_set_default_plaintext_header_size
+0x4f638	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_get_default_plaintext_header_size
+0x4f678	216	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_free
+0x4f750	116	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_malloc
+0x4f7c4	108	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_set_kdf_salt
+0x4f830	196	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_get_kdf_salt
+0x4f8f4	148	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_set_hmac_algorithm
+0x4f988	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_get_hmac_algorithm
+0x4f9c4	68	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_set_default_hmac_algorithm
+0x4fa08	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_get_default_hmac_algorithm
+0x4fa48	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_set_kdf_algorithm
+0x4fa88	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_get_kdf_algorithm
+0x4fac4	68	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_set_default_kdf_algorithm
+0x4fb08	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_get_default_kdf_algorithm
+0x4fb48	72	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_set_mem_security
+0x4fb90	92	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_get_mem_security
+0x4fbec	3004	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_integrity_check
+0x507a8	148	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_find_db_index
+0x5083c	56	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_activate_see
+0x50874	220	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_key
+0x50950	220	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_key_v2
+0x50d10	84	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_rekey
+0x50d64	752	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_rekey_v2
+0x51054	80	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_mutex_enter
+0x51cdc	84	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3pager_is_mj_pgno
+0x51d30	96	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_key_copy
+0x51f10	80	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_mutex_leave
+0x51f60	2104	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_exportFunc
+0x52798	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_context_db_handle
+0x527d8	124	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_value_text
+0x52ffc	92	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_error
+0x53190	84	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_mutex
+0x531e4	140	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_init_memmethods
+0x53270	1992	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_config
+0x53a38	160	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_register_provider
+0x53ad8	284	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_free
+0x53bf4	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_get_provider
+0x53c34	972	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_activate
+0x54000	252	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_mutex_alloc
+0x540fc	152	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_malloc
+0x54194	264	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_openssl_setup
+0x5429c	640	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_deactivate
+0x5451c	80	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_mutex_free
+0x5456c	80	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_memset
+0x545bc	200	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_ismemset
+0x54684	216	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_memcmp
+0x5475c	116	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_mlock
+0x547d0	116	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_munlock
+0x54aa8	92	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_version
+0x54b04	80	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_get_pass
+0x54b54	304	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_set_pass
+0x54e24	124	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3pager_error
+0x54ea0	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_get_reservesize
+0x54edc	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_get_data
+0x54f18	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_get_keyspec
+0x54f64	1972	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_init
+0x55718	428	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_ctx_free
+0x558c4	980	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_page_cipher
+0x55c98	396	STT_FUNC	STB_GLOBAL	.dynsym	sqlcipher_codec_key_derive
+0x56464	340	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_db_filename
+0x567e0	2252	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_exec
+0x5720c	68	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3pager_reset
+0x574a8	172	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_profile
+0x57f88	268	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_status64
+0x58094	280	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_status
+0x581ac	1400	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_db_status
+0x58724	84	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_msize
+0x58d34	232	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_vfs_find
+0x58e1c	2376	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_initialize
+0x59764	300	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_vfs_register
+0x59890	256	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_vfs_unregister
+0x59990	104	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_mutex_try
+0x599f8	424	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_release_memory
+0x59ba0	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_memory_alarm
+0x59bdc	336	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_soft_heap_limit64
+0x59d2c	140	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_memory_used
+0x59db8	72	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_soft_heap_limit
+0x59e00	188	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_hard_heap_limit64
+0x59ebc	156	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_memory_highwater
+0x59f58	108	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_malloc64
+0x5a010	124	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_realloc
+0x5a360	124	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_realloc64
+0x5a3dc	8948	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_str_vappendf
+0x5c6d0	116	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_str_append
+0x5c744	164	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_str_appendchar
+0x5c7e8	164	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_str_appendall
+0x5cc18	300	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_str_finish
+0x5cd44	72	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_str_errcode
+0x5cd8c	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_str_length
+0x5cdcc	88	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_str_value
+0x5ce24	108	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_str_reset
+0x5ce90	136	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_str_new
+0x5cf18	196	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_vmprintf
+0x5cfdc	132	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_vsnprintf
+0x5d060	212	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_snprintf
+0x5d134	148	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_str_appendf
+0x5d1c8	828	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_randomness
+0x5d504	148	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_stricmp
+0x5d598	416	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_os_init
+0x5ef9c	68	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_os_end
+0x5f158	68	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_enable_shared_cache
+0x5f19c	884	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_backup_init
+0x5f9cc	2328	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_backup_step
+0x6153c	516	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_backup_finish
+0x62174	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_backup_remaining
+0x621b0	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_backup_pagecount
+0x621ec	80	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_expired
+0x6223c	632	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_finalize
+0x6259c	248	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_reset
+0x62768	260	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_clear_bindings
+0x6286c	260	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_value_blob
+0x62970	156	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_value_bytes
+0x62a0c	156	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_value_bytes16
+0x62aa8	128	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_value_double
+0x62b28	136	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_value_int
+0x62bb0	136	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_value_int64
+0x62c38	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_value_subtype
+0x62c84	136	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_value_pointer
+0x62d0c	124	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_value_text16
+0x62d88	124	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_value_text16be
+0x62e04	124	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_value_text16le
+0x62e80	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_value_type
+0x62ecc	72	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_value_nochange
+0x62f14	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_value_frombind
+0x62f54	356	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_value_dup
+0x63214	68	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_value_free
+0x63258	128	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_blob
+0x632d8	172	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_blob64
+0x63384	156	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_double
+0x6382c	92	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_error16
+0x63888	108	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_int
+0x638f4	104	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_int64
+0x6395c	100	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_null
+0x639c0	188	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_pointer
+0x63a7c	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_subtype
+0x63ac8	128	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_text
+0x63b48	188	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_text64
+0x63c04	128	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_text16
+0x63c84	128	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_text16be
+0x63d04	128	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_text16le
+0x63d84	320	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_value
+0x63ec4	144	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_zeroblob
+0x63f54	172	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_zeroblob64
+0x64000	220	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_error_code
+0x640dc	104	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_error_toobig
+0x64144	192	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_result_error_nomem
+0x64204	4904	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_step
+0x6552c	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_user_data
+0x6556c	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_vtab_nochange
+0x655b8	88	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_aggregate_context
+0x6570c	124	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_get_auxdata
+0x65788	280	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_set_auxdata
+0x658a0	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_aggregate_count
+0x658e0	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_count
+0x65920	80	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_data_count
+0x65970	288	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_blob
+0x65a90	344	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_bytes
+0x65be8	344	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_bytes16
+0x65d40	340	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_double
+0x65e94	340	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_int
+0x65fe8	340	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_int64
+0x6613c	316	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_text
+0x66278	276	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_value
+0x6638c	316	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_text16
+0x664c8	272	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_type
+0x665d8	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_name
+0x667cc	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_name16
+0x66818	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_decltype
+0x66864	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_decltype16
+0x668b0	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_database_name
+0x668fc	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_database_name16
+0x66948	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_table_name
+0x66994	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_table_name16
+0x669e0	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_origin_name
+0x66a2c	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_column_origin_name16
+0x66a78	72	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_bind_blob
+0x66c34	124	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_bind_blob64
+0x66cb0	236	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_bind_double
+0x66fb8	188	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_bind_int
+0x67074	188	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_bind_int64
+0x67130	116	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_bind_null
+0x671a4	236	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_bind_pointer
+0x67290	72	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_bind_text
+0x672d8	136	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_bind_text64
+0x67360	72	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_bind_text16
+0x673a8	608	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_bind_value
+0x67608	248	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_bind_zeroblob
+0x67700	380	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_bind_zeroblob64
+0x6787c	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_bind_parameter_count
+0x678bc	128	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_bind_parameter_name
+0x6793c	204	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_bind_parameter_index
+0x67a08	352	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_transfer_bindings
+0x67b68	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_db_handle
+0x67ba8	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_stmt_readonly
+0x67bf4	68	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_stmt_isexplain
+0x67c38	100	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_stmt_busy
+0x67c9c	168	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_next_stmt
+0x67d44	196	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_stmt_status
+0x67e08	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_sql
+0x67e48	168	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_expanded_sql
+0x684b4	112	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_value_numeric_type
+0x68660	2560	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_blob_open
+0x6aa60	172	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_blob_close
+0x6ab0c	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_blob_read
+0x6aedc	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_blob_write
+0x6b160	80	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_blob_bytes
+0x6b1b0	320	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_blob_reopen
+0x6b2f0	168	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_set_authorizer
+0x6b398	80	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_strglob
+0x6bb8c	80	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_strlike
+0x6bbdc	84	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_prepare_v2
+0x6bc30	516	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_errmsg
+0x6be34	1956	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_load_extension
+0x6c5d8	148	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_enable_load_extension
+0x6c66c	340	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_auto_extension
+0x6c7c0	248	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_cancel_auto_extension
+0x6c8b8	344	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_reset_auto_extension
+0x6ca10	84	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_prepare
+0x6cd10	92	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_prepare_v3
+0x6cd6c	80	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_prepare16
+0x6d0e4	80	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_prepare16_v2
+0x6d134	80	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_prepare16_v3
+0x6d184	884	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_get_table
+0x6d764	420	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_free_table
+0x6d908	200	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_create_module
+0x6d9d0	216	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_create_module_v2
+0x6daa8	256	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_drop_modules
+0x6dba8	1236	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_declare_vtab
+0x6eb10	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_vtab_on_conflict
+0x6eb5c	456	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_vtab_config
+0x6ed24	272	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_vtab_collation
+0x6ee34	124	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_keyword_name
+0x6eeb0	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_keyword_count
+0x6eeec	280	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_keyword_check
+0x6f124	2432	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_complete
+0x6faa4	240	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_complete16
+0x6fb94	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_libversion
+0x6fbd4	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_libversion_number
+0x6fc14	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_threadsafe
+0x6fc50	248	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_shutdown
+0x6fd48	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_db_mutex
+0x6fd84	240	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_db_release_memory
+0x6fe74	404	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_db_cacheflush
+0x70008	872	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_db_config
+0x706d4	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_last_insert_rowid
+0x70710	132	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_set_last_insert_rowid
+0x70794	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_changes
+0x707d0	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_total_changes
+0x7080c	72	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_close
+0x70d48	72	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_close_v2
+0x70d90	148	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_busy_handler
+0x70e24	160	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_progress_handler
+0x70ec4	256	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_busy_timeout
+0x71074	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_interrupt
+0x710b4	264	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_create_function
+0x7141c	80	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_create_function_v2
+0x7146c	96	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_create_window_function
+0x714cc	408	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_create_function16
+0x71954	252	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_overload_function
+0x71fe4	160	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_trace
+0x72084	164	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_trace_v2
+0x72128	156	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_commit_hook
+0x721c4	156	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_update_hook
+0x72260	156	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_rollback_hook
+0x722fc	204	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_wal_autocheckpoint
+0x723c8	156	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_wal_hook
+0x724f8	588	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_wal_checkpoint_v2
+0x72928	80	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_wal_checkpoint
+0x72978	592	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_errmsg16
+0x72bc8	220	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_errcode
+0x72ca4	216	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_extended_errcode
+0x72d7c	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_system_errno
+0x72dbc	168	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_errstr
+0x72e64	112	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_limit
+0x72ed4	76	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_open
+0x753c4	68	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_open_v2
+0x75408	320	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_open16
+0x75548	220	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_create_collation
+0x75624	232	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_create_collation_v2
+0x75ad8	372	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_create_collation16
+0x75c4c	136	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_collation_needed
+0x75cd4	136	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_collation_needed16
+0x75d5c	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_global_recover
+0x75d98	60	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_get_autocommit
+0x75dd4	56	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_thread_cleanup
+0x75e0c	1012	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_table_column_metadata
+0x76544	236	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_sleep
+0x76630	160	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_extended_result_codes
+0x766d0	656	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_file_control
+0x76960	3952	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_test_control
+0x778d0	192	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_uri_parameter
+0x77990	212	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_uri_key
+0x77a64	200	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_uri_boolean
+0x77b2c	192	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_uri_int64
+0x77d1c	180	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_filename_database
+0x77dd0	232	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_filename_journal
+0x77eb8	220	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_filename_wal
+0x77f94	320	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_db_readonly
+0x780d4	620	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_compileoption_used
+0x78340	84	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_compileoption_get
+0x78394	548	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_unlock_notify
+0x785b8	204	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_rtree_geometry_callback
+0x78ad8	208	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_rtree_query_callback
+0x78ba8	64	STT_FUNC	STB_GLOBAL	.dynsym	sqlite3_sourceid
+0x1ad47c	116	STT_FUNC	STB_GLOBAL	.dynsym	_Z17jniThrowExceptionP7_JNIEnvPKcS2_ => jniThrowException(_JNIEnv*, char const*, char const*)
+0x1ad4f0	444	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher7compileEP7_JNIEnvP8_jobjectP7sqlite3P8_jstring => sqlcipher::compile(_JNIEnv*, _jobject*, sqlite3*, _jstring*)
+0x1ad6ac	268	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher43register_android_database_SQLiteCompiledSqlEP7_JNIEnv => sqlcipher::register_android_database_SQLiteCompiledSql(_JNIEnv*)
+0x1ad8bc	156	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher13native_statusEP7_JNIEnvP8_jobjectih => sqlcipher::native_status(_JNIEnv*, _jobject*, int, unsigned char)
+0x1ad958	280	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher23throw_sqlite3_exceptionEP7_JNIEnvP7sqlite3 => sqlcipher::throw_sqlite3_exception(_JNIEnv*, sqlite3*)
+0x1ada70	232	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher10native_keyEP7_JNIEnvP8_jobjectP11_jbyteArray => sqlcipher::native_key(_JNIEnv*, _jobject*, _jbyteArray*)
+0x1adb58	232	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12native_rekeyEP7_JNIEnvP8_jobjectP11_jbyteArray => sqlcipher::native_rekey(_JNIEnv*, _jobject*, _jbyteArray*)
+0x1adc40	340	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher16native_key_mutf8EP7_JNIEnvP8_jobjectP11_jcharArray => sqlcipher::native_key_mutf8(_JNIEnv*, _jobject*, _jcharArray*)
+0x1add94	208	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher17native_rawExecSQLEP7_JNIEnvP8_jobjectP8_jstring => sqlcipher::native_rawExecSQL(_JNIEnv*, _jobject*, _jstring*)
+0x1ade64	716	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher6dbopenEP7_JNIEnvP8_jobjectP8_jstringi => sqlcipher::dbopen(_JNIEnv*, _jobject*, _jstring*, int)
+0x1ae130	156	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher31throw_sqlite3_exception_errcodeEP7_JNIEnviPKc => sqlcipher::throw_sqlite3_exception_errcode(_JNIEnv*, int, char const*)
+0x1ae1cc	168	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher23throw_sqlite3_exceptionEP7_JNIEnvP7sqlite3PKc => sqlcipher::throw_sqlite3_exception(_JNIEnv*, sqlite3*, char const*)
+0x1ae274	208	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher40register_android_database_SQLiteDatabaseEP7_JNIEnv => sqlcipher::register_android_database_SQLiteDatabase(_JNIEnv*)
+0x1ae344	276	STT_FUNC	STB_GLOBAL	.dynsym	JNI_OnLoad
+0x1ae458	84	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher23throw_sqlite3_exceptionEP7_JNIEnvPKc => sqlcipher::throw_sqlite3_exception(_JNIEnv*, char const*)
+0x1ae4ac	400	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher23throw_sqlite3_exceptionEP7_JNIEnviPKcS3_ => sqlcipher::throw_sqlite3_exception(_JNIEnv*, int, char const*, char const*)
+0x1aed64	268	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher39register_android_database_SQLiteProgramEP7_JNIEnv => sqlcipher::register_android_database_SQLiteProgram(_JNIEnv*)
+0x1af3b4	268	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher37register_android_database_SQLiteQueryEP7_JNIEnv => sqlcipher::register_android_database_SQLiteQuery(_JNIEnv*)
+0x1afbe8	268	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher41register_android_database_SQLiteStatementEP7_JNIEnv => sqlcipher::register_android_database_SQLiteStatement(_JNIEnv*)
+0x1aff98	84	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher22get_window_from_objectEP7_JNIEnvP8_jobject => sqlcipher::get_window_from_object(_JNIEnv*, _jobject*)
+0x1affec	356	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher38register_android_database_CursorWindowEP7_JNIEnv => sqlcipher::register_android_database_CursorWindow(_JNIEnv*)
+0x1b19f4	84	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindowC1Emmm => sqlcipher::CursorWindow::{ctor}(unsigned long, unsigned long, unsigned long)
+0x1b19f4	84	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindowC2Emmm => sqlcipher::CursorWindow::{base ctor}(unsigned long, unsigned long, unsigned long)
+0x1b1a48	196	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow10initBufferEb => sqlcipher::CursorWindow::initBuffer(bool)
+0x1b1b0c	176	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow5clearEv => sqlcipher::CursorWindow::clear()
+0x1b1bbc	128	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindowD1Ev => sqlcipher::CursorWindow::{dtor}()
+0x1b1bbc	128	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindowD2Ev => sqlcipher::CursorWindow::{base dtor}()
+0x1b1c3c	72	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow9freeSpaceEv => sqlcipher::CursorWindow::freeSpace()
+0x1b1c84	280	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow8allocRowEv => sqlcipher::CursorWindow::allocRow()
+0x1b1d9c	372	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow12allocRowSlotEv => sqlcipher::CursorWindow::allocRowSlot()
+0x1b1f10	208	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow5allocEmb => sqlcipher::CursorWindow::alloc(unsigned long, bool)
+0x1b1fe0	292	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow10getRowSlotEi => sqlcipher::CursorWindow::getRowSlot(int)
+0x1b2104	364	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow21getFieldSlotWithCheckEii => sqlcipher::CursorWindow::getFieldSlotWithCheck(int, int)
+0x1b2270	392	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow15read_field_slotEiiPNS_12field_slot_tE => sqlcipher::CursorWindow::read_field_slot(int, int, sqlcipher::field_slot_t*)
+0x1b23f8	84	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow6copyInEjPKhm => sqlcipher::CursorWindow::copyIn(unsigned int, unsigned char const*, unsigned long)
+0x1b244c	64	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow6copyInEjl => sqlcipher::CursorWindow::copyIn(unsigned int, long)
+0x1b248c	64	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow6copyInEjd => sqlcipher::CursorWindow::copyIn(unsigned int, double)
+0x1b24cc	84	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow7copyOutEjPhm => sqlcipher::CursorWindow::copyOut(unsigned int, unsigned char*, unsigned long)
+0x1b2520	64	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow11copyOutLongEj => sqlcipher::CursorWindow::copyOutLong(unsigned int)
+0x1b2560	64	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow13copyOutDoubleEj => sqlcipher::CursorWindow::copyOutDouble(unsigned int)
+0x1b25a0	92	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow7putLongEjjl => sqlcipher::CursorWindow::putLong(unsigned int, unsigned int, long)
+0x1b25fc	100	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow9putDoubleEjjd => sqlcipher::CursorWindow::putDouble(unsigned int, unsigned int, double)
+0x1b2660	84	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow7putNullEjj => sqlcipher::CursorWindow::putNull(unsigned int, unsigned int)
+0x1b26b4	108	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow7getLongEjjPl => sqlcipher::CursorWindow::getLong(unsigned int, unsigned int, long*)
+0x1b2720	108	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow9getDoubleEjjPd => sqlcipher::CursorWindow::getDouble(unsigned int, unsigned int, double*)
+0x1b278c	96	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher12CursorWindow7getNullEjjPb => sqlcipher::CursorWindow::getNull(unsigned int, unsigned int, bool*)
+0x1b27ec	540	STT_FUNC	STB_WEAK	.dynsym	_ZNSt6__ndk112__hash_tableINS_17__hash_value_typeIijEENS_22__unordered_map_hasherIiS2_NS_4hashIiEELb1EEENS_21__unordered_map_equalIiS2_NS_8equal_toIiEELb1EEENS_9allocatorIS2_EEE25__emplace_unique_key_argsIiJNS_4pairIijEEEEENSF_INS_15__hash_iteratorIPNS_11__hash_nodeIS2_PvEEEEbEERKT_DpOT0_ => std::__ndk1::pair<std::__ndk1::__hash_iterator<std::__ndk1::__hash_node<std::__ndk1::__hash_value_type<int, unsigned int>, void*>*>, bool> std::__ndk1::__hash_table<std::__ndk1::__hash_value_type<int, unsigned int>, std::__ndk1::__unordered_map_hasher<int, std::__ndk1::__hash_value_type<int, unsigned int>, std::__ndk1::hash<int>, (bool)1>, std::__ndk1::__unordered_map_equal<int, std::__ndk1::__hash_value_type<int, unsigned int>, std::__ndk1::equal_to<int>, (bool)1>, std::__ndk1::allocator<std::__ndk1::__hash_value_type<int, unsigned int>>>::__emplace_unique_key_args<int, std::__ndk1::pair<int, unsigned int>>(int const&, std::__ndk1::pair<int, unsigned int>)
+0x1b2a08	260	STT_FUNC	STB_WEAK	.dynsym	_ZNSt6__ndk112__hash_tableINS_17__hash_value_typeIijEENS_22__unordered_map_hasherIiS2_NS_4hashIiEELb1EEENS_21__unordered_map_equalIiS2_NS_8equal_toIiEELb1EEENS_9allocatorIS2_EEE6rehashEm => std::__ndk1::__hash_table<std::__ndk1::__hash_value_type<int, unsigned int>, std::__ndk1::__unordered_map_hasher<int, std::__ndk1::__hash_value_type<int, unsigned int>, std::__ndk1::hash<int>, (bool)1>, std::__ndk1::__unordered_map_equal<int, std::__ndk1::__hash_value_type<int, unsigned int>, std::__ndk1::equal_to<int>, (bool)1>, std::__ndk1::allocator<std::__ndk1::__hash_value_type<int, unsigned int>>>::rehash(unsigned long)
+0x1b2b0c	420	STT_FUNC	STB_WEAK	.dynsym	_ZNSt6__ndk112__hash_tableINS_17__hash_value_typeIijEENS_22__unordered_map_hasherIiS2_NS_4hashIiEELb1EEENS_21__unordered_map_equalIiS2_NS_8equal_toIiEELb1EEENS_9allocatorIS2_EEE8__rehashEm => std::__ndk1::__hash_table<std::__ndk1::__hash_value_type<int, unsigned int>, std::__ndk1::__unordered_map_hasher<int, std::__ndk1::__hash_value_type<int, unsigned int>, std::__ndk1::hash<int>, (bool)1>, std::__ndk1::__unordered_map_equal<int, std::__ndk1::__hash_value_type<int, unsigned int>, std::__ndk1::equal_to<int>, (bool)1>, std::__ndk1::allocator<std::__ndk1::__hash_value_type<int, unsigned int>>>::__rehash(unsigned long)
+0x2bc3a1	7	STT_OBJECT	STB_GLOBAL	.dynsym	sqlite3_version
+0x33e4cc	4	STT_OBJECT	STB_GLOBAL	.dynsym	sqlite3_fts3_may_be_corrupt
+0x33e4d0	4	STT_OBJECT	STB_GLOBAL	.dynsym	sqlite3_fts5_may_be_corrupt
+0x341c40	0	STT_NOTYPE	STB_GLOBAL	.dynsym	__bss_start
+0x341c40	0	STT_NOTYPE	STB_GLOBAL	.dynsym	__bss_start__
+0x341c40	0	STT_NOTYPE	STB_GLOBAL	.dynsym	_edata
+0x341ea8	8	STT_OBJECT	STB_GLOBAL	.dynsym	sqlite3_temp_directory
+0x341eb0	8	STT_OBJECT	STB_GLOBAL	.dynsym	sqlite3_data_directory
+0x345c10	0	STT_NOTYPE	STB_GLOBAL	.dynsym	__bss_end__
+0x345c10	0	STT_NOTYPE	STB_GLOBAL	.dynsym	__end__
+0x345c10	0	STT_NOTYPE	STB_GLOBAL	.dynsym	_bss_end__
+0x345c10	0	STT_NOTYPE	STB_GLOBAL	.dynsym	_end

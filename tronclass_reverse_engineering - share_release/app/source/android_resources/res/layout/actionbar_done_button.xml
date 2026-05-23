@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/actionbar_done"
+    android:layout_width="0dp"
+    android:layout_height="match_parent"
+    android:layout_weight="1"
+    style="?android:attr/actionButtonStyle">
+    <TextView
+        android:gravity="center_vertical"
+        android:layout_gravity="center"
+        android:id="@+id/actionbar_done_textview"
+        android:paddingLeft="10dp"
+        android:paddingRight="10dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/done"
+        android:drawableLeft="0x7f070083"
+        android:drawablePadding="8dp"
+        android:drawableStart="0x7f070083"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        style="?android:attr/actionBarTabTextStyle"/>
+</FrameLayout>

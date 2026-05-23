@@ -1,0 +1,5 @@
+package_view_base_files: 13094
+package_view_all_files: 13190
+android_source_files: 5447
+android_resource_files: 2130
+

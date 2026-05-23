@@ -1,0 +1,3 @@
+// Extracted from decompiled/apktool/base/assets/public/js/chunk-common-4c120c8f.29a0a544.js
+// Webpack module id: 78170
+function(A){"use strict";A.exports="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAAOBAMAAABKu4YZAAAABGdBTUEAALGPC/xhBQAAAAFzUkdCAK7OHOkAAAAqUExURUdwTPVtUfNtUfRqT/NtUfRtUvNtUfFsT+9vT/NtUvJsT/dnT/RtUfRuUnR7T3YAAAANdFJOUwCnizPP73BgEN9QIL9TARBYAAAAh0lEQVQoz2NgoBLg3mxepiR4ZmYobiW7zYsEj0y9CwI3HdUtsKppXq4oMvcuFExUW92AVdEyRVeYmruRQlUbCCq66qhuTVDR3YlixQ0EFd0UytqBRREHiqK7IWKrcYSC6V1ks6pxB5cvwvHJDfiCHmalugGBODoLMsypmHBkWt69ImZARKQDAAlHcjnBRjSfAAAAAElFTkSuQmCC"}

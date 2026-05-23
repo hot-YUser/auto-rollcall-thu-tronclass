@@ -1,0 +1,7369 @@
+            Not After : 
+            Not Before: 
+         *3       9                           ;alg_section
+        Issuer:%c
+        Public key OCSP hash: 
+        Serial Number:
+        Subject OCSP hash: 
+        Subject Public Key Info:
+        Subject:%c
+        Validity
+    Data:
+    Signature Algorithm: 
+   ( ) * / 0 9 : ; ? A D E F G R S T U _ ` j p q t z } ~ 
+  !!""##$$%%&&''(())**++,,--..//00112233445566778899
+  ##%%&&))**,,//1122447788;;==>>@@CCEEFFIIJJLLOOQQRRTTWWXX[[]]^^aabbddgghhkkmmnnppssuuvvyyzz||
+ !"#$%&'()*+,-./0123
+ !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~
+ !"#$%&'()*+,-./0123456789:;<=>?@abcdefghijklmnopqrstuvwxyz[\]^_`abcdefghijklmnopqrstuvwxyz{|}~
+ !$%()*+,-.0:<?A[\]^_`a{|}~
+ %&(0?@EGOPt
+ %d(%lld)
+ %lld%s
+ ' ) - 3 G M Q _ c e i w } 
+ (%ld unused bits)
+ (Negative)
+ 6b:@y
+ @9)yhxUyh
+ AS %s
+ FROM '%q'.'%q%s' AS x
+ ORDER BY name
+ R)Aik8)}@
+ R)k}@
+ SUBQUERY %u
+ TABLE %s
+ UNIQUE
+ USING 
+ USING COVERING INDEX 
+ USING INTEGER PRIMARY KEY (rowid%s?)
+ VIRTUAL TABLE INDEX %d:%s
+ WITHOUT ROWID
+ [enable_if:
+ after rename
+ const
+ filename="%s"%s
+ filename="smime.p7s"%s%s
+ i`8"ib8
+ i`8,il8
+ i`8/io8
+ i`81iq80ip8)im8m
+ ic8"id8
+ id=%lld
+ imaginary
+ kv85ku8
+ kv8:kz8z
+ kw85kv8
+ kz87kv8
+ micalg="
+ missing from index 
+ nPos=%d%s
+ name=
+ name="%s"%s
+ name="smime.p7s"%s
+ protocol="%ssignature";
+ restrict
+ smime-type=%s;
+ term=%.*s
+ volatile
+ with 
+ {id=%d leaves=%d..%d}
+ {lvl=%d nMerge=%d nSeg=%d
+!!Ihcrypto/store/loader_file.c
+!$!%!&!'!(!)!*!.!/!0!4!5!9!:!<!>!@!E!G!J!K!L!N!O!P!`!
+!$).056;>ACENQVZZ^ceiow{{{~
+!*4*?NZdow}
+!5!A!I!O!Y![!_!s!}!
+!NA4 n
+!NE4 n
+!crypto/cms/cms_lib.c
+!ia8"ib8?
+"!"%"+"1"9"K"O"c"g"s"u"
+""Df**T~
+"; boundary="----%s"%s%s
+"@9jfD9(
+"Df"*T~*
+"R))}@
+"R)7)@
+"R)B[A)
+"aDa)aaaaaaaaaaaaaa\
+"aDa)aaaaaaaaaaaaaa\crypto/evp/e_aria.c
+"ib8#ic8_
+"u7u625951U
+# #"#)#*#+#|#}#
+#'#)#/#3#5#E#Q#S#Y#c#k#
+#@9irD9H
+#ic8,il8
+#ic80ip8
+#ic80ip8$
+$$$$$$$$
+$$Hl\\
+$%&'()*+,-./0123456789:;<=
+$)$=$A$C$M$_$g$k$y$}$
+$DD$??
+$R))}@
+$id8#ic8)i`8.
+%!.15g
+%!.20e
+%%Jo..\r
+%'%1%=%C%K%O%s%
+%)(%~I%
+%)+/5;=CGIOSYaegkmq
+%*s    
+%*s      
+%*s            
+%*s      %s%s%s%s
+%*s    Info Entries:
+%*s    Profession OIDs:
+%*s    registrationNumber: 
+%*s  Profession Info Entry %0d:
+%*s  admissionAuthority:
+%*s  admissionAuthorityId: 
+%*s  namingAuthorityText: 
+%*s  namingAuthorityUrl: 
+%*s%04x - 
+%*s%s OF %s {
+%*s%s:
+%*s<%s>
+%*s<EMPTY>
+%*s<Not Supported>
+%*s<Parse Error>
+%*sAlias: %s
+%*sCPS: %s
+%*sCRL Issuer:
+%*sEntry %0d:
+%*sExplicit Text: %s
+%*sExtensions: 
+%*sFull Name:
+%*sIndirect CRL
+%*sIssuer: 
+%*sKey Id: 
+%*sLog       : %s
+%*sLog ID    : 
+%*sNo Qualifiers
+%*sNo Rejected Uses.
+%*sNo Trusted Uses.
+%*sNumber%s: 
+%*sOnly Attribute Certificates
+%*sOnly CA Certificates
+%*sOnly User Certificates
+%*sOrganization: %s
+%*sPath Length Constraint: 
+%*sPolicy Language: 
+%*sPolicy Text: %s
+%*sPolicy: 
+%*sRejected Uses:
+%*sRelative Name:
+%*sSignature : 
+%*sSigned Certificate Timestamp:
+%*sTimestamp : 
+%*sTrusted Uses:
+%*sUnknown Qualifier: 
+%*sUser Notice:
+%*sVersion   : 
+%*sVersion: %ld (0x%lX)
+%*sZone: %s, User: 
+%*sadmissionAuthority:
+%*scrlNum: 
+%*scrlTime: 
+%*scrlUrl: 
+%*snamingAuthority: 
+%.*s() may not be used as a window function
+%.*z:%u
+%.14s.%03dZ
+%019lu
+%02X%02X
+%02d%02d%02d%02d%02d%02dZ
+%02x%c
+%02x%s
+%04d%02d%02d%02d%02d%02dZ
+%04d-%02d-%02d
+%04d-%02d-%02d %02d:%02d:%02d
+%06.3f
+%12s%s
+%12sPublic Key Algorithm: 
+%12sUnable to load Public Key
+%8sIssuer Unique ID: 
+%8sSubject Unique ID: 
+%8sVersion: %ld (0x%lx)
+%8sVersion: Unknown (%ld)
+%@9Aii
+%@9Ay@
+%I%ieI%I%
+%R)H}@
+%_parent
+%_rowid
+%c"%s"
+%d %d %d %d 
+%d columns assigned %d values
+%d.%d.%d.%d/%d.%d.%d.%d
+%lld %lld
+%lu:%s:%s:%d:%s
+%r %s BY term out of range - should be between 1 and %d
+%r ORDER BY term does not match any column in the result set
+%s %2d %02d:%02d:%02d %d%s
+%s %2d %02d:%02d:%02d%.*s %d%s
+%s %T cannot reference objects in database %s
+%s %s HTTP/1.0
+%s %s%lu (%s0x%lx)
+%s (%s)
+%s - %s
+%s Salt Length: 0x
+%s USING TEMP B-TREE
+%s algorithm "%s" unsupported
+%s at line %d of [%.10s]
+%s cannot use variables
+%s clause should come after %s not before
+%s constraint failed
+%s in "%s"
+%s is %d but should be %d
+%s mode not allowed: %s
+%s prohibited in %s
+%s%.3x+%.6x
+%s%.3x/
+%s%02X
+%s%s%z%s
+%s(%d)
+%s------%s%s
+%s------%s--%s%s
+%s-migrated
+%s-mjXXXXXX9XXz%c%c
+%s-shm
+%s.lock
+%s.rowid
+%s.xBestIndex malfunction
+%s/etilqs_%llx%c
+%s: %s.%s
+%s: %s.%s.%s
+%s: table does not support scanning
+%s:%d: OpenSSL internal error: %s
+%sLIST SUBQUERY %d
+%sSCALAR SUBQUERY %d
+%s_data
+%s_node
+%s_segments
+%s_stat
+%tccUW
+%z - %s
+%z%.*s
+%z%Q, 
+%z%s%Q
+%z%s%z
+%z, %Q HIDDEN, %s HIDDEN)
+%z, 'c%d%q'
+%z, langid
+%z: %s
+%~~I%~^%'^E
+&%000000000000000000000000000000000000000000000000000000000&&
+&&&&&&&&&&
+&&Lj66lZ??~A
+&'&)&5&;&?&K&S&Y&e&i&o&{&
+&8^&e5X)5i)I%
+&@9ZC@
+&@9ijD9H
+&Lj&6lZ6?~A?
+&R)Ja"
+&XXcrypto/bio/bss_mem.c
+'%.*q'
+'%s' is not a function
+''''''
+''''''gG''''''G'
+'5'7'M'S'U'_'k'm's'w'
+':)zC!
+'@9jvD9(
+'A))}@
+'G))}@
+'J))}@
+'R)C+@
+'R)c[@
+'R)ck@
+'R)jk@
+'R)t+@
+'delete-all' may only be used with a contentless or external content fts5 table
+'h'i'j'k'l'm'n'o'p'q'r's't'u'v'
+'lambda
+'rebuild' may not be used with a contentless fts5 table
+(!(1(=(?(I(Q([(](a(g(u(
+(#@9"'@9
+(%.20s)
+(%R)CY@
+()Ljava/lang/String;
+(+@9"/@9
+(3@9"7@9
+(3A9@=G9
+(6)0Fx)
+(6H;@y
+(6b6@y
+(7(C@9h
+(8%xeE
+(;@9"?@9
+(@)N<O)
+(@9H @9?
+(B))}@
+(C9)8@
+(C@9"G@9
+(DII)Z
+(I)Ljava/lang/String;
+(II)Ljava/lang/String;
+(II)[B
+(IIILandroid/database/CharArrayBuffer;)[C
+(ILjava/lang/String;)V
+(INVALID PSS PARAMETERS)
+(I[B)V
+(JII)Z
+(K@9"O@9
+(Ljava/lang/String;)V
+(Ljava/lang/String;I)V
+(Ljava/lang/String;II)Z
+(Lnet/sqlcipher/CursorWindow;IIIII)I
+(NULL)
+(S@9"W@9
+(ZJJJ)V
+([@9"_@9
+([BII)Z
+(aN@(!
+(aN@(aN
+(anonymous namespace)
+(blob)
+(c@9"g@9
+(ia8*i!8
+(k@9"o@9
+(null)
+(s@9"w@9
+(undef)
+(unknown)
+)!)#)?)G)])e)i)o)u)
+)'@9)!
+)(%)(%)(%
+))Kb00
+)4p"base64 encoding
+):):):
+);CREATE TABLE "%w"."%w_node"(nodeno INTEGER PRIMARY KEY,data);
+)Z%iEi%:)Z9
+)ij8jij8
+)ki8*kj8?
+)p@9*t@9-
+)}@9ig
+*!NP*a
+*#@)J}@
+*%*/*O*U*_*e*k*m*s*
+*(O@9(7
+*(i*8(
+*)=G9?
+*** in database %s ***
+******""""""""""""""""""""
+******'crypto/siphash/siphash_pmeth.c
+************&****(crypto/asn1/asn1_gen.c
+**ij8`
+*9\@9b
+*?#(kH
+*@9jnD9(
+*@@9+@
+*@yi&@
+*H;@yK
+*Hkh8?
+*Hkh8Lkn8
+*Ikh8_
+*Iki8_
+*LJU'F*,
+*Lkj8mB+
+*Nik8h
+*Q@yJu
+*Q@yJy
+*R)"I@
+*e@9Jy
+*h:G9h
+*hF@9HY
+*i@yJy
+*iJ@9?
+*ij8+ik8_
+*ij8jb
+*iv8)ik8_
+*j[D9_
+*jk(8j
+*khi8l
+*kj8+kk8_
+*kk1@y
+*lil8Ixi
+*lj)8l
+*yxx)yyxI
++#A9*+
++%@9*1@y
++'+1+3+=+?+K+O+U+i+m+o+{+
+++)|Y@
++,-./0123456789
++,-./0123456789#
++0+E+G+P+
++@9izD9H
++HpXhE
++en+eo+
++hi8Lii8
++ij8lhj8
++ik8,il8
++ik8-ip8
++kh8,ih8
+, T.%Q
+, T.c%d
+, Type=
+, fingerprint size is 
+, path=
+, retcode=
+, value=
+, while compiling: 
+, x.%Q
+, x.'%q'
+,#,/,5,9,A,W,Y,i,w,
+,%.*s NUM
+,%s%s%s
+,%s(?)
+,%s(x.'c%d%q')
+,(0(((((8(4Could not open database
+,*Lj,*lJ
+,,,,,,3M+
+,-./0123456789
+,0,`,c,e,g,n,q,r,t,u,w,|,~,
+,4$8_@
+,JJLJ'GL
+,Reason=
+,arg HIDDEN
+,hj8mij8
+,il8+ik8L
+,il8-im8
+,name:
+,schema HIDDEN
+,section=
+,value:
+-'---0-o-p-
+-)@9)-@9j
+-*,il8
+-*.ik8
+-- TRIGGER %s
+---------
+----------
+--------7
+-----BEGIN 
+-----BEGIN %s-----
+-----END 
+-----END %s-----
+--..ii
+--@-a-
+-./0123456789efghijklmno.
+-;-C-I-M-a-e-q-
+-Y@y/]@ya^@ynZ@y
+-col %d 
+-col {%d
+-im8,il8m
+-im8.in8
+-km8.kn8
+-mj%06X9%02X
+-near %d 
+. .!.".#.$.%.&.'.(.).*./.0.:.
+.!@9-%@9,)@9+-@9
+.!@9-%@9,)@9+-@9j
+.%.-.3.7.9.?.W.[.o.y.
+.6OTHERNAME
+.@9irD9H
+.@yk.@
+.comment
+.data.rel.ro
+.dynamic
+.dynstr
+.dynsym
+.eh_frame
+.eh_frame_hdr
+.fini_array
+.gcc_except_table
+.gnu.hash
+.gnu.version
+.gnu.version_r
+.in8/io8p=H
+.include
+.init_array
+.iq8)il8l
+.note.android.ident
+.note.gnu.build-id
+.rela.dyn
+.rela.plt
+.rodata
+.shstrtab
+/'/)/A/E/K/M/Q/W/o/u/}/
+/+ep+eqU
+/A9@(`
+/dev/hwrng
+/dev/null
+/dev/random
+/dev/srandom
+/dev/tty
+/dev/urandom
+/im8.in8
+/io8 i`8p
+/io80ip8
+/jo80jp8
+/usr/local/ssl
+/usr/local/ssl/cert.pem
+/usr/local/ssl/certs
+/usr/local/ssl/ct_log_list.cnf
+/usr/local/ssl/private
+/usr/tmp
+/var/tmp
+0 0!0*0.000106080;0<0=0>0A0
+0#0)070;0U0Y0[0g0q0y0}0
+0.crypto/asn1/tasn_fre.c
+00000&'$'
+0000000000000000000000000000000000000000000
+0123456789
+0123456789ABCDEF
+0123456789ABCDEF0123456789abcdef
+0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz./
+04q8crypto/asn1/a_mbstr.c
+06,\@y
+0@)O@@)JA0
+0NcTAORB
+0ip8+ik8
+0ip8,il8/io8J
+0ip81iq8
+1!1'1-191C1E1K1]1a1g1m1s1
+1,5L5L5,
+11#?*0
+11111111111111111111111
+11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111
+14 (default)
+1626262u91y57U
+1AQ#\$*
+1U1543U4362626262
+1iq8 i`8
+1iq8 i`8?
+1iq8.in8
+1iq80ip8
+1kq8 k`8?
+1nDl@L!
+1nD|@L!
+2 2*2H2P2Q2`2
+2(ia8*i!8
+2))4@9
+2)252Y2]2c2k2o2u2w2{2
+2-il8Nil8
+2020-01-22 18:38:59 f6affdd41608946fcfcea914ece149038a8b25a62bbe719ed2561c649b86alt1
+20b:20e
+20c:20e
+2:i(8h
+2@9jvD9(
+2@yhm@
+2Hc69(
+2Ikh8)
+2J(NQj(N
+2dV2:tN:
+2h.@9h
+2nd reference to page %d
+3%3+3/353A3G3[3_3g3k3s3y3
+3.31.0
+31H 8C
+34x@99
+378@)8
+38%*s%s
+38L@9&
+3@9i~D9(
+3AIh8?
+3P@9+`@9
+4*3FxJ
+4+ij8l
+40f-21a-21d
+474E4U4W4c4i4m4
+4H@99X@9
+4Lyix-
+4h*C)v
+4h2A9(
+4hBA9h
+4hF@9h
+4hJ@9h
+4izA9_
+4i~@9?
+4y2A9|6A9
+5)3@y(+@
+5*0FxJy
+5-535;5A5Q5e5o5q5w5{5}5
+5594570
+55<@D5W\5]
+55j_WW
+5QP6262626262626262U62
+5h"@y{
+5h2@9(
+5hF@9v
+5hZD9(
+5hZD9h
+5h~A9H
+5i(8i#@
+5iF@9i
+5i[D9)
+6#6165676;6M6O6S6Y6a6k6m6
+6({@9h
+6*)@9_
+6262626262
+62626262626262
+6262626262626262626262
+652808
+692962562U
+69KNN59
+6@9izD9H
+6UJ06VJ
+6hB@9H
+6lil8-
+7'@9)S@9
+7(S@9h
+7)xhx*
+7)yjx+
+7*ij8j
+7+ij8J
+707I=@
+7?7E7I7O7]7a7u7
+8!83858A8G8K8S8W8_8e8o8q8}8
+86(3Fx
+86H1Fx
+86K=@y+
+86h2Fx
+87h'R)
+88888888888888888*87
+8@)PD@)
+8Hkm8Mkn8
+8Hkn8Nko8
+8Hko8Okp8
+8Okp8Pkq8
+8Pkq8Qk`8
+8_net/sqlcipher/database/SQLiteQuery
+9"?@9#
+9#9%9)9/9=9A9M9[9k9y9}9
+9(#@9j
+9(#@9jfD9(
+9('@9i
+9('@9ijD9H
+9((A9H
+9(+@9j
+9(+@9jnD9(
+9(/@9i
+9(/@9irD9H
+9(3@9j
+9(3@9jvD9(
+9(7@9i
+9(7@9izD9H
+9(;@9(
+9(?@9i
+9(?@9i~D9(
+9(C@9([
+922337203685477580
+99999,9
+99999999
+99999999999
+999999999999999999
+9999999999999999999999999999999
+99rKJJ
+9AP)crypto/pkcs7/pk7_doit.c
+9h&R)d
+9hB@9hZ
+9hb@9(
+9hb@9JaVJ)AVJlN
+9i2A9h
+9iR@9j
+9i^@9hV
+9iim8L
+9ij@9hR
+9ij@yjn@y)-
+9jZ@9iR
+9l"A9i}
+9l*A9k}
+9l2A9k}
+9l:A9k}
+9lBA9k}
+9lJA9k}
+9lRA9k}
+9lZA9k
+:':+:1:K:Q:[:c:g:m:y:
+:,:,:,6262J
+:58:'49":8:9O8%U8/'3o5
+::::::::::
+::crypto/bn/bn_print.c
+::operator 
+:BAD BOOLEAN
+:BAD ENUMERATED
+:BAD INTEGER
+:BAD OBJECT
+:EXTERNAL TYPE %s
+:memory:
+;!;#;-;9;E;S;Y;_;q;{;
+;22dV::tN
+;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Cefghijklmno
+<)<5<C<O<S<[<e<k<q<
+<@)PD@)
+<@9v]@)
+<ABSENT>
+<ASN1 %d>
+<ASN1 11>
+<ASN1 13>
+<ASN1 14>
+<ASN1 15>
+<ASN1 29>
+<INVALID>
+<NULL>
+<b>...</b>
+<expr>
+=!=-=3=7=?=C=o=s=u=y={=
+='9-6d
+======&0===================
+=======
+==zGdd
+=DIOpenSSL PKCS#1 RSA
+=j&&LZ66lA??~
+=u7u625951U
+=u:&'.6262626262Z6262626216R:
+>#>)>/>3>A>W>c>e>w>
+>333333
+>4$8,@
+>? AND rowid<
+>@9i~D9(
+>G97{w
+>crypto/kdf/scrypt.c
+?456789:;<=
+?7?;?=?A?Y?_?e?g?y?}?
+?7h'R)
+?i(8(sB
+?sothername
+@!@%@+@1@?@C@E@]@a@g@m@
+@8)""7
+@8)/@9
+@8+Ih8
+@8+ik8
+@8,Ih8
+@8KA@9
+@8Mil8)
+@8hkh8
+@9 iq8 
+@9(aHJ
+@9(l@98
+@9)!HJ
+@9)AHJ
+@9)Ij8
+@9*i(8
+@9+I(8
+@9+Ij8_
+@9+ij8*il8
+@9+ik8+(
+@9,il8
+@9,il8L)
+@9-il8,in8
+@93<86
+@96kx8
+@9Hb)7
+@9Iii8Kik8Lil8Mim8Nin8Oio8Pip8Jiq8
+@9Ikh8
+@9Jih8H
+@9Kkj8
+@9Mkl8Lkn8
+@9Nkm8Mko8
+@9Pio8Oiq8
+@9`*R)
+@9hP 7
+@9hj<8
+@9hkz8
+@9i::7
+@9iBD9jFD9`Z@
+@9iJD9
+@9iRD9H
+@9iVA9
+@9iZD9H
+@9ibD9H
+@9ijD9H
+@9iy87
+@9i~87
+@9jND9
+@9jVD9(
+@9j^D9(
+@9jfD9(
+@9jnD9(
+@9k8(7J
+@9lij8
+@9lkk8kkm8
+@9mil8lin8
+@9nim8
+@9nkm8mko8
+@9pio8oiq8
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@hHHHH@@@@@@@@@@@@@@@@@@
+@LsVyO1
+@fffff
+@i`8Aia8
+@k`8Aka8
+@xj.@9H
+@y90FxH
+@y_!(ka
+A!A3A5A;A?AYAeAkAwA{A
+A(Vector Permutation AES for ARMv8, Mike Hamburg (Stanford University)
+A9H_86
+A9IJ97
+A9h"87
+A9o"A9n&A9m*A9l.A9k2A9j6A9i:A9h>A9
+A:3,]VOHyrkd
+A?,?,?,?,?,?,?,?,
+A@9)A@9
+AA Compromise
+AACompromise
+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/
+ACCESS_DESCRIPTION
+AD Time Stamping
+ADMISSIONS
+ADMISSION_SYNTAX
+AD_DVCS
+AES-128-CBC
+AES-128-CBC-HMAC-SHA1
+AES-128-CBC-HMAC-SHA256
+AES-128-CFB
+AES-128-CFB1
+AES-128-CFB8
+AES-128-CTR
+AES-128-ECB
+AES-128-OCB
+AES-128-OFB
+AES-128-XTS
+AES-192-CBC
+AES-192-CBC-HMAC-SHA1
+AES-192-CBC-HMAC-SHA256
+AES-192-CFB
+AES-192-CFB1
+AES-192-CFB8
+AES-192-CTR
+AES-192-ECB
+AES-192-OCB
+AES-192-OFB
+AES-256-CBC
+AES-256-CBC-HMAC-SHA1
+AES-256-CBC-HMAC-SHA256
+AES-256-CFB
+AES-256-CFB1
+AES-256-CFB8
+AES-256-CTR
+AES-256-ECB
+AES-256-OCB
+AES-256-OFB
+AES-256-XTS
+AES128
+AES192
+AES256
+ALTER TABLE %Q.'%q_%s' RENAME TO '%q_%s';
+ALTER TABLE %Q.'%q_content'  RENAME TO '%q_content';
+ALTER TABLE %Q.'%q_docsize'  RENAME TO '%q_docsize';
+ALTER TABLE %Q.'%q_node'   RENAME TO "%w_node";ALTER TABLE %Q.'%q_parent' RENAME TO "%w_parent";ALTER TABLE %Q.'%q_rowid'  RENAME TO "%w_rowid";
+ALTER TABLE %Q.'%q_segdir'   RENAME TO '%q_segdir';
+ALTER TABLE %Q.'%q_segments' RENAME TO '%q_segments';
+ALTER TABLE %Q.'%q_stat'  RENAME TO '%q_stat';
+ALbfox
+ANALYZE "%w"."%w"
+ANSI X9.62
+ANY PRIVATE KEY
+ANY(%s)
+API call with %s database connection pointer
+API called with NULL prepared statement
+API called with finalized prepared statement
+ARIA-128-CBC
+ARIA-128-CCM
+ARIA-128-CFB
+ARIA-128-CFB1
+ARIA-128-CFB8
+ARIA-128-CTR
+ARIA-128-ECB
+ARIA-128-GCM
+ARIA-128-OFB
+ARIA-192-CBC
+ARIA-192-CCM
+ARIA-192-CFB
+ARIA-192-CFB1
+ARIA-192-CFB8
+ARIA-192-CTR
+ARIA-192-ECB
+ARIA-192-GCM
+ARIA-192-OFB
+ARIA-256-CBC
+ARIA-256-CCM
+ARIA-256-CFB
+ARIA-256-CFB1
+ARIA-256-CFB8
+ARIA-256-CTR
+ARIA-256-ECB
+ARIA-256-GCM
+ARIA-256-OFB
+ARIA128
+ARIA192
+ARIA256
+ASIdentifierChoice_canonize
+ASIdentifierChoice_is_canonical
+ASN1 lib
+ASN1_ANY
+ASN1_BIT_STRING_set_bit
+ASN1_BMPSTRING
+ASN1_BOOLEAN
+ASN1_FBOOLEAN
+ASN1_GENERALIZEDTIME
+ASN1_GENERALIZEDTIME_adj
+ASN1_GENERALSTRING
+ASN1_NULL
+ASN1_OBJECT_new
+ASN1_OCTET_STRING_NDEF
+ASN1_PCTX_new
+ASN1_PRINTABLE
+ASN1_PRINTABLESTRING
+ASN1_SCTX_new
+ASN1_SEQUENCE
+ASN1_SEQUENCE_ANY
+ASN1_SET_ANY
+ASN1_STRING_TABLE_add
+ASN1_STRING_set
+ASN1_STRING_type_new
+ASN1_T61STRING
+ASN1_TBOOLEAN
+ASN1_TIME
+ASN1_TIME_adj
+ASN1_TYPE_get_int_octetstring
+ASN1_TYPE_get_octetstring
+ASN1_UNIVERSALSTRING
+ASN1_UTCTIME
+ASN1_UTCTIME_adj
+ASN1_UTF8STRING
+ASN1_VISIBLESTRING
+ASN1_d2i_fp
+ASN1_digest
+ASN1_dup
+ASN1_generate_v3
+ASN1_get_object
+ASN1_i2d_bio
+ASN1_i2d_fp
+ASN1_item_d2i_fp
+ASN1_item_dup
+ASN1_item_i2d_bio
+ASN1_item_i2d_fp
+ASN1_item_pack
+ASN1_item_sign
+ASN1_item_sign_ctx
+ASN1_item_unpack
+ASN1_item_verify
+ASN1_mbstring_ncopy
+ASN1_sign
+ASN1_verify
+ASYNC routines
+ASYNC_WAIT_CTX_set_wait_fd
+ASYNC_init_thread
+ASYNC_pause_job
+ASYNC_start_job
+ATTACH %Q AS vacuum_db
+ATTACH DATABASE '%s' as migrate;
+AUTOINCREMENT is only allowed on an INTEGER PRIMARY KEY
+AUTOINCREMENT not allowed on WITHOUT ROWID tables
+AUTOMATIC COVERING INDEX
+AUTOMATIC PARTIAL COVERING INDEX
+Abortable
+Acceptable OCSP Responses
+AddImm
+Affiliation Changed
+AggFinal
+AggInverse
+AggStep
+AggStep1
+AggValue
+Aia8Bib8
+Android
+Android (5220042 based on r346389c) clang version 8.0.7 (https://android.googlesource.com/toolchain/clang b55f2d4ebfd35bf643d27dbca1bb228957008617) (https://android.googlesource.com/toolchain/llvm 3c393fe7a7e13b0fba4ac75a01aa683d7a5b11cd) (based on LLVM 8.0.7svn)
+Any Extended Key Usage
+Any Purpose
+Any language
+Attempting to access a deactivated, closed, or empty cursor
+AuthANY
+AuthDSS
+AuthECDSA
+AuthGOST01
+AuthGOST12
+AuthNULL
+AuthPSK
+AuthRSA
+AuthSRP
+Authority Information Access
+AutoCommit
+Auxiliary rtree columns must be last
+B#B)B/BCBSBUB[BaBsB}B
+B64_write_ASN1
+BAD RECURSION DEPTH
+BAD-TYPE
+BC (default)
+BEFORE
+BF-CBC
+BF-CFB
+BF-ECB
+BF-OFB
+BINARY
+BIO lib
+BIO routines
+BIO_ACCEPT_new
+BIO_ADDR_new
+BIO_CONNECT_new
+BIO_accept
+BIO_accept_ex
+BIO_bind
+BIO_callback_ctrl
+BIO_connect
+BIO_ctrl
+BIO_get_host_ip
+BIO_get_new_index
+BIO_get_port
+BIO_gets
+BIO_listen
+BIO_lookup
+BIO_lookup_ex
+BIO_meth_new
+BIO_new
+BIO_new_NDEF
+BIO_new_dgram_sctp
+BIO_new_file
+BIO_new_mem_buf
+BIO_nread
+BIO_nread0
+BIO_nwrite
+BIO_nwrite0
+BIO_parse_hostserv
+BIO_puts
+BIO_read
+BIO_read_ex
+BIO_sock_info
+BIO_sock_init
+BIO_socket
+BIO_socket_nbio
+BIO_write
+BIO_write_ex
+BIT STRING
+BITLIST
+BITSTR
+BITSTRING
+BITWRAP
+BLAKE2b512
+BLAKE2s256
+BN lib
+BN_BLINDING_convert_ex
+BN_BLINDING_create_param
+BN_BLINDING_invert_ex
+BN_BLINDING_new
+BN_BLINDING_update
+BN_CTX_get
+BN_CTX_new
+BN_CTX_start
+BN_GENCB_new
+BN_GF2m_mod
+BN_GF2m_mod_exp
+BN_GF2m_mod_mul
+BN_GF2m_mod_solve_quad
+BN_GF2m_mod_solve_quad_arr
+BN_GF2m_mod_sqr
+BN_GF2m_mod_sqrt
+BN_MONT_CTX_new
+BN_POOL_get
+BN_RECP_CTX_new
+BN_STACK_push
+BN_bn2dec
+BN_bn2hex
+BN_div
+BN_div_recp
+BN_exp
+BN_generate_dsa_nonce
+BN_generate_prime_ex
+BN_lshift
+BN_mod_exp2_mont
+BN_mod_exp_mont
+BN_mod_exp_mont_consttime
+BN_mod_exp_mont_word
+BN_mod_exp_recp
+BN_mod_exp_simple
+BN_mod_inverse
+BN_mod_inverse_no_branch
+BN_mod_lshift_quick
+BN_mod_sqrt
+BN_mpi2bn
+BN_new
+BN_rand
+BN_rand_range
+BN_rshift
+BN_usub
+BOOL ABSENT
+BUF lib
+BUF_MEM_grow
+BUF_MEM_grow_clean
+BUF_MEM_new
+BaaaaaaO
+Bad CursorWindow
+Bad ptr map entry key=%d expected=(%d,%d) got=(%d,%d)
+Bad time value
+Basic OCSP Response
+Bc!! 0
+Bht8!K
+Biometric Info
+BitAnd
+BitNot
+C%C'C3C7C9COCWCiC
+C77nYmm
+C@9Hk|8
+CA Compromise
+CA Issuers
+CA Repository
+CACompromise
+CAMELLIA-128-CBC
+CAMELLIA-128-CCM
+CAMELLIA-128-CFB
+CAMELLIA-128-CFB1
+CAMELLIA-128-CFB8
+CAMELLIA-128-CMAC
+CAMELLIA-128-CTR
+CAMELLIA-128-ECB
+CAMELLIA-128-GCM
+CAMELLIA-128-OFB
+CAMELLIA-192-CBC
+CAMELLIA-192-CCM
+CAMELLIA-192-CFB
+CAMELLIA-192-CFB1
+CAMELLIA-192-CFB8
+CAMELLIA-192-CMAC
+CAMELLIA-192-CTR
+CAMELLIA-192-ECB
+CAMELLIA-192-GCM
+CAMELLIA-192-OFB
+CAMELLIA-256-CBC
+CAMELLIA-256-CCM
+CAMELLIA-256-CFB
+CAMELLIA-256-CFB1
+CAMELLIA-256-CFB8
+CAMELLIA-256-CMAC
+CAMELLIA-256-CTR
+CAMELLIA-256-ECB
+CAMELLIA-256-GCM
+CAMELLIA-256-OFB
+CASCADE
+CAST5-CBC
+CAST5-CFB
+CAST5-ECB
+CAST5-OFB
+CBIGNUM
+CHECK constraint failed in %s
+CHECK constraints
+CMAC_CTX_new
+CMC Certificate Authority
+CMC Registration Authority
+CMS routines
+CMS_ATTRIBUTES
+CMS_Attributes_Sign
+CMS_Attributes_Verify
+CMS_AuthenticatedData
+CMS_CertificateChoices
+CMS_CompressedData
+CMS_ContentInfo
+CMS_DigestedData
+CMS_EncapsulatedContentInfo
+CMS_EncryptedContentInfo
+CMS_EncryptedData
+CMS_EncryptedData_decrypt
+CMS_EncryptedData_encrypt
+CMS_EncryptedData_set1_key
+CMS_EnvelopedData
+CMS_EnvelopedData_create
+CMS_IssuerAndSerialNumber
+CMS_KEKIdentifier
+CMS_KEKRecipientInfo
+CMS_KeyAgreeRecipientIdentifier
+CMS_KeyAgreeRecipientInfo
+CMS_KeyTransRecipientInfo
+CMS_OriginatorIdentifierOrKey
+CMS_OriginatorInfo
+CMS_OriginatorPublicKey
+CMS_OtherCertificateFormat
+CMS_OtherKeyAttribute
+CMS_OtherRecipientInfo
+CMS_OtherRevocationInfoFormat
+CMS_PasswordRecipientInfo
+CMS_Receipt
+CMS_ReceiptRequest
+CMS_ReceiptRequest_create0
+CMS_ReceiptsFrom
+CMS_RecipientEncryptedKey
+CMS_RecipientInfo
+CMS_RecipientInfo_decrypt
+CMS_RecipientInfo_encrypt
+CMS_RecipientInfo_kari_get0_alg
+CMS_RecipientInfo_kari_get0_orig_id
+CMS_RecipientInfo_kari_get0_reks
+CMS_RecipientInfo_kari_orig_id_cmp
+CMS_RecipientInfo_kekri_get0_id
+CMS_RecipientInfo_kekri_id_cmp
+CMS_RecipientInfo_ktri_cert_cmp
+CMS_RecipientInfo_ktri_get0_algs
+CMS_RecipientInfo_ktri_get0_signer_id
+CMS_RecipientInfo_set0_key
+CMS_RecipientInfo_set0_password
+CMS_RecipientInfo_set0_pkey
+CMS_RecipientKeyIdentifier
+CMS_RevocationInfoChoice
+CMS_SharedInfo
+CMS_SignedData
+CMS_SignerIdentifier
+CMS_SignerInfo
+CMS_SignerInfo_sign
+CMS_SignerInfo_verify
+CMS_SignerInfo_verify_content
+CMS_add0_cert
+CMS_add0_recipient_key
+CMS_add0_recipient_password
+CMS_add1_ReceiptRequest
+CMS_add1_recipient_cert
+CMS_add1_signer
+CMS_compress
+CMS_data
+CMS_dataFinal
+CMS_dataInit
+CMS_decrypt
+CMS_decrypt_set1_key
+CMS_decrypt_set1_password
+CMS_decrypt_set1_pkey
+CMS_digest_verify
+CMS_encrypt
+CMS_final
+CMS_get0_content
+CMS_set_detached
+CMS_si_check_attributes
+CMS_sign
+CMS_sign_receipt
+CMS_stream
+CMS_uncompress
+CMS_verify
+CO-ROUTINE %u
+COMMIT
+COMPILER=clang-8.0.7
+COMPOUND QUERY
+COMP_CTX_new
+CONF_parse_list
+CORRELATED 
+COVERING INDEX %s
+CREATE %s %.*s
+CREATE TABLE 
+CREATE TABLE "%w"."%w_parent"(nodeno INTEGER PRIMARY KEY,parentnode);
+CREATE TABLE "%w"."%w_rowid"(rowid INTEGER PRIMARY KEY,nodeno
+CREATE TABLE %Q.%s(%s)
+CREATE TABLE %Q.'%q_%q'(%s)%s
+CREATE TABLE %Q.'%q_content'(%s)
+CREATE TABLE %Q.'%q_docsize'(docid INTEGER PRIMARY KEY, size BLOB);
+CREATE TABLE %Q.'%q_segdir'(level INTEGER,idx INTEGER,start_block INTEGER,leaves_end_block INTEGER,end_block INTEGER,root BLOB,PRIMARY KEY(level, idx));
+CREATE TABLE %Q.'%q_segments'(blockid INTEGER PRIMARY KEY, block BLOB);
+CREATE TABLE %Q.sqlite_sequence(name,seq)
+CREATE TABLE IF NOT EXISTS %Q.'%q_stat'(id INTEGER PRIMARY KEY, value BLOB);
+CREATE TABLE x
+CREATE TABLE x(
+CREATE TABLE x( name       TEXT, path       TEXT, pageno     INTEGER, pagetype   TEXT, ncell      INTEGER, payload    INTEGER, unused     INTEGER, mx_payload INTEGER, pgoffset   INTEGER, pgsize     INTEGER, schema     TEXT HIDDEN, aggregate  BOOLEAN HIDDEN)
+CREATE TABLE x(%.*s INT
+CREATE TABLE x(%s %Q HIDDEN, docid HIDDEN, %Q HIDDEN)
+CREATE TABLE x(input, token, start, end, position)
+CREATE TABLE x(key,value,type,atom,id,parent,fullkey,path,json HIDDEN,root HIDDEN)
+CREATE TABLE x(term, col, documents, occurrences, languageid HIDDEN)
+CREATE TABLE x(type text,name text,tbl_name text,rootpage int,sql text)
+CREATE TABlE vocab(term, col, doc, cnt)
+CREATE TABlE vocab(term, doc, cnt)
+CREATE TABlE vocab(term, doc, col, offset)
+CREATE VIRTUAL TABLE %T
+CREATE%s INDEX %.*s
+CRL Sign
+CRL signing
+CRLDistributionPoints
+CRLReason
+CRL_DIST_POINTS
+CRLissuer
+CRYPTO_dup_ex_data
+CRYPTO_free_ex_data
+CRYPTO_get_ex_new_index
+CRYPTO_memdup
+CRYPTO_new_ex_data
+CRYPTO_ocb128_copy_ctx
+CRYPTO_ocb128_init
+CRYPTO_set_ex_data
+CSPName
+CT Certificate SCTs
+CT Precertificate Poison
+CT Precertificate SCTs
+CT Precertificate Signer
+CT routines
+CTLOG_FILE
+CTLOG_STORE_load_file
+CTLOG_STORE_new
+CTLOG_new
+CTLOG_new_from_base64
+CT_POLICY_EVAL_CTX_new
+Cannot add a NOT NULL column with default value NULL
+Cannot add a PRIMARY KEY column
+Cannot add a REFERENCES column with non-NULL default value
+Cannot add a UNIQUE column
+Cannot add a column to a view
+Cannot add a column with non-constant default
+Cannot open file
+Ccrypto/bio/b_print.c
+Certificate Hold
+Certificate Sign
+Certificate:
+Cessation Of Operation
+ChaCha20
+ChaCha20 for ARMv8, CRYPTOGAMS by <appro@openssl.org>
+ChaCha20-Poly1305
+Checkpoint
+Child page depth differs
+Cic8Eie8Gig8Uiu8
+CollSeq
+ColumnsUsed
+Concat
+Content-Disposition: attachment;
+Content-Length: %d
+Content-Transfer-Encoding: base64%s
+Content-Transfer-Encoding: base64%s%s
+Content-Type: %smime;
+Content-Type: %ssignature;
+Content-Type: application/ocsp-request
+Content-Type: multipart/signed;
+Content-Type: text/plain
+Could not open the database in read/write mode.
+Could not set busy timeout
+Couldn't init cursor window
+CreateBtree
+Ctrl/Provision WAP Termination
+Ctrl/provision WAP Access
+CursorHint
+CursorLock
+CursorUnlock
+D#D)D;D?DEDKDQDSDYDeDoD
+D7q/;M
+DD=crypto/pkcs12/p12_kiss.c
+DEFAULT_JOURNAL_SIZE_LIMIT=1048576
+DEK-Info:
+DEK-Info: %s,
+DELETE FROM %Q.%s WHERE %s=%Q
+DELETE FROM %Q.%s WHERE name=%Q AND type='index'
+DELETE FROM %Q.%s WHERE name=%Q AND type='trigger'
+DELETE FROM %Q.%s WHERE tbl_name=%Q and type!='trigger'
+DELETE FROM %Q.'%q_content'
+DELETE FROM %Q.'%q_content' WHERE id=?
+DELETE FROM %Q.'%q_content' WHERE rowid = ?
+DELETE FROM %Q.'%q_data';DELETE FROM %Q.'%q_idx';
+DELETE FROM %Q.'%q_docsize'
+DELETE FROM %Q.'%q_docsize' WHERE docid = ?
+DELETE FROM %Q.'%q_docsize' WHERE id=?
+DELETE FROM %Q.'%q_docsize';
+DELETE FROM %Q.'%q_segdir'
+DELETE FROM %Q.'%q_segdir' WHERE level = ?
+DELETE FROM %Q.'%q_segdir' WHERE level = ? AND idx = ?
+DELETE FROM %Q.'%q_segdir' WHERE level BETWEEN ? AND ?
+DELETE FROM %Q.'%q_segments'
+DELETE FROM %Q.'%q_segments' WHERE blockid BETWEEN ? AND ?
+DELETE FROM %Q.'%q_stat'
+DELETE FROM %Q.sqlite_sequence WHERE name=%Q
+DELETE FROM '%q'.'%q_data' WHERE id>=? AND id<=?
+DELETE FROM '%q'.'%q_idx' WHERE segid=?
+DELETE FROM '%q'.'%q_node' WHERE nodeno = ?1
+DELETE FROM '%q'.'%q_parent' WHERE nodeno = ?1
+DELETE FROM '%q'.'%q_rowid' WHERE rowid = ?1
+DELETE from
+DES-CDMF
+DES-CFB
+DES-CFB1
+DES-CFB8
+DES-ECB
+DES-EDE
+DES-EDE-CBC
+DES-EDE-CFB
+DES-EDE-ECB
+DES-EDE-OFB
+DES-EDE3
+DES-EDE3-CBC
+DES-EDE3-CFB
+DES-EDE3-CFB1
+DES-EDE3-CFB8
+DES-EDE3-ECB
+DES-EDE3-OFB
+DES-OFB
+DESX-CBC
+DETACH DATABASE migrate;
+DH lib
+DIRECTORYSTRING
+DISPLAYTEXT
+DISTINCT
+DISTINCT aggregates must have exactly one argument
+DISTINCT is not supported for window functions
+DIST_POINT_NAME
+DROP TABLE '%q'.'%q_node';DROP TABLE '%q'.'%q_rowid';DROP TABLE '%q'.'%q_parent';
+DROP TABLE IF EXISTS %Q.'%q_data';DROP TABLE IF EXISTS %Q.'%q_idx';DROP TABLE IF EXISTS %Q.'%q_config';
+DROP TABLE IF EXISTS %Q.'%q_docsize';
+DROP TABLE IF EXISTS %Q.'%q_segments';DROP TABLE IF EXISTS %Q.'%q_segdir';DROP TABLE IF EXISTS %Q.'%q_docsize';DROP TABLE IF EXISTS %Q.'%q_stat';%s DROP TABLE IF EXISTS %Q.'%q_content';
+DSA-SHA
+DSA-SHA1
+DSA-SHA1-old
+DSA-old
+DSO support routines
+DSO_bind_func
+DSO_convert_filename
+DSO_ctrl
+DSO_free
+DSO_get_filename
+DSO_global_lookup
+DSO_load
+DSO_merge
+DSO_new_method
+DSO_pathbyaddr
+DSO_set_filename
+DSO_up_ref
+DSTU 4145-2002 big endian
+DSTU 4145-2002 little endian
+DSTU Gost 28147-2009
+DSTU Gost 28147-2009 CFB mode
+DSTU Gost 28147-2009 OFB mode
+DSTU Gost 28147-2009 key wrap
+DSTU curve 0
+DSTU curve 1
+DSTU curve 2
+DSTU curve 3
+DSTU curve 4
+DSTU curve 5
+DSTU curve 6
+DSTU curve 7
+DSTU curve 8
+DSTU curve 9
+Data Encipherment
+Decipher Only
+DecrJumpZero
+DeferredSeek
+Deleted virtual function called!
+Df""T~**;
+Did8Eie8Fif8Gig8Uiu8Bib8dyd
+Diffie-Hellman based MAC
+Diffie-Hellman routines
+Digital Signature
+Dimension %d of cell %d on node %lld is corrupt
+Dimension %d of cell %d on node %lld is corrupt relative to parent
+DirName
+DirName:
+Divide
+DropIndex
+DropTable
+DropTrigger
+E+E1EAEIESEUEaEwE}E
+E-mail Protection
+E2G+Ocrypto/asn1/bio_asn1.c
+E>70aZSL}voh
+EC lib
+ECDH routines
+ECDSA lib
+ECDSA routines
+ED25519
+EDIPARTYNAME
+EEEE';@
+EH7HJh7
+EI%~~IE
+ENABLE_COLUMN_METADATA
+ENABLE_DBSTAT_VTAB
+ENABLE_FTS3_PARENTHESIS
+ENABLE_FTS4
+ENABLE_FTS5
+ENABLE_JSON1
+ENABLE_LOAD_EXTENSION
+ENABLE_MEMORY_MANAGEMENT
+ENABLE_RTREE
+ENABLE_STAT4
+ENABLE_UNLOCK_NOTIFY
+ENCRYPTED
+ENCRYPTED PRIVATE KEY
+ENGINE lib
+ERROR: selector [%d] invalid
+ESCAPE expression must be a single character
+EVP lib
+EVP_CIPHER_CTX_copy
+EVP_CIPHER_CTX_ctrl
+EVP_CIPHER_CTX_set_key_length
+EVP_CIPHER_asn1_to_param
+EVP_CIPHER_param_to_asn1
+EVP_CipherInit_ex
+EVP_DecryptFinal_ex
+EVP_DecryptUpdate
+EVP_DigestFinalXOF
+EVP_DigestInit_ex
+EVP_EncryptFinal_ex
+EVP_EncryptUpdate
+EVP_MD_CTX_copy_ex
+EVP_MD_size
+EVP_OpenInit
+EVP_PBE_CipherInit
+EVP_PBE_alg_add
+EVP_PBE_alg_add_type
+EVP_PBE_scrypt
+EVP_PKCS82PKEY
+EVP_PKEY2PKCS8
+EVP_PKEY_CTX_ctrl
+EVP_PKEY_CTX_ctrl_str
+EVP_PKEY_CTX_dup
+EVP_PKEY_CTX_md
+EVP_PKEY_asn1_add0
+EVP_PKEY_check
+EVP_PKEY_copy_parameters
+EVP_PKEY_decrypt
+EVP_PKEY_decrypt_init
+EVP_PKEY_decrypt_old
+EVP_PKEY_derive
+EVP_PKEY_derive_init
+EVP_PKEY_derive_set_peer
+EVP_PKEY_encrypt
+EVP_PKEY_encrypt_init
+EVP_PKEY_encrypt_old
+EVP_PKEY_get0_DH
+EVP_PKEY_get0_DSA
+EVP_PKEY_get0_EC_KEY
+EVP_PKEY_get0_RSA
+EVP_PKEY_get0_hmac
+EVP_PKEY_get0_poly1305
+EVP_PKEY_get0_siphash
+EVP_PKEY_get_raw_private_key
+EVP_PKEY_get_raw_public_key
+EVP_PKEY_keygen
+EVP_PKEY_keygen_init
+EVP_PKEY_meth_add0
+EVP_PKEY_meth_new
+EVP_PKEY_new
+EVP_PKEY_new_CMAC_key
+EVP_PKEY_new_raw_private_key
+EVP_PKEY_new_raw_public_key
+EVP_PKEY_param_check
+EVP_PKEY_paramgen
+EVP_PKEY_paramgen_init
+EVP_PKEY_public_check
+EVP_PKEY_set1_engine
+EVP_PKEY_set_alias_type
+EVP_PKEY_sign
+EVP_PKEY_sign_init
+EVP_PKEY_verify
+EVP_PKEY_verify_init
+EVP_PKEY_verify_recover
+EVP_PKEY_verify_recover_init
+EVP_SignFinal
+EVP_VerifyFinal
+EXCEPT
+EXPAND_ONLY
+EXPLICIT
+EXTERNAL
+EXTRACT_AND_EXPAND
+EXTRACT_ONLY
+Ecrypto/bn/bn_rand.c
+EdiPartyName
+EdiPartyName:<unsupported>
+Eefghijklmnoklmno
+Elapsed time:%.3f ms - %s
+ElseNotEq
+Encipher Only
+EndCoroutine
+Enter 
+Enter PEM pass phrase:
+Enterprises
+Error in encoding
+Error writing file
+EtGtt.tttttXttt
+Excluded
+Expecting: 
+Experimental
+Expire
+Explain
+Expression tree is too large (maximum depth %d)
+Extended OCSP Status
+Extends off end of page
+FILE pointer
+FILTER clause may only be used with aggregate window functions
+FILTER may not be used with non-aggregate %.*s()
+FIPS routines
+FIPS_mode_set
+FLOAT data in getBlob_native 
+FOREIGN KEY
+FOREIGN KEY constraint failed
+FORMAT
+FTS expression tree is too large (maximum depth %d)
+Failed to allocate row in reset within native_fill_window
+Failed to read ptrmap key=%d
+Field=
+FinishSeek
+FkCounter
+FkIfZero
+Found (%lld -> %lld) in %s table, expected (%lld -> %lld)
+Fragmentation of %d bytes reported as %d on page %d
+Function
+Function not implemented
+GCC: (GNU) 4.9.x 20150123 (prerelease)
+GENERAL_SUBTREE
+GENSTR
+GENTIME
+GGG,jLLl,
+GGvvvvuuttts
+GHASH for ARMv8, CRYPTOGAMS by <appro@openssl.org>
+GJNQV[
+GOST 28147-89
+GOST 28147-89 Cryptocom ParamSet
+GOST 28147-89 MAC
+GOST 28147-89 TC26 parameter set
+GOST 34.10-2001 Cryptocom
+GOST 34.10-94 Cryptocom
+GOST R 34.10-2001 DH
+GOST R 34.10-2012 (256 bit) ParamSet A
+GOST R 34.10-2012 (256 bit) ParamSet B
+GOST R 34.10-2012 (256 bit) ParamSet C
+GOST R 34.10-2012 (256 bit) ParamSet D
+GOST R 34.10-2012 (512 bit) ParamSet A
+GOST R 34.10-2012 (512 bit) ParamSet B
+GOST R 34.10-2012 (512 bit) ParamSet C
+GOST R 34.10-2012 (512 bit) testing parameter set
+GOST R 34.10-2012 with 256 bit modulus
+GOST R 34.10-2012 with 512 bit modulus
+GOST R 34.10-2012 with GOST R 34.11-2012 (256 bit)
+GOST R 34.10-2012 with GOST R 34.11-2012 (512 bit)
+GOST R 34.10-94 DH
+GOST R 34.11-2012 with 256 bit hash
+GOST R 34.11-2012 with 512 bit hash
+GOST R 34.11-94
+GOST R 34.11-94 PRF
+GOST R 34.11-94 with GOST R 34.10-2001
+GOST R 34.11-94 with GOST R 34.10-2001 Cryptocom
+GOST R 34.11-94 with GOST R 34.10-94
+GOST R 34.11-94 with GOST R 34.10-94 Cryptocom
+GOST R 3410-2001 Parameter Set Cryptocom
+GRAPHICSTRING
+GROUP BY
+GeneralNames
+GeneralString
+Gp-1:2
+Gq-1:3
+Gs-1:2
+H'R)"[@
+H'R)"g@
+H'R)#[@
+H'R)jk@
+H(NBh(N@x
+H(NBh(N@x@L"H(NB
+H6kB@9R
+H7H#@y
+H?@8Hg
+HAS_CODEC
+HMAC DSTU Gost 34311-95
+HMAC GOST 34.11-2012 256 bit
+HMAC GOST 34.11-2012 512 bit
+HMAC GOST 34.11-94
+HMAC is not enabled, unable to integrity check
+HMAC operation failed for page %d
+HMAC routines
+HMAC verification failed for page %d
+HScrypto/rsa/rsa_pmeth.c
+HaltIfNull
+Hash Algorithm: 
+Hih8Kik8
+Hkh8Kkk8
+Hold Instruction Call Issuer
+Hold Instruction Code
+Hold Instruction None
+Hold Instruction Reject
+I#R))}@
+I%IE~i%
+I5BII%CERTIFICATEPOLICIES
+IB;4e^WP
+ICC or token signature
+IDEA-CBC
+IDEA-CFB
+IDEA-ECB
+IDEA-OFB
+IEEE Security in Storage Working Group
+IMPLICIT
+INDEX %d
+INSERT INTO "%w"."%w_node"VALUES(1,zeroblob(%d))
+INSERT INTO %Q.%s VALUES('index',%Q,%Q,#%d,%Q);
+INSERT INTO %Q.%s VALUES('trigger',%Q,%Q,0,'CREATE TRIGGER %q')
+INSERT INTO %Q.'%q_content' VALUES(%s)
+INSERT INTO %s.sqlite_master   SELECT type, name, tbl_name, rootpage, sql    FROM %s.sqlite_master   WHERE type='view' OR type='trigger'      OR (type='table' AND rootpage=0)
+INSERT INTO '%q'.'%q_idx'(segid,term,pgno) VALUES(?,?,?)
+INSERT INTO vacuum_db.sqlite_master SELECT*FROM "%w".sqlite_master WHERE type IN('view','trigger') OR(type='table'AND rootpage=0)
+INSERT INTO"%w"."%w_rowid"(rowid,nodeno)VALUES(?1,?2)ON CONFLICT(rowid)DO UPDATE SET nodeno=excluded.nodeno
+INSERT OR REPLACE INTO '%q'.'%q_node' VALUES(?1, ?2)
+INSERT OR REPLACE INTO '%q'.'%q_parent' VALUES(?1, ?2)
+INSERT OR REPLACE INTO '%q'.'%q_rowid' VALUES(?1, ?2)
+INTEGER data in getBlob_native 
+INTERSECT
+INVALID
+IOC8HC_
+IP Address
+IP Address:%d.%d.%d.%d
+IP Address:<invalid>
+IPSec End System
+IPSec Tunnel
+IPSec User
+ISO CN Member Body
+ISO Member Body
+ISO US Member Body
+ISO-CN
+ISO-UA
+ISO-US
+ISSUING_DIST_POINT
+IYix*0
+IdxDelete
+IdxInsert
+IdxRowid
+IfNoHope
+IfNotOpen
+IfNotZero
+IfNullRow
+IfSmaller
+Iki8Jkj8?
+IncrVacuum
+Independent
+Index already optimal
+Index optimized
+Inherit all
+Inhibit Policy Mapping
+InitCoroutine
+IntCopy
+Integer
+IntegrityCk
+International Organizations
+Invalid argument to rtreedepth()
+Invalid key value
+Invalidity Date
+IsNull
+IsTrue
+J%LA)1
+J%LN)1
+J(N!h(N
+J(N!h(N J(N
+J(N!h(NB
+J(N!h(Nc
+J(N%h(N
+J(N1j(N
+J(N1j(N 
+J(N1j(Nc
+J(NRj(N
+J*!HJJ
+J,J,J5*,
+J,Jjj,'*
+J0ip8$
+JJ,'*GgL
+JJ,,*GgL
+JKi,8@
+JL*,JG
+JLJLg,
+JNI_OnLoad
+JOINT-ISO-ITU-T
+JPDA)c
+JQ@A)O
+JSON cannot hold BLOB values
+JSON path error near '%q'
+J[+B)K3C)H
+JaIJkAIJ
+JgV-o)
+Jih8iii8
+Jih8ji,8J
+Jiixiiix
+Jkj8Kkk8_
+Jli*8J
+JournalMode
+JpV/oJ
+Jylxiy
+Jzd!Lz
+K!@y+!
+K)`A)_
+K>:B<8
+KDF routines
+KK;KKKIKKI%0000000000000000000000000000
+KQLxk5
+KR[^fCn2
+Keccak-1600 absorb and squeeze for ARMv8, CRYPTOGAMS by <appro@openssl.org>
+Key Agreement
+Key Compromise
+Key Encipherment
+Kih8Jki8
+Kii8lki8
+Kik8+%
+Kik8Lil8
+Kkk8Lkl8
+Kr-R:3
+Ku8(kh8
+KxDHE-PSK
+KxECDHE
+KxECDHE-PSK
+KxGOST
+KxRSA_PSK
+L','G&U
+L* N* Co
+L*J,'GL
+LEFT-MOST SUBQUERY
+LEGACY_GOST_PKCS12
+LH}@Li}@L
+LIKE or GLOB pattern too complex
+Lhk8Mik8
+Lih8mih8
+Lii8kii8
+Lil8Mim8
+Lj&&lZ66~A??
+Lkl8Mkm8
+LoadAnalysis
+LocalKeySet
+MATERIALIZE %u
+MAX_VARIABLE_NUMBER=99999
+MD5-SHA1
+MERGE (%s)
+MF?8ib[T
+MIC-CLEAR
+MIC-ONLY
+MIME MHS
+MIME-Version: 1.0%s
+MJ collide: %s
+MJ delete: %s
+MMMMMMMMMMMMMMMMM03KKKKKKKKKK
+MMMVMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMfU33
+MULTI-INDEX OR
+Main freelist: 
+MakeRecord
+Management
+Mapping (%lld -> %lld) missing from %s table
+Mask Algorithm: 
+MaxPgcnt
+Mb@?-C
+Mcrypto/asn1/asn_mime.c
+MemMax
+Microsoft CSP Name
+Microsoft Commercial Code Signing
+Microsoft Encrypted File System
+Microsoft Extension Request
+Microsoft Individual Code Signing
+Microsoft Local Key set
+Microsoft Server Gated Crypto
+Microsoft Smartcard Login
+Microsoft Trust List Signing
+Microsoft User Principal Name
+Mik8Mi)8Li+8Iii8)
+Mim8Nik8
+Mim8Nin8
+Minimum
+Mkm8Nkn8
+Modulus:
+Montgomery Multiplication for ARMv8, CRYPTOGAMS by <appro@openssl.org>
+Multiple uses for byte %u of page %d
+Multiply
+MustBeInt
+N10__cxxabiv116__enum_type_infoE
+N10__cxxabiv116__shim_type_infoE
+N10__cxxabiv117__array_type_infoE
+N10__cxxabiv117__class_type_infoE
+N10__cxxabiv117__pbase_type_infoE
+N10__cxxabiv119__pointer_type_infoE
+N10__cxxabiv120__function_type_infoE
+N10__cxxabiv120__si_class_type_infoE
+N10__cxxabiv121__vmi_class_type_infoE
+N10__cxxabiv123__fundamental_type_infoE
+N10__cxxabiv129__pointer_to_member_type_infoE
+N12_GLOBAL__N_116itanium_demangle10AbiTagAttrE
+N12_GLOBAL__N_116itanium_demangle10BinaryExprE
+N12_GLOBAL__N_116itanium_demangle10BracedExprE
+N12_GLOBAL__N_116itanium_demangle10DeleteExprE
+N12_GLOBAL__N_116itanium_demangle10MemberExprE
+N12_GLOBAL__N_116itanium_demangle10NestedNameE
+N12_GLOBAL__N_116itanium_demangle10PrefixExprE
+N12_GLOBAL__N_116itanium_demangle10VectorTypeE
+N12_GLOBAL__N_116itanium_demangle11PointerTypeE
+N12_GLOBAL__N_116itanium_demangle11PostfixExprE
+N12_GLOBAL__N_116itanium_demangle11SpecialNameE
+N12_GLOBAL__N_116itanium_demangle12CtorDtorNameE
+N12_GLOBAL__N_116itanium_demangle12EnableIfAttrE
+N12_GLOBAL__N_116itanium_demangle12FunctionTypeE
+N12_GLOBAL__N_116itanium_demangle12InitListExprE
+N12_GLOBAL__N_116itanium_demangle12NoexceptSpecE
+N12_GLOBAL__N_116itanium_demangle12TemplateArgsE
+N12_GLOBAL__N_116itanium_demangle13EnclosingExprE
+N12_GLOBAL__N_116itanium_demangle13FunctionParamE
+N12_GLOBAL__N_116itanium_demangle13NodeArrayNodeE
+N12_GLOBAL__N_116itanium_demangle13ObjCProtoNameE
+N12_GLOBAL__N_116itanium_demangle13ParameterPackE
+N12_GLOBAL__N_116itanium_demangle13QualifiedNameE
+N12_GLOBAL__N_116itanium_demangle13ReferenceTypeE
+N12_GLOBAL__N_116itanium_demangle14ConversionExprE
+N12_GLOBAL__N_116itanium_demangle14IntegerLiteralE
+N12_GLOBAL__N_116itanium_demangle15BracedRangeExprE
+N12_GLOBAL__N_116itanium_demangle15ClosureTypeNameE
+N12_GLOBAL__N_116itanium_demangle15ConditionalExprE
+N12_GLOBAL__N_116itanium_demangle15IntegerCastExprE
+N12_GLOBAL__N_116itanium_demangle15LiteralOperatorE
+N12_GLOBAL__N_116itanium_demangle15PixelVectorTypeE
+N12_GLOBAL__N_116itanium_demangle15UnnamedTypeNameE
+N12_GLOBAL__N_116itanium_demangle16FloatLiteralImplIdEE
+N12_GLOBAL__N_116itanium_demangle16FloatLiteralImplIeEE
+N12_GLOBAL__N_116itanium_demangle16FloatLiteralImplIfEE
+N12_GLOBAL__N_116itanium_demangle16FunctionEncodingE
+N12_GLOBAL__N_116itanium_demangle16StdQualifiedNameE
+N12_GLOBAL__N_116itanium_demangle17VendorExtQualTypeE
+N12_GLOBAL__N_116itanium_demangle18ArraySubscriptExprE
+N12_GLOBAL__N_116itanium_demangle19GlobalQualifiedNameE
+N12_GLOBAL__N_116itanium_demangle19PointerToMemberTypeE
+N12_GLOBAL__N_116itanium_demangle19SizeofParamPackExprE
+N12_GLOBAL__N_116itanium_demangle19SpecialSubstitutionE
+N12_GLOBAL__N_116itanium_demangle20DynamicExceptionSpecE
+N12_GLOBAL__N_116itanium_demangle20NameWithTemplateArgsE
+N12_GLOBAL__N_116itanium_demangle20PostfixQualifiedTypeE
+N12_GLOBAL__N_116itanium_demangle20TemplateArgumentPackE
+N12_GLOBAL__N_116itanium_demangle21CtorVtableSpecialNameE
+N12_GLOBAL__N_116itanium_demangle21StructuredBindingNameE
+N12_GLOBAL__N_116itanium_demangle22ConversionOperatorTypeE
+N12_GLOBAL__N_116itanium_demangle22ElaboratedTypeSpefTypeE
+N12_GLOBAL__N_116itanium_demangle22ParameterPackExpansionE
+N12_GLOBAL__N_116itanium_demangle24ForwardTemplateReferenceE
+N12_GLOBAL__N_116itanium_demangle27ExpandedSpecialSubstitutionE
+N12_GLOBAL__N_116itanium_demangle4NodeE
+N12_GLOBAL__N_116itanium_demangle7NewExprE
+N12_GLOBAL__N_116itanium_demangle8BoolExprE
+N12_GLOBAL__N_116itanium_demangle8CallExprE
+N12_GLOBAL__N_116itanium_demangle8CastExprE
+N12_GLOBAL__N_116itanium_demangle8DtorNameE
+N12_GLOBAL__N_116itanium_demangle8FoldExprE
+N12_GLOBAL__N_116itanium_demangle8NameTypeE
+N12_GLOBAL__N_116itanium_demangle8QualTypeE
+N12_GLOBAL__N_116itanium_demangle9ArrayTypeE
+N12_GLOBAL__N_116itanium_demangle9DotSuffixE
+N12_GLOBAL__N_116itanium_demangle9LocalNameE
+N12_GLOBAL__N_116itanium_demangle9ThrowExprE
+NAMING_AUTHORITY
+NCONF_dump_bio
+NCONF_dump_fp
+NCONF_get_number_e
+NCONF_get_section
+NCONF_get_string
+NCONF_load
+NCONF_load_bio
+NCONF_load_fp
+NCONF_new
+NETSCAPE_SPKAC
+NETSCAPE_SPKI
+NETSCAPE_SPKI_b64_decode
+NETSCAPE_SPKI_b64_encode
+NEW CERTIFICATE REQUEST
+NO ACTION
+NO X509_NAME
+NOCASE
+NOT NULL
+NOTICEREF
+NULL value in %s.%s
+NUMERIC
+NUMERICSTRING
+Netscape
+Netscape Base Url
+Netscape CA Policy Url
+Netscape CA Revocation Url
+Netscape Cert Type
+Netscape Certificate Extension
+Netscape Certificate Sequence
+Netscape Comment
+Netscape Communications Corp.
+Netscape Data Type
+Netscape Renewal Url
+Netscape Revocation Url
+Netscape SSL Server Name
+Netscape SSL server
+Netscape Server Gated Crypto
+NewRowid
+Nin8Oio8
+NjBD9kFD9
+Nkn8Oko8
+NmND9n^D9
+No PSS parameter restrictions
+NoConflict
+Node %lld is too small (%d bytes)
+Node %lld is too small for cell count of %d (%d bytes)
+Node %lld missing from database
+Non Critical
+Non Repudiation
+Not After: 
+Not a regular file
+NotExists
+NotFound
+NotNull
+O)@9J-@9
+O:l@LsVyOD,
+OBJ lib
+OBJECT DESCRIPTOR
+OBJ_NAME_new_index
+OBJ_add_object
+OBJ_add_sigid
+OBJ_create
+OBJ_dup
+OBJ_nid2ln
+OBJ_nid2obj
+OBJ_nid2sn
+OBJ_txt2obj
+OCSP Archive Cutoff
+OCSP CRL ID
+OCSP No Check
+OCSP Nonce
+OCSP Service Locator
+OCSP Signing
+OCSP helper
+OCSP request
+OCSP responder
+OCSP routines
+OCSPSigning
+OCSP_BASICRESP
+OCSP_CERTID
+OCSP_CERTSTATUS
+OCSP_CRLID
+OCSP_ONEREQ
+OCSP_REQINFO
+OCSP_REQUEST
+OCSP_RESPBYTES
+OCSP_RESPDATA
+OCSP_RESPID
+OCSP_RESPONSE
+OCSP_REVOKEDINFO
+OCSP_SERVICELOC
+OCSP_SIGNATURE
+OCSP_SINGLERESP
+OCSP_basic_add1_status
+OCSP_basic_sign
+OCSP_basic_sign_ctx
+OCSP_basic_verify
+OCSP_cert_id_new
+OCSP_check_validity
+OCSP_parse_url
+OCSP_request_sign
+OCSP_request_verify
+OCSP_response_get1_basic
+OCTET STRING
+OCTETSTRING
+OCTWRAP
+ON CONFLICT clause does not match any PRIMARY KEY or UNIQUE constraint
+ON clause references tables to its right
+OPENSSL_CONF
+OPENSSL_LH_new
+OPENSSL_armcap
+OPENSSL_asc2uni
+OPENSSL_atexit
+OPENSSL_buf2hexstr
+OPENSSL_finish
+OPENSSL_hexstr2buf
+OPENSSL_init
+OPENSSL_init_crypto
+OPENSSL_sk_deep_copy
+OPENSSL_sk_dup
+OPENSSL_uni2asc
+OPENSSL_uni2utf8
+OPENSSL_utf82uni
+OR-@Lj
+OSSL_STORE_INFO_get1_CERT
+OSSL_STORE_INFO_get1_CRL
+OSSL_STORE_INFO_get1_NAME
+OSSL_STORE_INFO_get1_NAME_description
+OSSL_STORE_INFO_get1_PARAMS
+OSSL_STORE_INFO_get1_PKEY
+OSSL_STORE_INFO_new_CERT
+OSSL_STORE_INFO_new_CRL
+OSSL_STORE_INFO_new_NAME
+OSSL_STORE_INFO_new_PARAMS
+OSSL_STORE_INFO_new_PKEY
+OSSL_STORE_INFO_set0_NAME_description
+OSSL_STORE_LOADER_new
+OSSL_STORE_SEARCH_by_alias
+OSSL_STORE_SEARCH_by_issuer_serial
+OSSL_STORE_SEARCH_by_key_fingerprint
+OSSL_STORE_SEARCH_by_name
+OSSL_STORE_expect
+OSSL_STORE_find
+OSSL_STORE_open
+OZ-s:4
+O[-s:5
+O]-s:4
+Oakley-EC2N-3
+Oakley-EC2N-4
+Object Signer
+Object Signing
+Object Signing CA
+Offset
+Offset %d out of range %d..%d
+OffsetLimit
+Oio8Pip8
+Oio8Pip8Qiq8@i`8
+On page %d at right child: 
+On tree page %d cell %d: 
+Only Some Reasons
+OpenAutoindex
+OpenDup
+OpenEphemeral
+OpenPseudo
+OpenRead
+OpenSSL 'dlfcn' shared library method
+OpenSSL 1.1.1g  21 Apr 2020
+OpenSSL CMAC method
+OpenSSL HMAC method
+OpenSSL NIST SP 800-90A DRBG
+OpenSSL NULL UI
+OpenSSL POLY1305 method
+OpenSSL RSA method
+OpenSSL RSA-PSS method
+OpenSSL SIPHASH method
+OpenSSL default
+OpenSSL default user interface
+OpenWrite
+OsVyO#B
+P6ir@9)
+P7h2@9
+PARTITION clause
+PBE-MD2-DES
+PBE-MD2-RC2-64
+PBE-MD5-DES
+PBE-MD5-RC2-64
+PBE-SHA1-2DES
+PBE-SHA1-3DES
+PBE-SHA1-DES
+PBE-SHA1-RC2-128
+PBE-SHA1-RC2-40
+PBE-SHA1-RC2-64
+PBE-SHA1-RC4-128
+PBE-SHA1-RC4-40
+PBE2PARAM
+PBEPARAM
+PBKDF2
+PBKDF2PARAM
+PBKDF2_HMAC_SHA1
+PBKDF2_HMAC_SHA256
+PBKDF2_HMAC_SHA512
+PBMAC1
+PEM lib
+PEM routines
+PEM type is '
+PEM_ASN1_read
+PEM_ASN1_read_bio
+PEM_ASN1_write
+PEM_ASN1_write_bio
+PEM_SignFinal
+PEM_X509_INFO_read
+PEM_X509_INFO_read_bio
+PEM_X509_INFO_write_bio
+PEM_def_callback
+PEM_do_header
+PEM_get_EVP_CIPHER_INFO
+PEM_read
+PEM_read_DHparams
+PEM_read_PrivateKey
+PEM_read_bio
+PEM_read_bio_DHparams
+PEM_read_bio_Parameters
+PEM_read_bio_PrivateKey
+PEM_read_bio_ex
+PEM_write
+PEM_write_PrivateKey
+PEM_write_bio
+PKCS #7 SIGNED DATA
+PKCS12 import password
+PKCS12 routines
+PKCS12_AUTHSAFES
+PKCS12_BAGS
+PKCS12_MAC_DATA
+PKCS12_PBE_keyivgen
+PKCS12_SAFEBAG
+PKCS12_SAFEBAGS
+PKCS12_SAFEBAG_create0_p8inf
+PKCS12_SAFEBAG_create0_pkcs8
+PKCS12_SAFEBAG_create_pkcs8_encrypt
+PKCS12_create
+PKCS12_gen_mac
+PKCS12_init
+PKCS12_item_decrypt_d2i
+PKCS12_item_i2d_encrypt
+PKCS12_item_pack_safebag
+PKCS12_key_gen_asc
+PKCS12_key_gen_uni
+PKCS12_key_gen_utf8
+PKCS12_newpass
+PKCS12_pack_p7data
+PKCS12_pack_p7encdata
+PKCS12_parse
+PKCS12_pbe_crypt
+PKCS12_set_mac
+PKCS12_setup_mac
+PKCS12_unpack_authsafes
+PKCS12_unpack_p7data
+PKCS12_verify_mac
+PKCS5_PBE_keyivgen
+PKCS5_pbe2_set_iv
+PKCS5_pbe2_set_scrypt
+PKCS5_pbe_set
+PKCS5_pbe_set0_algor
+PKCS5_pbkdf2_set
+PKCS5_v2_PBE_keyivgen
+PKCS5_v2_PBKDF2_keyivgen
+PKCS5_v2_scrypt_keyivgen
+PKCS7 lib
+PKCS7 routines
+PKCS7_ATTRIBUTES
+PKCS7_ATTR_SIGN
+PKCS7_ATTR_VERIFY
+PKCS7_DIGEST
+PKCS7_ENCRYPT
+PKCS7_ENC_CONTENT
+PKCS7_ENVELOPE
+PKCS7_ISSUER_AND_SERIAL
+PKCS7_RECIP_INFO
+PKCS7_RECIP_INFO_set
+PKCS7_SIGNED
+PKCS7_SIGNER_INFO
+PKCS7_SIGNER_INFO_set
+PKCS7_SIGNER_INFO_sign
+PKCS7_SIGN_ENVELOPE
+PKCS7_add0_attrib_signing_time
+PKCS7_add_attrib_smimecap
+PKCS7_add_certificate
+PKCS7_add_crl
+PKCS7_add_recipient_info
+PKCS7_add_signature
+PKCS7_add_signer
+PKCS7_bio_add_digest
+PKCS7_ctrl
+PKCS7_dataDecode
+PKCS7_dataFinal
+PKCS7_dataInit
+PKCS7_dataVerify
+PKCS7_decrypt
+PKCS7_encrypt
+PKCS7_final
+PKCS7_find_digest
+PKCS7_get0_signers
+PKCS7_set_cipher
+PKCS7_set_content
+PKCS7_set_digest
+PKCS7_set_type
+PKCS7_sign
+PKCS7_sign_add_signer
+PKCS7_signatureVerify
+PKCS7_simple_smimecap
+PKCS7_to_TS_TST_INFO
+PKCS7_verify
+PKCS8 decrypt password
+PKCS8_PRIV_KEY_INFO
+PKCS8_encrypt
+PKCS8_set0_pbe
+PKEY_USAGE_PERIOD
+PKINIT Client Auth
+POLICYINFO
+POLICYQUALINFO
+POLICY_MAPPING
+POLY1305
+PPPPPP_PPiPnnPnnPPPPP[PPPedPPZgPPhPQ
+PPxD<<%
+PRAGMA 
+PRAGMA %Q.data_version
+PRAGMA %Q.page_size
+PRAGMA cipher is no longer supported.
+PRAGMA cipher_compatibility = %d;
+PRAGMA cipher_default_hmac_algorithm = %s;
+PRAGMA cipher_default_kdf_algorithm = %s;
+PRAGMA cipher_default_kdf_iter = %d;
+PRAGMA cipher_default_page_size = %d;
+PRAGMA cipher_default_plaintext_header_size = %d;
+PRAGMA cipher_default_use_hmac = %d;
+PRAGMA cipher_hmac_algorithm = %s;
+PRAGMA cipher_hmac_pgno is deprecated, please remove from use
+PRAGMA cipher_hmac_salt_mask is deprecated, please remove from use
+PRAGMA cipher_kdf_algorithm = %s;
+PRAGMA cipher_page_size = %d;
+PRAGMA cipher_plaintext_header_size = %d;
+PRAGMA cipher_use_hmac = %d;
+PRAGMA fast_kdf_iter is deprecated, please remove from use
+PRAGMA journal_mode = %s;
+PRAGMA journal_mode = delete;
+PRAGMA journal_mode;
+PRAGMA kdf_iter = %d;
+PRAGMA migrate.user_version = %d;
+PRAGMA rekey_cipher is no longer supported.
+PRAGMA rekey_kdf_iter is no longer supported.
+PRAGMA user_version;
+PRIMARY KEY missing on table %s
+PRNG not seeded
+PROFESSION_INFO
+PROXY_CERT_INFO_EXTENSION
+PROXY_POLICY
+PSPECIFIED
+PSS parameter restrictions:
+PUBLIC KEY
+Page %d is never used
+Page %d: 
+Pagecount
+ParseSchema
+Permanent Identifier
+Permitted
+Permutation
+Pii[2cc
+Pip8Lil8Oio8B
+Pip8Qiq8
+Pointer map page %d is referenced
+Policy Qualifier CPS
+Policy Qualifier User Notice
+Poly1305 for ARMv8, CRYPTOGAMS by <appro@openssl.org>
+Private
+Private Key
+Private-Key: (%d bit, %d primes)
+Privilege Withdrawn
+Proc-Type:
+Proc-Type: 4,%s
+Professional Information or basis for Admission
+Proxy Certificate Information
+Public Key
+Public-Key: (%d bit)
+Pure virtual function called!
+PureFunc
+Pvvvvuuttts
+Q+,-./0123456789
+QPeA~S
+QczzzzzzW#C]zzzzzzzzzzzzzzzi
+Qkq8@k`8?
+Queries cannot be performed using execSQL(), use query() instead.
+R(G@9h
+R*i(8%
+R*i(85
+R*i(8a
+R*i(8h
+R*i(xL
+R*i(xy
+RAISE() may only be used within a trigger-program
+RAND_DRBG_generate
+RAND_DRBG_instantiate
+RAND_DRBG_new
+RAND_DRBG_reseed
+RAND_DRBG_set
+RAND_DRBG_set_defaults
+RAND_DRBG_uninstantiate
+RAND_bytes
+RAND_load_file
+RAND_pseudo_bytes
+RAND_write_file
+RANGE with offset PRECEDING/FOLLOWING requires one ORDER BY expression
+RC2-40-CBC
+RC2-64-CBC
+RC2-CFB
+RC2-ECB
+RC2-OFB
+RC4-HMAC-MD5
+RC5-CBC
+RC5-CFB
+RC5-ECB
+RC5-OFB
+RECURSIVE STEP
+REINDEXEDESCAPEACHECKEYBEFOREIGNOREGEXPLAINSTEADDATABASELECTABLEFTHENDEFERRABLELSEXCLUDELETEMPORARYISNULLSAVEPOINTERSECTIESNOTNULLIKEXCEPTRANSACTIONATURALTERAISEXCLUSIVEXISTSCONSTRAINTOFFSETRIGGERANGENERATEDETACHAVINGLOBEGINNEREFERENCESUNIQUERYWITHOUTERELEASEATTACHBETWEENOTHINGROUPSCASCADEFAULTCASECOLLATECREATECURRENT_DATEIMMEDIATEJOINSERTMATCHPLANALYZEPRAGMABORTUPDATEVALUESVIRTUALWAYSWHENWHERECURSIVEAFTERENAMEANDEFERREDISTINCTAUTOINCREMENTCASTCOLUMNCOMMITCONFLICTCROSSCURRENT_TIMESTAMPARTITIONDROPRECEDINGFAILASTFILTEREPLACEFIRSTFOLLOWINGFROMFULLIMITIFORDERESTRICTOTHERSOVERIGHTROLLBACKROWSUNBOUNDEDUNIONUSINGVACUUMVIEWINDOWBYINITIALLYPRIMARY
+RELEASE
+RELEASE fts3
+REPLACE INTO %Q.'%q_config' VALUES(?,?)
+REPLACE INTO %Q.'%q_content' VALUES(%s)
+REPLACE INTO %Q.'%q_docsize' VALUES(?,?)
+REPLACE INTO %Q.'%q_segdir' VALUES(?,?,?,?,?,?)
+REPLACE INTO %Q.'%q_segments'(blockid, block) VALUES(?, ?)
+REPLACE INTO %Q.'%q_stat' VALUES(?,?)
+REPLACE INTO '%q'.'%q_data'(id, block) VALUES(?,?)
+RESTRICT
+REUSE LIST SUBQUERY %d
+REUSE SUBQUERY %d
+RH'R)#
+RIGHT PART OF ORDER BY
+RIGHT and FULL OUTER JOINs are not currently supported
+ROLLBACK TO fts3
+RRvM;;
+RSA Data Security, Inc.
+RSA Data Security, Inc. PKCS
+RSA lib
+RSA-MD2
+RSA-MD4
+RSA-MD5
+RSA-MDC2
+RSA-NP-MD5
+RSA-PSS
+RSA-RIPEMD160
+RSA-SHA
+RSA-SHA1
+RSA-SHA1-2
+RSA-SHA224
+RSA-SHA256
+RSA-SHA3-224
+RSA-SHA3-256
+RSA-SHA3-384
+RSA-SHA3-512
+RSA-SHA384
+RSA-SHA512
+RSA-SHA512/224
+RSA-SHA512/256
+RSA-SM3
+RSAES-OAEP
+RSAPrivateKey
+RSAPublicKey
+RSASSA-PSS
+RSA_OAEP_PARAMS
+RSA_PRIME_INFO
+RSA_PSS_PARAMS
+RSA_check_key
+RSA_check_key_ex
+RSA_meth_dup
+RSA_meth_new
+RSA_meth_set1_name
+RSA_new_method
+RSA_padding_add_PKCS1_OAEP
+RSA_padding_add_PKCS1_OAEP_mgf1
+RSA_padding_add_PKCS1_PSS
+RSA_padding_add_PKCS1_PSS_mgf1
+RSA_padding_add_PKCS1_type_1
+RSA_padding_add_PKCS1_type_2
+RSA_padding_add_SSLv23
+RSA_padding_add_X931
+RSA_padding_add_none
+RSA_padding_check_PKCS1_OAEP
+RSA_padding_check_PKCS1_OAEP_mgf1
+RSA_padding_check_PKCS1_type_1
+RSA_padding_check_PKCS1_type_2
+RSA_padding_check_SSLv23
+RSA_padding_check_X931
+RSA_padding_check_none
+RSA_print
+RSA_print_fp
+RSA_setup_blinding
+RSA_sign
+RSA_sign_ASN1_OCTET_STRING
+RSA_verify
+RSA_verify_ASN1_OCTET_STRING
+RSA_verify_PKCS1_PSS_mgf1
+ReadCookie
+RealAffinity
+Registered ID
+Registered ID:
+ReleaseReg
+Remainder
+Remove From CRL
+ReopenIdx
+Require Explicit Policy
+ResetCount
+ResetSorter
+ResultRow
+Rewind
+Rh&@9(L`
+Rh&R)C
+RowData
+RowSetAdd
+RowSetRead
+RowSetTest
+Rowid %lld out of order
+Rqim8"
+Rtree depth out of range (%d)
+RtreeMatchArg
+S$!UzY
+S/MIME
+S/MIME CA
+S/MIME Capabilities
+S/MIME email
+S/MIME encryption
+S/MIME signing
+SA9irA
+SAVEPOINT fts3
+SCAN %d CONSTANT ROW%s
+SCAN CONSTANT ROW
+SCAN TABLE %s%s%s
+SCRYPT_PARAMS
+SCT_CTX_new
+SCT_CTX_verify
+SCT_new
+SCT_new_from_base64
+SCT_set0_log_id
+SCT_set1_extensions
+SCT_set1_log_id
+SCT_set1_signature
+SCT_set_log_entry_type
+SCT_set_signature_nid
+SCT_set_version
+SEARCH
+SEED-CBC
+SEED-CFB
+SEED-ECB
+SEED-OFB
+SELECT %s
+SELECT %s FROM %s AS T
+SELECT %s FROM %s T WHERE T.%Q <= ? AND T.%Q >= ? ORDER BY T.%Q DESC
+SELECT %s FROM %s T WHERE T.%Q >= ? AND T.%Q <= ? ORDER BY T.%Q ASC
+SELECT %s FROM %s T WHERE T.%Q=?
+SELECT %s ORDER BY rowid %s
+SELECT %s WHERE rowid = ?
+SELECT %s WHERE rowid BETWEEN %lld AND %lld ORDER BY rowid %s
+SELECT %s WHERE rowid=?
+SELECT 'INSERT INTO %s.' || quote(name) || ' SELECT * FROM %s.' || quote(name) || ';' FROM %s.sqlite_master WHERE name=='sqlite_sequence';
+SELECT 'INSERT INTO %s.' || quote(name) || ' SELECT * FROM %s.' || quote(name) || ';'FROM %s.sqlite_master WHERE type = 'table' AND name!='sqlite_sequence'   AND rootpage>0
+SELECT (SELECT max(idx) FROM %Q.'%q_segdir' WHERE level = ?) + 1
+SELECT * FROM "%w"."%w_rowid" WHERE rowid=?1
+SELECT * FROM %Q.%Q
+SELECT * FROM %Q.'%q_rowid'
+SELECT * FROM (SELECT 'sqlite_master' AS name,1 AS rootpage,'table' AS type UNION ALL SELECT name,rootpage,type FROM "%w".sqlite_master WHERE rootpage!=0)
+SELECT 1 FROM "%w".%s WHERE name NOT LIKE 'sqliteX_%%' ESCAPE 'X' AND sql NOT LIKE 'create virtual%%' AND sqlite_rename_test(%Q, sql, type, name, %d)=NULL 
+SELECT 1 FROM %Q.'%q_segments' WHERE blockid=? AND block IS NULL
+SELECT 1 FROM temp.%s WHERE name NOT LIKE 'sqliteX_%%' ESCAPE 'X' AND sql NOT LIKE 'create virtual%%' AND sqlite_rename_test(%Q, sql, type, name, 1)=NULL 
+SELECT 2 * total(1 + leaves_end_block - start_block)   FROM %Q.'%q_segdir' WHERE level = ? AND idx < ?
+SELECT ? UNION SELECT level / (1024 * ?) FROM %Q.'%q_segdir'
+SELECT NOT EXISTS(SELECT docid FROM %Q.'%q_content' WHERE rowid!=?)
+SELECT coalesce((SELECT max(blockid) FROM %Q.'%q_segments') + 1, 1)
+SELECT count(*) FROM %Q.'%q%s'
+SELECT count(*) FROM %Q.'%q_%s'
+SELECT count(*) FROM %Q.'%q_segdir' WHERE level = ?
+SELECT data FROM %Q.'%q_node' WHERE nodeno=?
+SELECT idx FROM %Q.'%q_segdir' WHERE level=? ORDER BY 1 ASC
+SELECT idx, start_block, leaves_end_block, end_block, root FROM %Q.'%q_segdir' WHERE level = ? AND idx = ?
+SELECT idx, start_block, leaves_end_block, end_block, root FROM %Q.'%q_segdir' WHERE level = ? ORDER BY idx ASC
+SELECT idx, start_block, leaves_end_block, end_block, root FROM %Q.'%q_segdir' WHERE level BETWEEN ? AND ?ORDER BY level DESC, idx ASC
+SELECT idx,count(*) FROM %Q.sqlite_stat4 GROUP BY idx
+SELECT idx,neq,nlt,ndlt,sample FROM %Q.sqlite_stat4
+SELECT k, v FROM %Q.'%q_config'
+SELECT length(data) FROM '%q'.'%q_node' WHERE nodeno = 1
+SELECT level, count(*) AS cnt FROM %Q.'%q_segdir'   GROUP BY level HAVING cnt>=?  ORDER BY (level %% 1024) ASC, 2 DESC LIMIT 1
+SELECT level, idx, end_block FROM %Q.'%q_segdir' WHERE level BETWEEN ? AND ? ORDER BY level DESC, idx ASC
+SELECT max( level %% 1024 ) FROM %Q.'%q_segdir'
+SELECT max(level) FROM %Q.'%q_segdir' WHERE level BETWEEN ? AND ?
+SELECT nodeno FROM %Q.'%q_rowid' WHERE rowid=?1
+SELECT nodeno FROM '%q'.'%q_rowid' WHERE rowid = ?1
+SELECT parentnode FROM %Q.'%q_parent' WHERE nodeno=?1
+SELECT parentnode FROM '%q'.'%q_parent' WHERE nodeno = ?1
+SELECT pgno FROM '%q'.'%q_idx' WHERE segid=? AND term<=? ORDER BY term DESC LIMIT 1
+SELECT rowid, rank FROM %Q.%Q ORDER BY %s("%w"%s%s) %s
+SELECT segid, term, (pgno>>1), (pgno&1) FROM %Q.'%q_idx' WHERE segid=%d ORDER BY 1, 2
+SELECT size FROM %Q.'%q_docsize' WHERE docid=?
+SELECT sql   FROM %s.sqlite_master WHERE sql LIKE 'CREATE INDEX %%' 
+SELECT sql   FROM %s.sqlite_master WHERE sql LIKE 'CREATE UNIQUE INDEX %%'
+SELECT sql   FROM %s.sqlite_master WHERE type='table' AND name!='sqlite_sequence'   AND rootpage>0
+SELECT sql FROM "%w".sqlite_master WHERE type='index'
+SELECT sql FROM "%w".sqlite_master WHERE type='table'AND name<>'sqlite_sequence' AND coalesce(rootpage,1)>0
+SELECT sqlcipher_export('migrate');
+SELECT stat FROM %Q.sqlite_stat1 WHERE tbl = '%q_rowid'
+SELECT sz FROM %Q.'%q_docsize' WHERE id=?
+SELECT t.%Q FROM %Q.%Q AS t WHERE t.%Q MATCH '*id'
+SELECT tbl,idx,stat FROM %Q.sqlite_stat1
+SELECT value FROM %Q.'%q_stat' WHERE id=?
+SELECT'INSERT INTO vacuum_db.'||quote(name)||' SELECT*FROM"%w".'||quote(name)FROM vacuum_db.sqlite_master WHERE type='table'AND coalesce(rootpage,1)>0
+SELECT*FROM"%w".%s ORDER BY rowid
+SELECT*FROM"%w".%s WHERE %s ORDER BY rowid
+SELECTs to the left and right of %s do not have the same number of result columns
+SEQWRAP
+SET DEFAULT
+SET NULL
+SETWRAP
+SHA1 block transform for ARMv8, CRYPTOGAMS by <appro@openssl.org>
+SHA256 block transform for ARMv8, CRYPTOGAMS by <appro@openssl.org>
+SHA512 block transform for ARMv8, CRYPTOGAMS by <appro@openssl.org>
+SHAKE128
+SHAKE256
+SIPHASH
+SM2 routines
+SM4-CBC
+SM4-CFB
+SM4-CFB1
+SM4-CFB8
+SM4-CTR
+SM4-ECB
+SM4-OFB
+SMIME-CAPS
+SMIME_read_ASN1
+SMIME_text
+SNMPv2
+SOUNDEX
+SQL logic error
+SQLITE_
+SQLITE_TMPDIR
+SQLite format 3
+SSH Client
+SSH Server
+SSL CA
+SSL Client
+SSL Server
+SSL client
+SSL routines
+SSL_CERT_DIR
+SSL_CERT_FILE
+SSL_new
+STORE lib
+STORE routines
+SXNETID
+SXNET_add_id_INTEGER
+SXNET_add_id_asc
+SXNET_add_id_ulong
+SXNET_get_id_asc
+SXNET_get_id_ulong
+SXNetID
+Safety level may not be changed inside a transaction
+Savepoint
+Schema corrupt or not an rtree
+Secure Electronic Transactions
+Security
+SeekEnd
+SeekGE
+SeekGT
+SeekHit
+SeekLE
+SeekLT
+SeekRowid
+Selected Attribute Types
+Send Owner
+Send Proxied Owner
+Send Proxied Router
+Send Router
+SequenceTest
+SetCookie
+ShiftLeft
+ShiftRight
+Signing KDC Response
+Signing Tool of Issuer
+Signing Tool of Subject
+SipHash
+SoftNull
+SorterCompare
+SorterData
+SorterInsert
+SorterNext
+SorterOpen
+SorterSort
+SqlExec
+St10bad_typeid
+St11logic_error
+St11range_error
+St12domain_error
+St12length_error
+St12out_of_range
+St13bad_exception
+St13runtime_error
+St14overflow_error
+St15underflow_error
+St16invalid_argument
+St20bad_array_new_length
+St8bad_cast
+St9bad_alloc
+St9exception
+St9type_info
+String8
+Strong Extranet ID
+Subject Information Access
+Subtract
+Superseded
+T#kv8`
+T( @yH
+T(+@y)'@y
+T(Q@9I
+T(SLx5
+T(ht8(
+T)A@9?
+T)U@9i
+T*!@9_
+T*%@9_}
+T*)@9_
+T*-@9_
+T*1@9_%
+T*ht8j
+T*ih8*1
+T*ki8)
+T+E@9J
+T,E@9-D@9
+T,{kxL
+TELETEXSTRING
+TEMP_STORE=3
+TH,@9H
+TH0@9h
+TH<@9h
+TH@@9(
+THREADSAFE=1
+TI!@9?
+TI%@9?
+TI)@9?
+TI-@8?
+TI-@9?
+TI1@9?
+TI1Fx)
+TIk{8$
+TJ @9J
+TJ(@9*
+TJ)@y_1
+TKE@9)
+TLIk8,
+TLS Feature
+TLS Web Client Authentication
+TLS Web Server Authentication
+TLS1-PRF
+TLa_xl
+TRUSTED CERTIFICATE
+TSA server
+TS_ACCURACY_set_micros
+TS_ACCURACY_set_millis
+TS_ACCURACY_set_seconds
+TS_CONF_load_cert
+TS_CONF_load_certs
+TS_CONF_load_key
+TS_CONF_set_default_engine
+TS_MSG_IMPRINT_set_algo
+TS_REQ_set_msg_imprint
+TS_REQ_set_nonce
+TS_REQ_set_policy_id
+TS_RESP_CTX_add_failure_info
+TS_RESP_CTX_add_md
+TS_RESP_CTX_add_policy
+TS_RESP_CTX_new
+TS_RESP_CTX_set_accuracy
+TS_RESP_CTX_set_certs
+TS_RESP_CTX_set_def_policy
+TS_RESP_CTX_set_signer_cert
+TS_RESP_CTX_set_status_info
+TS_RESP_create_response
+TS_RESP_set_genTime_with_precision
+TS_RESP_set_status_info
+TS_RESP_set_tst_info
+TS_RESP_verify_signature
+TS_TST_INFO_set_accuracy
+TS_TST_INFO_set_msg_imprint
+TS_TST_INFO_set_nonce
+TS_TST_INFO_set_policy_id
+TS_TST_INFO_set_serial
+TS_TST_INFO_set_time
+TS_TST_INFO_set_tsa
+TS_VERIFY_CTX_new
+TTTTTT
+TTTTTTTTTT[TTTTTTTnTTTTT
+T[$:.6
+Ta[axc
+TableLock
+Tax@Lf
+Th"@9(
+Th&@)_
+Th'@9H'
+ThB@9(
+ThF@9(
+ThF@9H
+ThF@9t
+ThN@9(
+ThR@9(
+This is an S/MIME signed message%s%s
+Thj@yi2@
+Ti"@9)
+Ti&@9?
+Ti*@9?
+TiF@9i
+Ti[D9?
+Tijh8?
+Time Stamp signing
+Tj-@8_
+Tjj)8k
+Tjkl8_
+Tk*D)l
+Too few columns for an rtree table
+Too many columns for an rtree table
+Trailer Field: 0x
+Transaction
+Trust Root
+TuBK9(
+U4343u43543
+U436T364
+UG'G''
+UI lib
+UI routines
+UI_construct_prompt
+UI_create_method
+UI_ctrl
+UI_dup_error_string
+UI_dup_info_string
+UI_dup_input_boolean
+UI_dup_input_string
+UI_dup_user_data
+UI_dup_verify_string
+UI_get0_result
+UI_get_result_length
+UI_new_method
+UI_process
+UI_set_result
+UI_set_result_ex
+UNION ALL
+UNIQUE constraint failed: %s.%s
+UNKNOWN type %d
+UNKNOWN type in copyStringToBuffer_native()
+UPDATE
+UPDATE "%w"."%w_rowid"SET 
+UPDATE "%w".%s SET sql = sqlite_rename_column(sql, type, name, %Q, %Q, %d, %Q, %d, %d) WHERE name NOT LIKE 'sqliteX_%%' ESCAPE 'X'  AND (type != 'index' OR tbl_name = %Q) AND sql NOT LIKE 'create virtual%%'
+UPDATE "%w".%s SET sql = sqlite_rename_table(%Q, type, name, sql, %Q, %Q, %d) WHERE (type!='index' OR tbl_name=%Q COLLATE nocase)AND   name NOT LIKE 'sqliteX_%%' ESCAPE 'X'
+UPDATE "%w".%s SET sql = substr(sql,1,%d) || ', ' || %Q || substr(sql,%d) WHERE type = 'table' AND name = %Q
+UPDATE "%w".sqlite_sequence set name = %Q WHERE name = %Q
+UPDATE %Q.%s SET rootpage=%d WHERE #%d AND rootpage=#%d
+UPDATE %Q.%s SET tbl_name = %Q, name = CASE WHEN type='table' THEN %Q WHEN name LIKE 'sqliteX_autoindex%%' ESCAPE 'X'      AND type='index' THEN 'sqlite_autoindex_' || %Q || substr(name,%d+18) ELSE name END WHERE tbl_name=%Q COLLATE nocase AND (type='table' OR type='index' OR type='trigger');
+UPDATE %Q.%s SET type='%s', name=%Q, tbl_name=%Q, rootpage=#%d, sql=%Q WHERE rowid=#%d
+UPDATE %Q.%s SET type='table', name=%Q, tbl_name=%Q, rootpage=0, sql=%Q WHERE rowid=#%d
+UPDATE %Q.'%q_segdir' SET idx = ? WHERE level=? AND idx=?
+UPDATE %Q.'%q_segdir' SET start_block = ?, root = ?WHERE level = ? AND idx = ?
+UPDATE OR FAIL %Q.'%q_segdir' SET level=-1,idx=? WHERE level=? AND idx=?
+UPDATE OR FAIL %Q.'%q_segdir' SET level=? WHERE level=-1
+UPDATE sqlite_temp_master SET sql = sqlite_rename_table(%Q, type, name, sql, %Q, %Q, 1), tbl_name = CASE WHEN tbl_name=%Q COLLATE nocase AND           sqlite_rename_test(%Q, sql, type, name, 1) THEN %Q ELSE tbl_name END WHERE type IN ('view', 'trigger')
+UPDATE temp.%s SET sql = sqlite_rename_column(sql, type, name, %Q, %Q, %d, %Q, %d, 1) WHERE type IN ('trigger', 'view')
+UPSERT not implemented for virtual table "%s"
+USE TEMP B-TREE FOR %s
+USERNOTICE
+USING INDEX %s FOR IN-OPERATOR
+USING ROWID SEARCH ON TABLE %s FOR IN-OPERATOR
+UTF-16
+UTF-16be
+UTF-16le
+UTF16be
+UTF16le
+UTF8String
+UUPx((
+Unable to convert BLOB to double
+Unable to convert BLOB to long
+Unable to convert BLOB to string
+Unable to get field slot
+Unknown column type when filling window
+Unprocessed type %d
+Unspecified
+Unused
+V$$$$$$$$$
+V22dN::t
+VBegin
+VColumn
+VCreate
+VD9jRLx)
+VDestroy
+VFilter
+VIDEOTEXSTRING
+VISIBLE
+VRename
+VTT for 
+VUpdate
+Variable
+Verify failure
+Verifying - %s
+WSAStartup
+WWWWWW
+Wrong number of columns for an rtree table
+Wrong number of entries in %%%s table - expected %lld, actual %lld
+X n!X n
+X(NBx(N@x
+X(NBx(N@x@L"X(NB
+X25519
+X400Name
+X400Name:<unsupported>
+X500algorithms
+X509 CERTIFICATE
+X509 CRL
+X509 V3 routines
+X509 lib
+X509CRL
+X509Certificate
+X509V3 lib
+X509V3_EXT_add
+X509V3_EXT_add_alias
+X509V3_EXT_i2d
+X509V3_EXT_nconf
+X509V3_add1_i2d
+X509V3_add_value
+X509V3_get_section
+X509V3_get_string
+X509V3_get_value_bool
+X509V3_parse_list
+X509_ALGOR
+X509_ALGORS
+X509_ATTRIBUTE
+X509_ATTRIBUTE_create_by_NID
+X509_ATTRIBUTE_create_by_OBJ
+X509_ATTRIBUTE_create_by_txt
+X509_ATTRIBUTE_get0_data
+X509_ATTRIBUTE_set1_data
+X509_CERT_AUX
+X509_CINF
+X509_CRL
+X509_CRL_INFO
+X509_CRL_METHOD_new
+X509_CRL_add0_revoked
+X509_CRL_diff
+X509_CRL_print_fp
+X509_EXTENSION
+X509_EXTENSIONS
+X509_EXTENSION_create_by_NID
+X509_EXTENSION_create_by_OBJ
+X509_INFO_new
+X509_LOOKUP_meth_new
+X509_LOOKUP_new
+X509_NAME_ENTRIES
+X509_NAME_ENTRY
+X509_NAME_ENTRY_create_by_NID
+X509_NAME_ENTRY_create_by_txt
+X509_NAME_ENTRY_set_object
+X509_NAME_INTERNAL
+X509_NAME_add_entry
+X509_NAME_oneline
+X509_NAME_print
+X509_OBJECT_new
+X509_PKEY_new
+X509_PUBKEY
+X509_PUBKEY_get0
+X509_PUBKEY_set
+X509_PURPOSE_add
+X509_PURPOSE_set
+X509_REQ_INFO
+X509_REQ_check_private_key
+X509_REQ_print_ex
+X509_REQ_print_fp
+X509_REQ_to_X509
+X509_REVOKED
+X509_SIG
+X509_STORE_CTX_get1_issuer
+X509_STORE_CTX_init
+X509_STORE_CTX_new
+X509_STORE_CTX_purpose_inherit
+X509_STORE_add_cert
+X509_STORE_add_crl
+X509_STORE_add_lookup
+X509_STORE_new
+X509_TRUST_add
+X509_TRUST_set
+X509_VAL
+X509_VERIFY_PARAM_new
+X509_check_private_key
+X509_get_pubkey_parameters
+X509_load_cert_crl_file
+X509_load_cert_file
+X509_load_crl_file
+X509_print_ex_fp
+X509_to_X509_REQ
+X509_verify_cert
+X509at_add1_attr
+X509v3 AC Targeting
+X509v3 Any Policy
+X509v3 Authority Key Identifier
+X509v3 Basic Constraints
+X509v3 CRL Distribution Points
+X509v3 CRL Number
+X509v3 CRL Reason Code
+X509v3 Certificate Issuer
+X509v3 Certificate Policies
+X509v3 Delta CRL Indicator
+X509v3 Extended Key Usage
+X509v3 Freshest CRL
+X509v3 Inhibit Any Policy
+X509v3 Issuer Alternative Name
+X509v3 Issuing Distribution Point
+X509v3 Key Usage
+X509v3 Name Constraints
+X509v3 No Revocation Available
+X509v3 Policy Constraints
+X509v3 Policy Mappings
+X509v3 Private Key Usage Period
+X509v3 Subject Alternative Name
+X509v3 Subject Directory Attributes
+X509v3 Subject Key Identifier
+X509v3 extensions
+X509v3_add_ext
+X6h&@9
+X9.42 DH
+X9.42 DH PARAMETERS
+X9.57 CM ?
+Xt,,4.
+Y#x( @
+You must supply an SQL string
+You must type in 
+Z(N!x(N
+Z(NRz(N
+Z(NRz(N!Z(N!x(N2Z(NRz(N
+Z(NRz(N_
+Z(NRz(Nq
+ZD97ij
+ZINT32
+ZINT64
+ZUINT32
+ZUINT64
+Zn&'5Z
+[%s] %s=%s
+[HEX DUMP]:
+[[%s]]
+\U%04lX
+\W%08lX
+]yyyyyyb#-yyy>zyyyyyyyyyyyyyq
+^e:9Z%:
+_8*ij8
+_8M%@8
+_8iBD9jFD9`Z@
+_8iJD9
+_8jND9
+_8n%@8
+_ROWID_
+_Z17jniThrowExceptionP7_JNIEnvPKcS2_
+_ZN9sqlcipher10native_keyEP7_JNIEnvP8_jobjectP11_jbyteArray
+_ZN9sqlcipher12CursorWindow10getRowSlotEi
+_ZN9sqlcipher12CursorWindow10initBufferEb
+_ZN9sqlcipher12CursorWindow11copyOutLongEj
+_ZN9sqlcipher12CursorWindow12allocRowSlotEv
+_ZN9sqlcipher12CursorWindow13copyOutDoubleEj
+_ZN9sqlcipher12CursorWindow15read_field_slotEiiPNS_12field_slot_tE
+_ZN9sqlcipher12CursorWindow21getFieldSlotWithCheckEii
+_ZN9sqlcipher12CursorWindow5allocEmb
+_ZN9sqlcipher12CursorWindow5clearEv
+_ZN9sqlcipher12CursorWindow6copyInEjPKhm
+_ZN9sqlcipher12CursorWindow6copyInEjd
+_ZN9sqlcipher12CursorWindow6copyInEjl
+_ZN9sqlcipher12CursorWindow7copyOutEjPhm
+_ZN9sqlcipher12CursorWindow7getLongEjjPl
+_ZN9sqlcipher12CursorWindow7getNullEjjPb
+_ZN9sqlcipher12CursorWindow7putLongEjjl
+_ZN9sqlcipher12CursorWindow7putNullEjj
+_ZN9sqlcipher12CursorWindow8allocRowEv
+_ZN9sqlcipher12CursorWindow9freeSpaceEv
+_ZN9sqlcipher12CursorWindow9getDoubleEjjPd
+_ZN9sqlcipher12CursorWindow9putDoubleEjjd
+_ZN9sqlcipher12CursorWindowC1Emmm
+_ZN9sqlcipher12CursorWindowC2Emmm
+_ZN9sqlcipher12CursorWindowD1Ev
+_ZN9sqlcipher12CursorWindowD2Ev
+_ZN9sqlcipher12native_rekeyEP7_JNIEnvP8_jobjectP11_jbyteArray
+_ZN9sqlcipher13native_statusEP7_JNIEnvP8_jobjectih
+_ZN9sqlcipher16native_key_mutf8EP7_JNIEnvP8_jobjectP11_jcharArray
+_ZN9sqlcipher17native_rawExecSQLEP7_JNIEnvP8_jobjectP8_jstring
+_ZN9sqlcipher22get_window_from_objectEP7_JNIEnvP8_jobject
+_ZN9sqlcipher23throw_sqlite3_exceptionEP7_JNIEnvP7sqlite3
+_ZN9sqlcipher23throw_sqlite3_exceptionEP7_JNIEnvP7sqlite3PKc
+_ZN9sqlcipher23throw_sqlite3_exceptionEP7_JNIEnvPKc
+_ZN9sqlcipher23throw_sqlite3_exceptionEP7_JNIEnviPKcS3_
+_ZN9sqlcipher31throw_sqlite3_exception_errcodeEP7_JNIEnviPKc
+_ZN9sqlcipher37register_android_database_SQLiteQueryEP7_JNIEnv
+_ZN9sqlcipher38register_android_database_CursorWindowEP7_JNIEnv
+_ZN9sqlcipher39register_android_database_SQLiteProgramEP7_JNIEnv
+_ZN9sqlcipher40register_android_database_SQLiteDatabaseEP7_JNIEnv
+_ZN9sqlcipher41register_android_database_SQLiteStatementEP7_JNIEnv
+_ZN9sqlcipher43register_android_database_SQLiteCompiledSqlEP7_JNIEnv
+_ZN9sqlcipher6dbopenEP7_JNIEnvP8_jobjectP8_jstringi
+_ZN9sqlcipher7compileEP7_JNIEnvP8_jobjectP7sqlite3P8_jstring
+_ZNSt6__ndk112__hash_tableINS_17__hash_value_typeIijEENS_22__unordered_map_hasherIiS2_NS_4hashIiEELb1EEENS_21__unordered_map_equalIiS2_NS_8equal_toIiEELb1EEENS_9allocatorIS2_EEE25__emplace_unique_key_argsIiJNS_4pairIijEEEEENSF_INS_15__hash_iteratorIPNS_11__hash_nodeIS2_PvEEEEbEERKT_DpOT0_
+_ZNSt6__ndk112__hash_tableINS_17__hash_value_typeIijEENS_22__unordered_map_hasherIiS2_NS_4hashIiEELb1EEENS_21__unordered_map_equalIiS2_NS_8equal_toIiEELb1EEENS_9allocatorIS2_EEE6rehashEm
+_ZNSt6__ndk112__hash_tableINS_17__hash_value_typeIijEENS_22__unordered_map_hasherIiS2_NS_4hashIiEELb1EEENS_21__unordered_map_equalIiS2_NS_8equal_toIiEELb1EEENS_9allocatorIS2_EEE8__rehashEm
+__bss_end__
+__bss_start
+__bss_start__
+__cxa_atexit
+__cxa_finalize
+__end__
+__errno
+__float128
+__langid
+__next_prime overflow
+__stack_chk_fail
+_edata
+_jbF~T
+a CHECK constraint
+a GROUP BY clause is required before HAVING
+a JOIN clause is required before %s
+a NATURAL join may not have an ON or USING clause
+a null shared library handle was used
+a%d=?%d
+a%d=coalesce(?%d,a%d)
+a2d_ASN1_OBJECT
+a2i_ASN1_INTEGER
+a2i_ASN1_STRING
+a2i_GENERAL_NAME
+a5j_5W
+aRecord
+aaControls
+aaY8GG
+aaaaaaa
+aaj_55
+abbreviated query algorithm search
+abort at %d in [%s]: %s
+abort due to ROLLBACK
+ac-auditEntity
+ac-proxying
+ac-targeting
+accept error
+acceptableResponses
+access
+access permission denied
+access to %z is prohibited
+access to view "%s" prohibited
+account
+aceinouyyacdeeghijklnorstuuwyzouaiou
+acpt_state
+activate_extensions
+ad dvcs
+ad_timestamping
+addProfessionInfo
+add_cert_dir
+adding object
+additional input too long
+additional verification
+addr_strings
+addr_validate_path_internal
+addrinfo addr is not af inet
+addrinfo_wrap
+admissionAuthority
+aeiorusthae
+aes key setup failed
+aes-128-cbc
+aes-128-cbc-hmac-sha1
+aes-128-cbc-hmac-sha256
+aes-128-ccm
+aes-128-cfb
+aes-128-cfb1
+aes-128-cfb8
+aes-128-ctr
+aes-128-ecb
+aes-128-gcm
+aes-128-ocb
+aes-128-ofb
+aes-128-xts
+aes-192-cbc
+aes-192-cbc-hmac-sha1
+aes-192-cbc-hmac-sha256
+aes-192-ccm
+aes-192-cfb
+aes-192-cfb1
+aes-192-cfb8
+aes-192-ctr
+aes-192-ecb
+aes-192-gcm
+aes-192-ocb
+aes-192-ofb
+aes-256-cbc
+aes-256-cbc-hmac-sha1
+aes-256-cbc-hmac-sha256
+aes-256-ccm
+aes-256-cfb
+aes-256-cfb1
+aes-256-cfb8
+aes-256-ctr
+aes-256-ecb
+aes-256-gcm
+aes-256-ocb
+aes-256-ofb
+aes-256-xts
+aes128
+aes192
+aes256
+aes_init_key
+aes_ocb_cipher
+aes_t4_init_key
+aes_t4_xts_init_key
+aes_wrap_cipher
+aes_xts_init_key
+aesni_init_key
+aesni_xts_init_key
+affiliationChanged
+aggregate
+aggregate functions are not allowed in the GROUP BY clause
+aih8)}@
+akid mismatch
+alg_module_init
+algorithm mismatch
+alignof (
+all VALUES must have the same number of terms
+allocRow_native
+already instantiated
+always
+ambiguous column name
+ambiguous content type
+ambiguous host or service
+android/database/CharArrayBuffer
+android_set_abort_message
+another row available
+ansi-X9-62
+anyExtendedKeyUsage
+anyPolicy
+append_exp
+appl [ %d ]
+application/pkcs7-
+application/pkcs7-mime
+application/pkcs7-signature
+application/x-pkcs7-
+application/x-pkcs7-mime
+application/x-pkcs7-signature
+application_id
+archiveCutoff
+arg2 lt arg3
+argument of ntile must be a positive integer
+argument out of range
+argument type mismatch
+aria key setup failed
+aria-128-cbc
+aria-128-ccm
+aria-128-cfb
+aria-128-cfb1
+aria-128-cfb8
+aria-128-ctr
+aria-128-ecb
+aria-128-gcm
+aria-128-ofb
+aria-192-cbc
+aria-192-ccm
+aria-192-cfb
+aria-192-cfb1
+aria-192-cfb8
+aria-192-ctr
+aria-192-ecb
+aria-192-gcm
+aria-192-ofb
+aria-256-cbc
+aria-256-ccm
+aria-256-cfb
+aria-256-cfb1
+aria-256-cfb8
+aria-256-ctr
+aria-256-ecb
+aria-256-gcm
+aria-256-ofb
+aria128
+aria192
+aria256
+aria_ccm_init_key
+aria_gcm_ctrl
+aria_gcm_init_key
+aria_init_key
+asn1 encoding routines
+asn1 parse error
+asn1 sig parse error
+asn1_bio_init
+asn1_cb
+asn1_check_tlen
+asn1_collect
+asn1_d2i_ex_primitive
+asn1_d2i_read_bio
+asn1_do_adb
+asn1_do_lock
+asn1_enc_save
+asn1_ex_c2i
+asn1_find_end
+asn1_get_int64
+asn1_get_uint64
+asn1_int_oct
+asn1_item_embed_d2i
+asn1_item_embed_new
+asn1_item_flags_i2d
+asn1_output_data
+asn1_primitive_new
+asn1_str2type
+asn1_string_get_int64
+asn1_string_get_uint64
+asn1_string_to_bn
+asn1_template_ex_d2i
+asn1_template_new
+asn1_template_noexp_d2i
+assertion failed: !TESTBIT(table, bit)
+assertion failed: !sh_testbit(ptr, list, sh.bitmalloc)
+assertion failed: !sh_testbit(temp, slist, sh.bitmalloc)
+assertion failed: ((ptr - sh.arena) & ((sh.arena_size >> list) - 1)) == 0
+assertion failed: (bit & 1) == 0
+assertion failed: (char **)temp->next->p_next == list
+assertion failed: (minsize & (minsize - 1)) == 0
+assertion failed: (size & (size - 1)) == 0
+assertion failed: EVP_CIPHER_CTX_iv_length(ctx) <= (int)sizeof(ctx->iv)
+assertion failed: TESTBIT(table, bit)
+assertion failed: WITHIN_ARENA(chunk)
+assertion failed: WITHIN_ARENA(ptr)
+assertion failed: WITHIN_FREELIST(list)
+assertion failed: WITHIN_FREELIST(temp2->p_next) || WITHIN_ARENA(temp2->p_next)
+assertion failed: b <= sizeof(ctx->buf)
+assertion failed: b <= sizeof(ctx->final)
+assertion failed: bit > 0 && bit < sh.bittable_size
+assertion failed: bl <= (int)sizeof(ctx->buf)
+assertion failed: ctx->buf_len <= (int)sizeof(ctx->buf)
+assertion failed: ctx->buf_len >= ctx->buf_off
+assertion failed: ctx->buf_off + i < (int)sizeof(ctx->buf)
+assertion failed: ctx->buf_off < (int)sizeof(ctx->buf)
+assertion failed: ctx->buf_off <= (int)sizeof(ctx->buf)
+assertion failed: ctx->cipher->block_size == 1 || ctx->cipher->block_size == 8 || ctx->cipher->block_size == 16
+assertion failed: ctx->digest->md_size <= EVP_MAX_MD_SIZE
+assertion failed: ctx->length <= (int)sizeof(ctx->enc_data)
+assertion failed: ctx->tmp_len <= 3
+assertion failed: i <= n
+assertion failed: j <= sizeof(c->iv)
+assertion failed: keylen <= sizeof(key)
+assertion failed: l <= sizeof(c->iv)
+assertion failed: list >= 0 && list < sh.freelist_size
+assertion failed: minsize > 0
+assertion failed: niv <= EVP_MAX_IV_LENGTH
+assertion failed: nkey <= EVP_MAX_KEY_LENGTH
+assertion failed: ptr != NULL
+assertion failed: ptr == sh_find_my_buddy(buddy, list)
+assertion failed: sh.bitmalloc != NULL
+assertion failed: sh.bittable != NULL
+assertion failed: sh.freelist != NULL
+assertion failed: sh.freelist[list] == ptr
+assertion failed: sh.freelist[slist] == temp
+assertion failed: sh_testbit(chunk, list, sh.bittable)
+assertion failed: sh_testbit(ptr, list, sh.bittable)
+assertion failed: size > 0
+assertion failed: temp != sh.freelist[slist]
+assertion failed: temp-(sh.arena_size >> slist) == sh_find_my_buddy(temp, slist)
+assertion failed: temp->next == NULL || WITHIN_ARENA(temp->next)
+associatedDomain
+associatedName
+async_ctx_new
+async_job_new
+async_start_func
+at most %d tables in a join
+ational
+attached databases must use the same text encoding as main database
+attempt to open "%s" as file descriptor %d
+attempt to write a readonly database
+attribute error
+auth-any
+auth-dss
+auth-ecdsa
+auth-gost01
+auth-gost12
+auth-null
+auth-psk
+auth-rsa
+auth-srp
+authorityInfoAccess
+authorityKeyIdentifier
+authorityRevocationList
+authorization denied
+authorizer malfunction
+auto-index
+auto_vacuum
+automatic extension loading failed: %s
+automatic index on %s(%s)
+automatic_index
+automerge
+automerge=
+aux error
+b&J))}@
+b2i_PVK_bio
+b2i_dss
+b2i_rsa
+b64_new
+b64_read_asn1
+bS11*?
+backup is not supported with encrypted databases
+bad base64 decode
+bad decrypt
+bad e value
+bad end line
+bad fixed header decrypt
+bad fopen mode
+bad ip address
+bad iv chars
+bad key length
+bad magic number
+bad object
+bad object header
+bad pad byte count
+bad parameter or other API misuse
+bad password read
+bad pkcs7 type
+bad reciprocal
+bad selector
+bad signature
+bad type
+bad version number
+bad x509 filetype
+bad_array_new_length
+base64 decode error
+basicConstraints
+basicOCSPResponse
+basic_iostream
+basic_istream
+basic_ostream
+bf-cbc
+bf-cfb
+bf-ecb
+bf-ofb
+bignum routines
+bignum too long
+bignum_to_string
+biliti
+bind on a busy prepared statement: [%s]
+bio write failure
+bio_make_pair
+bio_read_intern
+bio_write_intern
+bio_zlib_flush
+bio_zlib_new
+bio_zlib_read
+bio_zlib_write
+biometricInfo
+bits too small
+bitstr_cb
+blake2b512
+blake2s256
+block type is not 01
+block type is not 02
+blockSize
+bmpstring is wrong length
+bn dec2bn error
+bn lib
+bn to asn1 integer error
+bn(%zu,%zu)
+bn_compute_wNAF
+bn_expand_internal
+bn_set_words
+bn_to_asn1_string
+bnrand
+bnrand_range
+boolean is wrong length
+brainpoolP160r1
+brainpoolP160t1
+brainpoolP192r1
+brainpoolP192t1
+brainpoolP224r1
+brainpoolP224t1
+brainpoolP256r1
+brainpoolP256t1
+brainpoolP320r1
+brainpoolP320t1
+brainpoolP384r1
+brainpoolP384t1
+brainpoolP512r1
+brainpoolP512t1
+broken pipe
+btreeInitPage() returns error code %d
+buf should not be null
+buffer too small
+build_chain
+buildingName
+builtin
+businessCategory
+busy_timeout
+by_file_ctrl
+c+,-./0123456789sM;Ow+,-./0123456789
+c2i_ASN1_BIT_STRING
+c2i_ASN1_INTEGER
+c2i_ASN1_OBJECT
+c2i_ibuf
+c2i_uint64_int
+c2onb191v4
+c2onb191v5
+c2onb239v4
+c2onb239v5
+c2pnb163v1
+c2pnb163v2
+c2pnb163v3
+c2pnb176v1
+c2pnb208w1
+c2pnb272w1
+c2pnb304w1
+c2pnb368w1
+c2tnb191v1
+c2tnb191v2
+c2tnb191v3
+c2tnb239v1
+c2tnb239v2
+c2tnb239v3
+c2tnb359v1
+c2tnb431r1
+cACertificate
+cNAMERecord
+cRLSign
+caIssuers
+caRepository
+cache_spill
+called a function that was disabled at compile-time
+called a function you should not call
+called with even modulus
+calloc
+camellia key setup failed
+camellia-128-cbc
+camellia-128-ccm
+camellia-128-cfb
+camellia-128-cfb1
+camellia-128-cfb8
+camellia-128-cmac
+camellia-128-ctr
+camellia-128-ecb
+camellia-128-gcm
+camellia-128-ofb
+camellia-192-cbc
+camellia-192-ccm
+camellia-192-cfb
+camellia-192-cfb1
+camellia-192-cfb8
+camellia-192-cmac
+camellia-192-ctr
+camellia-192-ecb
+camellia-192-gcm
+camellia-192-ofb
+camellia-256-cbc
+camellia-256-ccm
+camellia-256-cfb
+camellia-256-cfb1
+camellia-256-cfb8
+camellia-256-cmac
+camellia-256-ctr
+camellia-256-ecb
+camellia-256-gcm
+camellia-256-ofb
+camellia_init_key
+cannot %s contentless fts5 table: %s
+cannot INSERT into generated column "%s"
+cannot UPDATE generated column "%s"
+cannot UPSERT a view
+cannot VACUUM - SQL statements in progress
+cannot VACUUM from within a transaction
+cannot add a STORED column
+cannot allocate __cxa_eh_globals
+cannot change %s wal mode from within a transaction
+cannot commit - no transaction is active
+cannot commit transaction - SQL statements in progress
+cannot create %s trigger on view: %S
+cannot create INSTEAD OF trigger on table: %S
+cannot create a TEMP index on non-TEMP table "%s"
+cannot create thread specific key for __cxa_get_globals()
+cannot create trigger on system table
+cannot create triggers on virtual tables
+cannot detach database %s
+cannot find config variable
+cannot fstat db file %s
+cannot have both ON and USING clauses in the same join
+cannot join using column %s - column not present in both tables
+cannot limit WAL size: %s
+cannot load certificate
+cannot load private key
+cannot modify %s because it is a view
+cannot open %s column for writing
+cannot open file
+cannot open savepoint - SQL statements in progress
+cannot open table without rowid: %s
+cannot open value of type %s
+cannot open view: %s
+cannot open virtual table: %s
+cannot override %s of window: %s
+cannot release savepoint - SQL statements in progress
+cannot rename columns of %s "%s"
+cannot rollback - no transaction is active
+cannot start a transaction within a transaction
+cannot use DEFAULT on a generated column
+cannot use window functions in recursive queries
+cannot zero out thread value for __cxa_get_globals()
+cant check dh key
+cant pack structure
+capwapAC
+capwapWTP
+caseIgnoreIA5StringSyntax
+case_sensitive_like
+cast5-cbc
+cast5-cfb
+cast5-ecb
+cast5-ofb
+categories
+cccccccc
+cell_size_check
+cert already in hash table
+certBag
+certId
+certStatus
+cert_info
+certicom-arc
+certificate already present
+certificate extensions
+certificate has no keyid
+certificate verify error
+certificateHold
+certificateIssuer
+certificatePolicies
+certificateRevocationList
+certificates
+certs-only
+cessationOfOperation
+chacha20
+chacha20-poly1305
+chacha20_poly1305_ctrl
+challenge
+challengePassword
+char16_t
+char32_t
+characteristic-two-field
+check_bitlen_dsa
+check_bitlen_rsa
+check_content
+check_name_constraints
+check_padding_md
+checkpoint_fullfsync
+checkpointed
+cipher has no object identifier
+cipher initialisation error
+cipher is null
+cipher not initialized
+cipher parameter error
+cipher parameter initialisation error
+cipher_add_random
+cipher_compatibility
+cipher_default_compatibility
+cipher_default_hmac_algorithm
+cipher_default_kdf_algorithm
+cipher_default_kdf_iter
+cipher_default_page_size
+cipher_default_plaintext_header_size
+cipher_default_settings
+cipher_default_use_hmac
+cipher_fips_status
+cipher_hmac_algorithm
+cipher_hmac_pgno
+cipher_hmac_salt_mask
+cipher_integrity_check
+cipher_kdf_algorithm
+cipher_memory_security
+cipher_migrate
+cipher_page_size
+cipher_plaintext_header_size
+cipher_profile
+cipher_provider
+cipher_provider_version
+cipher_salt
+cipher_settings
+cipher_store_pass
+cipher_use_hmac
+cipher_version
+circular reference: %s
+cleanup method function failed
+clear() called after close()
+clearance
+cleartext track 2
+clientAuth
+clock_gettime
+close_console
+close_native
+closedir
+closelog
+closing session
+cmll_t4_init_key
+cms datafinal error
+cms lib
+cms_CompressedData_create
+cms_CompressedData_init_bio
+cms_DigestAlgorithm_find_ctx
+cms_DigestAlgorithm_init_bio
+cms_DigestedData_do_final
+cms_EncryptedContent_init
+cms_EncryptedContent_init_bio
+cms_EnvelopedData_init_bio
+cms_Receipt_verify
+cms_RecipientInfo_kari_encrypt
+cms_RecipientInfo_kekri_decrypt
+cms_RecipientInfo_kekri_encrypt
+cms_RecipientInfo_ktri_decrypt
+cms_RecipientInfo_ktri_encrypt
+cms_RecipientInfo_pwri_crypt
+cms_SignerInfo_content_sign
+cms_add1_signingTime
+cms_copy_content
+cms_copy_messageDigest
+cms_encode_Receipt
+cms_env_asn1_ctrl
+cms_enveloped_data_init
+cms_get0_certificate_choices
+cms_get0_econtent_type
+cms_get0_enveloped
+cms_get0_revocation_choices
+cms_get0_signed
+cms_msgSigDigest_add1
+cms_sd_asn1_ctrl
+cms_set1_SignerIdentifier
+cms_set1_ias
+cms_set1_keyid
+cms_signed_data_init
+cms_signerinfo_verify_cert
+coalesce
+codeSigning
+coefficient%d:
+coefficient:
+collation_list
+collect_data
+column index out of range
+column%d
+columnsize
+command not supported
+comment
+common libcrypto routines
+common ok and cancel characters
+commonName
+community
+compatible
+compile_options
+compressed-data
+compressionAlgorithm
+configuration file routines
+conflicting ON CONFLICT clauses specified
+conn_ctrl
+conn_state
+cons: 
+const_cast
+construction vtable for 
+cont [ %d ]
+content and data present
+content not found
+content type mismatch
+content type not compressed data
+content type not data
+content type not enveloped data
+content type not signed data
+content types
+content verify error
+content-type
+contentEncryptionAlgorithm
+contentType
+content_rowid
+contentidentifier mismatch
+contents
+contentsOfAdmissions
+context not initialised
+control command failed
+copy error
+copyStringToBuffer_native
+copy_email
+copy_issuer
+corrupt database
+corrupt schema
+corrupted
+costParameter
+could not bind to the requested symbol name
+could not load the shared library
+could not set engine
+could not set time
+could not unload the shared library
+count_changes
+countersignature
+countryCode3c
+countryCode3n
+countryName
+covariant return thunk to 
+create 
+crisismerge
+critical
+critical,
+crl already delta
+crl verify failure
+crlBag
+crlDistributionPoints
+crlNum
+crlNumber
+crlTime
+crlUrl
+crlsign
+crossCertificatePair
+crypto/asn1/a_bitstr.c
+crypto/asn1/a_d2i_fp.c
+crypto/asn1/a_digest.c
+crypto/asn1/a_dup.c
+crypto/asn1/a_i2d_fp.c
+crypto/asn1/a_int.c
+crypto/asn1/a_object.c
+crypto/asn1/a_sign.c
+crypto/asn1/a_strex.c
+crypto/asn1/a_strnid.c
+crypto/asn1/a_time.c
+crypto/asn1/a_verify.c
+crypto/asn1/ameth_lib.c
+crypto/asn1/asn1_lib.c
+crypto/asn1/asn_moid.c
+crypto/asn1/asn_mstbl.c
+crypto/asn1/asn_pack.c
+crypto/asn1/bio_ndef.c
+crypto/asn1/d2i_pr.c
+crypto/asn1/evp_asn1.c
+crypto/asn1/f_int.c
+crypto/asn1/f_string.c
+crypto/asn1/i2d_pr.c
+crypto/asn1/p5_pbe.c
+crypto/asn1/p5_pbev2.c
+crypto/asn1/p5_scrypt.c
+crypto/asn1/t_pkey.c
+crypto/asn1/tasn_dec.c
+crypto/asn1/tasn_enc.c
+crypto/asn1/tasn_new.c
+crypto/asn1/tasn_prn.c
+crypto/asn1/tasn_utl.c
+crypto/asn1/x_int64.c
+crypto/async/async.c
+crypto/bio/bio_lib.c
+crypto/bio/bio_meth.c
+crypto/bio/bss_file.c
+crypto/bn/bn_add.c
+crypto/bn/bn_blind.c
+crypto/bn/bn_ctx.c
+crypto/bn/bn_div.c
+crypto/bn/bn_exp.c
+crypto/bn/bn_gcd.c
+crypto/bn/bn_intern.c
+crypto/bn/bn_lib.c
+crypto/bn/bn_mod.c
+crypto/bn/bn_mont.c
+crypto/bn/bn_prime.c
+crypto/bn/bn_recp.c
+crypto/bn/bn_shift.c
+crypto/buffer/buffer.c
+crypto/cmac/cmac.c
+crypto/cms/cms_asn1.c
+crypto/cms/cms_att.c
+crypto/cms/cms_dd.c
+crypto/cms/cms_enc.c
+crypto/cms/cms_env.c
+crypto/cms/cms_io.c
+crypto/cms/cms_kari.c
+crypto/cms/cms_pwri.c
+crypto/cms/cms_sd.c
+crypto/conf/conf_api.c
+crypto/conf/conf_def.c
+crypto/conf/conf_lib.c
+crypto/conf/conf_mod.c
+crypto/conf/conf_ssl.c
+crypto/ct/ct_b64.c
+crypto/ct/ct_log.c
+crypto/ct/ct_oct.c
+crypto/ct/ct_sct.c
+crypto/ct/ct_sct_ctx.c
+crypto/ct/ct_vfy.c
+crypto/ct/ct_x509v3.c
+crypto/dso/dso_dlfcn.c
+crypto/dso/dso_lib.c
+crypto/err/err.c
+crypto/evp/bio_b64.c
+crypto/evp/digest.c
+crypto/evp/e_aes.c
+crypto/evp/e_chacha20_poly1305.c
+crypto/evp/e_des3.c
+crypto/evp/encode.c
+crypto/evp/evp_cnf.c
+crypto/evp/evp_key.c
+crypto/evp/evp_lib.c
+crypto/evp/evp_pbe.c
+crypto/evp/evp_pkey.c
+crypto/evp/m_sigver.c
+crypto/evp/p5_crpt.c
+crypto/evp/p5_crpt2.c
+crypto/evp/p_lib.c
+crypto/evp/p_sign.c
+crypto/evp/p_verify.c
+crypto/evp/pbe_scrypt.c
+crypto/evp/pmeth_fn.c
+crypto/evp/pmeth_gn.c
+crypto/evp/pmeth_lib.c
+crypto/ex_data.c
+crypto/hmac/hm_pmeth.c
+crypto/hmac/hmac.c
+crypto/init.c
+crypto/kdf/hkdf.c
+crypto/kdf/tls1_prf.c
+crypto/lhash/lhash.c
+crypto/mem_sec.c
+crypto/modes/gcm128.c
+crypto/modes/ocb128.c
+crypto/o_str.c
+crypto/objects/o_names.c
+crypto/objects/obj_dat.c
+crypto/objects/obj_lib.c
+crypto/objects/obj_xref.c
+crypto/ocsp/ocsp_ht.c
+crypto/ocsp/v3_ocsp.c
+crypto/pem/pem_lib.c
+crypto/pem/pem_oth.c
+crypto/pkcs12/p12_add.c
+crypto/pkcs12/p12_crpt.c
+crypto/pkcs12/p12_decr.c
+crypto/pkcs12/p12_key.c
+crypto/pkcs12/p12_mutl.c
+crypto/pkcs12/p12_p8e.c
+crypto/pkcs12/p12_sbag.c
+crypto/pkcs12/p12_utl.c
+crypto/pkcs7/pk7_attr.c
+crypto/pkcs7/pk7_lib.c
+crypto/poly1305/poly1305_pmeth.c
+crypto/rand/drbg_lib.c
+crypto/rand/rand_lib.c
+crypto/rsa/rsa_ameth.c
+crypto/rsa/rsa_chk.c
+crypto/rsa/rsa_crpt.c
+crypto/rsa/rsa_gen.c
+crypto/rsa/rsa_lib.c
+crypto/rsa/rsa_mp.c
+crypto/rsa/rsa_none.c
+crypto/rsa/rsa_oaep.c
+crypto/rsa/rsa_ossl.c
+crypto/rsa/rsa_pk1.c
+crypto/rsa/rsa_pss.c
+crypto/rsa/rsa_saos.c
+crypto/rsa/rsa_sign.c
+crypto/rsa/rsa_ssl.c
+crypto/rsa/rsa_x931.c
+crypto/stack/stack.c
+crypto/store/store_init.c
+crypto/store/store_lib.c
+crypto/store/store_register.c
+crypto/threads_pthread.c
+crypto/ui/ui_lib.c
+crypto/ui/ui_openssl.c
+crypto/x509/t_x509.c
+crypto/x509/x509_att.c
+crypto/x509/x509_cmp.c
+crypto/x509/x509_lu.c
+crypto/x509/x509_obj.c
+crypto/x509/x509_req.c
+crypto/x509/x509_trs.c
+crypto/x509/x509_v3.c
+crypto/x509/x509_vfy.c
+crypto/x509/x509_vpm.c
+crypto/x509/x509name.c
+crypto/x509/x_crl.c
+crypto/x509/x_name.c
+crypto/x509/x_pubkey.c
+crypto/x509/x_x509.c
+crypto/x509v3/pcy_cache.c
+crypto/x509v3/pcy_data.c
+crypto/x509v3/pcy_node.c
+crypto/x509v3/pcy_tree.c
+crypto/x509v3/v3_akey.c
+crypto/x509v3/v3_alt.c
+crypto/x509v3/v3_bcons.c
+crypto/x509v3/v3_bitst.c
+crypto/x509v3/v3_conf.c
+crypto/x509v3/v3_cpols.c
+crypto/x509v3/v3_crld.c
+crypto/x509v3/v3_enum.c
+crypto/x509v3/v3_extku.c
+crypto/x509v3/v3_ia5.c
+crypto/x509v3/v3_info.c
+crypto/x509v3/v3_lib.c
+crypto/x509v3/v3_ncons.c
+crypto/x509v3/v3_pci.c
+crypto/x509v3/v3_pcons.c
+crypto/x509v3/v3_pmaps.c
+crypto/x509v3/v3_prn.c
+crypto/x509v3/v3_purp.c
+crypto/x509v3/v3_skey.c
+crypto/x509v3/v3_sxnet.c
+crypto/x509v3/v3_tlsf.c
+crypto/x509v3/v3_utl.c
+cryptocom
+cryptopro
+ct_base64_decode
+ct_cert_scts
+ct_precert_poison
+ct_precert_scts
+ct_precert_signer
+ct_v1_log_id_from_pkey
+ctlog_new_from_conf
+ctlog_store_load_ctx_new
+ctlog_store_load_log
+ctrl error
+ctrl not implemented
+ctrl operation not implemented
+cume_dist
+current_date
+current_time
+current_timestamp
+d e not congruent to 1
+d.allOrFirstTier
+d.authenticatedData
+d.certificate
+d.compressedData
+d.cpsuri
+d.dNSName
+d.data
+d.digest
+d.digestedData
+d.directoryName
+d.ediPartyName
+d.encrypted
+d.encryptedData
+d.enveloped
+d.envelopedData
+d.extendedCertificate
+d.iPAddress
+d.issuerAndSerialNumber
+d.kari
+d.kekri
+d.ktri
+d.originatorKey
+d.other
+d.otherName
+d.pwri
+d.rKeyId
+d.receiptList
+d.registeredID
+d.rfc822Name
+d.sign
+d.signedData
+d.signed_and_enveloped
+d.subjectKeyIdentifier
+d.uniformResourceIdentifier
+d.usernotice
+d.v1AttrCert
+d.v2AttrCert
+d.x400Address
+d2i_ASN1_OBJECT
+d2i_ASN1_UINTEGER
+d2i_AutoPrivateKey
+d2i_PKCS8PrivateKey_bio
+d2i_PKCS8PrivateKey_fp
+d2i_PrivateKey
+d2i_PublicKey
+d2i_ocsp_nonce
+d=%-2d hl=%ld l=%4ld 
+d=%-2d hl=%ld l=inf  
+dITRedirect
+dNSDomain
+dSAQuality
+dV22tN::
+dane_i2d
+data greater than mod len
+data is wrong
+data not multiple of block length
+data too large
+data too large for key size
+data too large for modulus
+data too small
+data too small for key size
+dataEncipherment
+data_collect_method
+database %s is already in use
+database %s is locked
+database corruption
+database disk image is malformed
+database file is undefined
+database is already attached
+database is deadlocked
+database is locked
+database or disk is full
+database schema has changed
+database schema is locked: %s
+database table is locked
+database table is locked: %s
+database_list
+datatype mismatch
+datetime
+dbclose
+dbopen
+dbstat
+dcObject
+dcobject
+decimal128
+decimal16
+decimal32
+decimal64
+decipherOnly
+decltype(
+decltype(auto)
+decrypt error
+def_load
+def_load_bio
+def_serial_cb
+def_time_cb
+default value of column [%s] is not constant
+default_cache_size
+defer_foreign_keys
+delete-all
+deltaCRL
+deltaRevocationList
+dense_rank
+depth exceeded
+des(int)
+des-cbc
+des-cdmf
+des-cfb
+des-cfb1
+des-cfb8
+des-ecb
+des-ede
+des-ede-cbc
+des-ede-cfb
+des-ede-ecb
+des-ede-ofb
+des-ede3
+des-ede3-cbc
+des-ede3-cfb
+des-ede3-cfb1
+des-ede3-cfb8
+des-ede3-ecb
+des-ede3-ofb
+des-ofb
+des3-wrap
+des_ede3_wrap_cipher
+destination database is in use
+destinationIndicator
+desx-cbc
+detached content
+detail
+dflt_value
+dgram_sctp_new
+dgram_sctp_read
+dgram_sctp_write
+dh-cofactor-kdf
+dh-std-kdf
+dhKeyAgreement
+dhSinglePass-cofactorDH-sha1kdf-scheme
+dhSinglePass-cofactorDH-sha224kdf-scheme
+dhSinglePass-cofactorDH-sha256kdf-scheme
+dhSinglePass-cofactorDH-sha384kdf-scheme
+dhSinglePass-cofactorDH-sha512kdf-scheme
+dhSinglePass-stdDH-sha1kdf-scheme
+dhSinglePass-stdDH-sha224kdf-scheme
+dhSinglePass-stdDH-sha256kdf-scheme
+dhSinglePass-stdDH-sha384kdf-scheme
+dhSinglePass-stdDH-sha512kdf-scheme
+dhpublicnumber
+different key types
+different parameters
+digest and key type not supported
+digest does not match
+digest err
+digest failure
+digest too big for rsa key
+digestAlgorithm
+digestAlgorithms
+digest_alg
+digest_enc_alg
+digestsize
+digital envelope routines
+digitalSignature
+dirName
+dir_ctrl
+directory services (X.500)
+directory services - algorithms
+dirname error
+disk I/O error
+distinguishedName
+distpoint
+distpoint already set
+div by zero
+dl_bind_func
+dl_iterate_phdr
+dl_load
+dl_merger
+dl_name_converter
+dl_unload
+dlclose
+dlerror
+dlfcn_bind_func
+dlfcn_load
+dlfcn_merger
+dlfcn_name_converter
+dlfcn_unload
+dlidx 
+dlopen
+dmdName
+dmp1 not congruent to d
+dmq1 not congruent to d
+dnQualifier
+dnsName
+do_PVK_body
+do_PVK_header
+do_b2i
+do_b2i_bio
+do_blob_header
+do_buf
+do_create
+do_dirname
+do_dump
+do_ext_i2d
+do_ext_nconf
+do_i2b
+do_pk8pkey
+do_pk8pkey_fp
+do_pkcs7_signed_attrib
+do_sigver_init
+do_tcreate
+doapr_outch
+docid INTEGER PRIMARY KEY
+docsize
+document
+documentAuthor
+documentIdentifier
+documentLocation
+documentPublisher
+documentSeries
+documentTitle
+documentVersion
+domain
+domainComponent
+domainRelatedObject
+double-quoted string literal: "%w"
+drbg already initialized
+drbg not initialised
+drbg_bytes
+drbg_setup
+dsa routines
+dsaEncryption
+dsaEncryption-old
+dsaWithSHA
+dsaWithSHA1
+dsaWithSHA1-old
+dsa_with_SHA224
+dsa_with_SHA256
+dsa_with_SHA384
+dsa_with_SHA512
+dso already loaded
+dstu28147
+dstu28147-cfb
+dstu28147-ofb
+dstu28147-wrap
+dstu34311
+dstu4145be
+dstu4145le
+duplicate WITH table name: %s
+duplicate column name: %s
+duplicate zone id
+dynamic_cast
+e@9Ke@9?
+eContent
+eContentType
+ecdsa-with-Recommended
+ecdsa-with-SHA1
+ecdsa-with-SHA224
+ecdsa-with-SHA256
+ecdsa-with-SHA384
+ecdsa-with-SHA512
+ecdsa-with-Specified
+ecdsa_with_SHA3-224
+ecdsa_with_SHA3-256
+ecdsa_with_SHA3-384
+ecdsa_with_SHA3-512
+efghijklmno
+efghijklmno+,-./0123456789
+efghijklmno;
+elliptic curve routines
+email:
+emailAddress
+emailCA
+emailProtection
+empty file structure
+empty_result_callbacks
+enableSqlProfiling
+enableSqlTracing
+enabled_logs
+enc_data
+enc_digest
+enc_key
+enc_new
+encapContentInfo
+encipherOnly
+encode_pkcs1
+encoding error
+encrypt error
+encrypted track 2
+encryptedContent
+encryptedContentInfo
+encryptedKey
+encryption ctrl failure
+encryption not supported for this key type
+engine routines
+enhancedSearchGuide
+enterprises
+entityUInfo
+entropy input too long
+entropy out of range
+enveloped-data
+err:%lx:%lx:%lx:%lx
+errno=
+error adding recipient
+error converting private key
+error converting zone
+error creating extension
+error during initialization: %s
+error entropy pool was ignored
+error getting public key
+error getting time
+error in %s %s%s: %s
+error in extension
+error in generated column "%s"
+error in nextupdate field
+error in thisupdate field
+error in tokenizer constructor
+error initialising drbg
+error instantiating drbg
+error loading dso
+error loading section
+error parsing prefix parameter: %s
+error parsing url
+error reading %d bytes from file page %d at offset %d
+error reading messagedigest attribute
+error retrieving additional input
+error retrieving entropy
+error retrieving nonce
+error setting cipher
+error setting cipher params
+error setting encrypted data type
+error setting fips mode
+error setting key
+error setting recipientinfo
+error verifying pkcs12 mac
+error:%08lX:%s:%s:%s
+ess add signing cert error
+ess add signing cert v2 error
+ess signing certificate error
+ess_CERT_ID_new_init
+ess_SIGNING_CERT_new_init
+ess_add_signing_cert
+ess_add_signing_cert_v2
+ess_cert_id_v2_new_init
+ess_signing_cert_v2_new_init
+evp_EncryptDecryptUpdate
+excluded
+excludedSubtrees
+exclusive
+execute once failure in __cxa_get_globals_fast()
+expand 32-byte k
+expand on static bignum data
+expected %d columns for '%s' but got %d
+expected a section name
+expected integer, got "%.*s"
+expecting a dh key
+expecting a dsa key
+expecting a ec key
+expecting a poly1305 key
+expecting a siphash key
+expecting an hmac key
+expecting an integer
+expecting an object
+expecting an rsa key
+expecting private key blob
+expecting public key blob
+experimental
+explain
+explicit length mismatch
+explicit tag not constructed
+explicitText
+exponent%d:
+exponent1:
+exponent2:
+expr_compare
+expr_implies_expr
+expressions prohibited in PRIMARY KEY and UNIQUE constraints
+exptext
+extReq
+extendedCertificateAttributes
+extendedKeyUsage
+extendedStatus
+extension exists
+extension name error
+extension not found
+extension setting not supported
+extension value error
+f""D~**T
+facsimileTelephoneNumber
+failed memory resize %u to %u bytes
+failed to allocate %u bytes of memory
+failed to create lock
+failed to get page %d
+failed to set pool
+failed to swap context
+fallocate
+fast_kdf_iter
+favouriteDrink
+fchmod
+fchown
+fclose
+ferror
+ffdhe2048
+ffdhe3072
+ffdhe4096
+ffdhe6144
+ffdhe8192
+fflush
+fflush()
+field missing
+field=
+file is not a database
+file renamed while open: %s
+file unlinked while open: %s
+file_find
+file_get_pass
+file_load
+file_load_try_decode
+file_name_to_uri
+file_open
+file_read
+filename too big
+filename(
+fileno
+fingerprint size does not match digest
+fips mode not supported
+fips_mode
+first arg to fts5_rowid() must be 'segment'
+first num too large
+first octet invalid
+first_value
+flushing
+fopen('
+foreign key
+foreign key mismatch - "%w" referencing "%w"
+foreign key on %s should reference only one column of table %T
+foreign_key_check
+foreign_key_list
+frame ending offset must be a non-negative integer
+frame ending offset must be a non-negative number
+frame starting offset must be a non-negative integer
+frame starting offset must be a non-negative number
+free space corruption
+freeLastRow_native
+freelist leaf count too big on page %d
+freelist_count
+freshestCRL
+friendlyCountry
+friendlyCountryName
+friendlyName
+ftruncate
+fts3_tokenizer
+fts3cursor
+fts3tokenize
+fts3tokenize disabled
+fts4aux
+fts5: %s queries are not supported (detail!=full)
+fts5: 2020-01-22 18:38:59 f6affdd41608946fcfcea914ece149038a8b25a62bbe719ed2561c649b86d824
+fts5: column queries are not supported (detail=none)
+fts5: error creating shadow table %q_%s: %s
+fts5: parser stack overflow
+fts5: syntax error near "%.*s"
+fts5: syntax error near "%.1s"
+fts5_api_ptr
+fts5_decode
+fts5_decode_none
+fts5_expr
+fts5_expr_tcl
+fts5_rowid
+fts5_source_id
+fts5vocab
+fts5vocab: unknown table type: %Q
+full_column_names
+full_fsync
+fulness
+func(%lu)
+function_list
+functionality not supported
+fwrite
+gW98:W:
+general_allocate_boolean
+general_allocate_prompt
+generate cryptogram
+generate error
+generated column loop on "%s"
+generated columns
+generated columns cannot be part of the PRIMARY KEY
+generationQualifier
+generic cryptogram
+get field slot from row %d col %d failed
+get raw key failed
+getBlob_native
+getDouble_native
+getLong_native
+getNumRows_native
+getString_native
+getType_native
+get_and_lock
+get_cert_by_subject
+get_header_and_data
+get_name
+get_next_file
+getaddrinfo
+getcwd
+getegid
+getentropy
+getenv
+geteuid
+getgid
+gethostbyname
+gethostbyname addr is not af inet
+getnameinfo
+getpagesize
+getpid
+getservbyname
+getsockname
+getsockname error
+getsockname truncated address
+getsockopt
+gettimeofday
+getting socktype
+getuid
+ggV}++
+givenName
+gmtime_r
+gnames_from_sectname
+gost-mac
+gost-mac-12
+gost2001
+gost2001cc
+gost2012_256
+gost2012_512
+gost89
+gost89-cbc
+gost89-cnt
+gost89-cnt-12
+gost89-ctr
+gost89-ecb
+gost94cc
+gostr3411-2012-256
+gostr3411-2012-512
+grasshopper-cbc
+grasshopper-cfb
+grasshopper-ctr
+grasshopper-ecb
+grasshopper-mac
+grasshopper-ofb
+group=
+group_concat
+guard variable for 
+h&E)v2@
+h'@yi3@y
+h(N!J(N!h(N
+h(N!J(N!h(N2J(NRj(N
+h(N%J(N
+h(N@H(N
+h(N@J(N
+h(N`J(N
+h(Nqx@L
+h)4hhh9=F
+h2@yz&@9
+h2A9i6A9
+hB@9hZ
+hJh8)Iy8
+hLAJ%~WJ
+ha8Eha8
+handle %p
+hard_heap_limit
+hashAlgorithm
+hashFunc
+hashsize
+hb@9i.W)j
+header too long
+hex literal too big: %s%s
+hexinfo
+hexkey
+hexpass
+hexrekey
+hexsalt
+hexsecret
+hexseed
+hf@9ib@9
+hh8+ih8_
+hidden
+highlight
+hj8Nhj8
+hmac-sha3-224
+hmac-sha3-256
+hmac-sha3-384
+hmac-sha3-512
+hmacWithDstu34311
+hmacWithMD5
+hmacWithSHA1
+hmacWithSHA224
+hmacWithSHA256
+hmacWithSHA384
+hmacWithSHA512
+hmacWithSHA512-224
+hmacWithSHA512-256
+holdInstructionCallIssuer
+holdInstructionCode
+holdInstructionNone
+holdInstructionReject
+homePostalAddress
+homeTelephoneNumber
+houseIdentifier
+i&@9j*@9
+i*R))}@
+i*W)J}@
+i.@9h"
+i2@9x2@
+i2a_ASN1_OBJECT
+i2b_PVK
+i2b_PVK_bio
+i2d_ASN1_OBJECT
+i2d_ASN1_bio_stream
+i2d_DSA_PUBKEY
+i2d_EC_PUBKEY
+i2d_PrivateKey
+i2d_PublicKey
+i2d_RSA_PUBKEY
+i2d_X509_AUX
+i2o_SCT
+i2o_SCT_LIST
+i2o_SCT_signature
+i2s_ASN1_ENUMERATED
+i2s_ASN1_IA5STRING
+i2s_ASN1_INTEGER
+i2v_AUTHORITY_INFO_ACCESS
+iA5StringSyntax
+ia5org
+id INTEGER PRIMARY KEY, block BLOB
+id INTEGER PRIMARY KEY, sz BLOB
+id-DHBasedMac
+id-Gost28147-89-CryptoPro-A-ParamSet
+id-Gost28147-89-CryptoPro-B-ParamSet
+id-Gost28147-89-CryptoPro-C-ParamSet
+id-Gost28147-89-CryptoPro-D-ParamSet
+id-Gost28147-89-CryptoPro-KeyMeshing
+id-Gost28147-89-CryptoPro-Oscar-1-0-ParamSet
+id-Gost28147-89-CryptoPro-Oscar-1-1-ParamSet
+id-Gost28147-89-CryptoPro-RIC-1-ParamSet
+id-Gost28147-89-None-KeyMeshing
+id-Gost28147-89-TestParamSet
+id-Gost28147-89-cc
+id-GostR3410-2001-CryptoPro-A-ParamSet
+id-GostR3410-2001-CryptoPro-B-ParamSet
+id-GostR3410-2001-CryptoPro-C-ParamSet
+id-GostR3410-2001-CryptoPro-XchA-ParamSet
+id-GostR3410-2001-CryptoPro-XchB-ParamSet
+id-GostR3410-2001-ParamSet-cc
+id-GostR3410-2001-TestParamSet
+id-GostR3410-2001DH
+id-GostR3410-94-CryptoPro-A-ParamSet
+id-GostR3410-94-CryptoPro-B-ParamSet
+id-GostR3410-94-CryptoPro-C-ParamSet
+id-GostR3410-94-CryptoPro-D-ParamSet
+id-GostR3410-94-CryptoPro-XchA-ParamSet
+id-GostR3410-94-CryptoPro-XchB-ParamSet
+id-GostR3410-94-CryptoPro-XchC-ParamSet
+id-GostR3410-94-TestParamSet
+id-GostR3410-94-a
+id-GostR3410-94-aBis
+id-GostR3410-94-b
+id-GostR3410-94-bBis
+id-GostR3410-94DH
+id-GostR3411-94-CryptoProParamSet
+id-GostR3411-94-TestParamSet
+id-GostR3411-94-with-GostR3410-2001
+id-GostR3411-94-with-GostR3410-2001-cc
+id-GostR3411-94-with-GostR3410-94
+id-GostR3411-94-with-GostR3410-94-cc
+id-HMACGostR3411-94
+id-PasswordBasedMAC
+id-aca
+id-aca-accessIdentity
+id-aca-authenticationInfo
+id-aca-chargingIdentity
+id-aca-encAttrs
+id-aca-group
+id-aca-role
+id-aes128-CCM
+id-aes128-GCM
+id-aes128-wrap
+id-aes128-wrap-pad
+id-aes192-CCM
+id-aes192-GCM
+id-aes192-wrap
+id-aes192-wrap-pad
+id-aes256-CCM
+id-aes256-GCM
+id-aes256-wrap
+id-aes256-wrap-pad
+id-alg
+id-alg-PWRI-KEK
+id-alg-des40
+id-alg-dh-pop
+id-alg-dh-sig-hmac-sha1
+id-alg-noSignature
+id-camellia128-wrap
+id-camellia192-wrap
+id-camellia256-wrap
+id-cct
+id-cct-PKIData
+id-cct-PKIResponse
+id-cct-crs
+id-characteristic-two-basis
+id-cmc
+id-cmc-addExtensions
+id-cmc-confirmCertAcceptance
+id-cmc-dataReturn
+id-cmc-decryptedPOP
+id-cmc-encryptedPOP
+id-cmc-getCRL
+id-cmc-getCert
+id-cmc-identification
+id-cmc-identityProof
+id-cmc-lraPOPWitness
+id-cmc-popLinkRandom
+id-cmc-popLinkWitness
+id-cmc-queryPending
+id-cmc-recipientNonce
+id-cmc-regInfo
+id-cmc-responseInfo
+id-cmc-revokeRequest
+id-cmc-senderNonce
+id-cmc-statusInfo
+id-cmc-transactionId
+id-ct-asciiTextWithCRLF
+id-ct-xml
+id-dsa-with-sha3-224
+id-dsa-with-sha3-256
+id-dsa-with-sha3-384
+id-dsa-with-sha3-512
+id-dsa-with-sha384
+id-dsa-with-sha512
+id-ecPublicKey
+id-ecdsa-with-sha3-224
+id-ecdsa-with-sha3-256
+id-ecdsa-with-sha3-384
+id-ecdsa-with-sha3-512
+id-hex-multipart-message
+id-hex-partial-message
+id-hmacWithSHA3-224
+id-hmacWithSHA3-256
+id-hmacWithSHA3-384
+id-hmacWithSHA3-512
+id-it-caKeyUpdateInfo
+id-it-caProtEncCert
+id-it-confirmWaitTime
+id-it-currentCRL
+id-it-encKeyPairTypes
+id-it-implicitConfirm
+id-it-keyPairParamRep
+id-it-keyPairParamReq
+id-it-origPKIMessage
+id-it-preferredSymmAlg
+id-it-revPassphrase
+id-it-signKeyPairTypes
+id-it-subscriptionRequest
+id-it-subscriptionResponse
+id-it-suppLangTags
+id-it-unsupportedOIDs
+id-mod-attribute-cert
+id-mod-cmc
+id-mod-cmp
+id-mod-cmp2000
+id-mod-crmf
+id-mod-dvcs
+id-mod-kea-profile-88
+id-mod-kea-profile-93
+id-mod-ocsp
+id-mod-qualified-cert-88
+id-mod-qualified-cert-93
+id-mod-timestamp-protocol
+id-on-permanentIdentifier
+id-on-personalData
+id-pda
+id-pda-countryOfCitizenship
+id-pda-countryOfResidence
+id-pda-dateOfBirth
+id-pda-gender
+id-pda-placeOfBirth
+id-pkinit
+id-pkip
+id-pkix-mod
+id-pkix1-explicit-88
+id-pkix1-explicit-93
+id-pkix1-implicit-88
+id-pkix1-implicit-93
+id-ppl
+id-ppl-anyLanguage
+id-ppl-independent
+id-ppl-inheritAll
+id-qcs
+id-qcs-pkixQCSyntax-v1
+id-qt-cps
+id-qt-unotice
+id-regCtrl
+id-regCtrl-authenticator
+id-regCtrl-oldCertID
+id-regCtrl-pkiArchiveOptions
+id-regCtrl-pkiPublicationInfo
+id-regCtrl-protocolEncrKey
+id-regCtrl-regToken
+id-regInfo
+id-regInfo-certReq
+id-regInfo-utf8Pairs
+id-rsassa-pkcs1-v1_5-with-sha3-224
+id-rsassa-pkcs1-v1_5-with-sha3-256
+id-rsassa-pkcs1-v1_5-with-sha3-384
+id-rsassa-pkcs1-v1_5-with-sha3-512
+id-scrypt
+id-set
+id-smime-aa
+id-smime-aa-contentHint
+id-smime-aa-contentIdentifier
+id-smime-aa-contentReference
+id-smime-aa-dvcs-dvc
+id-smime-aa-encapContentType
+id-smime-aa-encrypKeyPref
+id-smime-aa-equivalentLabels
+id-smime-aa-ets-CertificateRefs
+id-smime-aa-ets-RevocationRefs
+id-smime-aa-ets-archiveTimeStamp
+id-smime-aa-ets-certCRLTimestamp
+id-smime-aa-ets-certValues
+id-smime-aa-ets-commitmentType
+id-smime-aa-ets-contentTimestamp
+id-smime-aa-ets-escTimeStamp
+id-smime-aa-ets-otherSigCert
+id-smime-aa-ets-revocationValues
+id-smime-aa-ets-sigPolicyId
+id-smime-aa-ets-signerAttr
+id-smime-aa-ets-signerLocation
+id-smime-aa-macValue
+id-smime-aa-mlExpandHistory
+id-smime-aa-msgSigDigest
+id-smime-aa-receiptRequest
+id-smime-aa-securityLabel
+id-smime-aa-signatureType
+id-smime-aa-signingCertificate
+id-smime-aa-signingCertificateV2
+id-smime-aa-smimeEncryptCerts
+id-smime-aa-timeStampToken
+id-smime-alg
+id-smime-alg-3DESwrap
+id-smime-alg-CMS3DESwrap
+id-smime-alg-CMSRC2wrap
+id-smime-alg-ESDH
+id-smime-alg-ESDHwith3DES
+id-smime-alg-ESDHwithRC2
+id-smime-alg-RC2wrap
+id-smime-cd
+id-smime-cd-ldap
+id-smime-ct
+id-smime-ct-DVCSRequestData
+id-smime-ct-DVCSResponseData
+id-smime-ct-TDTInfo
+id-smime-ct-TSTInfo
+id-smime-ct-authData
+id-smime-ct-authEnvelopedData
+id-smime-ct-compressedData
+id-smime-ct-contentCollection
+id-smime-ct-contentInfo
+id-smime-ct-publishCert
+id-smime-ct-receipt
+id-smime-cti
+id-smime-cti-ets-proofOfApproval
+id-smime-cti-ets-proofOfCreation
+id-smime-cti-ets-proofOfDelivery
+id-smime-cti-ets-proofOfOrigin
+id-smime-cti-ets-proofOfReceipt
+id-smime-cti-ets-proofOfSender
+id-smime-mod
+id-smime-mod-cms
+id-smime-mod-ess
+id-smime-mod-ets-eSigPolicy-88
+id-smime-mod-ets-eSigPolicy-97
+id-smime-mod-ets-eSignature-88
+id-smime-mod-ets-eSignature-97
+id-smime-mod-msg-v3
+id-smime-mod-oid
+id-smime-spq
+id-smime-spq-ets-sqt-unotice
+id-smime-spq-ets-sqt-uri
+id-tc26
+id-tc26-agreement
+id-tc26-agreement-gost-3410-2012-256
+id-tc26-agreement-gost-3410-2012-512
+id-tc26-algorithms
+id-tc26-cipher
+id-tc26-cipher-constants
+id-tc26-cipher-gostr3412-2015-kuznyechik
+id-tc26-cipher-gostr3412-2015-kuznyechik-ctracpkm
+id-tc26-cipher-gostr3412-2015-kuznyechik-ctracpkm-omac
+id-tc26-cipher-gostr3412-2015-magma
+id-tc26-cipher-gostr3412-2015-magma-ctracpkm
+id-tc26-cipher-gostr3412-2015-magma-ctracpkm-omac
+id-tc26-constants
+id-tc26-digest
+id-tc26-digest-constants
+id-tc26-gost-28147-constants
+id-tc26-gost-28147-param-Z
+id-tc26-gost-3410-2012-256-constants
+id-tc26-gost-3410-2012-256-paramSetA
+id-tc26-gost-3410-2012-256-paramSetB
+id-tc26-gost-3410-2012-256-paramSetC
+id-tc26-gost-3410-2012-256-paramSetD
+id-tc26-gost-3410-2012-512-constants
+id-tc26-gost-3410-2012-512-paramSetA
+id-tc26-gost-3410-2012-512-paramSetB
+id-tc26-gost-3410-2012-512-paramSetC
+id-tc26-gost-3410-2012-512-paramSetTest
+id-tc26-hmac-gost-3411-2012-256
+id-tc26-hmac-gost-3411-2012-512
+id-tc26-mac
+id-tc26-sign
+id-tc26-sign-constants
+id-tc26-signwithdigest
+id-tc26-signwithdigest-gost3410-2012-256
+id-tc26-signwithdigest-gost3410-2012-512
+id-tc26-wrap
+id-tc26-wrap-gostr3412-2015-kuznyechik
+id-tc26-wrap-gostr3412-2015-kuznyechik-kexp15
+id-tc26-wrap-gostr3412-2015-magma
+id-tc26-wrap-gostr3412-2015-magma-kexp15
+idea-cbc
+idea-cfb
+idea-ecb
+idea-ofb
+identified-organization
+idp mismatch
+ieee-siswg
+ifnull
+ignore_check_constraints
+ii8Khi8_
+ii8Lii8
+iiiiiiiii2^
+iissssss
+ij(8XN
+ij8mij8
+ijklmno
+ijx)ijx
+ik8.ik8
+iki8jkj8?
+ikxHikx?
+il8Mil8)
+illegal bitstring format
+illegal boolean
+illegal characters
+illegal empty extension
+illegal first argument to %s
+illegal format
+illegal hex
+illegal hex digit
+illegal implicit tag
+illegal integer
+illegal negative value
+illegal nested tagging
+illegal null
+illegal null value
+illegal object
+illegal optional any
+illegal options on item template
+illegal or unsupported padding mode
+illegal padding
+illegal scrypt parameters
+illegal tagged any
+illegal time value
+illegal zero content
+im8ohm8
+immutable
+implies_nonnull_row
+in error state
+incomplete input
+inconsistent header
+incorrect file syntax
+incorrect policy syntax tag
+incremental
+incremental_vacuum
+incremental_vacuum enabled with a max rootpage of zero
+index %s already exists
+index '%q'
+index associated with UNIQUE or PRIMARY KEY constraint cannot be dropped
+index expressions
+index too large
+index too small
+index_info
+index_list
+index_xinfo
+indirectCRL
+infinite
+inhibitAnyPolicy
+inhibitPolicyMapping
+init fail
+init failed
+initials
+input not initialized
+input not reduced
+instance
+int_ctx_new
+int_rsa_verify
+int_ts_RESP_verify_token
+integer not ascii format
+integer overflow
+integer too large for long
+integrity-check
+internal error
+international-organizations
+internationaliSDNNumber
+interrupted
+invalid argument
+invalid arguments to fts4aux constructor
+invalid asnumber
+invalid asrange
+invalid attributes
+invalid bit string bits left
+invalid bmpstring length
+invalid boolean string
+invalid digest
+invalid digest length
+invalid digit
+invalid directory
+invalid encrypted key length
+invalid extension string
+invalid field name
+invalid fips mode
+invalid fts5 file format (found %d, expected %d) - run 'rebuild'
+invalid header
+invalid inheritance
+invalid ipaddress
+invalid iv length
+invalid key encryption parameter
+invalid key length
+invalid label
+invalid log id length
+invalid message length
+invalid mgf1 md
+invalid modifier
+invalid multi prime key
+invalid multiple rdns
+invalid name
+invalid null argument
+invalid null name
+invalid null pkcs12 pointer
+invalid null pointer
+invalid null value
+invalid number
+invalid number of arguments (%d) passed to sqlcipher_export
+invalid numbers
+invalid oaep parameters
+invalid object encoding
+invalid object identifier
+invalid operation
+invalid option
+invalid padding
+invalid padding mode
+invalid page number %d
+invalid policy identifier
+invalid pool size
+invalid proxy policy setting
+invalid pss parameters
+invalid pss saltlen
+invalid purpose
+invalid range
+invalid rootpage
+invalid safi
+invalid salt length
+invalid scheme
+invalid scrypt parameters
+invalid section
+invalid separator
+invalid shift
+invalid signed data type
+invalid signer certificate purpose
+invalid socket
+invalid string table value
+invalid syntax
+invalid trailer
+invalid trust
+invalid universalstring length
+invalid uri authority: %.*s
+invalid utf8string
+invalid value
+invalid x931 digest
+invalidityDate
+invocation function for block in 
+ioctlsocket
+ip8#jp8Bx
+ipsec Internet Key Exchange
+ipsec3
+ipsec4
+ipsecEndSystem
+ipsecIKE
+ipsecTunnel
+ipsecUser
+iqmp not inverse of q
+is not a
+isBlob_native
+isFloat_native
+isInteger_native
+isNull_native
+isString_native
+islower
+issisi
+issisii
+isspace
+issuer capabilities
+issuer decode error
+issuer mismatch
+issuerAltName
+issuerDomainPolicy
+issuerKeyHash
+issuerNameHash
+issuerSignTool
+issuerUID
+issuer_and_serial
+issuingDistributionPoint
+isxdigit
+iu8$yu
+iv gen error
+iv8)iv8
+iveness
+i{8(i;8{
+j(8+ih8
+j(8lj(8
+j81ip8
+janetMailbox
+java/lang/IllegalArgumentException
+java/lang/IllegalStateException
+jh8+ih8_
+jh8+kh8j
+jh8,ih8
+jh8Kkh8j
+jh8kj(8Li(8
+jh8l!C9
+ji8lji8M
+jij8iii8+
+jj,'*GL
+jj8,ij8
+jj8,kj8
+jj8mB+
+jjjjjjjjjjjjjjmwjjjj|crypto/bio/bf_buff.c
+jk8lj+8Mi(8(=
+jkj8kkk8_
+joint-iso-itu-t
+journal_mode
+journal_size_limit
+jrml[Q
+json_%s() needs an odd number of arguments
+json_array
+json_array_length
+json_each
+json_extract
+json_group_array
+json_group_object
+json_insert
+json_object
+json_object() labels must be TEXT
+json_object() requires an even number of arguments
+json_patch
+json_quote
+json_remove
+json_replace
+json_set
+json_tree
+json_type
+json_valid
+julianday
+jurisdictionC
+jurisdictionCountryName
+jurisdictionL
+jurisdictionLocalityName
+jurisdictionST
+jurisdictionStateOrProvinceName
+k PRIMARY KEY, v
+k0H#8c
+k6@yi*@
+kek_unwrap_key
+key gen error
+key prime num invalid
+key size too small
+key type mismatch
+key values mismatch
+keyAgreement
+keyAttr
+keyAttrId
+keyBag
+keyCertSign
+keyCompromise
+keyDerivationAlgorithm
+keyEncipherment
+keyEncryptionAlgorithm
+keyIdentifier
+keyInfo
+keyLength
+keyUsage
+key_enc_algor
+key_mutf8
+keyblob header parse error
+keyblob too short
+keyfunc
+keygen failure
+kh8ij(8
+kh8jih8?
+kh8jjh8?
+kh8kjh8
+kh8l!C9
+kj8-ij8
+kjxjijx+
+kki8Lii8
+kkk8lkl8
+kx-any
+kx-dhe
+kx-dhe-psk
+kx-ecdhe
+kx-ecdhe-psk
+kx-gost
+kx-psk
+kx-rsa
+kx-rsa-psk
+kx-srp
+l5@)n=A)
+lAD9m!C9J
+languageid
+last octet invalid
+lastChangeCount
+lastInsertRow
+lastModifiedBy
+lastModifiedTime
+lastUpdate
+last_insert_rowid
+last_value
+legacy_alter_table
+length is greater than %ld
+length too long
+level_add_node
+lib%s.so
+lib(%lu)
+libc++abi
+libc.so
+libdl.so
+liblog.so
+libm.so
+libsqlcipher.so
+lih8li-8
+likelihood
+lil8mim8
+linebuffer_ctrl
+linebuffer_new
+list cannot be null
+list error
+listen v6 only
+load_extension
+load_iv
+loader incomplete
+loading cert dir
+loading defaults
+loading started
+local time unavailable
+localKeyID
+localhost
+localhost/
+localityName
+localtime
+location
+locking protocol
+locking_mode
+log conf invalid
+log conf invalid key
+log conf missing description
+log conf missing key
+log key invalid
+long double
+long_c2i
+lookup returned nothing
+lookup_certs_sk
+lseek64
+lyhxly-x
+mN@9iF
+mNativeHandle
+mXRecord
+mac absent
+mac generation error
+mac setup error
+mac string set error
+mac verify failure
+macAlgorithm
+madvise
+magma-cbc
+magma-cfb
+magma-ctr
+magma-ecb
+magma-mac
+magma-ofb
+mailPreferenceOption
+malformed JSON
+malformed MATCH expression: [%s]
+malformed columnsize=... directive
+malformed database schema (%s)
+malformed detail=... directive
+malformed host or service
+malformed prefix=... directive
+malloc failure
+manager
+maskGenAlgorithm
+maskGenFunc
+matchinfo
+max rootpage (%d) disagrees with header (%d)
+max_page_count
+maximum
+maxmem_bytes
+maxsize=
+md bio init error
+md2WithRSAEncryption
+md4WithRSAEncryption
+md5-sha1
+md5WithRSA
+md5WithRSAEncryption
+md_algs
+md_gost12_256
+md_gost12_512
+md_gost94
+mdc2WithRSA
+mem_write
+member
+member-body
+memchr
+memcpy
+memmove
+memory buffer routines
+memory limit exceeded
+merchant initiated auth
+message digest is null
+message extensions
+message imprint mismatch
+messagedigest attribute wrong length
+messagedigest wrong length
+method not supported
+mgf1 digest not allowed
+mgf1 with sha1 (default)
+mil8.kl8
+mim8nin8
+mime no content type
+mime parse error
+mime sig parse error
+mime-mhs
+mime-mhs-bodies
+mime-mhs-headings
+minimum
+minsize=
+minute
+missing %s parameter in fts4 constructor
+missing asn1 eos
+missing close square bracket
+missing dek iv
+missing eoc
+missing equal sign
+missing init function
+missing iteration count
+missing message digest
+missing ocspsigning usage
+missing parameter
+missing parameters
+missing pass
+missing private key
+missing salt
+missing second number
+missing secret
+missing seed
+missing value
+misuse of %s function %.*s()
+misuse of aggregate: %s()
+misuse of aliased aggregate %s
+misuse of aliased window function %s
+mjm8njn8
+mkm8nkn8
+mmZ7EEP
+mmap_size
+mobileTelephoneNumber
+modeof
+module initialization error
+module=
+module_add
+module_list
+module_load_dso
+module_run
+modulus too large
+modulus:
+mp coefficient not inverse of r
+mp exponent not congruent to d
+mp r not prime
+mprotect
+mremap
+msCTLSign
+msCodeCom
+msCodeInd
+msExtReq
+msSmartcardLogin
+msgsigdigest error
+msgsigdigest verification failure
+msgsigdigest wrong length
+mstring not universal
+mstring wrong tag
+multipart/signed
+multiple content=... directives
+multiple content_rowid=... directives
+multiple links to file: %s
+multiple recursive references: %s
+multiple references to recursive table: %s
+multiple tokenize=... directives
+munmap
+must have at least one non-generated column
+n does not equal p q
+n does not equal product of primes
+nHandle
+nSRecord
+nStatement
+nWindow
+name too long
+name translation failed
+name.fullname
+name.relativename
+name=%Q AND sql=%Q
+name='%q' AND type='index'
+nameAssigner
+nameConstraints
+namingAuthority
+namingAuthorityId
+namingAuthorityText
+namingAuthorityUrl
+native_1x1_long
+native_1x1_string
+native_bind_blob
+native_bind_double
+native_bind_long
+native_bind_null
+native_bind_string
+native_clear
+native_clear_bindings
+native_column_count
+native_column_name
+native_compile
+native_execSQL
+native_execute
+native_finalize
+native_getDbLookaside
+native_init
+native_rawExecSQL
+native_status
+naturaleftouterightfullinnercross
+nbio connect error
+nbiof_new
+ndef_prefix
+ndef_suffix
+near "%T": syntax error
+nearset
+need one signer
+need organization and numbers
+nested asn1 error
+nested asn1 string
+nested too deep
+net/sqlcipher/CursorWindow
+net/sqlcipher/InvalidRowColumnException
+net/sqlcipher/RowAllocationException
+net/sqlcipher/UnknownTypeException
+net/sqlcipher/database/SQLiteAbortException
+net/sqlcipher/database/SQLiteCompiledSql
+net/sqlcipher/database/SQLiteConstraintException
+net/sqlcipher/database/SQLiteDatabase
+net/sqlcipher/database/SQLiteDatabaseCorruptException
+net/sqlcipher/database/SQLiteDiskIOException
+net/sqlcipher/database/SQLiteDoneException
+net/sqlcipher/database/SQLiteException
+net/sqlcipher/database/SQLiteFullException
+net/sqlcipher/database/SQLiteMisuseException
+net/sqlcipher/database/SQLiteProgram
+net/sqlcipher/database/SQLiteStatement
+new_dir
+newer crl not newer
+nextUpdate
+nextupdate before thisupdate
+nin8oio8
+no accept addr or service specified
+no cert set for us to verify
+no certificate found
+no certificate or crl found
+no certificates in chain
+no cipher
+no cipher set
+no close brace
+no conf
+no conf or environment variable
+no config database
+no content
+no crl found
+no crl number
+no default digest
+no digest set
+no drbg implementation selected
+no entry point [%s] in shared library [%s]
+no filename
+no hostname or service specified
+no inverse
+no issuer certificate
+no issuer details
+no key
+no key or cert
+no key set
+no matching choice type
+no matching digest
+no matching digest type found
+no matching recipient
+no matching signature
+no more rows available
+no msgsigdigest
+no multipart body failure
+no multipart boundary
+no operation set
+no password
+no policy identifier
+no port defined
+no private key
+no proxy cert policy language defined
+no public exponent
+no public key
+no query solution
+no receipt request
+no recipient matches certificate
+no response data
+no result buffer
+no revoked time
+no section
+no sig content type
+no signatures on data
+no signer key
+no signers
+no solution
+no start line
+no subject details
+no such %s mode: %s
+no such collation sequence: %s
+no such column
+no such column: "%s"
+no such column: %s
+no such cursor: %lld
+no such database: %s
+no such file
+no such fts5 table: %s.%s
+no such function: %.*s
+no such function: %s
+no such index: %S
+no such index: %s
+no such module: %s
+no such rowid: %lld
+no such savepoint: %s
+no such table
+no such table column: %s.%s
+no such table: %s
+no such tokenizer: %s
+no such trigger: %S
+no such vfs: %s
+no such view
+no such window: %s
+no tables specified
+no time stamp token
+noCheck
+noRevAvail
+noecho_console
+noexcept
+noexcept (
+noexcept(
+nolock
+nomask
+nombstr
+non hex characters
+non-deterministic functions
+non-deterministic use of %s() in %s
+non-text filename
+non-unique entry in index 
+non-virtual thunk to 
+nonRepudiation
+nonce mismatch
+nonce not returned
+normal
+noskipscan*
+not XOF or invalid length
+not a certificate
+not a crl
+not a key
+not a name
+not a signed receipt
+not a square
+not a writable directory
+not an error
+not authorized
+not authorized to use function: %s
+not basic response
+not dek info
+not encrypted
+not enough data
+not instantiated
+not kek
+not key agreement
+not key transport
+not parameters
+not proc type
+not pwri
+notAfter
+notBefore
+noticeNumbers
+notice_section
+noticenos
+noticeref
+notification message
+notindexed
+notnull
+notused
+nref_nos
+nsBaseUrl
+nsCaPolicyUrl
+nsCaRevocationUrl
+nsCertExt
+nsCertSequence
+nsCertType
+nsComment
+nsDataType
+nsRenewalUrl
+nsRevocationUrl
+nsSslServerName
+nssslserver
+nth_value
+null before block missing
+null is wrong length
+nullif
+numColumns mismatch
+number of columns in foreign key does not match the number of columns in the referenced table
+o%%Jr..\$
+o%@9q1@
+o+,-./0123456789
+o2i_SCT
+o2i_SCT_LIST
+o2i_SCT_signature
+o6\C) 
+o@y+9@
+oaep decoding error
+objc_object
+object identifier routines
+object name reserved for internal use: %s
+object not ascii format
+objsign
+ocsp_check_delegated
+ocsp_check_ids
+ocsp_check_issuer
+ocsp_match_issuerid
+ocsphelper
+odd number of chars
+odd number of digits
+offsets
+oid exists
+oid_module_init
+oid_section
+oio8pip8
+ojo8pjp8
+ok_new
+old_rsa_priv_decode
+onBasis
+on_delete
+on_update
+only oneshot supported
+onlyAA
+onlyCA
+onlyattr
+onlysomereasons
+onlyuser
+onoffalseyestruextrafull
+opcode
+openDirectory
+open_console
+opendir
+opening session
+openlog
+openssl
+openssl.cnf
+openssl_conf
+openssl_fopen
+operation fail
+operation not defined
+operation not supported for this keytype
+operation not supported on this type
+operaton not initialized
+operator delete
+operator delete[]
+operator new
+operator new[]
+operator!
+operator!=
+operator"" 
+operator%
+operator%=
+operator&
+operator&&
+operator&=
+operator()
+operator*
+operator*=
+operator+
+operator++
+operator+=
+operator,
+operator-
+operator--
+operator-=
+operator->
+operator->*
+operator/
+operator/=
+operator<
+operator<<
+operator<<=
+operator<=
+operator<=>
+operator=
+operator==
+operator>
+operator>=
+operator>>
+operator>>=
+operator?
+operator[]
+operator^
+operator^=
+operator|
+operator|=
+operator||
+operator~
+optimize
+optionalSignature
+organizationIdentifier
+organizationName
+organizationalStatus
+organizationalUnitName
+oriType
+oriValue
+origin
+originator
+originatorInfo
+originatorSignatureValue
+orphan index
+os_unix.c:%d: (%d) %s(%s) - %s
+ossl_store_attach_pem_bio
+ossl_store_file_attach_pem_bio_int
+ossl_store_get0_loader_int
+ossl_store_info_new_EMBEDDED
+ossl_store_init_once
+ossl_store_register_loader_int
+ossl_store_unregister_loader_int
+otherCert
+otherCertFormat
+otherMailbox
+otherRevInfo
+otherRevInfoFormat
+othername error
+othername:<unsupported>
+ousness
+out of
+out of memory
+output file already exists
+overflow list length
+p is not prime
+p not prime
+pSourceFunc
+pSpecified
+p\lHtW
+padding check failed
+page %d has an invalid size of %lld bytes
+pagerTelephoneNumber
+parallelizationParameter
+parameters are not allowed in views
+parent locking not enabled
+parent strength too weak
+parse error in "%s"
+parse error in rank function: %s
+parse error in tokenize directive
+parse_http_line1
+parse_tagging
+partial
+partial index WHERE clauses
+partially overlapping buffers
+partyName
+pass phrase
+passed a null parameter
+passphrase callback error
+password based MAC
+path must be absolute
+pathlen
+payment gateway capabilities
+pbeWithMD2AndDES-CBC
+pbeWithMD2AndRC2-CBC
+pbeWithMD5AndCast5CBC
+pbeWithMD5AndDES-CBC
+pbeWithMD5AndRC2-CBC
+pbeWithSHA1And128BitRC2-CBC
+pbeWithSHA1And128BitRC4
+pbeWithSHA1And2-KeyTripleDES-CBC
+pbeWithSHA1And3-KeyTripleDES-CBC
+pbeWithSHA1And40BitRC2-CBC
+pbeWithSHA1And40BitRC4
+pbeWithSHA1AndDES-CBC
+pbeWithSHA1AndRC2-CBC
+pbkdf2 error
+pcPathLengthConstraint
+percent_rank
+permitted
+permittedSubtrees
+persist
+personalSignature
+personalTitle
+personalisation string too long
+physicalDeliveryOfficeName
+pilotAttributeSyntax
+pilotAttributeType
+pilotAttributeType27
+pilotDSA
+pilotGroups
+pilotObject
+pilotObjectClass
+pilotOrganization
+pilotPerson
+pin8oio8,
+pip8qiq8
+pixel vector[
+pkInitClientAuth
+pkInitKDC
+pkcs decoding error
+pkcs12 algor cipherinit error
+pkcs12 cipherfinal error
+pkcs12 pbe crypt error
+pkcs5_scrypt_set
+pkcs7 add signature error
+pkcs7 add signed attr error
+pkcs7 add signer error
+pkcs7 datasign
+pkcs7 to ts tst info failed
+pkcs7-data
+pkcs7-digestData
+pkcs7-encryptedData
+pkcs7-envelopedData
+pkcs7-signedAndEnvelopedData
+pkcs7-signedData
+pkcs7_copy_existing_digest
+pkcs7_decrypt_rinfo
+pkcs7_encode_rinfo
+pkcs8ShroudedKeyBag
+pkey application asn1 method already registered
+pkey_hkdf_ctrl_str
+pkey_hkdf_derive
+pkey_hkdf_init
+pkey_hmac_init
+pkey_poly1305_init
+pkey_pss_init
+pkey_rsa_ctrl
+pkey_rsa_ctrl_str
+pkey_rsa_sign
+pkey_rsa_verify
+pkey_rsa_verifyrecover
+pkey_scrypt_ctrl_str
+pkey_scrypt_ctrl_uint64
+pkey_scrypt_derive
+pkey_scrypt_init
+pkey_scrypt_set_membuf
+pkey_set_type
+pkey_siphash_init
+pkey_tls1_prf_ctrl_str
+pkey_tls1_prf_derive
+pkey_tls1_prf_init
+pkeyalg
+policy language already defined
+policy mismatch
+policy path length
+policy path length already defined
+policy when proxy language requires no policy
+policyConstraints
+policyIdentifier
+policyLanguage
+policyMappings
+policy_cache_create
+policy_cache_new
+policy_data_new
+policy_section
+policyid
+porter
+posix_memalign
+postOfficeBox
+postalAddress
+postalCode
+ppBasis
+pp|B>>q
+pqualid
+pragma
+pragma_
+pragma_list
+pread64
+prediction resistance not supported
+preferredDeliveryMethod
+prefix length out of range (max 999)
+presentationAddress
+prf-gostr3411-94
+prim: 
+prime%d:
+prime-field
+prime192v1
+prime192v2
+prime192v3
+prime1:
+prime239v1
+prime239v2
+prime239v3
+prime256v1
+prime2:
+prime_infos
+printf
+priv [ %d ] 
+private key decode error
+private key does not match certificate
+private key encode error
+private key too large
+privateExponent:
+privateKeyUsagePeriod
+privilegeWithdrawn
+problems getting password
+process_include
+process_pci_value
+processing
+processing error
+producedAt
+professionInfos
+professionItems
+professionOIDs
+protocolInformation
+proxyCertInfo
+proxyPolicy
+pseudonym
+pss saltlen too small
+pthread_atfork
+pthread_create
+pthread_equal
+pthread_getspecific
+pthread_key_create
+pthread_key_delete
+pthread_mutex_destroy
+pthread_mutex_init
+pthread_mutex_lock
+pthread_mutex_trylock
+pthread_mutex_unlock
+pthread_mutexattr_destroy
+pthread_mutexattr_init
+pthread_mutexattr_settype
+pthread_once
+pthread_rwlock_destroy
+pthread_rwlock_init
+pthread_rwlock_rdlock
+pthread_rwlock_unlock
+pthread_rwlock_wrlock
+pthread_self
+pthread_setspecific
+pubkey
+public key decode error
+public key encode error
+public key not rsa
+publicExponent:
+publicKey
+putBlob_native
+putDouble_native
+putLong_native
+putNull_native
+putString_native
+pvk data too short
+pvk too short
+pwrite
+pwrite64
+q not prime
+q!Z(N!x(N2Z(NRz(N
+q"H(NBh(NAx
+q"X(NBx(NAx
+q(0FxK
+q*A@9j
+q.i/xA
+q@#R)A
+qH'R)w
+q_i/8A
+qcStatements
+qcrypto/evp/evp_enc.c
+qiq8`i`8?
+qiq8mim8pip8J
+qualified table names are not allowed on INSERT, UPDATE, and DELETE statements within triggers
+qualifiers
+qualityLabelledData
+query aborted
+query_only
+quick_check
+r2i_certpol
+r2i_pci
+rFC822localPart
+rJyhx@
+r_32_12_16_init_key
+rand_drbg_enable_locking
+rand_drbg_get_entropy
+rand_drbg_get_nonce
+rand_drbg_restart
+rand_pool_acquire_entropy
+rand_pool_add
+rand_pool_add_begin
+rand_pool_add_end
+rand_pool_attach
+rand_pool_bytes_needed
+rand_pool_grow
+rand_pool_new
+random number generator
+random pool overflow
+random pool underflow
+randomblob
+rc2-40-cbc
+rc2-64-cbc
+rc2-cbc
+rc2-cfb
+rc2-ecb
+rc2-ofb
+rc2_magic_to_meth
+rc4-40
+rc4-hmac-md5
+rc5-cbc
+rc5-cfb
+rc5-ecb
+rc5-ofb
+rc5_ctrl
+read key
+read_uncommitted
+readdir
+reading strings
+readlink
+readonly_shm
+reason(%lu)
+rebuild
+receipt decode error
+receiptsFrom
+receiptsTo
+recipient error
+recipientEncryptedKeys
+recipientInfos
+recovered %d frames from WAL file %s
+recovered %d pages from %s
+recursive aggregate queries not supported
+recursive directory include
+recursive reference in a subquery: %s
+recursive_triggers
+recursively defined fts5 content table
+reference temporary for 
+regexp
+registeredAddress
+registrationNumber
+reinterpret_cast
+reject
+rekey_cipher
+rekey_kdf_iter
+releaseMemory
+removeFromCRL
+remove_diacritics
+remove_diacritics=0
+remove_diacritics=1
+remove_diacritics=2
+rename
+reqCert
+req_info
+request not signed
+request too large for drbg
+requestExtensions
+requestList
+requestorName
+requireExplicitPolicy
+reseed error
+reserved
+reserved fts5 column name: %s
+reserved fts5 table name: %s
+responderId
+response contains no revocation data
+response setup error
+responseBytes
+responseExtensions
+responseStatus
+responseType
+responses
+result too large
+result too small
+reverse_unordered_selects
+revocationDate
+revocationReason
+revocationTime
+rfc822Mailbox
+ripemd
+ripemd160
+ripemd160WithRSA
+rkyhx@
+rmd160
+roleOccupant
+roomNumber
+root ca not trusted
+row value misused
+row_number
+rows deleted
+rows inserted
+rows updated
+rsa operations not supported
+rsa routines
+rsaEncryption
+rsaOAEPEncryptionSET
+rsaSignature
+rsa_algor_to_md
+rsa_builtin_keygen
+rsa_cms_decrypt
+rsa_cms_verify
+rsa_item_verify
+rsa_keygen_bits
+rsa_keygen_primes
+rsa_keygen_pubexp
+rsa_mgf1_md
+rsa_multip_info_new
+rsa_oaep_label
+rsa_oaep_md
+rsa_ossl_private_decrypt
+rsa_ossl_private_encrypt
+rsa_ossl_public_decrypt
+rsa_ossl_public_encrypt
+rsa_padding_mode
+rsa_param_decode
+rsa_priv_encode
+rsa_pss_get_param
+rsa_pss_keygen_md
+rsa_pss_keygen_mgf1_md
+rsa_pss_keygen_saltlen
+rsa_pss_saltlen
+rsa_pss_to_ctx
+rsa_pub_decode
+rsadsi
+rsaesOaep
+rsassaPss
+rst!efghijklmno
+rst./01=efghijklmno+,-./0123456789}~
+rstuI;xyzH
+rtree constraint failed: %s.(%s<=%s)
+rtree_i32
+rtreecheck
+rtreedepth
+rtreenode
+s2i_ASN1_IA5STRING
+s2i_ASN1_INTEGER
+s2i_ASN1_OCTET_STRING
+s2i_skey_id
+s390x_aes_gcm_ctrl
+sOARecord
+safeContentsBag
+salt length check failed
+salt length recovery failed
+saltLength
+sbgp-autonomousSysNum
+sbgp-ipAddrBlock
+sbgp-routerIdentifier
+schema_version
+scheme=
+sct future timestamp
+sct invalid
+sct invalid signature
+sct list invalid
+sct log id mismatch
+sct not set
+sct unsupported version
+sdsiCertificate
+search only supported for directories
+searchGuide
+second
+second argument to likelihood() must be a constant between 0.0 and 1.0
+second argument to nth_value must be a positive integer
+second number too large
+secp112r1
+secp112r2
+secp128r1
+secp128r2
+secp160k1
+secp160r1
+secp160r2
+secp192k1
+secp224k1
+secp224r1
+secp256k1
+secp384r1
+secp521r1
+secretBag
+secretary
+sect113r1
+sect113r2
+sect131r1
+sect131r2
+sect163k1
+sect163r1
+sect163r2
+sect193r1
+sect193r2
+sect233k1
+sect233r1
+sect239k1
+sect283k1
+sect283r1
+sect409k1
+sect409r1
+sect571k1
+sect571r1
+section:
+secure device signature
+secure memory buffer
+secureShellClient
+secureShellServer
+secure_delete
+seeAlso
+seed-cbc
+seed-cfb
+seed-ecb
+seed-ofb
+segdir
+segid, term, pgno, PRIMARY KEY(segid, term)
+segment
+selected-attribute-types
+selftest failure
+sendOwner
+sendProxiedOwner
+sendProxiedRouter
+sendRouter
+separators
+separators=
+sequence length mismatch
+sequence not constructed
+sequence or set needs config
+serialNumber
+server response error
+server response parse error
+serverAuth
+serviceLocator
+set filename failed
+set list
+set-addPolicy
+set-attr
+set-brand
+set-brand-AmericanExpress
+set-brand-Diners
+set-brand-IATA-ATA
+set-brand-JCB
+set-brand-MasterCard
+set-brand-Novus
+set-brand-Visa
+set-certExt
+set-ctype
+set-msgExt
+set-policy
+set-policy-root
+set-rootKeyThumb
+setAttr-Cert
+setAttr-GenCryptgrm
+setAttr-IssCap
+setAttr-IssCap-CVM
+setAttr-IssCap-Sig
+setAttr-IssCap-T2
+setAttr-PGWYcap
+setAttr-SecDevSig
+setAttr-T2Enc
+setAttr-T2cleartxt
+setAttr-TokICCsig
+setAttr-Token-B0Prime
+setAttr-Token-EMV
+setAttr-TokenType
+setCext-IssuerCapabilities
+setCext-PGWYcapabilities
+setCext-TokenIdentifier
+setCext-TokenType
+setCext-Track2Data
+setCext-cCertRequired
+setCext-certType
+setCext-hashedRoot
+setCext-merchData
+setCext-setExt
+setCext-setQualf
+setCext-tunneling
+setNumColumns_native
+set_dist_point_name
+setct-AcqCardCodeMsg
+setct-AcqCardCodeMsgTBE
+setct-AuthReqTBE
+setct-AuthReqTBS
+setct-AuthResBaggage
+setct-AuthResTBE
+setct-AuthResTBEX
+setct-AuthResTBS
+setct-AuthResTBSX
+setct-AuthRevReqBaggage
+setct-AuthRevReqTBE
+setct-AuthRevReqTBS
+setct-AuthRevResBaggage
+setct-AuthRevResData
+setct-AuthRevResTBE
+setct-AuthRevResTBEB
+setct-AuthRevResTBS
+setct-AuthTokenTBE
+setct-AuthTokenTBS
+setct-BCIDistributionTBS
+setct-BatchAdminReqData
+setct-BatchAdminReqTBE
+setct-BatchAdminResData
+setct-BatchAdminResTBE
+setct-CRLNotificationResTBS
+setct-CRLNotificationTBS
+setct-CapReqTBE
+setct-CapReqTBEX
+setct-CapReqTBS
+setct-CapReqTBSX
+setct-CapResData
+setct-CapResTBE
+setct-CapRevReqTBE
+setct-CapRevReqTBEX
+setct-CapRevReqTBS
+setct-CapRevReqTBSX
+setct-CapRevResData
+setct-CapRevResTBE
+setct-CapTokenData
+setct-CapTokenSeq
+setct-CapTokenTBE
+setct-CapTokenTBEX
+setct-CapTokenTBS
+setct-CardCInitResTBS
+setct-CertInqReqTBS
+setct-CertReqData
+setct-CertReqTBE
+setct-CertReqTBEX
+setct-CertReqTBS
+setct-CertResData
+setct-CertResTBE
+setct-CredReqTBE
+setct-CredReqTBEX
+setct-CredReqTBS
+setct-CredReqTBSX
+setct-CredResData
+setct-CredResTBE
+setct-CredRevReqTBE
+setct-CredRevReqTBEX
+setct-CredRevReqTBS
+setct-CredRevReqTBSX
+setct-CredRevResData
+setct-CredRevResTBE
+setct-ErrorTBS
+setct-HODInput
+setct-MeAqCInitResTBS
+setct-OIData
+setct-PANData
+setct-PANOnly
+setct-PANToken
+setct-PCertReqData
+setct-PCertResTBS
+setct-PI
+setct-PI-TBS
+setct-PIData
+setct-PIDataUnsigned
+setct-PIDualSignedTBE
+setct-PIUnsignedTBE
+setct-PInitResData
+setct-PResData
+setct-RegFormReqTBE
+setct-RegFormResTBS
+setext-cv
+setext-genCrypt
+setext-miAuth
+setext-pinAny
+setext-pinSecure
+setext-track2
+setsockopt
+setup_tbuf
+sha-256
+sha-384
+sha-512
+sha1WithRSA
+sha1WithRSAEncryption
+sha224
+sha224WithRSAEncryption
+sha256WithRSAEncryption
+sha384WithRSAEncryption
+sha512-224
+sha512-224WithRSAEncryption
+sha512-256
+sha512-256WithRSAEncryption
+sha512WithRSAEncryption
+shaWithRSAEncryption
+shake128
+shake256
+shared
+short header
+short line
+short_column_names
+should be: fts5_rowid('segment', segid, pgno))
+should be: fts5_rowid(subject, ....)
+should retry
+shrink_memory
+sig invalid mime type
+sig_alg
+sig_algor
+sigaction
+sigdelset
+sigfillset
+siglongjmp
+signal
+signature failure
+signatureAlgorithm
+signed-data
+signed-receipt
+signedContentIdentifier
+signer certificate not found
+signerInfos
+signer_info
+signfinal error
+signing ctrl failure
+signing not supported for this key type
+sigprocmask
+sigsetjmp
+simpleSecurityObject
+singleExtensions
+singleLevelQuality
+singleRequestExtensions
+sis8qiq8bib8fif8gig8`i`8oio8nin8pip8tit8cic8uiu8kid8
+sissii
+sizeCopied
+sizeof (
+sizeof... (
+sizeof...(
+sk_reserve
+slg_write
+sm-scheme
+sm3WithRSAEncryption
+sm4-cbc
+sm4-cfb
+sm4-cfb1
+sm4-cfb8
+sm4-ctr
+sm4-ecb
+sm4-ofb
+smime text error
+smime.p7m
+smime.p7z
+smime_sign
+smimeencrypt
+smimesign
+snippet
+snmpv2
+soft_heap_limit
+soundex
+source and destination must be distinct
+sqlcipher_activate
+sqlcipher_cipher_profile
+sqlcipher_codec_add_random
+sqlcipher_codec_ctx_free
+sqlcipher_codec_ctx_get_cipher
+sqlcipher_codec_ctx_get_data
+sqlcipher_codec_ctx_get_fast_kdf_iter
+sqlcipher_codec_ctx_get_flag
+sqlcipher_codec_ctx_get_hmac_algorithm
+sqlcipher_codec_ctx_get_kdf_algorithm
+sqlcipher_codec_ctx_get_kdf_iter
+sqlcipher_codec_ctx_get_kdf_salt
+sqlcipher_codec_ctx_get_pagesize
+sqlcipher_codec_ctx_get_plaintext_header_size
+sqlcipher_codec_ctx_get_reservesize
+sqlcipher_codec_ctx_get_use_hmac
+sqlcipher_codec_ctx_init
+sqlcipher_codec_ctx_integrity_check
+sqlcipher_codec_ctx_migrate
+sqlcipher_codec_ctx_set_error
+sqlcipher_codec_ctx_set_fast_kdf_iter
+sqlcipher_codec_ctx_set_flag
+sqlcipher_codec_ctx_set_hmac_algorithm
+sqlcipher_codec_ctx_set_kdf_algorithm
+sqlcipher_codec_ctx_set_kdf_iter
+sqlcipher_codec_ctx_set_kdf_salt
+sqlcipher_codec_ctx_set_pagesize
+sqlcipher_codec_ctx_set_pass
+sqlcipher_codec_ctx_set_plaintext_header_size
+sqlcipher_codec_ctx_set_use_hmac
+sqlcipher_codec_ctx_unset_flag
+sqlcipher_codec_fips_status
+sqlcipher_codec_get_cipher_provider
+sqlcipher_codec_get_keyspec
+sqlcipher_codec_get_pass
+sqlcipher_codec_get_provider_version
+sqlcipher_codec_get_store_pass
+sqlcipher_codec_key_copy
+sqlcipher_codec_key_derive
+sqlcipher_codec_pragma
+sqlcipher_codec_set_store_pass
+sqlcipher_deactivate
+sqlcipher_exportFunc
+sqlcipher_find_db_index
+sqlcipher_free
+sqlcipher_get_default_hmac_algorithm
+sqlcipher_get_default_kdf_algorithm
+sqlcipher_get_default_kdf_iter
+sqlcipher_get_default_pagesize
+sqlcipher_get_default_plaintext_header_size
+sqlcipher_get_default_use_hmac
+sqlcipher_get_hmac_salt_mask
+sqlcipher_get_mem_security
+sqlcipher_get_provider
+sqlcipher_init_memmethods
+sqlcipher_ismemset
+sqlcipher_malloc
+sqlcipher_memcmp
+sqlcipher_memset
+sqlcipher_mlock
+sqlcipher_munlock
+sqlcipher_mutex
+sqlcipher_openssl_setup
+sqlcipher_page_cipher
+sqlcipher_register_provider
+sqlcipher_set_default_hmac_algorithm
+sqlcipher_set_default_kdf_algorithm
+sqlcipher_set_default_kdf_iter
+sqlcipher_set_default_pagesize
+sqlcipher_set_default_plaintext_header_size
+sqlcipher_set_default_use_hmac
+sqlcipher_set_hmac_salt_mask
+sqlcipher_set_mem_security
+sqlcipher_version
+sqlite3_activate_see
+sqlite3_aggregate_context
+sqlite3_aggregate_count
+sqlite3_auto_extension
+sqlite3_backup_finish
+sqlite3_backup_init
+sqlite3_backup_pagecount
+sqlite3_backup_remaining
+sqlite3_backup_step
+sqlite3_bind_blob
+sqlite3_bind_blob64
+sqlite3_bind_double
+sqlite3_bind_int
+sqlite3_bind_int64
+sqlite3_bind_null
+sqlite3_bind_parameter_count
+sqlite3_bind_parameter_index
+sqlite3_bind_parameter_name
+sqlite3_bind_pointer
+sqlite3_bind_text
+sqlite3_bind_text16
+sqlite3_bind_text64
+sqlite3_bind_value
+sqlite3_bind_zeroblob
+sqlite3_bind_zeroblob64
+sqlite3_blob_bytes
+sqlite3_blob_close
+sqlite3_blob_open
+sqlite3_blob_read
+sqlite3_blob_reopen
+sqlite3_blob_write
+sqlite3_busy_handler
+sqlite3_busy_timeout
+sqlite3_cancel_auto_extension
+sqlite3_changes
+sqlite3_clear_bindings
+sqlite3_close
+sqlite3_close() failed
+sqlite3_close_v2
+sqlite3_collation_needed
+sqlite3_collation_needed16
+sqlite3_column_blob
+sqlite3_column_bytes
+sqlite3_column_bytes16
+sqlite3_column_count
+sqlite3_column_database_name
+sqlite3_column_database_name16
+sqlite3_column_decltype
+sqlite3_column_decltype16
+sqlite3_column_double
+sqlite3_column_int
+sqlite3_column_int64
+sqlite3_column_name
+sqlite3_column_name16
+sqlite3_column_origin_name
+sqlite3_column_origin_name16
+sqlite3_column_table_name
+sqlite3_column_table_name16
+sqlite3_column_text
+sqlite3_column_text16
+sqlite3_column_type
+sqlite3_column_value
+sqlite3_commit_hook
+sqlite3_compileoption_get
+sqlite3_compileoption_used
+sqlite3_complete
+sqlite3_complete16
+sqlite3_config
+sqlite3_context_db_handle
+sqlite3_create_collation
+sqlite3_create_collation16
+sqlite3_create_collation_v2
+sqlite3_create_function
+sqlite3_create_function16
+sqlite3_create_function_v2
+sqlite3_create_module
+sqlite3_create_module_v2
+sqlite3_create_window_function
+sqlite3_data_count
+sqlite3_data_directory
+sqlite3_db_cacheflush
+sqlite3_db_config
+sqlite3_db_filename
+sqlite3_db_handle
+sqlite3_db_mutex
+sqlite3_db_readonly
+sqlite3_db_release_memory
+sqlite3_db_status
+sqlite3_declare_vtab
+sqlite3_drop_modules
+sqlite3_enable_load_extension
+sqlite3_enable_shared_cache
+sqlite3_errcode
+sqlite3_errmsg
+sqlite3_errmsg16
+sqlite3_errstr
+sqlite3_exec
+sqlite3_expanded_sql
+sqlite3_expired
+sqlite3_extended_errcode
+sqlite3_extended_result_codes
+sqlite3_extension_init
+sqlite3_file_control
+sqlite3_filename_database
+sqlite3_filename_journal
+sqlite3_filename_wal
+sqlite3_finalize
+sqlite3_free
+sqlite3_free_table
+sqlite3_fts3_may_be_corrupt
+sqlite3_fts5_may_be_corrupt
+sqlite3_get_autocommit
+sqlite3_get_auxdata
+sqlite3_get_table
+sqlite3_get_table() called with two or more incompatible queries
+sqlite3_global_recover
+sqlite3_hard_heap_limit64
+sqlite3_initialize
+sqlite3_interrupt
+sqlite3_key
+sqlite3_key_v2
+sqlite3_keyword_check
+sqlite3_keyword_count
+sqlite3_keyword_name
+sqlite3_last_insert_rowid
+sqlite3_libversion
+sqlite3_libversion_number
+sqlite3_limit
+sqlite3_load_extension
+sqlite3_log
+sqlite3_malloc
+sqlite3_malloc64
+sqlite3_memory_alarm
+sqlite3_memory_highwater
+sqlite3_memory_used
+sqlite3_mprintf
+sqlite3_msize
+sqlite3_mutex_alloc
+sqlite3_mutex_enter
+sqlite3_mutex_free
+sqlite3_mutex_leave
+sqlite3_mutex_try
+sqlite3_next_stmt
+sqlite3_open
+sqlite3_open16
+sqlite3_open_v2
+sqlite3_os_end
+sqlite3_os_init
+sqlite3_overload_function
+sqlite3_prepare
+sqlite3_prepare16
+sqlite3_prepare16_v2
+sqlite3_prepare16_v3
+sqlite3_prepare_v2
+sqlite3_prepare_v3
+sqlite3_profile
+sqlite3_progress_handler
+sqlite3_randomness
+sqlite3_realloc
+sqlite3_realloc64
+sqlite3_rekey
+sqlite3_rekey_v2
+sqlite3_release_memory
+sqlite3_reset
+sqlite3_reset_auto_extension
+sqlite3_result_blob
+sqlite3_result_blob64
+sqlite3_result_double
+sqlite3_result_error
+sqlite3_result_error16
+sqlite3_result_error_code
+sqlite3_result_error_nomem
+sqlite3_result_error_toobig
+sqlite3_result_int
+sqlite3_result_int64
+sqlite3_result_null
+sqlite3_result_pointer
+sqlite3_result_subtype
+sqlite3_result_text
+sqlite3_result_text16
+sqlite3_result_text16be
+sqlite3_result_text16le
+sqlite3_result_text64
+sqlite3_result_value
+sqlite3_result_zeroblob
+sqlite3_result_zeroblob64
+sqlite3_rollback_hook
+sqlite3_rtree_geometry_callback
+sqlite3_rtree_query_callback
+sqlite3_set_authorizer
+sqlite3_set_auxdata
+sqlite3_set_last_insert_rowid
+sqlite3_shutdown
+sqlite3_sleep
+sqlite3_snprintf
+sqlite3_soft_heap_limit
+sqlite3_soft_heap_limit64
+sqlite3_sourceid
+sqlite3_sql
+sqlite3_status
+sqlite3_status64
+sqlite3_step
+sqlite3_stmt_busy
+sqlite3_stmt_isexplain
+sqlite3_stmt_readonly
+sqlite3_stmt_status
+sqlite3_str_append
+sqlite3_str_appendall
+sqlite3_str_appendchar
+sqlite3_str_appendf
+sqlite3_str_errcode
+sqlite3_str_finish
+sqlite3_str_length
+sqlite3_str_new
+sqlite3_str_reset
+sqlite3_str_value
+sqlite3_str_vappendf
+sqlite3_strglob
+sqlite3_stricmp
+sqlite3_strlike
+sqlite3_strnicmp
+sqlite3_system_errno
+sqlite3_table_column_metadata
+sqlite3_temp_directory
+sqlite3_test_control
+sqlite3_thread_cleanup
+sqlite3_threadsafe
+sqlite3_total_changes
+sqlite3_trace
+sqlite3_trace_v2
+sqlite3_transfer_bindings
+sqlite3_unlock_notify
+sqlite3_update_hook
+sqlite3_uri_boolean
+sqlite3_uri_int64
+sqlite3_uri_key
+sqlite3_uri_parameter
+sqlite3_user_data
+sqlite3_value_blob
+sqlite3_value_bytes
+sqlite3_value_bytes16
+sqlite3_value_double
+sqlite3_value_dup
+sqlite3_value_free
+sqlite3_value_frombind
+sqlite3_value_int
+sqlite3_value_int64
+sqlite3_value_nochange
+sqlite3_value_numeric_type
+sqlite3_value_pointer
+sqlite3_value_subtype
+sqlite3_value_text
+sqlite3_value_text16
+sqlite3_value_text16be
+sqlite3_value_text16le
+sqlite3_value_type
+sqlite3_version
+sqlite3_vfs_find
+sqlite3_vfs_register
+sqlite3_vfs_unregister
+sqlite3_vmprintf
+sqlite3_vsnprintf
+sqlite3_vtab_collation
+sqlite3_vtab_config
+sqlite3_vtab_nochange
+sqlite3_vtab_on_conflict
+sqlite3_wal_autocheckpoint
+sqlite3_wal_checkpoint
+sqlite3_wal_checkpoint_v2
+sqlite3_wal_hook
+sqlite3pager_error
+sqlite3pager_is_mj_pgno
+sqlite3pager_reset
+sqlite\_%
+sqlite_
+sqlite_altertab_%s
+sqlite_attach
+sqlite_autoindex_%s_%d
+sqlite_compileoption_get
+sqlite_compileoption_used
+sqlite_detach
+sqlite_log
+sqlite_master
+sqlite_rename_column
+sqlite_rename_table
+sqlite_rename_test
+sqlite_sequence
+sqlite_source_id
+sqlite_stat%d
+sqlite_stat3
+sqlite_temp_master
+sqlite_version
+sscanf
+ssl command section empty
+ssl command section not found
+ssl section empty
+ssl section not found
+ssl3-md5
+ssl3-sha1
+ssl_client
+ssl_module_init
+ssl_server
+sslclient
+sslv23
+sslv3 rollback attack
+stable_get
+start of 
+stat_get
+stat_init
+stat_push
+stateOrProvinceName
+statement %p
+statement aborts at %d: [%s] %s
+statement too long
+static_cast
+status expired
+status not yet valid
+status too old
+status_request
+status_request_v2
+stbl_module_init
+stbl_section
+std::__libcpp_tls_set failure in __cxa_get_globals()
+std::allocator
+std::bad_alloc
+std::bad_cast
+std::bad_exception
+std::bad_typeid
+std::basic_iostream<char, std::char_traits<char> >
+std::basic_istream<char, std::char_traits<char> >
+std::basic_ostream<char, std::char_traits<char> >
+std::basic_string
+std::basic_string<char, std::char_traits<char>, std::allocator<char> >
+std::exception
+std::iostream
+std::istream
+std::nullptr_t
+std::ostream
+std::string
+stderr
+stdout
+store init error
+str_copy
+strcasecmp
+strcat
+strchr
+strcmp
+strcpy
+strcspn
+strdup
+streaming not supported
+street
+streetAddress
+strerror
+strftime
+string literal
+string or blob too big
+string too short
+string=
+strlen
+strncasecmp
+strncmp
+strncpy
+strrchr
+strspn
+strstr
+strtod
+strtol
+strtoll
+strtoul
+struct
+sub-select returns %d columns - expected %d
+subjectAltName
+subjectDirectoryAttributes
+subjectDomainPolicy
+subjectInfoAccess
+subjectSignTool
+subjectUID
+subqueries
+subquery_%u
+substr
+subtreeMaximumQuality
+subtreeMinimumQuality
+superseded
+suppPubInfo
+supportedAlgorithms
+supportedApplicationContext
+surname
+symname(
+synchronous
+syntax error after column name "%.*s"
+sys$assign error
+sys$dassgn error
+sys$qiow error
+syscall
+sysconf
+syslog
+system lib
+system library
+sz=[0-9]*
+t\lHBW
+t\ttttttttttetgttt
+table "%s" has more than one primary key
+table %S has %d columns but %d values were supplied
+table %S has no column named %s
+table %T already exists
+table %s has %d values for %d columns
+table %s may not be altered
+table %s may not be dropped
+table %s may not be indexed
+table %s may not be modified
+table_info
+table_xinfo
+targetInformation
+tbl,idx,neq,nlt,ndlt,sample
+tbl,idx,stat
+tbl_name='%q' AND type!='trigger'
+tbsRequest
+tbsResponseData
+tcgetattr
+tcsetattr
+telephoneNumber
+teletexTerminalIdentifier
+telexNumber
+temp_store
+temp_store_directory
+temporary
+temporary storage cannot be changed from within a transaction
+temporary table name must be unqualified
+temporary trigger may not have qualified name
+terminate_handler unexpectedly returned
+terminate_handler unexpectedly threw an exception
+terminating
+terminating with %s exception of type %s
+terminating with %s exception of type %s: %s
+terminating with %s foreign exception
+text/plain
+textEncodedORAddress
+textNotice
+textkey
+textrekey
+the "." operator
+the INDEXED BY clause is not allowed on UPDATE or DELETE statements within triggers
+the NOT INDEXED clause is not allowed on UPDATE or DELETE statements within triggers
+the asn1 object identifier is not known for this md
+the meth_data stack is corrupt
+there is already a table named %s
+there is already an index named %s
+there is already another table or index with this name: %s
+there must be one signer
+thisUpdate
+thread-local initialization routine for 
+thread-local wrapper routine for 
+threads
+throw 
+throw(
+thstndrd
+time not ascii format
+time stamp routines
+time syscall error
+timeStamping
+timestampsign
+tls1-prf
+tls1_prf_alg
+tlsfeature
+token not present
+token present
+tokenchars
+tokenchars=
+too little nonce requested
+too many FROM clause terms, max: %d
+too many SQL variables
+too many arguments on %s() - max %d
+too many arguments on function %T
+too many attached databases - max %d
+too many columns in %s
+too many columns in result set
+too many columns on %s
+too many iterations
+too many levels of trigger recursion
+too many prefix indexes (max %d)
+too many references to "%s": max 65535
+too many temporary variables
+too many terms in %s BY clause
+too many terms in ORDER BY clause
+too many terms in compound SELECT
+too much nonce requested
+total_changes
+tpBasis
+trailerField
+tree_init
+trigger
+trigger %T already exists
+trustRoot
+trusted_schema
+try_decode_PKCS12
+try_decode_PKCS8Encrypted
+try_decode_params
+ts datasign
+ts_CONF_invalid
+ts_CONF_lookup_fail
+ts_RESP_create_tst_info
+ts_RESP_get_policy
+ts_RESP_sign
+ts_check_imprints
+ts_check_nonces
+ts_check_policy
+ts_check_signing_certs
+ts_check_status_info
+ts_compute_imprint
+ts_get_status_text
+ts_verify_cert
+tsa name mismatch
+tsa untrusted
+tst info setup error
+ttqttttt0ttt
+type not constructed
+type not digested data
+type not encrypted data
+type not primitive
+type: 
+type='trigger' AND name='%q'
+type_id
+typeid (
+typeinfo for 
+typeinfo name for 
+typeof
+u&u7',
+u1@y`1@9
+ua-pki
+uacurve0
+uacurve1
+uacurve2
+uacurve3
+uacurve4
+uacurve5
+uacurve6
+uacurve7
+uacurve8
+uacurve9
+ui process interrupted or cancelled
+uint32_c2i
+uint32_new
+uint64_c2i
+uint64_new
+unable to bind socket
+unable to close due to unfinalized statements or unfinished backups
+unable to create new section
+unable to create socket
+unable to delete/modify collation sequence due to active statements
+unable to delete/modify user-function due to active statements
+unable to derive keys
+unable to finalize context
+unable to find certificate
+unable to find mem bio
+unable to find message digest
+unable to find parameters in chain
+unable to get certs public key
+unable to get issuer details
+unable to get issuer keyid
+unable to get the page. error code=%d
+unable to identify the object to be reindexed
+unable to keepalive
+unable to listen socket
+unable to nodelay
+unable to open a temporary database file for storing temporary tables
+unable to open database file
+unable to open database: %s
+unable to open shared library [%s]
+unable to reuseaddr
+unable to use function %s in the requested context
+unacceptable policy
+unauthAttrs
+unauth_attr
+unavailable ip family
+uncaught
+undersize RTree blobs in "%q_node"
+unexpected
+unexpected dek iv
+unexpected eoc
+unexpected_handler unexpectedly returned
+unicode
+unicode61
+unindexed
+uninitialized
+unique
+uniqueIdentifier
+uniqueMember
+universalstring is wrong length
+unix-dotfile
+unix-excl
+unix-none
+unixepoch
+unknown
+unknown algorithm type
+unknown bit string argument
+unknown cipher
+unknown column "%s" in foreign key definition
+unknown control command
+unknown database %T
+unknown database %s
+unknown database: %s
+unknown digest
+unknown digest algorithm
+unknown digest type
+unknown error
+unknown extension
+unknown extension name
+unknown format
+unknown function: %s()
+unknown id
+unknown info type
+unknown key type
+unknown library
+unknown log
+unknown mask digest
+unknown message digest
+unknown message digest algorithm
+unknown module name
+unknown nid
+unknown object type
+unknown operation
+unknown option
+unknown or unsupported join type: %T %T%s%T
+unknown padding type
+unknown parameter type
+unknown pbe algorithm
+unknown public key type
+unknown purpose id
+unknown signature algorithm
+unknown special query: %.*s
+unknown status
+unknown table option: %.*s
+unknown tag
+unknown tokenizer
+unknown tokenizer: %s
+unknown trust id
+unknown ttyget errno value
+unknown version
+unlikely
+unlink
+unopened
+unordered*
+unprotectedAttrs
+unrecognized column option: %s
+unrecognized matchinfo request: %c
+unrecognized matchinfo: %s
+unrecognized option: "%.*s"
+unrecognized order: %s
+unrecognized parameter: %s
+unrecognized signature nid
+unrecognized token: "%.*s"
+unregistered scheme
+unsafe use of %s()
+unsafe use of virtual table "%s"
+unsigned __int128
+unsigned char
+unsigned int
+unsigned long
+unsigned long long
+unsigned short
+unsignedAttrs
+unspecified
+unstructuredAddress
+unstructuredName
+unsupported algorithm
+unsupported any defined by type
+unsupported cipher
+unsupported cipher type
+unsupported compression algorithm
+unsupported content type
+unsupported drbg flags
+unsupported drbg type
+unsupported encoding: %s
+unsupported encryption
+unsupported encryption type
+unsupported entry type
+unsupported file format
+unsupported frame specification
+unsupported ip family
+unsupported kek algorithm
+unsupported key components
+unsupported key derivation function
+unsupported key encryption algorithm
+unsupported key size
+unsupported keylength
+unsupported label source
+unsupported mask algorithm
+unsupported mask parameter
+unsupported md algorithm
+unsupported method
+unsupported number of rounds
+unsupported operation
+unsupported option
+unsupported pkcs12 mode
+unsupported prf
+unsupported private key algorithm
+unsupported protocol family
+unsupported public key type
+unsupported recipient type
+unsupported recipientinfo type
+unsupported requestorname type
+unsupported salt type
+unsupported search type
+unsupported signature type
+unsupported type
+unsupported use of NULLS %s
+unterminated string
+unused
+unverified
+unwrap error
+unwrap failure
+uri authority unsupported
+use DROP TABLE to delete table %s
+use DROP VIEW to delete view %s
+user data duplication unsupported
+user too long
+userCertificate
+userClass
+userId
+userNotice
+userPassword
+user_version
+usermerge
+usleep
+utf16be
+utf16le
+utf8only
+utimes
+uuttts
+uvwxyz{
+v1 (0x0)
+v2i_ASIdentifiers
+v2i_ASN1_BIT_STRING
+v2i_AUTHORITY_INFO_ACCESS
+v2i_AUTHORITY_KEYID
+v2i_BASIC_CONSTRAINTS
+v2i_EXTENDED_KEY_USAGE
+v2i_GENERAL_NAMES
+v2i_GENERAL_NAME_ex
+v2i_IPAddrBlocks
+v2i_NAME_CONSTRAINTS
+v2i_POLICY_CONSTRAINTS
+v2i_POLICY_MAPPINGS
+v2i_TLS_FEATURE
+v2i_crld
+v2i_idp
+v2i_issuer_alt
+v2i_subject_alt
+v3_generic_extension
+v@aTR'
+value missing
+value.bag
+value.byKey
+value.byName
+value.good
+value.keybag
+value.other
+value.revoked
+value.safes
+value.sdsicert
+value.shkeybag
+value.unknown
+value.x509cert
+value.x509crl
+var bad value
+variable expansion too long
+variable has no value
+variable number must be between ?1 and ?%d
+vasprintf
+vfprintf
+view %s is circularly defined
+view %s may not be altered
+views may not be indexed
+virtual table
+virtual tables cannot use computed columns
+virtual tables may not be altered
+virtual tables may not be indexed
+vms_bind_sym
+vms_load
+vms_merger
+vms_unload
+vtab:%p
+vtable constructor called recursively: %s
+vtable constructor did not declare schema: %s
+vtable constructor failed: %s
+vvvvuuttts
+vwwxyzhtwya
+wal_autocheckpoint
+wal_checkpoint
+wap-wsg
+wap-wsg-idm-ecid-wtls1
+wap-wsg-idm-ecid-wtls10
+wap-wsg-idm-ecid-wtls11
+wap-wsg-idm-ecid-wtls12
+wap-wsg-idm-ecid-wtls3
+wap-wsg-idm-ecid-wtls4
+wap-wsg-idm-ecid-wtls5
+wap-wsg-idm-ecid-wtls6
+wap-wsg-idm-ecid-wtls7
+wap-wsg-idm-ecid-wtls8
+wap-wsg-idm-ecid-wtls9
+warning message
+wchar_t
+weekday 
+wefghijklmno+,-./0123456789
+while 
+whirlpool
+whw8xhx8
+win32_bind_func
+win32_globallookup
+win32_joiner
+win32_load
+win32_merger
+win32_name_converter
+win32_splitter
+win32_unload
+wrap mode not allowed
+writable_schema
+write to read only BIO
+writing strings
+wrong # of entries in index 
+wrong content type
+wrong final block length
+wrong integer type
+wrong lookup type
+wrong number of arguments to function %.*s()
+wrong number of arguments to function %s
+wrong number of arguments to function fts5_fold
+wrong number of arguments to function fts5_isalnum
+wrong number of arguments to function highlight()
+wrong number of arguments to function rtreecheck()
+wrong number of arguments to function snippet()
+wrong number of vtable arguments
+wrong pkcs7 type
+wrong public key type
+wrong signature length
+wrong type
+wwxxxx
+wwxxxxGG
+wwxxxxvvvvuuttts
+x%Jo%.\r.
+x(N!Z(N!x(N2Z(NRz(N
+x(N!Z(N!x(N2Z(NRz(Nq
+x(N!x(N
+x121Address
+x500UniqueIdentifier
+x509 certificate routines
+x509Certificate
+x509Crl
+x509ExtAdmission
+x509_name_canon
+x509_name_encode
+x509_name_ex_d2i
+x509_name_ex_new
+x509_pubkey_decode
+xts duplicated keys
+xxJo%%\r..8$
+y(C@9(
+y(cA9H
+y<x(0Fx
+y@L J(N
+yA9()@9
+yIY@9K%@yL
+yefghijklmno;+,-./0123456789
+yhF@9(
+yhR@yi
+yhz@9y
+yyyyyyy
+zcrypto/evp/bio_enc.c
+zeroblob
+zeroblob(%d)
+zlib compression
+zlib deflate error
+zlib inflate error
+zlib not supported
+{%ssegid=%d h=%d pgno=%d}
+{averages} 
+{rL)i"
+{structure}
+{vvvvuuttts
+}{))R>
+~=zG=d
+~~zG==

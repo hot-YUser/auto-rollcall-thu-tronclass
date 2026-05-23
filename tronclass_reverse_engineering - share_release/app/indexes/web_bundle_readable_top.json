@@ -1,0 +1,182 @@
+[
+  {
+    "id": "23352",
+    "source": "webview_modules/structured/app.73d6a975/23352.js",
+    "pretty": "webview_modules/readable/app.73d6a975/23352.js",
+    "bytes": 942779
+  },
+  {
+    "id": "76617",
+    "source": "webview_modules/structured/chunk-mathjax-832c3b72.982fe107/76617.js",
+    "pretty": "webview_modules/readable/chunk-mathjax-832c3b72.982fe107/76617.js",
+    "bytes": 611471
+  },
+  {
+    "id": "56929",
+    "source": "webview_modules/structured/chunk-vendors-b4a3a6fa.60b51e52/56929.js",
+    "pretty": "webview_modules/readable/chunk-vendors-b4a3a6fa.60b51e52/56929.js",
+    "bytes": 492701
+  },
+  {
+    "id": "16733",
+    "source": "webview_modules/structured/app.73d6a975/16733.js",
+    "pretty": "webview_modules/readable/app.73d6a975/16733.js",
+    "bytes": 424557
+  },
+  {
+    "id": "85694",
+    "source": "webview_modules/structured/chunk-vendors-b85e1843.e10a4801/85694.js",
+    "pretty": "webview_modules/readable/chunk-vendors-b85e1843.e10a4801/85694.js",
+    "bytes": 382200
+  },
+  {
+    "id": "60341",
+    "source": "webview_modules/structured/chunk-vendors-3081da64.3c3c347e/60341.js",
+    "pretty": "webview_modules/readable/chunk-vendors-3081da64.3c3c347e/60341.js",
+    "bytes": 361358
+  },
+  {
+    "id": "31166",
+    "source": "webview_modules/structured/chunk-vendors-3081da64.3c3c347e/31166.js",
+    "pretty": "webview_modules/readable/chunk-vendors-3081da64.3c3c347e/31166.js",
+    "bytes": 302562
+  },
+  {
+    "id": "59363",
+    "source": "webview_modules/structured/chunk-vendors-c5c6856a.d868184e/59363.js",
+    "pretty": "webview_modules/readable/chunk-vendors-c5c6856a.d868184e/59363.js",
+    "bytes": 271631
+  },
+  {
+    "id": "55101",
+    "source": "webview_modules/structured/chunk-vendors-37a93c5f.4ab43754/55101.js",
+    "pretty": "webview_modules/readable/chunk-vendors-37a93c5f.4ab43754/55101.js",
+    "bytes": 204049
+  },
+  {
+    "id": "70453",
+    "source": "webview_modules/structured/chunk-vendors-48b8d778.3655d345/70453.js",
+    "pretty": "webview_modules/readable/chunk-vendors-48b8d778.3655d345/70453.js",
+    "bytes": 164111
+  },
+  {
+    "id": "56185",
+    "source": "webview_modules/structured/app.73d6a975/56185.js",
+    "pretty": "webview_modules/readable/app.73d6a975/56185.js",
+    "bytes": 147657
+  },
+  {
+    "id": "12590",
+    "source": "webview_modules/structured/chunk-vendors-3f88d8a8.f89638c5/12590.js",
+    "pretty": "webview_modules/readable/chunk-vendors-3f88d8a8.f89638c5/12590.js",
+    "bytes": 140675
+  },
+  {
+    "id": "73995",
+    "source": "webview_modules/structured/app.73d6a975/73995.js",
+    "pretty": "webview_modules/readable/app.73d6a975/73995.js",
+    "bytes": 138382
+  },
+  {
+    "id": "2138",
+    "source": "webview_modules/structured/chunk-vendors-6769e234.4edeceaa/2138.js",
+    "pretty": "webview_modules/readable/chunk-vendors-6769e234.4edeceaa/2138.js",
+    "bytes": 103608
+  },
+  {
+    "id": "78614",
+    "source": "webview_modules/structured/chunk-vendors-b9f70e77.d8ebf613/78614.js",
+    "pretty": "webview_modules/readable/chunk-vendors-b9f70e77.d8ebf613/78614.js",
+    "bytes": 99115
+  },
+  {
+    "id": "34900",
+    "source": "webview_modules/structured/app.73d6a975/34900.js",
+    "pretty": "webview_modules/readable/app.73d6a975/34900.js",
+    "bytes": 97854
+  },
+  {
+    "id": "45350",
+    "source": "webview_modules/structured/chunk-vendors-289cff67.0a84cca0/45350.js",
+    "pretty": "webview_modules/readable/chunk-vendors-289cff67.0a84cca0/45350.js",
+    "bytes": 93943
+  },
+  {
+    "id": "87804",
+    "source": "webview_modules/structured/chunk-vendors-377fed06.988a5fc6/87804.js",
+    "pretty": "webview_modules/readable/chunk-vendors-377fed06.988a5fc6/87804.js",
+    "bytes": 84067
+  },
+  {
+    "id": "34668",
+    "source": "webview_modules/structured/chunk-vendors-aacc2dbb.deb34d08/34668.js",
+    "pretty": "webview_modules/readable/chunk-vendors-aacc2dbb.deb34d08/34668.js",
+    "bytes": 83814
+  },
+  {
+    "id": "28237",
+    "source": "webview_modules/structured/app.73d6a975/28237.js",
+    "pretty": "webview_modules/readable/app.73d6a975/28237.js",
+    "bytes": 81899
+  },
+  {
+    "id": "12010",
+    "source": "webview_modules/structured/chunk-mathjax-832c3b72.982fe107/12010.js",
+    "pretty": "webview_modules/readable/chunk-mathjax-832c3b72.982fe107/12010.js",
+    "bytes": 76625
+  },
+  {
+    "id": "96486",
+    "source": "webview_modules/structured/chunk-vendors-6b948b9f.8acc5838/96486.js",
+    "pretty": "webview_modules/readable/chunk-vendors-6b948b9f.8acc5838/96486.js",
+    "bytes": 73336
+  },
+  {
+    "id": "91387",
+    "source": "webview_modules/structured/chunk-vendors-6b948b9f.8acc5838/91387.js",
+    "pretty": "webview_modules/readable/chunk-vendors-6b948b9f.8acc5838/91387.js",
+    "bytes": 72493
+  },
+  {
+    "id": "69822",
+    "source": "webview_modules/structured/chunk-vendors-8cbd2506.c3c97486/69822.js",
+    "pretty": "webview_modules/readable/chunk-vendors-8cbd2506.c3c97486/69822.js",
+    "bytes": 68363
+  },
+  {
+    "id": "77577",
+    "source": "webview_modules/structured/chunk-vendors-ca445505.d5a21ac2/77577.js",
+    "pretty": "webview_modules/readable/chunk-vendors-ca445505.d5a21ac2/77577.js",
+    "bytes": 68177
+  },
+  {
+    "id": "76229",
+    "source": "webview_modules/structured/chunk-vendors-c3943e85.7355e14a/76229.js",
+    "pretty": "webview_modules/readable/chunk-vendors-c3943e85.7355e14a/76229.js",
+    "bytes": 66797
+  },
+  {
+    "id": "36449",
+    "source": "webview_modules/structured/chunk-common-14b21198.4bf44df8/36449.js",
+    "pretty": "webview_modules/readable/chunk-common-14b21198.4bf44df8/36449.js",
+    "bytes": 65411
+  },
+  {
+    "id": "50774",
+    "source": "webview_modules/structured/chunk-vendors-af4e84d4.50b2eb4a/50774.js",
+    "pretty": "webview_modules/readable/chunk-vendors-af4e84d4.50b2eb4a/50774.js",
+    "bytes": 62857
+  },
+  {
+    "id": "7453",
+    "source": "webview_modules/structured/7453.090670e2/7453.js",
+    "pretty": "webview_modules/readable/7453.090670e2/7453.js",
+    "bytes": 62481
+  },
+  {
+    "id": "54507",
+    "source": "webview_modules/structured/chunk-vendors-b85e1843.e10a4801/54507.js",
+    "pretty": "webview_modules/readable/chunk-vendors-b85e1843.e10a4801/54507.js",
+    "bytes": 56935
+  }
+]

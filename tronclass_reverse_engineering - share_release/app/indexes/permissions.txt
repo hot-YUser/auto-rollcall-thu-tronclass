@@ -1,0 +1,52 @@
+uses-permission android.permission.INTERNET
+uses-permission android.permission.SYSTEM_ALERT_WINDOW
+uses-permission android.permission.READ_EXTERNAL_STORAGE maxSdkVersion=32
+uses-permission android.permission.WRITE_EXTERNAL_STORAGE maxSdkVersion=32
+uses-permission android.permission.ACCESS_COARSE_LOCATION
+uses-permission android.permission.ACCESS_FINE_LOCATION
+uses-permission android.permission.ACCESS_NETWORK_STATE
+uses-permission android.permission.CAMERA
+uses-permission android.permission.RECORD_AUDIO
+uses-permission android.permission.MODIFY_AUDIO_SETTINGS
+uses-permission android.permission.BLUETOOTH
+uses-permission android.permission.BLUETOOTH_ADMIN
+uses-permission android.permission.ACCESS_WIFI_STATE
+uses-permission android.permission.POST_NOTIFICATIONS
+uses-permission android.permission.BLUETOOTH_SCAN
+uses-permission android.permission.BLUETOOTH_ADVERTISE
+uses-permission android.permission.BLUETOOTH_CONNECT
+uses-permission android.permission.RECEIVE_BOOT_COMPLETED
+uses-permission android.permission.WAKE_LOCK
+uses-permission android.permission.READ_PHONE_STATE
+uses-permission android.permission.RECORD_VIDEO
+uses-permission android.permission.MANAGE_DOCUMENTS
+uses-permission com.wisdomgarden.trpc.permission.JPUSH_MESSAGE
+uses-permission android.permission.VIBRATE
+uses-permission android.permission.CHANGE_WIFI_STATE
+uses-permission android.permission.CHANGE_NETWORK_STATE
+uses-permission android.permission.GET_TASKS
+uses-permission com.huawei.android.launcher.permission.CHANGE_BADGE
+uses-permission com.vivo.notification.permission.BADGE_ICON
+uses-permission com.hihonor.android.launcher.permission.CHANGE_BADGE
+permission com.wisdomgarden.trpc.permission.JPUSH_MESSAGE protectionLevel=signature
+permission com.wisdomgarden.trpc.permission.C2D_MESSAGE protectionLevel=signature
+uses-permission com.wisdomgarden.trpc.permission.C2D_MESSAGE
+uses-permission com.google.android.c2dm.permission.RECEIVE
+uses-permission com.sec.android.provider.badge.permission.READ
+uses-permission com.sec.android.provider.badge.permission.WRITE
+uses-permission com.htc.launcher.permission.READ_SETTINGS
+uses-permission com.htc.launcher.permission.UPDATE_SHORTCUT
+uses-permission com.sonyericsson.home.permission.BROADCAST_BADGE
+uses-permission com.sonymobile.home.permission.PROVIDER_INSERT_BADGE
+uses-permission com.anddoes.launcher.permission.UPDATE_COUNT
+uses-permission com.majeur.launcher.permission.UPDATE_BADGE
+uses-permission com.huawei.android.launcher.permission.READ_SETTINGS
+uses-permission com.huawei.android.launcher.permission.WRITE_SETTINGS
+uses-permission android.permission.READ_APP_BADGE
+uses-permission com.oppo.launcher.permission.READ_SETTINGS
+uses-permission com.oppo.launcher.permission.WRITE_SETTINGS
+uses-permission me.everything.badger.permission.BADGE_COUNT_READ
+uses-permission me.everything.badger.permission.BADGE_COUNT_WRITE
+uses-permission android.permission.FLASHLIGHT
+uses-permission android.permission.FOREGROUND_SERVICE
+

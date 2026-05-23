@@ -1,0 +1,11 @@
+Manifest-Version: 1.0
+
+Name: AndroidManifest.xml
+SHA1-Digest: ceVy3ULX5TfnSyxheBTj08JThBU=
+
+Name: resources.arsc
+SHA1-Digest: xZIW89RZmOB6dEfqzeElHD35UgI=
+
+Name: stamp-cert-sha256
+SHA1-Digest: 5vTkm69vqAbusD/fho7oWwc7j+I=
+

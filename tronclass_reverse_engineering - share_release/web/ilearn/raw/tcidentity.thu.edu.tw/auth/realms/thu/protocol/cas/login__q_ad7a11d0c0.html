@@ -1,0 +1,169 @@
+    <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+    <html xmlns="http://www.w3.org/1999/xhtml" lang="zh-TW">
+
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="robots" content="noindex, nofollow">
+
+                <meta name="viewport" content="width=device-width,initial-scale=1"/>
+        <title>東海大學 iLearn 教學平台</title>
+        <link rel="icon" href="/auth/resources/3mmb3/login/tw-common-v2.0/img/favicon.ico" />
+                <link href="/auth/resources/3mmb3/login/tw-common-v2.0/node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet" />
+                <link href="/auth/resources/3mmb3/login/tw-common-v2.0/css/toastr.min.css" rel="stylesheet" />
+                <link href="/auth/resources/3mmb3/login/tw-common-v2.0/css/wisdomgarden.css" rel="stylesheet" />
+                <link href="/auth/resources/3mmb3/login/tw-common-v2.0/css/custom.css" rel="stylesheet" />
+                <script src="/auth/resources/3mmb3/login/tw-common-v2.0/js/jquery.min.js" type="text/javascript"></script>
+                <script src="/auth/resources/3mmb3/login/tw-common-v2.0/js/jquery.qrcode.min.js" type="text/javascript"></script>
+                <script src="/auth/resources/3mmb3/login/tw-common-v2.0/js/toastr.min.js" type="text/javascript"></script>
+                <script src="/auth/resources/3mmb3/login/tw-common-v2.0/js/welink.qrcode.login.js" type="text/javascript"></script>
+                <script src="/auth/resources/3mmb3/login/tw-common-v2.0/js/util.js" type="text/javascript"></script>
+                <script src="/auth/resources/3mmb3/login/tw-common-v2.0/node_modules/bootstrap/dist/js/bootstrap.min.js" type="text/javascript"></script>
+                <script src="/auth/resources/3mmb3/login/tw-common-v2.0/js/bootstrap-show-password.min.js" type="text/javascript"></script>
+                <script src="/auth/resources/3mmb3/login/tw-common-v2.0/js/qrcode.js" type="text/javascript"></script>
+                <script src="/auth/resources/3mmb3/login/tw-common-v2.0/js/theme-colors.js" type="text/javascript"></script>
+    </head>
+
+    <body class="">
+    <div class="login-pf-page">
+        <div class="card-pf ">
+
+            <div id="kc-content">
+                <div id="kc-content-wrapper">
+
+<div id="kc-locale">
+  <div id="kc-locale-wrapper" class="">
+    <div class="kc-dropdown btn-group" id="kc-locale-dropdown">
+      <button type="button" class="btn btn-default"  id="kc-current-locale-link" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+          繁體中文
+        <span class="caret"></span>
+      </button>
+      <ul class="dropdown-menu">
+            <li class="kc-dropdown-item"><a href="/auth/realms/thu/login-actions/authenticate?client_id=tronclass&amp;tab_id=R4WFBf73jE8&amp;execution=c74909d0-cc2c-450e-92a3-55ec8b87fecd&amp;kc_locale=zh-TW">繁體中文</a></li>
+            <li class="kc-dropdown-item"><a href="/auth/realms/thu/login-actions/authenticate?client_id=tronclass&amp;tab_id=R4WFBf73jE8&amp;execution=c74909d0-cc2c-450e-92a3-55ec8b87fecd&amp;kc_locale=en">English</a></li>
+      </ul>
+    </div>
+  </div>
+</div>        <div class="wisdomgarden_container realm-thu">
+            <div class="login-img-container">
+<div class="logo">
+            <span class="org-name"><b>東海大學 iLearn 教學平台</b></span>
+</div>
+                <div class="bg-container"></div>
+            </div>
+            <div class="form-container">
+                <div class="header">
+                    <span>帳號密碼登入</span>
+                </div>
+<div class="info-group">
+    </div>
+<form class="form-horizontal" onsubmit="login.disabled = true; return true;"
+      action="https://tcidentity.thu.edu.tw/auth/realms/thu/login-actions/authenticate?session_code=NKcZeqdvhmdxbvT4ErGllpsD-mjsbxq3mlfgBI3lDu8&amp;execution=c74909d0-cc2c-450e-92a3-55ec8b87fecd&amp;client_id=tronclass&amp;tab_id=R4WFBf73jE8" method="post">
+    <div class="form-detail">
+        <div class="form-group">
+            <div class="input-box">
+                <i class="input-icon username"></i>
+                <input type="text" id="username" name="username"
+                       class="form-control input-form"
+                       placeholder="帳號"
+                       value=""
+                       autofocus>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="input-box">
+                <i class="input-icon password"></i>
+                <input type="password" id="password" name="password"
+                       class="form-control input-form"
+                       placeholder="密碼"
+                       value="">
+            </div>
+        </div>
+        <div class="other-group">
+            <div>
+            </div>
+        </div>
+        <div class="form-group">
+            <button class="btn btn-primary btn-block btn-login input-height font16"
+                    type="submit" name="login">
+                登入
+            </button>
+        </div>
+    </div>
+</form>
+            </div>
+<div class="qrcode-wrapper">
+    <div class="qrcode-container">
+        <div class="close" onclick="hideQrCode()"></div>
+        <div id="qrcode"></div>
+    </div>
+</div>
+<div class="wrap">
+    <div class="wrap-header">
+        <div class="wrap-close" onclick="closeElectronQrCode()"></div>
+    </div>
+    <div class="login-qrcode">
+        <div class="qr-header">
+            <img src="/auth/resources/3mmb3/login/tw-common-v2.0/img/thu-logo.png" class="qr-logo-img"
+                 alt="image not found"
+                 onerror="this.onerror=null; this.src='/auth/resources/3mmb3/login/tw-common-v2.0/img/default-logo.png';">
+            <div class="close" onclick="hideQrCode()"></div>
+        </div>
+        <div class="wg-qrcode-desc">
+            <p class="wg-qrcode-text">請使用 <span style="color: #00bbbd;">TronClass App</span> 掃描QR Code登入</p>
+            <p class="wg-qrcode-tip">正在跳轉，請勿操作!</p>
+            <p class="wg-qrcode-success">掃碼成功，請按照手機提示操作!</p>
+            <p class="wg-qrcode-login-expired" style="color: red;">您的登入時效已過期，請重新整理頁面後再登入。</p>
+        </div>
+        <input type="hidden" id="userQrcode"/>
+        <form method="post" action="" hidden id="loginForm"></form>
+        <div class="login-qrcode-img div-float-left"></div>
+        <div class="status-container" id="status-container" style="opacity: 0">
+            <img class="statusImg" src="/auth/resources/3mmb3/login/tw-common-v2.0/img/qrcode-confirm.png" id="statusImg" alt="qrcode">
+        </div>
+        <div class="time-out-container" id="time-out-container" onclick="showQrCode('tronclass-qrcode', 'thu')">
+            <div class="img-container">
+                <img class="time-out-img" src="/auth/resources/3mmb3/login/tw-common-v2.0/img/reload.png" id="time-out-img" alt="reload">
+                <div class="tip">刷新</div>
+            </div>
+        </div>
+        <div class="login-time-out-container" id="login-time-out-container">
+            <div class="img-container">
+                <img class="time-out-img" src="/auth/resources/3mmb3/login/tw-common-v2.0/img/alert.png" id="time-out-img" alt="alert">
+                <div class="tip">時效已過期</div>
+            </div>
+        </div>
+    </div>
+</div>
+        </div>
+<div class="wisdomgarden_footer">
+    <div>Copyright © 2025 TronClass. 保留所有權利</div>
+    <div class="browser-suggestion">最佳使用環境：作業系統 Win 7 以上、MAC OS X。 瀏覽器：Edge、Chrome 55以上、Firefox 50.0以上、Safari 9.0以上。</div>
+</div>
+<input type="hidden" id="request_error_message" value="服務器請求失敗，請稍後重新提交">
+<div id="errorMessage" style="display: none">Welink未綁定</div>
+
+        <script type="text/javascript">
+            $(window).bind("load", function() {
+                init("thu");
+            });
+
+            $("#localeSelect").change(function () {
+                window.location.href = $("#localeSelect").val();
+            })
+
+            const tcBaseUrl = 'https://ilearn.thu.edu.tw';
+            $("#register").click(function () {
+                const currentUrl = window.location.href;
+
+                    window.location.href = tcBaseUrl + "/signup?next=" + encodeURIComponent(currentUrl);
+            })
+        </script>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+    </body>
+    </html>

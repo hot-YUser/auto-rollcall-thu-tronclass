@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout android:orientation="horizontal" android:layout_width="match_parent" android:layout_height="match_parent" android:divider="?android:dividerVertical" android:showDividers="middle" android:dividerPadding="12.0dp"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <include layout="@layout/actionbar_discard_button" />
+    <include layout="@layout/actionbar_done_button" />
+</LinearLayout>

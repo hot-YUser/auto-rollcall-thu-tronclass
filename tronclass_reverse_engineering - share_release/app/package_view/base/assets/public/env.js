@@ -1,0 +1,17 @@
+window.APPRuntime.ENVIRONMENT = "prod";
+window.APPRuntime.PLATFORM = "";
+window.APPRuntime.ORG_NAME = "";
+window.APPRuntime.SHOW_VCONSOLE = false;
+window.APPRuntime.MIN_CLICK_INTERVAL = 500;
+window.APPRuntime.LIFF_ID = "";
+window.APPRuntime.TARGET_PLATFORM_MAPPER = {};
+window.APPRuntime.AREA = "";
+window.APPRuntime.DEFAULT_LOGIN_METHOD = "normal";
+window.APPRuntime.OFFLINE_MODE = false;
+window.APPRuntime.ORG_INFO = null;
+window.APPRuntime.TC_HOST = "";
+window.APPRuntime.H5_HOST = "";
+window.APPRuntime.AUTO_LOGIN = false;
+window.APPRuntime.FORCE_CLEAR_CACHE_VERSION = "";
+window.APPRuntime.LOGIN_HIDDEN_AREA = true;
+window.APPRuntime.APP_DISPLAY_NAME = "";

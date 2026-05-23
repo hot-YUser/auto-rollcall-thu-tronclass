@@ -1,0 +1,450 @@
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	AMEDIAFORMAT_KEY_BIT_RATE
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	AMEDIAFORMAT_KEY_COLOR_FORMAT
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	AMEDIAFORMAT_KEY_FRAME_RATE
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	AMEDIAFORMAT_KEY_HEIGHT
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	AMEDIAFORMAT_KEY_I_FRAME_INTERVAL
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	AMEDIAFORMAT_KEY_MIME
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	AMEDIAFORMAT_KEY_STRIDE
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	AMEDIAFORMAT_KEY_WIDTH
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaCodec_configure
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaCodec_createDecoderByType
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaCodec_createEncoderByType
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaCodec_delete
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaCodec_dequeueInputBuffer
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaCodec_dequeueOutputBuffer
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaCodec_getInputBuffer
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaCodec_getOutputBuffer
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaCodec_getOutputFormat
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaCodec_queueInputBuffer
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaCodec_releaseOutputBuffer
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaCodec_start
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaCodec_stop
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaExtractor_advance
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaExtractor_delete
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaExtractor_getSampleTime
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaExtractor_getTrackCount
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaExtractor_getTrackFormat
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaExtractor_new
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaExtractor_readSampleData
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaExtractor_selectTrack
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaExtractor_setDataSourceFd
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaFormat_delete
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaFormat_getInt32
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaFormat_getString
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaFormat_new
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaFormat_setFloat
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaFormat_setInt32
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaFormat_setString
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaFormat_toString
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaMuxer_addTrack
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaMuxer_delete
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaMuxer_new
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaMuxer_setOrientationHint
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaMuxer_start
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaMuxer_stop
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AMediaMuxer_writeSampleData
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AndroidBitmap_getInfo
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AndroidBitmap_lockPixels
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	AndroidBitmap_unlockPixels
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNKSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE2atEm => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::at const(unsigned long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNKSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE4findEcm => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::find const(char, unsigned long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNKSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE5rfindEcm => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::rfind const(char, unsigned long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNKSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE7compareEPKc => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::compare const(char const*)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNKSt6__ndk119__shared_weak_count13__get_deleterERKSt9type_info => std::__ndk1::__shared_weak_count::__get_deleter const(std::type_info const&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNKSt6__ndk16locale9has_facetERNS0_2idE => std::__ndk1::locale::has_facet const(std::__ndk1::locale::id&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNKSt6__ndk16locale9use_facetERNS0_2idE => std::__ndk1::locale::use_facet const(std::__ndk1::locale::id&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNKSt6__ndk18ios_base6getlocEv => std::__ndk1::ios_base::getloc const()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNKSt9exception4whatEv => std::exception::what const()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt11logic_errorC2EPKc => std::logic_error::{base ctor}(char const*)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt11logic_errorC2ERKNSt6__ndk112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEE => std::logic_error::{base ctor}(std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt12length_errorD1Ev => std::length_error::{dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt12out_of_rangeD1Ev => std::out_of_range::{dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt13exception_ptrC1ERKS_ => std::exception_ptr::{ctor}(std::exception_ptr const&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt13exception_ptrD1Ev => std::exception_ptr::{dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt13exception_ptraSERKS_ => std::exception_ptr::operator=(std::exception_ptr const&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt16invalid_argumentD1Ev => std::invalid_argument::{dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt20bad_array_new_lengthC1Ev => std::bad_array_new_length::{ctor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt20bad_array_new_lengthD1Ev => std::bad_array_new_length::{dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk111__call_onceERVmPvPFvS2_E => std::__ndk1::__call_once(unsigned long volatile&, void*, void (*)(void*))
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112__next_primeEm => std::__ndk1::__next_prime(unsigned long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE2atEm => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::at(unsigned long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE5eraseEmm => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::erase(unsigned long, unsigned long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6appendEPKc => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::append(char const*)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6appendEPKcm => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::append(char const*, unsigned long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6appendERKS5_mm => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::append(std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&, unsigned long, unsigned long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6appendEmc => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::append(unsigned long, char)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6assignEPKc => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::assign(char const*)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6assignEPKcm => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::assign(char const*, unsigned long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6insertEmPKc => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::insert(unsigned long, char const*)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6insertEmPKcm => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::insert(unsigned long, char const*, unsigned long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6resizeEmc => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::resize(unsigned long, char)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE7replaceEmmPKc => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::replace(unsigned long, unsigned long, char const*)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE7reserveEm => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::reserve(unsigned long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE9__grow_byEmmmmmm => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::__grow_by(unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE9push_backEc => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::push_back(char)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC1ERKS5_ => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::{ctor}(std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC1ERKS5_mmRKS4_ => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::{ctor}(std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&, unsigned long, unsigned long, std::__ndk1::allocator<char> const&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEED2Ev => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::{base dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEaSERKS5_ => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::operator=(std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEaSEc => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>::operator=(char)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk112basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEEC1ERKS5_mmRKS4_ => std::__ndk1::basic_string<wchar_t, std::__ndk1::char_traits<wchar_t>, std::__ndk1::allocator<wchar_t>>::{ctor}(std::__ndk1::basic_string<wchar_t, std::__ndk1::char_traits<wchar_t>, std::__ndk1::allocator<wchar_t>> const&, unsigned long, unsigned long, std::__ndk1::allocator<wchar_t> const&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_istreamIcNS_11char_traitsIcEEE4readEPcl => std::__ndk1::basic_istream<char, std::__ndk1::char_traits<char>>::read(char*, long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_istreamIcNS_11char_traitsIcEEE5seekgENS_4fposI9mbstate_tEE => std::__ndk1::basic_istream<char, std::__ndk1::char_traits<char>>::seekg(std::__ndk1::fpos<mbstate_t>)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_istreamIcNS_11char_traitsIcEEE5seekgExNS_8ios_base7seekdirE => std::__ndk1::basic_istream<char, std::__ndk1::char_traits<char>>::seekg(long long, std::__ndk1::ios_base::seekdir)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_istreamIcNS_11char_traitsIcEEE5tellgEv => std::__ndk1::basic_istream<char, std::__ndk1::char_traits<char>>::tellg()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_istreamIcNS_11char_traitsIcEEE6sentryC1ERS3_b => std::__ndk1::basic_istream<char, std::__ndk1::char_traits<char>>::sentry::{ctor}(std::__ndk1::basic_istream<char, std::__ndk1::char_traits<char>>&, bool)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_istreamIcNS_11char_traitsIcEEED0Ev => std::__ndk1::basic_istream<char, std::__ndk1::char_traits<char>>::{deleting dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_istreamIcNS_11char_traitsIcEEED1Ev => std::__ndk1::basic_istream<char, std::__ndk1::char_traits<char>>::{dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_istreamIcNS_11char_traitsIcEEED2Ev => std::__ndk1::basic_istream<char, std::__ndk1::char_traits<char>>::{base dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_istreamIcNS_11char_traitsIcEEErsERb => std::__ndk1::basic_istream<char, std::__ndk1::char_traits<char>>::operator>>(bool&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_istreamIcNS_11char_traitsIcEEErsERd => std::__ndk1::basic_istream<char, std::__ndk1::char_traits<char>>::operator>>(double&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_istreamIcNS_11char_traitsIcEEErsERf => std::__ndk1::basic_istream<char, std::__ndk1::char_traits<char>>::operator>>(float&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_istreamIcNS_11char_traitsIcEEErsERi => std::__ndk1::basic_istream<char, std::__ndk1::char_traits<char>>::operator>>(int&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_istreamIcNS_11char_traitsIcEEErsERj => std::__ndk1::basic_istream<char, std::__ndk1::char_traits<char>>::operator>>(unsigned int&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_istreamIcNS_11char_traitsIcEEErsERm => std::__ndk1::basic_istream<char, std::__ndk1::char_traits<char>>::operator>>(unsigned long&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_ostreamIcNS_11char_traitsIcEEE3putEc => std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>::put(char)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_ostreamIcNS_11char_traitsIcEEE5flushEv => std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>::flush()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_ostreamIcNS_11char_traitsIcEEE5writeEPKcl => std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>::write(char const*, long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_ostreamIcNS_11char_traitsIcEEE6sentryC1ERS3_ => std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>::sentry::{ctor}(std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_ostreamIcNS_11char_traitsIcEEE6sentryD1Ev => std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>::sentry::{dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_ostreamIcNS_11char_traitsIcEEED0Ev => std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>::{deleting dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_ostreamIcNS_11char_traitsIcEEED1Ev => std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>::{dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_ostreamIcNS_11char_traitsIcEEED2Ev => std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>::{base dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_ostreamIcNS_11char_traitsIcEEElsEPKv => std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>::operator<<(void const*)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_ostreamIcNS_11char_traitsIcEEElsEb => std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>::operator<<(bool)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_ostreamIcNS_11char_traitsIcEEElsEd => std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>::operator<<(double)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_ostreamIcNS_11char_traitsIcEEElsEf => std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>::operator<<(float)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_ostreamIcNS_11char_traitsIcEEElsEi => std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>::operator<<(int)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_ostreamIcNS_11char_traitsIcEEElsEj => std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>::operator<<(unsigned int)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_ostreamIcNS_11char_traitsIcEEElsEl => std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>::operator<<(long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_ostreamIcNS_11char_traitsIcEEElsEm => std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>::operator<<(unsigned long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk113basic_ostreamIcNS_11char_traitsIcEEElsEt => std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>::operator<<(unsigned short)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk114basic_iostreamIcNS_11char_traitsIcEEED0Ev => std::__ndk1::basic_iostream<char, std::__ndk1::char_traits<char>>::{deleting dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk114basic_iostreamIcNS_11char_traitsIcEEED1Ev => std::__ndk1::basic_iostream<char, std::__ndk1::char_traits<char>>::{dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk114basic_iostreamIcNS_11char_traitsIcEEED2Ev => std::__ndk1::basic_iostream<char, std::__ndk1::char_traits<char>>::{base dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk115__thread_structC1Ev => std::__ndk1::__thread_struct::{ctor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk115__thread_structD1Ev => std::__ndk1::__thread_struct::{dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk115basic_streambufIcNS_11char_traitsIcEEE4syncEv => std::__ndk1::basic_streambuf<char, std::__ndk1::char_traits<char>>::sync()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk115basic_streambufIcNS_11char_traitsIcEEE5imbueERKNS_6localeE => std::__ndk1::basic_streambuf<char, std::__ndk1::char_traits<char>>::imbue(std::__ndk1::locale const&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk115basic_streambufIcNS_11char_traitsIcEEE5uflowEv => std::__ndk1::basic_streambuf<char, std::__ndk1::char_traits<char>>::uflow()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk115basic_streambufIcNS_11char_traitsIcEEE6setbufEPcl => std::__ndk1::basic_streambuf<char, std::__ndk1::char_traits<char>>::setbuf(char*, long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk115basic_streambufIcNS_11char_traitsIcEEE6xsgetnEPcl => std::__ndk1::basic_streambuf<char, std::__ndk1::char_traits<char>>::xsgetn(char*, long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk115basic_streambufIcNS_11char_traitsIcEEE6xsputnEPKcl => std::__ndk1::basic_streambuf<char, std::__ndk1::char_traits<char>>::xsputn(char const*, long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk115basic_streambufIcNS_11char_traitsIcEEE7seekoffExNS_8ios_base7seekdirEj => std::__ndk1::basic_streambuf<char, std::__ndk1::char_traits<char>>::seekoff(long long, std::__ndk1::ios_base::seekdir, unsigned int)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk115basic_streambufIcNS_11char_traitsIcEEE7seekposENS_4fposI9mbstate_tEEj => std::__ndk1::basic_streambuf<char, std::__ndk1::char_traits<char>>::seekpos(std::__ndk1::fpos<mbstate_t>, unsigned int)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk115basic_streambufIcNS_11char_traitsIcEEE8overflowEi => std::__ndk1::basic_streambuf<char, std::__ndk1::char_traits<char>>::overflow(int)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk115basic_streambufIcNS_11char_traitsIcEEE9pbackfailEi => std::__ndk1::basic_streambuf<char, std::__ndk1::char_traits<char>>::pbackfail(int)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk115basic_streambufIcNS_11char_traitsIcEEE9showmanycEv => std::__ndk1::basic_streambuf<char, std::__ndk1::char_traits<char>>::showmanyc()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk115basic_streambufIcNS_11char_traitsIcEEE9underflowEv => std::__ndk1::basic_streambuf<char, std::__ndk1::char_traits<char>>::underflow()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk115basic_streambufIcNS_11char_traitsIcEEEC2Ev => std::__ndk1::basic_streambuf<char, std::__ndk1::char_traits<char>>::{base ctor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk115basic_streambufIcNS_11char_traitsIcEEED2Ev => std::__ndk1::basic_streambuf<char, std::__ndk1::char_traits<char>>::{base dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk115recursive_mutex4lockEv => std::__ndk1::recursive_mutex::lock()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk115recursive_mutex6unlockEv => std::__ndk1::recursive_mutex::unlock()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk115recursive_mutexC1Ev => std::__ndk1::recursive_mutex::{ctor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk115recursive_mutexD1Ev => std::__ndk1::recursive_mutex::{dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk118condition_variable10notify_allEv => std::__ndk1::condition_variable::notify_all()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk118condition_variable10notify_oneEv => std::__ndk1::condition_variable::notify_one()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk118condition_variable15__do_timed_waitERNS_11unique_lockINS_5mutexEEENS_6chrono10time_pointINS5_12system_clockENS5_8durationIxNS_5ratioILl1ELl1000000000EEEEEEE => std::__ndk1::condition_variable::__do_timed_wait(std::__ndk1::unique_lock<std::__ndk1::mutex>&, std::__ndk1::chrono::time_point<std::__ndk1::chrono::system_clock, std::__ndk1::chrono::duration<long long, std::__ndk1::ratio<(long)1, (long)1000000000>>>)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk118condition_variable4waitERNS_11unique_lockINS_5mutexEEE => std::__ndk1::condition_variable::wait(std::__ndk1::unique_lock<std::__ndk1::mutex>&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk118condition_variableD1Ev => std::__ndk1::condition_variable::{dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk119__shared_weak_count14__release_weakEv => std::__ndk1::__shared_weak_count::__release_weak()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk119__shared_weak_countD2Ev => std::__ndk1::__shared_weak_count::{base dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk119__thread_local_dataEv => std::__ndk1::__thread_local_data()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk120__throw_system_errorEiPKc => std::__ndk1::__throw_system_error(int, char const*)
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZNSt6__ndk14cerrE => std::__ndk1::cerr
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZNSt6__ndk14coutE => std::__ndk1::cout
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZNSt6__ndk15ctypeIcE2idE => std::__ndk1::ctype<char>::id
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk15mutex4lockEv => std::__ndk1::mutex::lock()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk15mutex6unlockEv => std::__ndk1::mutex::unlock()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk15mutexD1Ev => std::__ndk1::mutex::{dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk16__sortIRNS_6__lessIaaEEPaEEvT0_S5_T_ => void std::__ndk1::__sort<std::__ndk1::__less<signed char, signed char>&, signed char*>(signed char*, signed char*, std::__ndk1::__less<signed char, signed char>&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk16__sortIRNS_6__lessIddEEPdEEvT0_S5_T_ => void std::__ndk1::__sort<std::__ndk1::__less<double, double>&, double*>(double*, double*, std::__ndk1::__less<double, double>&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk16__sortIRNS_6__lessIffEEPfEEvT0_S5_T_ => void std::__ndk1::__sort<std::__ndk1::__less<float, float>&, float*>(float*, float*, std::__ndk1::__less<float, float>&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk16__sortIRNS_6__lessIhhEEPhEEvT0_S5_T_ => void std::__ndk1::__sort<std::__ndk1::__less<unsigned char, unsigned char>&, unsigned char*>(unsigned char*, unsigned char*, std::__ndk1::__less<unsigned char, unsigned char>&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk16__sortIRNS_6__lessIiiEEPiEEvT0_S5_T_ => void std::__ndk1::__sort<std::__ndk1::__less<int, int>&, int*>(int*, int*, std::__ndk1::__less<int, int>&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk16__sortIRNS_6__lessImmEEPmEEvT0_S5_T_ => void std::__ndk1::__sort<std::__ndk1::__less<unsigned long, unsigned long>&, unsigned long*>(unsigned long*, unsigned long*, std::__ndk1::__less<unsigned long, unsigned long>&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk16__sortIRNS_6__lessIssEEPsEEvT0_S5_T_ => void std::__ndk1::__sort<std::__ndk1::__less<short, short>&, short*>(short*, short*, std::__ndk1::__less<short, short>&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk16__sortIRNS_6__lessIttEEPtEEvT0_S5_T_ => void std::__ndk1::__sort<std::__ndk1::__less<unsigned short, unsigned short>&, unsigned short*>(unsigned short*, unsigned short*, std::__ndk1::__less<unsigned short, unsigned short>&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk16chrono12steady_clock3nowEv => std::__ndk1::chrono::steady_clock::now()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk16chrono12system_clock3nowEv => std::__ndk1::chrono::system_clock::now()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk16localeC1ERKS0_ => std::__ndk1::locale::{ctor}(std::__ndk1::locale const&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk16localeD1Ev => std::__ndk1::locale::{dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk16stoullERKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPmi => std::__ndk1::stoull(std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&, unsigned long*, int)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk16thread20hardware_concurrencyEv => std::__ndk1::thread::hardware_concurrency()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk16thread4joinEv => std::__ndk1::thread::join()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk16threadD1Ev => std::__ndk1::thread::{dtor}()
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZNSt6__ndk17codecvtIcc9mbstate_tE2idE => std::__ndk1::codecvt<char, char, mbstate_t>::id
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk18ios_base33__set_badbit_and_consider_rethrowEv => std::__ndk1::ios_base::__set_badbit_and_consider_rethrow()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk18ios_base4InitC1Ev => std::__ndk1::ios_base::Init::{ctor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk18ios_base4InitD1Ev => std::__ndk1::ios_base::Init::{dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk18ios_base4initEPv => std::__ndk1::ios_base::init(void*)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk18ios_base5clearEj => std::__ndk1::ios_base::clear(unsigned int)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk19basic_iosIcNS_11char_traitsIcEEED2Ev => std::__ndk1::basic_ios<char, std::__ndk1::char_traits<char>>::{base dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk19to_stringEi => std::__ndk1::to_string(int)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt6__ndk1plIcNS_11char_traitsIcEENS_9allocatorIcEEEENS_12basic_stringIT_T0_T1_EEPKS6_RKS9_ => std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> std::__ndk1::operator+<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>(char const*, std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt8bad_castC1Ev => std::bad_cast::{ctor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt8bad_castD1Ev => std::bad_cast::{dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZNSt9exceptionD2Ev => std::exception::{base dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZSt17current_exceptionv => std::current_exception()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZSt17rethrow_exceptionSt13exception_ptr => std::rethrow_exception(std::exception_ptr)
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZSt7nothrow => std::nothrow
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZSt9terminatev => std::terminate()
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTINSt6__ndk113basic_istreamIcNS_11char_traitsIcEEEE => typeinfo for std::__ndk1::basic_istream<char, std::__ndk1::char_traits<char>>
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTINSt6__ndk113basic_ostreamIcNS_11char_traitsIcEEEE => typeinfo for std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTINSt6__ndk114basic_iostreamIcNS_11char_traitsIcEEEE => typeinfo for std::__ndk1::basic_iostream<char, std::__ndk1::char_traits<char>>
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTINSt6__ndk115basic_streambufIcNS_11char_traitsIcEEEE => typeinfo for std::__ndk1::basic_streambuf<char, std::__ndk1::char_traits<char>>
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTINSt6__ndk119__shared_weak_countE => typeinfo for std::__ndk1::__shared_weak_count
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTISt12length_error => typeinfo for std::length_error
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTISt12out_of_range => typeinfo for std::out_of_range
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTISt16invalid_argument => typeinfo for std::invalid_argument
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTISt20bad_array_new_length => typeinfo for std::bad_array_new_length
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTISt8bad_cast => typeinfo for std::bad_cast
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTISt9exception => typeinfo for std::exception
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTIb => typeinfo for bool
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTIc => typeinfo for char
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTId => typeinfo for double
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTIf => typeinfo for float
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTIh => typeinfo for unsigned char
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTIi => typeinfo for int
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTIj => typeinfo for unsigned int
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTIl => typeinfo for long
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTIm => typeinfo for unsigned long
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTIs => typeinfo for short
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTIt => typeinfo for unsigned short
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTVN10__cxxabiv116__enum_type_infoE => vtable for __cxxabiv1::__enum_type_info
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTVN10__cxxabiv117__class_type_infoE => vtable for __cxxabiv1::__class_type_info
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTVN10__cxxabiv119__pointer_type_infoE => vtable for __cxxabiv1::__pointer_type_info
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTVN10__cxxabiv120__si_class_type_infoE => vtable for __cxxabiv1::__si_class_type_info
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTVN10__cxxabiv121__vmi_class_type_infoE => vtable for __cxxabiv1::__vmi_class_type_info
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTVNSt6__ndk113basic_istreamIcNS_11char_traitsIcEEEE => vtable for std::__ndk1::basic_istream<char, std::__ndk1::char_traits<char>>
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTVSt12length_error => vtable for std::length_error
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTVSt12out_of_range => vtable for std::out_of_range
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ZTVSt16invalid_argument => vtable for std::invalid_argument
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZThn16_NSt6__ndk114basic_iostreamIcNS_11char_traitsIcEEED0Ev => non-virtual thunk for std::__ndk1::basic_iostream<char, std::__ndk1::char_traits<char>>::{deleting dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZThn16_NSt6__ndk114basic_iostreamIcNS_11char_traitsIcEEED1Ev => non-virtual thunk for std::__ndk1::basic_iostream<char, std::__ndk1::char_traits<char>>::{dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZTv0_n24_NSt6__ndk113basic_istreamIcNS_11char_traitsIcEEED0Ev => virtual thunk for std::__ndk1::basic_istream<char, std::__ndk1::char_traits<char>>::{deleting dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZTv0_n24_NSt6__ndk113basic_istreamIcNS_11char_traitsIcEEED1Ev => virtual thunk for std::__ndk1::basic_istream<char, std::__ndk1::char_traits<char>>::{dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZTv0_n24_NSt6__ndk113basic_ostreamIcNS_11char_traitsIcEEED0Ev => virtual thunk for std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>::{deleting dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZTv0_n24_NSt6__ndk113basic_ostreamIcNS_11char_traitsIcEEED1Ev => virtual thunk for std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>::{dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZTv0_n24_NSt6__ndk114basic_iostreamIcNS_11char_traitsIcEEED0Ev => virtual thunk for std::__ndk1::basic_iostream<char, std::__ndk1::char_traits<char>>::{deleting dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZTv0_n24_NSt6__ndk114basic_iostreamIcNS_11char_traitsIcEEED1Ev => virtual thunk for std::__ndk1::basic_iostream<char, std::__ndk1::char_traits<char>>::{dtor}()
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZdaPv => operator delete[](void*)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZdlPv => operator delete(void*)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_Znam => operator new[](unsigned long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_Znwm => operator new(unsigned long)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	_ZnwmRKSt9nothrow_t => operator new(unsigned long, std::nothrow_t const&)
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__android_log_print
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__android_log_write
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__cxa_allocate_exception
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__cxa_atexit
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__cxa_begin_catch
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__cxa_call_unexpected
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__cxa_end_catch
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__cxa_finalize
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__cxa_free_exception
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__cxa_guard_abort
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__cxa_guard_acquire
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__cxa_guard_release
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__cxa_pure_virtual
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__cxa_rethrow
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__cxa_throw
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__dynamic_cast
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__errno
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__gxx_personality_v0
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__memcpy_chk
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__memset_chk
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__open_2
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__read_chk
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	__sF
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__stack_chk_fail
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__strchr_chk
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__strcpy_chk
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__strlen_chk
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__system_property_get
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__vsnprintf_chk
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	__vsprintf_chk
+0x0	0	STT_OBJECT	STB_GLOBAL	.dynsym	_ctype_
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	abort
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	acos
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	acosf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	acoshf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	adler32
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	asin
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	asinf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	asinhf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	atan
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	atan2
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	atan2f
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	atanf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	atanhf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	atof
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	atoi
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	bsearch
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	calloc
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	cbrt
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	close
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	closedir
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	cos
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	cosf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	coshf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	crc32
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	deflate
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	deflateEnd
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	deflateInit2_
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	deflateInit_
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	deflateParams
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	deflateReset
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	dl_iterate_phdr
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	dladdr
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	dlclose
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	dlerror
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	dlopen
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	dlsym
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	erf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	erff
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	exit
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	exp
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	exp2
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	exp2f
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	expf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	expm1f
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	fclose
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	fcntl
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	fegetround
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	feof
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	ferror
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	fesetround
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	fflush
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	fgetc
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	fgets
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	fmod
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	fopen
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	fprintf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	fputc
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	fputs
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	fread
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	free
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	frexpf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	fscanf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	fseek
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	fseeko
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	fstat
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	ftell
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	ftello
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	fwrite
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	getauxval
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	getcwd
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	getenv
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	getpid
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	gzclose
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	gzeof
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	gzgets
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	gzopen
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	gzputs
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	gzrewind
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	inflate
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	inflateEnd
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	inflateInit2_
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	inflateInit_
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	inflateReset
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	inflateReset2
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	ldexp
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	log
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	log10
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	log1pf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	log2f
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	logf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	longjmp
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	lseek
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	malloc
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	memchr
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	memcmp
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	memcpy
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	memmove
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	memset
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	mkdir
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	mkstemp
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	mmap
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	modf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	munmap
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	open
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	opendir
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	posix_memalign
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pow
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	powf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	printf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_attr_init
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_attr_setdetachstate
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_cond_broadcast
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_cond_destroy
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_cond_init
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_cond_signal
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_cond_wait
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_create
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_getspecific
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_join
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_key_create
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_key_delete
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_mutex_destroy
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_mutex_init
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_mutex_lock
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_mutex_unlock
+0x0	0	STT_FUNC	STB_WEAK	.dynsym	pthread_mutexattr_destroy
+0x0	0	STT_FUNC	STB_WEAK	.dynsym	pthread_mutexattr_init
+0x0	0	STT_FUNC	STB_WEAK	.dynsym	pthread_mutexattr_settype
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_rwlock_rdlock
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_rwlock_unlock
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_rwlock_wrlock
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_self
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	pthread_setspecific
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	putchar
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	puts
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	qsort
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	rand
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	read
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	readdir
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	realloc
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	realpath
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	remove
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	rewind
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	rmdir
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	sched_yield
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	setenv
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	setjmp
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	sin
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	sincos
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	sincosf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	sinf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	sinh
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	sinhf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	sscanf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	stat
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	strchr
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	strcmp
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	strcpy
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	strdup
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	strerror
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	strlen
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	strncmp
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	strncpy
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	strrchr
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	strstr
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	strtod
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	strtof
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	strtol
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	strtoll
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	strtoul
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	strtoull
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	syscall
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	sysconf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	tan
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	tanf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	tanh
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	tanhf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	time
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	ungetc
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	unlink
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	vfprintf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	vsnprintf
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	wmemchr
+0x0	0	STT_FUNC	STB_GLOBAL	.dynsym	write

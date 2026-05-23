@@ -1,0 +1,374 @@
+
+<style>
+    #stat-note-for-instructor {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        font-family: 'PingFang SC';
+    }
+
+    .body {
+        height: 100%;
+        display: flex;
+        padding: 48px 180px 0 180px;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        background: linear-gradient(180deg, #F2FFFF 0%, #FFFFFF 46.5%);
+        box-shadow: 0px 3px 10px rgba(38, 40, 51, 0.1), 0px 0px 1px rgba(38, 40, 51, 0.1);
+        color: #262833;
+
+        .footer {
+            padding: 24px 0;
+            width: 130%;
+            text-align: center;
+            color: #999999;
+            font-size: 12px;
+            font-weight: 400;
+            line-height: 19.2px;
+        }
+    }
+
+    .background1 {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        z-index: 1;
+    }
+
+    .background1 img {
+        width: 183px;
+        height: 248px;
+    }
+
+    .background2 {
+        position: absolute;
+        right: 0;
+        top: 0;
+        z-index: 1;
+    }
+
+    .background2 img {
+        width: 410px;
+        height: 540px;
+    }
+
+    .title {
+        font-weight: 500;
+        font-size: 32px;
+        line-height: 60px;
+        display: flex;
+        justify-items: center;
+    }
+
+    .title img {
+        width: 40px;
+        height: 60px;
+    }
+
+    .note {
+        margin-top: 32px;
+        z-index: 10;
+    }
+
+    table {
+        width: 1000px;
+        border: 1px solid #DCDEE2;
+        border-radius: 3px;
+        border-collapse: collapse;
+        font-family: 'PingFang SC';
+    }
+
+    .index-name {
+        background: #1CA5AD;
+        height: 42px;
+    }
+
+    .index-name td {
+        color: #FFFFFF;
+        font-weight: 400;
+        font-size: 14px;
+    }
+
+    table td {
+        padding-left: 10px;
+        font-weight: 400;
+        font-size: 14px;
+        line-height: 22px;
+        color: #262833;
+    }
+
+    tr td:last-child {
+        padding: 12px 16px;
+        width: 364px;
+    }
+
+    table .index-name .module {
+        width: 294px;
+    }
+
+    table .index-name .explanation {
+        width: 190px;
+    }
+
+    table .index-name .content {
+        width: 140px;
+    }
+
+    table .module-index {
+        font-weight: 500;
+        font-size: 18px;
+        background: rgba(32, 190, 200, 0.16);
+        text-align: center;
+        border-right: 1px solid #99E4E5;
+    }
+
+    table .course-activities {
+        width: 180px;
+    }
+
+    table .activity-type {
+        width: 114px;
+        background: rgba(32, 190, 200, 0.16);
+    }
+
+    table .border-bottom {
+        border-bottom: 2px solid #99E4E5;
+    }
+
+    table .border-right-bottom {
+        border-right: 1px solid #99E4E5;
+        border-bottom: 1px solid #99E4E5;
+    }
+
+    table .border-right {
+        border-right: 1px solid #99E4E5;
+    }
+</style>
+<div id="stat-note-for-instructor">
+    <div class="body">
+        <div class="background1">
+            <img src="/static/assets/images/stat-note-for-student/5dfe0ede72b3f336eb64.png">
+        </div>
+        <div class="background2">
+            <img src="/static/assets/images/stat-note-for-student/7da23b613c8489cefcb3.png">
+        </div>
+        <div class="title">
+            <img src="/static/assets/images/stat-note-for-student/0d4d18d9a4359dc0f24f.png">
+            學習分析規則說明
+            <img src="/static/assets/images/stat-note-for-student/3ff086b426e566b3bb57.png">
+        </div>
+        <div class="note">
+            <table border="1">
+                <tr class="index-name">
+                    <td class="module" colspan="2">模組</td>
+                    <td class="explanation">模組說明</td>
+                    <td class="content">內容</td>
+                    <td>計算邏輯說明</td>
+                </tr>
+                <tr>
+                    <td rowspan="5" colspan="2" class="module-index border-bottom">
+                        基礎資訊
+                    </td>
+                    <td rowspan="5" class="border-bottom">對課程內的基礎內容進行統計</td>
+                    <td>章節數/學習單元數</td>
+                    <td>課程內的章節總數量/學習單元總數。</td>
+                </tr>
+                <tr>
+                    <td>公告數</td>
+                    <td>課程內發布的公告總數。</td>
+                </tr>
+                <tr>
+                </tr>
+                <tr>
+                    <td>學生數</td>
+                    <td>目前課程內學生總數。</td>
+                </tr>
+                <tr class="border-bottom">
+                    <td>已發布學習活動數</td>
+                    <td>
+                        <div>
+                            課程內發布過的學習活動總數，學習活動一但發布將會計入統計範圍。
+                        </div>
+                        <div>
+                            作業數：累計發布的作業總數。
+                        </div>
+                        <div>
+                            線上測驗數：累計發布的測驗總數。
+                        </div>
+                        <div>
+                            討論數：累計發布的討論總數，不計算通用討論區。
+                        </div>
+                        <div>
+                            教材活動數：累計發布的教材類活動總數，包含：參考檔案、影音教材、互動教材、線上連結、頁面、第三方教材等。
+                        </div>
+                        <div>
+                            課堂活動數：累計新增的互動類活動總數，包含：隨堂測驗、教學反饋等。
+                        </div>
+                        <div>
+                            會議直播數：累計新增的會議直播活動總數，例如：Teams 直播、Zoom 直播、Webex 直播、Connect 直播等。
+                        </div>
+                        <div>
+                            其他類型活動數：調查問卷、虛擬模擬實驗。
+                        </div>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td rowspan="33" class="module-index course-activities border-bottom">
+                        課程活動情況
+                    </td>
+                    <td rowspan="5" class="activity-type border-right-bottom">作業</td>
+                    <td rowspan="5">對課程內的作業情況進行統計</td>
+                    <td>已發布作業數</td>
+                    <td>累計發布的作業總數。</td>
+                </tr>
+                <tr>
+                    <td>待批閱作業數</td>
+                    <td>待批改作業的學生人次總和。</td>
+                </tr>
+                <tr>
+                    <td>平均繳交率</td>
+                    <td>已繳人數（組數）總和/應繳人數（組數）總和。</td>
+                </tr>
+                <tr>
+                    <td>平均分</td>
+                    <td>已批改作業活動數分總和/已批改人數。「已批改」指有批改記錄的作業活動。</td>
+                </tr>
+                <tr>
+                    <td>學生平均分分布圖</td>
+                    <td>展示每個學生課程內所有作業的平均分分布。</td>
+                </tr>
+                <tr>
+                    <td rowspan="5" class="activity-type border-right-bottom">線上測驗</td>
+                    <td rowspan="5">對課程內的測驗情況進行統計</td>
+                    <td>已發布測驗數</td>
+                    <td>累計發布的測驗總數。</td>
+                </tr>
+                <tr>
+                    <td>待批閱測驗數</td>
+                    <td>待批改測驗的學生人次總和。</td>
+                </tr>
+                <tr>
+                    <td>平均繳交率</td>
+                    <td>已繳人數（組數）總和/應繳人數（組數）總和。</td>
+                </tr>
+                <tr>
+                    <td>平均分</td>
+                    <td>已批改測驗活動數分總和/已批改人數。「已批改」指有批改記錄的測驗活動。</td>
+                </tr>
+                <tr>
+                    <td>學生平均分分布圖</td>
+                    <td>展示每個學生課程內所有測驗的平均分分布。</td>
+                </tr>
+                <tr>
+                    <td rowspan="8" class="activity-type border-right-bottom">參考檔案</td>
+                    <td rowspan="8">對課程內的參考檔案情況進行統計</td>
+                    <td>已發布活動數/檔案數</td>
+                    <td>累計發布的參考檔案活動總數和其中包含的檔案總數。</td>
+                </tr>
+                <tr>
+                </tr>
+                <tr>
+                    <td>平均下載率</td>
+                    <td>允許下載的所有檔案學生下載人數總和/(允許下載的檔案數*學生人數)。</td>
+                </tr>
+                <tr>
+                    <td>人均下載檔案數</td>
+                    <td>所有學生下載個數總和/學生總人數。</td>
+                </tr>
+                <tr>
+                    <td>平均查看率</td>
+                    <td>所有資源查看學生人數總和/(檔案數*學生總人數)。</td>
+                </tr>
+                <tr>
+                    <td>人均查看檔案數</td>
+                    <td>所有學生查看檔案個數總和/學生總人數。</td>
+                </tr>
+                <tr>
+                    <td>人均查看次數</td>
+                    <td>所有學生的檔案查看次數總和/學生總人數。</td>
+                </tr>
+                <tr>
+                    <td>人均查看時長</td>
+                    <td>
+                        所有學生的檔案訪問時長總和/學生總人數。
+                    </td>
+                </tr>
+                <tr>
+                    <td rowspan="5" class="activity-type border-right-bottom">
+                        影音類教材
+                    </td>
+                    <td rowspan="5">對課程內的影音類教材情況進行統計</td>
+                    <td>已發布教材數</td>
+                    <td>累計發布的影音類教材總數，包含：影音教材、互動教材等。</td>
+                </tr>
+                <tr>
+                </tr>
+                <tr>
+                    <td>觀看總次數</td>
+                    <td>課程中所有已發布的教材學生觀看次數總和。</td>
+                </tr>
+                <tr>
+                    <td>人均觀看教材數</td>
+                    <td>所有學生的教材查看個數總和/學生總人數。</td>
+                </tr>
+                <tr>
+                    <td>觀看次數 Top 5</td>
+                    <td>展示學生觀看次數Top 5的教材名稱及次數。</td>
+                </tr>
+                <tr>
+                    <td rowspan="4" class="activity-type border-right-bottom">討論</td>
+                    <td rowspan="4">對課程內的討論情況進行統計</td>
+                    <td>已發布討論數</td>
+                    <td>累計發布的討論活動總數，不計算通用討論區。</td>
+                </tr>
+                <tr>
+                    <td>參與人數</td>
+                    <td>再任意討論中有發表發表文章、回覆、評論回覆任一行為的學生人數。</td>
+                </tr>
+                <tr>
+                    <td>發文數/文章數/回覆數</td>
+                    <td>
+                        <div>發文數：所有討論區中學生發表的文章數與回覆文章總數。</div>
+                        <div>文章數：所有討論區中學生發表的文章總數。</div>
+                        <div>回覆數：所有討論區中學生發表的回覆總數。</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>教師回覆率</td>
+                    <td>所有討論區教師回覆率的平均值，不計算通用討論區。</td>
+                </tr>
+                <tr>
+                    <td rowspan="3" class="activity-type border-right-bottom">線上連結</td>
+                    <td rowspan="3">對課程內的線上連結情況進行統計</td>
+                    <td>已發布連結數</td>
+                    <td>累計發布的線上連結活動總數。</td>
+                </tr>
+                <tr>
+                    <td>連結平均查看率</td>
+                    <td>所有線上連結活動的訪問學生人數總和/（活動數*學生人數）。</td>
+                </tr>
+                <tr>
+                    <td>人均查看個數</td>
+                    <td>所有學生訪問線上連結活動個數總和/學生人數。</td>
+                </tr>
+                <tr>
+                    <td rowspan="2" class="activity-type border-right border-bottom">公告</td>
+                    <td rowspan="2" class="border-bottom">對課程內的公告情況進行統計</td>
+                    <td>公告數</td>
+                    <td>累計新增的課程公告總數。</td>
+                </tr>
+                <tr>
+                    <td class="border-bottom">人均查看率</td>
+                    <td class="border-bottom">所有公告查看率的平均值。</td>
+                </tr>
+            </table>
+        </div>
+        <div class="footer">
+            <div>本說明中的文字僅供參考，如果有個別功能與實際情況不符，請以產品的實際情況為準。</div>
+            <div>隨著產品功能的不斷完善，我們也會定期更新說明內容方便您的使用。</div>
+        </div>
+    </div>
+
+</div>

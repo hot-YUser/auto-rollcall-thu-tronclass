@@ -1,0 +1,464 @@
+<!doctype html><html lang="en" mode="ios" class="hydrated"><head><meta charset="utf-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/><meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="expires" content="0"/><meta http-equiv="expires" content="Tue, 01 Jan 1980 1:00:00 GMT"/><meta http-equiv="pragma" content="no-cache"/><meta name="mobile-web-app-capable" content="no"><link rel="icon" href="/favicon.ico?v=2.14.5.ac11a7b0"/><style lang="css">* {
+      margin: 0;
+      padding: 0;
+    }
+
+    .worm {
+      display: flex;
+      position: absolute;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(180deg, #00d4d6, #0784a0);
+      transition: opacity 1s;
+      opacity: 1;
+    }
+
+    .worm .load {
+      width: 20%;
+      justify-content: space-around;
+      align-items: center;
+      display: flex;
+      flex-direction: row;
+      min-width: 100px;
+      max-width: 400px;
+    }
+
+    .worm .line {
+      display: inline-block;
+      width: 15px;
+      height: 15px;
+      border-radius: 15px;
+      background-color: rgba(255, 255, 255, 0.7);
+    }
+
+    .worm .load .line:nth-last-child(1) {
+      -webkit-animation: loading 0.6s 0.1s linear infinite;
+      animation: loading 0.6s 0.1s linear infinite;
+    }
+
+    .worm .load .line:nth-last-child(2) {
+      -webkit-animation: loading 0.6s 0.2s linear infinite;
+      animation: loading 0.6s 0.2s linear infinite;
+    }
+
+    .worm .load .line:nth-last-child(3) {
+      -webkit-animation: loading 0.6s 0.3s linear infinite;
+      animation: loading 0.6s 0.3s linear infinite;
+    }
+
+    .worm .load .line:nth-last-child(4) {
+      -webkit-animation: loading 0.6s 0.4s linear infinite;
+      animation: loading 0.6s 0.4s linear infinite;
+    }
+
+    .worm .load .line:nth-last-child(5) {
+      -webkit-animation: loading 0.6s 0.5s linear infinite;
+      animation: loading 0.6s 0.5s linear infinite;
+    }
+
+    @-webkit-keyframes loading {
+      0% {
+        -webkit-transform: translate(0, 0);
+        transform: translate(0, 0);
+      }
+
+      50% {
+        -webkit-transform: translate(0, 15px);
+        transform: translate(0, 15px);
+      }
+
+      100% {
+        -webkit-transform: translate(0, 0);
+        transform: translate(0, 0);
+      }
+    }
+
+    @keyframes loading {
+      0% {
+        -webkit-transform: translate(0, 0);
+        transform: translate(0, 0);
+      }
+
+      50% {
+        -webkit-transform: translate(0, 15px);
+        transform: translate(0, 15px);
+      }
+
+      100% {
+        -webkit-transform: translate(0, 0);
+        transform: translate(0, 0);
+      }
+    }
+
+    #privacyPolicyModal {
+      visibility: hidden;
+      display: flex;
+      background-color: #0006;
+      width: 100vw;
+      height: 100vh;
+      position: absolute;
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #privacyPolicyModal .privacy-policy-container {
+      background-color: var(--background-white);
+      border-radius: 1rem;
+      width: 80%;
+      height: auto;
+      max-height: 80%;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #privacyPolicyModal .privacy-policy-container .content-link {
+      color: var(--font-color-primary);
+      font-weight: 600;
+      background: transparent;
+    }
+
+    #privacyPolicyModal .privacy-policy-container .privacy-policy-header {
+      font-weight: 600;
+      font-size: 1rem;
+      line-height: 100%;
+      color: var(--title-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0.75rem 0;
+    }
+
+    #privacyPolicyModal .privacy-policy-container .privacy-policy-content {
+      margin: 0.75rem 0;
+      font-style: normal;
+      font-weight: normal;
+      font-size: 0.875rem;
+      line-height: 150%;
+      color: var(--font-color-grey);
+      overflow: auto;
+      max-height: 20rem;
+      overflow-y: auto;
+    }
+
+    #privacyPolicyModal .privacy-policy-container .privacy-policy-content .privacy-policy-sub-content {
+      padding-left: 1rem;
+    }
+
+    #privacyPolicyModal .privacy-policy-container .privacy-policy-content p {
+      font-size: 0.75rem;
+      color: var(--text-grey-3);
+    }
+
+    #privacyPolicyModal .privacy-policy-container .privacy-policy-footer button {
+      width: 100%;
+      background: var(--button-primary-color);
+      font-size: 0.875rem;
+      padding: 0.4375rem 0.75rem;
+      border-radius: 0.25rem;
+      color: #ffffff;
+      border: solid 1px var(--input-border-color);
+      font-weight: 600;
+    }
+
+    #privacyPolicyModal .privacy-policy-container .privacy-policy-footer button:active {
+      background: rgba(var(--button-primary-color-rgb), 0.5);
+    }
+
+    #privacyPolicyModal .privacy-policy-container .privacy-policy-footer button#privacyPolicyModalDisagree {
+      margin-top: 0.4rem;
+      background: var(--background-white);
+      color: var(--text-grey-3);
+    }
+
+    :root {
+      --global-tip-position: fixed;
+      --global-tip-position-top: 0;
+      --global-tip-position-bottom: auto;
+      --global-tip-position-left: 0;
+      --global-tip-position-right: 0;
+      --global-tip-z-index: 2;
+    }
+
+    .globalTipContainer {
+      position: var(--global-tip-position);
+      top: var(--global-tip-position-top);
+      left: var(--global-tip-position-left);
+      right: var(--global-tip-position-right);
+      bottom: var(--global-tip-position-bottom);
+      z-index: var(--global-tip-z-index);
+    }</style><script>// https://github.com/apache/cordova-plugin-file/issues/316
+    // Because the File will be contaminated by cordova-plugin-file, make a backup in advance
+    window.NativeFile = window.webkitFile || window.File;</script><script id="anti-tamper-guard" src="/libs/anti-tamper-guard.js"></script><script>// fixed in version vue@3.4.28.
+    // https://github.com/vuejs/core/blob/main/changelogs/CHANGELOG-3.4.md#3428-2024-06-14
+    var _createElement = window.document.createElement;
+    window.document.createElement = function (tagName, options) {
+      if (options) {
+        return _createElement.call(window.document, tagName, options);
+      } else {
+        return _createElement.call(window.document, tagName);
+      }
+    }
+    window.APPRuntime = {};
+    window.dd = {};
+    window.e2e = {};
+    window.io = function () { };
+    window.APPRuntime.NODE_ENV = "production";
+    window.APPRuntime.VERSION = "2.14.5.1775097535(ac11a7b0)";
+    window.APPRuntime.READABLE_VERSION = "2.14.5.64";
+    window.APPRuntime.versionInfo = {
+      version: "2.14.5",
+      commitHash: "ac11a7b0",
+      commitDate: parseInt("1775097535"),
+      otaVersion: parseInt("64")
+    };
+    window.APPRuntime.GIT_BRANCH = "release";
+    window.APPRuntime.setAreaInfo = function (global) {
+      var _isCn = false;
+
+      if (global && global.area) {
+        _isCn = global.area === "cn";
+      } else if (global && global.language) {
+        _isCn = global.language === "zh-Hans";
+      } else {
+        _isCn = ["zh-hans", "zh", "zh-cn"].includes(navigator.language.toLowerCase());
+      }
+      window.APPRuntime.IS_CN = _isCn;
+      if (window.APPRuntime.IS_CN) {
+        window.APPRuntime.CDN_URL = "https://mobile-download.tronclass.com.cn";
+        window.APPRuntime.CDN_HTML_URL = window.APPRuntime.CDN_URL;
+      } else {
+        window.APPRuntime.CDN_URL =
+          "https://cdn.jsdelivr.net/npm/@wisdomgarden/mobile-assets@latest";
+        window.APPRuntime.CDN_HTML_URL = "https://wisdomgardeninc.github.io/mobile-assets";
+      }
+    };</script><script src="/env.js?v=2.14.5.ac11a7b0"></script><script>if (navigator.userAgent.includes("TronClass/HarmonyOS")) {
+      window.APPRuntime.PLATFORM = 'harmonyos';
+    }
+    if (window.APPRuntime.APP_DISPLAY_NAME) {
+      document.title = window.APPRuntime.APP_DISPLAY_NAME;
+    }
+    if (window.APPRuntime.VERSION === APPRuntime.FORCE_CLEAR_CACHE_VERSION) {
+      var localForceClearCacheVersion = localStorage.getItem("forceClearCacheVersion");
+      if (APPRuntime.FORCE_CLEAR_CACHE_VERSION !== localForceClearCacheVersion) {
+        localStorage.clear();
+        localStorage.setItem("forceClearCacheVersion", APPRuntime.FORCE_CLEAR_CACHE_VERSION);
+      }
+    }</script><script src="/set-native-env.js?v=2.14.5.ac11a7b0"></script><script src="/jump-to-web.js?v=2.14.5.ac11a7b0"></script><script>document.addEventListener("deviceready", onDeviceReady, false);
+
+    function onDeviceReady() {
+      if (!window.cordova) {
+        return;
+      }
+      console.log("on device ready");
+
+      if (!window.APPRuntime.BUILD_FOR_GP) {
+        window.cordova.exec(function (result) {
+          console.log("setAuth success " + result);
+        }, function (err) {
+          console.log("setAuth failed: " + err);
+        }, "JPushPlugin", "setAuth", [false]);
+      }
+
+      setupOpenwith();
+    }
+
+    function setupOpenwith() {
+      if(!cordova.openwith){
+        return;
+      }
+      cordova.openwith.init(initSuccess, initError);
+      function initSuccess() {
+        console.log("openwith init success!");
+      }
+      function initError(err) { console.log("openwith init failed: ", err); }
+    }</script><script>function addScript(src, callback, id) {
+      var scriptTag = document.createElement("script");
+      if (callback) {
+        scriptTag.onload = callback;
+      }
+      scriptTag.setAttribute("src", src);
+      if (id) {
+        scriptTag.setAttribute("id", id);
+      }
+      document.head.appendChild(scriptTag);
+    }
+
+    function addPlatformScript(targetPlatform, callback) {
+      switch (targetPlatform) {
+        case "wecom":
+          addScript("https://wwcdn.weixin.qq.com/node/open/js/wecom-jssdk-2.3.3.js", callback);
+          break;
+        case "welink":
+          addScript(
+            "https://open-doc.welink.huaweicloud.com/docs/jsapi/2.0.12/hwh5-cloudonline.js",
+            callback
+          );
+          break;
+        case "wechat":
+        case "miniprogram":
+          addScript("https://res.wx.qq.com/open/js/jweixin-1.6.0.js", callback);
+          break;
+        case "dingtalk":
+          addScript(
+            "https://g.alicdn.com/dingding/dingtalk-jsapi/3.1.0/dingtalk.open.js",
+            callback
+          );
+          break;
+        case "line":
+          addScript("https://static.line-scdn.net/liff/edge/2/sdk.js", callback);
+          break;
+        case "feishu":
+          addScript(
+            "https://lf1-cdn-tos.bytegoofy.com/goofy/ee/lark/h5jssdk/lark/js_sdk/h5-js-sdk-1.5.8.js",
+            callback
+          );
+          break;
+        case "njtc":
+          addScript("/libs/super-app-js-sdk/njtc-uni.1.5.4.min.js", callback);
+          break;
+        case "fdzcxy":
+          addScript("/libs/super-app-js-sdk/fdzcxy-bridge.min.js", callback);
+          break;
+        case "cpdaily":
+          document.addEventListener("deviceready", callback, { once: true });
+          addScript("/libs/super-app-js-sdk/campushoy-2.0.5.min.js");
+          break;
+        case "xjtu":
+          // XJTU Document remote URL: https://superapp-demo.dev2.supwisdom.com/#/
+          // The JS Bridge has been modified based on "https://mini-doc.dev2.supwisdom.com/#/api/appdocument/appInteractiveHtml?id=%e9%a6%96%e5%85%88%e5%bc%95%e5%85%a5bridgejs"
+          // Original invocation method: invokeNativeMethod(bridge => { bridge.callHandler(methodName, args, callback) })
+          // Current invocation method: invokeNativeMethod(methodName, args, callback)
+          addScript("/libs/super-app-js-sdk/xjtu-bridge.min.js", callback);
+          break;
+        case "weishao":
+          function handleWhistleScriptLoad() {
+            // check if Whistle object exists
+            if (!window.Whistle) {
+                console.error("[Whistle] Whistle object not found after script load");
+                callback();
+                return;
+            }
+
+            console.log("[Whistle] JavaScript library loaded successfully");
+
+            // set timeout to check if Whistle object is ready
+            const timeoutId = setTimeout(() => {
+                console.warn("[Whistle] Initialization timeout, force set to false");
+                window.Whistle.isReady = false;
+                callback();
+            }, 5000); // 5 seconds
+
+            // set callbacks for Whistle object
+            window.Whistle.onReady = function () {
+                clearTimeout(timeoutId);
+                if(window.Whistle.isReady){
+                  return;
+                }
+
+                console.log("[Whistle] Initialization completed successfully");
+                window.Whistle.isReady = true;
+                callback();
+            };
+
+            // set error callback for Whistle object
+            window.Whistle.onError = function () {
+                clearTimeout(timeoutId);
+                console.error("[Whistle] Initialization failed");
+                window.Whistle.isReady = false;
+                callback();
+            };
+          }
+
+          addScript("/libs/super-app-js-sdk/whistle-6.8.4.min.js", handleWhistleScriptLoad);
+          break;
+        default:
+          callback();
+      }
+    }
+
+    function addVConsoleScript(callback) {
+      addScript("/libs/vconsole-wg.min.js", function () {
+        window.vConsole = new window.VConsole({
+          target: document.querySelector(".ion-page")
+        });
+        if (callback) {
+          callback();
+        }
+      });
+    }
+
+    function wgGetUrlParams() {
+      return location.search.substring(1, location.search.length).split("&")
+        .filter(function (pair) {
+          return pair.length;
+        })
+        .map(
+          function (pair) {
+            return pair.split("=");
+          }
+        )
+        .reduce(function (result, pair) {
+          result[pair[0]] = pair[1];
+          return result;
+        }, {});
+    }
+
+    var wgUrlParams = wgGetUrlParams();
+    var config = JSON.parse(localStorage.getItem("_config") || "{}");
+    if (config["SHOW_VCONSOLE"] || wgUrlParams["debug"]) {
+      window.APPRuntime.SHOW_VCONSOLE = true;
+      addVConsoleScript();
+    }
+
+    addScript("/libs/socket.io.4.1.2.min.js", undefined, "socket.io-client@4.1.2");
+    // addScript("/libs/socket.io.2.3.0.min.js", undefined, "socket.io-client@2.3.0");</script><script defer="defer" src="/js/chunk-vendors-945ce2fe.c0b42efd.js"></script><script defer="defer" src="/js/chunk-vendors-aacc2dbb.deb34d08.js"></script><script defer="defer" src="/js/chunk-vendors-0925edb1.b4b5dbad.js"></script><script defer="defer" src="/js/chunk-vendors-0a15d5a9.f9571715.js"></script><script defer="defer" src="/js/chunk-vendors-bc050c32.9a44efdc.js"></script><script defer="defer" src="/js/chunk-vendors-b85e1843.e10a4801.js"></script><script defer="defer" src="/js/chunk-vendors-37a93c5f.4ab43754.js"></script><script defer="defer" src="/js/chunk-vendors-c67ab43f.5f252752.js"></script><script defer="defer" src="/js/chunk-vendors-b8e8c893.7b0e0494.js"></script><script defer="defer" src="/js/chunk-vendors-3da24cc7.53ea8d8e.js"></script><script defer="defer" src="/js/chunk-vendors-af4e84d4.50b2eb4a.js"></script><script defer="defer" src="/js/chunk-vendors-6769e234.4edeceaa.js"></script><script defer="defer" src="/js/chunk-vendors-289cff67.0a84cca0.js"></script><script defer="defer" src="/js/chunk-vendors-af1a2782.2ffb3cfb.js"></script><script defer="defer" src="/js/chunk-vendors-9fbf9f65.df175f3f.js"></script><script defer="defer" src="/js/chunk-vendors-3081da64.3c3c347e.js"></script><script defer="defer" src="/js/chunk-vendors-c5c6856a.d868184e.js"></script><script defer="defer" src="/js/chunk-vendors-363ec994.b404b1c6.js"></script><script defer="defer" src="/js/chunk-vendors-6b948b9f.8acc5838.js"></script><script defer="defer" src="/js/chunk-vendors-3f88d8a8.f89638c5.js"></script><script defer="defer" src="/js/chunk-vendors-25c7288e.c973c9b7.js"></script><script defer="defer" src="/js/chunk-vendors-f945abb9.6643cd0b.js"></script><script defer="defer" src="/js/chunk-vendors-b9f70e77.d8ebf613.js"></script><script defer="defer" src="/js/chunk-vendors-8cbd2506.c3c97486.js"></script><script defer="defer" src="/js/chunk-vendors-377fed06.988a5fc6.js"></script><script defer="defer" src="/js/chunk-vendors-b4a3a6fa.60b51e52.js"></script><script defer="defer" src="/js/chunk-vendors-0cd98dd5.ed5508da.js"></script><script defer="defer" src="/js/chunk-vendors-ca445505.d5a21ac2.js"></script><script defer="defer" src="/js/chunk-vendors-c3943e85.7355e14a.js"></script><script defer="defer" src="/js/chunk-vendors-248b84e0.f5d2a430.js"></script><script defer="defer" src="/js/chunk-vendors-ec539670.3faed158.js"></script><script defer="defer" src="/js/chunk-vendors-48b8d778.3655d345.js"></script><script defer="defer" src="/js/app.73d6a975.js"></script><link href="/css/chunk-vendors-ad6a2f20.30ec2f2c.css" rel="stylesheet"><link href="/css/app.d3a17285.css" rel="stylesheet"></head><body><noscript><strong>We're sorry but mobile2.0 doesn't work properly without JavaScript enabled. Please enable it to continue.</strong></noscript><div id="firstPaint" class="worm"><div class="load"><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div></div></div><div id="app"></div><div id="privacyPolicyModal"></div><div id="globalTipContainer" class="globalTipContainer"></div><script>document.body.addEventListener("touchstart", function () {
+    });
+
+    var lastClickTime = 0;
+    var lastClickTarget = null;
+
+    document.body.addEventListener(
+      "click",
+      function (event) {
+        var now = new Date().getTime();
+        var minClickInterval =
+          window.APPRuntime.MIN_CLICK_INTERVAL !== undefined
+            ? window.APPRuntime.MIN_CLICK_INTERVAL
+            : 500;
+
+        if (now - lastClickTime < minClickInterval && event.target === lastClickTarget) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        } else {
+          lastClickTime = now;
+          lastClickTarget = event.target;
+        }
+      },
+      true
+    );
+
+    Object.defineProperty(window, "_wg_test_set_global", {
+      value: function (sessionID, userId, userNo, globalObj) {
+        var currentGlobal = JSON.parse(localStorage.getItem("_cap_global") || "{}");
+
+        currentGlobal["isLogin"] = true;
+        currentGlobal["sessionID"] = sessionID;
+        currentGlobal["account"] = userNo;
+        currentGlobal["userID"] = userId;
+
+        if (!currentGlobal["user"]) {
+          currentGlobal["user"] = {};
+        }
+        currentGlobal["user"]["id"] = userId;
+        currentGlobal["user"]["userNo"] = userNo;
+        currentGlobal["user"]["name"] = "refresh page to get the correct name";
+
+
+        localStorage.setItem("_cap_global", JSON.stringify(globalObj || currentGlobal));
+      }
+    });</script><script src="/privacy-policy.js?v=2.14.5.ac11a7b0"></script></body></html>

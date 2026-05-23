@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<cn.jpush.android.ui.FullScreenView android:orientation="vertical" android:id="@id/actionbarLayoutId" android:layout_width="match_parent" android:layout_height="match_parent"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <RelativeLayout android:id="@id/rlRichpushTitleBar" android:background="#29313a" android:layout_width="match_parent" android:layout_height="40.0dp">
+        <ImageButton android:id="@id/imgRichpushBtnBack" android:background="@drawable/jpush_richpush_btn_selector" android:layout_width="25.0dp" android:layout_height="wrap_content" android:layout_marginLeft="9.0dp" android:layout_marginTop="8.0dp" android:layout_marginRight="9.0dp" android:layout_marginBottom="8.0dp" android:layout_centerVertical="true" />
+        <ImageView android:id="@id/imgView" android:clickable="false" android:layout_width="wrap_content" android:layout_height="wrap_content" android:src="@drawable/jpush_ic_richpush_actionbar_divider" android:layout_toRightOf="@id/imgRichpushBtnBack" android:layout_centerVertical="true" />
+        <TextView android:textSize="20.0sp" android:textColor="#ffffff" android:id="@id/tvRichpushTitle" android:clickable="false" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginLeft="7.0dp" android:layout_marginRight="48.0dp" android:text=" " android:layout_toRightOf="@id/imgView" android:layout_centerVertical="true" />
+    </RelativeLayout>
+    <ProgressBar android:id="@id/pushPrograssBar" android:layout_width="match_parent" android:layout_height="1.0dp" android:progress="0" android:progressDrawable="@drawable/jpush_richpush_progressbar" style="?android:progressBarStyleHorizontal" />
+</cn.jpush.android.ui.FullScreenView>

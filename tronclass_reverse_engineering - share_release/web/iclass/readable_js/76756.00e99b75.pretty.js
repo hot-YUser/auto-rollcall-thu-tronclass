@@ -1,0 +1,5302 @@
+(self.webpackChunklms=self.webpackChunklms||[
+]).push([
+  [
+    74302, 76756
+  ], {
+    5782:(e, t, r)=>{
+      r.r(t), r.d(t, {
+        default:()=>c, install:()=>a
+      });
+      var o=r(962893);
+      function n(e, t){
+        var r=Object.keys(e);
+        if(Object.getOwnPropertySymbols){
+          var o=Object.getOwnPropertySymbols(e);
+          t&&(o=o.filter((function(t){
+            return Object.getOwnPropertyDescriptor(e, t).enumerable
+          }))), r.push.apply(r, o)
+        }
+        return r
+      }
+      function i(e){
+        for(var t=1;
+        t<arguments.length;
+        t++){
+          var r=null!=arguments[
+            t
+          ]
+          ?arguments[
+            t
+          ]
+          :{
+          };
+          t%2?n(Object(r), !0).forEach((function(t){
+            u(e, t, r[
+              t
+            ])
+          })):Object.getOwnPropertyDescriptors?Object.defineProperties(e, Object.getOwnPropertyDescriptors(r)):n(Object(r)).forEach((function(t){
+            Object.defineProperty(e, t, Object.getOwnPropertyDescriptor(r, t))
+          }))
+        }
+        return e
+      }
+      function u(e, t, r){
+        return t in e?Object.defineProperty(e, t, {
+          value:r, enumerable:!0, configurable:!0, writable:!0
+        }):e[
+          t
+        ]
+        =r, e
+      }
+      function s(e){
+        var t=arguments.length>1&&void 0!==arguments[
+          1
+        ]
+        ?arguments[
+          1
+        ]
+        :{
+        }, r=arguments.length>2&&void 0!==arguments[
+          2
+        ]
+        ?arguments[
+          2
+        ]
+        :null, n=arguments.length>3&&void 0!==arguments[
+          3
+        ]
+        ?arguments[
+          3
+        ]
+        :{
+        }, u=o.default.extend({
+          render:r=>r(e, i({
+            props:t
+          }, n))
+        }), s=new u({
+          parent:r
+        }).$mount();
+        document.body.appendChild(s.$el);
+        var a=s.$children[
+          0
+        ];
+        a.visible=!0;
+        var c=a.$refs.modal;
+        c&&(c.$on("on-cancel", (()=>{
+          setTimeout((()=>{
+            (a.getComponentName&&"VocabularyForm"===a.getComponentName()||t.destroyComponent)&&(s.$destroy(), s.$el.remove())
+          }), 300)
+        })), c.$on("on-visible-change", (e=>{
+          !e&&t.destroyComponent&&setTimeout((()=>{
+            s.$destroy(), s.$el.remove()
+          }), 1e3)
+        })))
+      }
+      var a=()=>{
+        o.default.prototype.$Modal&&(o.default.prototype.$Modal.show=s)
+      };
+      const c=s
+    }, 46083:(e, t, r)=>{
+      var o=r(248124), n=r(571478);
+      e.exports=[
+        "$rootScope", "$scope", "groupRepository", function(e, t, r){
+          var i=n(t), u=o("#copy-group-set-popup"), s=()=>t.ui={
+            name:r.getAvailableGroupSetNameWithSequentialNumber(t.currentGroupSet.name)
+          };
+          return t.copyGroupSet=function(){
+            i.show(), r.copyGroupSet(t.currentGroupSet, t.ui.name).then((function(e){
+              return i.hide(), u.foundation("reveal", "close"), t.changeGroupSet(e)
+            })).catch((function(e){
+              return i.hide(), t.errors=e.errors
+            }))
+          }, t.reset=s, s()
+        }
+      ]
+    }, 52823:(e, t, r)=>{
+      r.d(t, {
+        A:()=>v, N:()=>s
+      });
+      r(418665), r(269193), r(979073), r(906048), r(43148), r(640173), r(658379), r(14602);
+      var o=r(592207), n=r.n(o);
+      r(207452);
+      function i(e, t, r, o, n, i, u){
+        try{
+          var s=e[
+            i
+          ]
+          (u), a=s.value
+        }
+        catch(e){
+          return void r(e)
+        }
+        s.done?t(a):Promise.resolve(a).then(o, n)
+      }
+      function u(e){
+        return function(){
+          var t=this, r=arguments;
+          return new Promise((function(o, n){
+            var u=e.apply(t, r);
+            function s(e){
+              i(u, o, n, s, a, "next", e)
+            }
+            function a(e){
+              i(u, o, n, s, a, "throw", e)
+            }
+            s(void 0)
+          }))
+        }
+      }
+      var s={
+        ABOVE:"drag-above", BELOW:"drag-below", ON:"drag-on"
+      };
+      function a(e){
+        return e.path?e.path:e.composedPath?e.composedPath():function(e){
+          for(var t=e.target, r=[
+          ];
+          t;
+          ){
+            if(r.push(t), "HTML"===t.tagName)return r.push(document), r.push(window), r;
+            t=t.parentElement
+          }
+          return r
+        }
+        (e)
+      }
+      function c(e){
+        var t=function(e){
+          for(var t, r=0, o=a(e);
+          r<o.length;
+          r++)if(t=o[
+            r
+          ].className||"", /tree-node/.test(t))return o[
+            r
+          ];
+          return null
+        }
+        (e);
+        return t||null
+      }
+      function d(e, t){
+        if(e){
+          var r=e.className;
+          if(t)new RegExp(t).test(r)||(r+=" ".concat(t));
+          else{
+            for(var o in s)r=r.replace(s[
+              o
+            ], "");
+            r.replace("dragging", "")
+          }
+          e.className=r.replace(/\s+/g, " ")
+        }
+      }
+      function l(e, t){
+        var r=t.getBoundingClientRect(), o=r.height/3, n=s.ON;
+        return r.top+o>=e.clientY?n=s.ABOVE:r.top+2*o<=e.clientY&&(n=s.BELOW), n
+      }
+      function p(e, t, r){
+        return f.apply(this, arguments)
+      }
+      function f(){
+        return(f=u(n().mark((function e(t, r, o){
+          return n().wrap((function(e){
+            for(;
+            ;
+            )switch(e.prev=e.next){
+              case 0:if(r&&r[
+                o
+              ]
+              &&"function"==typeof r[
+                o
+              ]){
+                e.next=2;
+                break
+              }
+              return e.abrupt("return");
+              case 2:return e.next=4, r[
+                o
+              ]
+              (...t);
+              case 4:return e.t0=e.sent, e.abrupt("return", !1!==e.t0);
+              case 6:case"end":return e.stop()
+            }
+          }), e)
+        })))).apply(this, arguments)
+      }
+      function m(e){
+        for(var t in s)for(var r=e.querySelectorAll(".".concat(s[
+          t
+        ])), o=0;
+        o<r.length;
+        o++)d(r[
+          o
+        ])
+      }
+      const v={
+        methods:{
+          getDropDestination:c, getDropPosition:l, updateHelperClasses:d, clearDropClasses:m, onDragStart(e){
+            e.preventDefault()
+          }, startDragging(e, t){
+            var r=this;
+            return u(n().mark((function o(){
+              return n().wrap((function(o){
+                for(;
+                ;
+                )switch(o.prev=o.next){
+                  case 0:if(o.t0=!e.isDraggable(), o.t0){
+                    o.next=6;
+                    break
+                  }
+                  return o.next=4, p([
+                    e
+                  ], r.tree.options.dnd, "onDragStart");
+                  case 4:o.t1=o.sent, o.t0=!1===o.t1;
+                  case 6:if(!o.t0){
+                    o.next=8;
+                    break
+                  }
+                  return o.abrupt("return");
+                  case 8:r.$$startDragPosition=[
+                    t.clientX, t.clientY
+                  ], r.$$possibleDragNode=e, r.$$possibleDragEle=e.vm.$el, r.initDragListeners();
+                  case 12:case"end":return o.stop()
+                }
+              }), o)
+            })))()
+          }, initDragListeners(){
+            var e, t=this, r=e=>{
+              this.$el.style.userSelect=e?"none":null, this.$el.querySelectorAll(".tree-operate").forEach((t=>{
+                t instanceof HTMLElement&&(t.style.pointerEvents=e?"none":null)
+              })), document.body.style.cursor=e?"grabbing":null
+            }, o=()=>{
+              window.removeEventListener("mouseup", i, !0), window.removeEventListener("mousemove", a, !0), r(!1)
+            }, i=function(){
+              var r=u(n().mark((function r(i){
+                return n().wrap((function(r){
+                  for(;
+                  ;
+                  )switch(r.prev=r.next){
+                    case 0:if(t.$$startDragPosition||i.stopPropagation(), t.draggableNode&&t.draggableNode.node.state("dragging", !1), !(t.$$dropDestination&&t.tree.isNode(t.$$dropDestination)&&t.$$dropDestination.vm)){
+                      r.next=9;
+                      break
+                    }
+                    return d(t.$$dropDestination.vm.$el, null), r.next=6, p([
+                      t.draggableNode.node, t.$$dropDestination, e
+                    ], t.tree.options.dnd, "onDragFinish");
+                    case 6:!1!==r.sent&&(t.$$dropDestination.isDropable()||e!==s.ON)&&e&&(t.draggableNode.node.finishDragging(t.$$dropDestination, e), t.draggableNode.node.parent=t.$$dropDestination, t.$emit("dragFinish")), t.$$dropDestination=null;
+                    case 9:m(t.$el), t.$$possibleDragNode=null, t.$$possibleDragEle=null, t.$set(t, "draggableNode", null), o();
+                    case 14:case"end":return r.stop()
+                  }
+                }), r)
+              })));
+              return function(e){
+                return r.apply(this, arguments)
+              }
+            }
+            (), a=function(){
+              var i=u(n().mark((function i(u){
+                var a, f, v, g, h;
+                return n().wrap((function(n){
+                  for(;
+                  ;
+                  )switch(n.prev=n.next){
+                    case 0:if(r(!0), !t.$$startDragPosition||(i=u, y=t.$$startDragPosition, Math.abs(i.clientX-y[
+                      0
+                    ])>5||Math.abs(i.clientY-y[
+                      1
+                    ])>5)){
+                      n.next=3;
+                      break
+                    }
+                    return n.abrupt("return");
+                    case 3:if(t.$$startDragPosition=null, !t.$$possibleDragNode){
+                      n.next=12;
+                      break
+                    }
+                    if(!1!==t.$$possibleDragNode.startDragging()){
+                      n.next=10;
+                      break
+                    }
+                    return o(), t.$$possibleDragNode=null, t.$$possibleDragEle=null, n.abrupt("return");
+                    case 10:t.$set(t, "draggableNode", {
+                      node:t.$$possibleDragNode, ele:t.$$possibleDragEle, left:0, top:0
+                    }), t.$$possibleDragNode=null;
+                    case 12:if(t.draggableNode.left=u.clientX, t.draggableNode.top=u.clientY, v=c(u), m(t.$el), v){
+                      n.next=19;
+                      break
+                    }
+                    return t.$$dropDestination=null, n.abrupt("return");
+                    case 19:if(g=v.getAttribute("data-id"), t.draggableNode.node.id!==g){
+                      n.next=22;
+                      break
+                    }
+                    return n.abrupt("return");
+                    case 22:if(t.$$dropDestination&&t.$$dropDestination.id===g||(t.$$dropDestination=t.tree.getNodeById(g)), !t.$$dropDestination||!t.draggableNode.node){
+                      n.next=28;
+                      break
+                    }
+                    if(!t.$$dropDestination.getPath().includes(t.draggableNode.node)){
+                      n.next=28;
+                      break
+                    }
+                    return t.$$dropDestination=null, n.abrupt("return");
+                    case 28:if((e=l(u, v))!==s.ON||!v.contains(null===(a=t.draggableNode)||void 0===a||null===(f=a.ele)||void 0===f?void 0:f.parentElement)){
+                      n.next=32;
+                      break
+                    }
+                    return t.$$dropDestination=null, n.abrupt("return");
+                    case 32:if(!t.options.dndChecker){
+                      n.next=36;
+                      break
+                    }
+                    if(t.options.dndChecker(t.draggableNode.node, t.$$dropDestination, e)){
+                      n.next=36;
+                      break
+                    }
+                    return t.$$dropDestination=null, n.abrupt("return");
+                    case 36:return n.next=38, p([
+                      t.draggableNode.node, t.$$dropDestination, e
+                    ], t.tree.options.dnd, "onDragOn");
+                    case 38:h=n.sent, t.$$dropDestination.isDropable()&&!1!==h||e!==s.ON||(e=null), d(v, e);
+                    case 42:case"end":return n.stop()
+                  }
+                  var i, y
+                }), i)
+              })));
+              return function(e){
+                return i.apply(this, arguments)
+              }
+            }
+            ();
+            window.addEventListener("mouseup", i, !0), window.addEventListener("mousemove", a, !0)
+          }
+        }
+      }
+    }, 57955:(e, t, r)=>{
+      var o=r(248124);
+      function n(e, t){
+        return function(e){
+          if(Array.isArray(e))return e
+        }
+        (e)||function(e, t){
+          if("undefined"==typeof Symbol||!(Symbol.iterator in Object(e)))return;
+          var r=[
+          ], o=!0, n=!1, i=void 0;
+          try{
+            for(var u, s=e[
+              Symbol.iterator
+            ]
+            ();
+            !(o=(u=s.next()).done)&&(r.push(u.value), !t||r.length!==t);
+            o=!0);
+          }
+          catch(e){
+            n=!0, i=e
+          }
+          finally{
+            try{
+              o||null==s.return||s.return()
+            }
+            finally{
+              if(n)throw i
+            }
+          }
+          return r
+        }
+        (e, t)||function(e, t){
+          if(!e)return;
+          if("string"==typeof e)return i(e, t);
+          var r=Object.prototype.toString.call(e).slice(8, -1);
+          "Object"===r&&e.constructor&&(r=e.constructor.name);
+          if("Map"===r||"Set"===r)return Array.from(e);
+          if("Arguments"===r||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(r))return i(e, t)
+        }
+        (e, t)||function(){
+          throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")
+        }
+        ()
+      }
+      function i(e, t){
+        (null==t||t>e.length)&&(t=e.length);
+        for(var r=0, o=new Array(t);
+        r<t;
+        r++)o[
+          r
+        ]
+        =e[
+          r
+        ];
+        return o
+      }
+      r(215195), r(43148), r(640173);
+      var u=r(901499), s=r(302543);
+      e.exports=[
+        "$rootScope", "$scope", "$q", "activityRepository", "$http", "$location", "toastr", "revealModalParams", "modelHelper", "commonApi", "$timeout", "activityApi", function(e, t, r, i, a, c, d, l, p, f, m, v){
+          o("#courseId").val();
+          t.remindHomework=function(e){
+            return t.popupMessage=function(e){
+              return(e.submit_by_group?t.remindGroupConfirmInfo:t.remindNormalConfirmInfo).replace("{0}", e.unsubmitted_count)
+            }
+            (e), t.confirm=function(){
+              return t.loading=!0, a.put("/api/homework/".concat(e.id, "/remind")).success((function(e){
+                return t.loading=!1, o("#confirmation-popup").foundation("reveal", "close"), d.success(e.message)
+              })).error(d.decorateError())
+            }, o("#confirmation-popup").foundation("reveal", "open"), null
+          }, t.makeUpHomework=e=>t.$emit("makeUpHomework", e, !0), t.editHomework=r=>p.editActivity(e, t, t.course, r.module_id, r.syllabus_id, m, r), t.deleteHomework=function(e){
+            t.deletingActivity=e;
+            var r="#activity-delete-popup";
+            return l[
+              r
+            ]
+            ={
+              fromPage:"list", activityType:"homework"
+            }, t.confirm=()=>i.deleteHomework(e).then((function(){
+              if(o(r).foundation("reveal", "close"), s.remove(t.homework_activities, {
+                id:e.id
+              }), t.isCourseInCheckpointMode)return p.deleteActivityFromCourse(t.course, e), p.refreshPrerequisitesForAllDependantActivities(t.course, e), p.updateCriterionInfoForActivities(t.course, t.homeworkList)
+            })), o(r).foundation("reveal", "open"), null
+          }, t.$on("homeworkUpdated", ((e, t)=>y(t))), t.submitHomework=e=>t.$emit("submitHomework", e), t.isHomeworkOverSubmit=function(e){
+            return!e.non_submit_times&&e.submit_times&&parseInt(e.submit_times, 10)>parseInt(e.user_submit_count, 10)?"not_over_submit":!e.non_submit_times&&e.submit_times&&parseInt(e.submit_times, 10)<=parseInt(e.user_submit_count, 10)?(e.overSubmitTimes=!0, "over_submit"):void 0
+          };
+          e.$on("homeworkSubmitted", (function(e, r){
+            return(r=s.find(t.homework_activities, {
+              id:r.id
+            }))&&(r.submitted=!0), function(e){
+              v.getActivity(e.id, (function(t){
+                if(t)return e.non_submit_times=t.non_submit_times, e.submit_times=parseInt(t.submit_times, 10)
+              }), (function(){
+              }))
+            }
+            (r), t.isCourseInCheckpointMode&&t.isTogglePrerequisiteOpened&&r.completion_criterion&&(r.completion_criterion===t.homeworkSubmittedInfo?p.refreshPrerequisitesStatus(r, t, !0, t.homeworkCompletedInfo):p.refreshPrerequisitesStatus(r, t, !1, t.notScored), p.updateCriterionInfoForActivities(t.course, t.homework_activities)), a.get("/api/submissions/".concat(r.id, "/count")).success((function(e){
+              return r.user_submit_count=e.submission_count, t.isHomeworkOverSubmit(r)
+            }))
+          })), e.$on("prerequisitesUpdated", ((e, r)=>p.refreshPrerequisitesForCurrentActivity(r, t.homeworkList, t.course)));
+          var g=function(e){
+            if(t.isCourseInCheckpointMode&&(t._course=i._course, i.initActivitiesForActivityList(t._course), i.initExamsForActivityList(t._course), e))return u(t, i, e, p, t.homework_activities).refreshPrerequisitesAfterActivityEdit()
+          }, h=e=>s.filter(e, (e=>e.is_assigned_to_all||s.includes(e.assign_group_ids, t.group.id))), y=function(){
+            var e=arguments.length>0&&void 0!==arguments[
+              0
+            ]
+            ?arguments[
+              0
+            ]
+            :null, o=i.initCourseAndModules(), u=i.initGroupHomeworks(t.currentGroupSet.id);
+            return r.all([
+              o, u
+            ]).then((function(){
+              var r=Array.from(arguments.length<=0?void 0:arguments[
+                0
+              ]), o=n(r, 2), i=o[
+                0
+              ], u=o[
+                1
+              ];
+              return t.course=i, t.homework_activities=h(u), g(e)
+            }))
+          };
+          return y()
+        }
+      ]
+    }, 84822:e=>{
+      e.exports=[
+        "$scope", "fileSelectModel", (e, t)=>e.$on("fileSelectOpen", (()=>t.limitTypes=[
+        ]))
+      ]
+    }, 88595:(e, t, r)=>{
+      r.d(t, {
+        A:()=>u
+      });
+      r(714913), r(158649);
+      var o=r(184743), n="YYYY.MM.DD HH:mm:ss", i="Asia/ShangHai";
+      const u=function(){
+        function e(){
+        }
+        return e.toLocalDateTime=function(e){
+          return this.formatDatetime(e)
+        }, e.toDefaultDateTime=function(e){
+          return o.utc(e).tz(i)
+        }, e.toUtcDateTime=function(e){
+          return o.utc(e)
+        }, e.isAfterByNow=function(e){
+          return"string"==typeof e?new Date(e)>=new Date:e>=new Date
+        }, e.isAfter=function(e, t){
+          var r="string"==typeof e?new Date(e):e;
+          return("string"==typeof t?new Date(t):t)>r
+        }, e.diffByHours=function(e, t){
+          return void 0===t&&(t=null), t?o(t).diff(o(e), "hours"):o.utc().diff(o(e), "hours")
+        }, e.formatDatetime=function(e, t){
+          return void 0===t&&(t=n), o(e).tz(i).format(t)
+        }, e.formatUtcDatetime=function(e, t){
+          return void 0===t&&(t=n), o.utc(e).tz(i).format(t)
+        }, e.diffByMinutes=function(e, t){
+          return void 0===t&&(t=null), t?o(t).diff(o(e), "minutes"):o.utc().diff(o(e), "minutes")
+        }, e.diffBySeconds=function(e, t){
+          return void 0===t&&(t=null), t?o(t).diff(o(e), "seconds"):o.utc().diff(o(e), "seconds")
+        }, e.toYmd=function(e){
+          return"string"==typeof e?o(e).format("YYYY.MM.DD"):o(e).tz(i).format("YYYY.MM.DD")
+        }, e.toHm=function(e){
+          return"string"==typeof e?o(e).format("HH:mm"):o(e).tz(i).format("HH:mm")
+        }, e.toHms=function(e){
+          return"string"==typeof e?o(e).format("HH:mm:ss"):o(e).tz(i).format("HH:mm:ss")
+        }, e.pad=function(e){
+          return e>10?e:"0".concat(e).slice(-2)
+        }, e.secondsToHms=function(e){
+          var t=Math.floor(e/60), r=e%60, o=Math.floor(t/60);
+          return t%=60, "".concat(this.pad(o), ":").concat(this.pad(t), ":").concat(this.pad(r))
+        }, e.millisecondToHms=function(e){
+          var t=Math.floor(e/1e3);
+          return this.secondsToHms(t)
+        }, e.startOfToday=function(){
+          return o().tz(i).startOf("day")
+        }, e.endOfToday=function(){
+          return o.tz(i).endOf("day")
+        }, e.endOfDay=function(e){
+          return o.tz(e, i).endOf("day").toDate()
+        }, e.startOfWeek=function(){
+          return o().tz(i).startOf("week")
+        }, e.endOfWeek=function(){
+          return o().tz(i).endOf("week")
+        }, e.toLocalDate=function(e){
+          return o(e).toDate()
+        }, e.utcDateToLocal=function(e, t){
+          return void 0===t&&(t="YYYY.MM.DD HH:mm"), o.utc(e).local().format(t)
+        }, e.localDateFormat=function(e, t){
+          return void 0===t&&(t="YYYY.MM.DD HH.mm"), o(e).format(t)
+        }, e.todayRange=function(){
+          return[
+            this.startOfToday().toDate(), this.endOfToday().toDate()
+          ]
+        }, e.latestNDayRange=function(e){
+          var t=this.endOfToday();
+          return[
+            this.endOfToday().subtract("days", e).add("seconds", 1).toDate(), t.toDate()
+          ]
+        }, e.timeDifferenceMsg=function(e, t){
+          var r=o(e), n=o(t);
+          if(n.diff(r, "seconds")<0)return"-1";
+          var i=n.diff(r, "days"), u=n.diff(r, "hours")-24*i, s=n.diff(r, "minutes")-60*n.diff(r, "hours"), a="";
+          return a+=i<=0?"":"".concat(i, "days"), a+=u<=0?"":"".concat(u, "hours"), i>0?a:a+="".concat(s<=0?1:s, "minutes")
+        }, e.timestampFormatDatetime=function(e, t){
+          return void 0===t&&(t="YYYY-MM-DD HH:mm:ss"), o.unix(e).format(t)
+        }, e.getMinutesDiff=function(e, t){
+          if(!e||!t)return 0;
+          var r=e.split(":").map(Number), o=r[
+            0
+          ], n=r[
+            1
+          ], i=t.split(":").map(Number), u=60*o+n, s=60*i[
+            0
+          ]
+          +i[
+            1
+          ];
+          return Math.abs(s-u)
+        }, e
+      }
+      ()
+    }, 100492:(e, t, r)=>{
+      var o=r(248124);
+      r(269193), r(683396);
+      var n=r(571478);
+      e.exports=[
+        "$rootScope", "$scope", "groupRepository", function(e, t, r){
+          var i=n(t), u=o("#edit-group-set-popup"), s=function(){
+            if(t.currentGroupSet)return t.ui={
+              name:t.currentGroupSet.name
+            }
+          };
+          return t.editGroupSet=function(){
+            i.show(), r.updateGroupSetName(t.currentGroupSet, t.ui.name).then((function(){
+              return e.$broadcast("groupSetNameChanged"), u.foundation("reveal", "close")
+            })).catch((e=>t.errors=e.errors)).finally((()=>i.hide()))
+          }, t.reset=s, s()
+        }
+      ]
+    }, 121087:(e, t, r)=>{
+      r.d(t, {
+        Ay:()=>u, Hl:()=>i.U, Nz:()=>n.N
+      });
+      var o=r(594554), n=(r(220463), r(504078), r(52823)), i=r(249077);
+      const u=o.A
+    }, 136552:(e, t, r)=>{
+      var o=r(248124), n=r(302543), i=r(795093);
+      r(219693), r(714913), r(168763);
+      var u=r(791936);
+      e.exports=[
+        "$scope", "groupRepository", "$routeParams", "$location", "$timeout", function(e, t, r, s, a){
+          e.students=[
+          ], e.ungroupedStudents=[
+          ], e.groupSets=[
+          ], e.currentGroupSet=null, e.groups=[
+          ], e.tabs=[
+          ], e.drawer=[
+          ], e.$on("groupSetNameChanged", (()=>a((()=>e.updateTabDistribution())))), e.updateTabDistribution=function(){
+            if(null!==e.currentGroupSet){
+              var t=o("#reference-container")[
+                0
+              ], r=o("#reference-container > .tab-title"), i=n.filter(r, (e=>0===e.offsetTop)), u=e.groupSets.indexOf(e.currentGroupSet);
+              if(e.tabs=e.groupSets.slice(0), e.drawer=[
+              ], u>=i.length){
+                var s=function(e){
+                  for(var r=i.length-1;
+                  r>=0;
+                  r--)if(i[
+                    r
+                  ].offsetLeft+e.offsetWidth<=t.offsetWidth)return r;
+                  return 0
+                }
+                (r[
+                  u
+                ]);
+                return e.tabs.splice(u, 1), e.tabs.splice(s, 0, e.currentGroupSet), e.drawer=e.tabs.slice(s+1, e.tabs.length)
+              }
+              return e.tabs.length>i.length?e.drawer=e.tabs.slice(i.length, e.tabs.length):void 0
+            }
+          }, e.changeGroupSet=function(r){
+            if(e.currentGroupSet=r, null!==e.currentGroupSet)return s.path("/".concat(r.id), !1), t.getGroups(r).then((()=>e.ungroupedStudents=t.getUngroupedStudentsOfGroupSet(e.currentGroupSet)))
+          }, e.selectGroup=t=>e.currentGroup=t;
+          e.openDeleteGroupSetPopup=function(){
+            return e.currentGroupSet.activities=[
+            ], t.loadActivitiesByGroupSet(e.currentGroupSet.id).then((function(t){
+              return e.currentGroupSet.activities=t, o("#delete-group-set-popup").foundation("reveal", "open")
+            }))
+          }, e.addDefaultGroupSet=r=>t.addGroupSet(r, !1, null).then((function(t){
+            return e.currentGroupSet=t, e.$broadcast("start-add-group")
+          })).catch((function(e){
+          })), e.exportGroupingPlan=function(){
+            return t.exportCourseGroupSetInfoToExcel((function(e){
+              var t=new Blob([
+                e
+              ], {
+                type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              }), r=i(new Date).format("YYYY-MM-DD");
+              return u.saveAs(t, "Group_set_list_".concat(r, ".xlsx"))
+            }))
+          }, e.displayUserNo=function(t){
+            return e.showSeatNumber?"".concat(e.i18nMessages.userNo, ": ").concat(t.user_no):t.user_no
+          }, e.displaySeatNo=function(t){
+            return e.showSeatNumber?"".concat(e.i18nMessages.seatNumber, ": ").concat(t.seat_number):""
+          }, e.displayNickname=function(t){
+            return e.showNickname?t.nickname:""
+          };
+          return t.init(null, r.groupSetId, !1, e.sortByAuditor).then((function(){
+            return e.students=t.students, e.groupSets=t.groupSets, e.tabs=e.groupSets.slice(0), o=r.groupSetId, e.groupSets.length>0?(o&&(n=t.findGroupSetById(o)), e.changeGroupSet(null!=n?n:e.groupSets[
+              0
+            ])):e.ungroupedStudents=e.students;
+            var o, n
+          }))
+        }
+      ]
+    }, 138855:(e, t, r)=>{
+      var o=r(248124), n=r(302543), i=r(756029);
+      r(979073), r(906048), r(640173), r(850785), e.exports=[
+        "$rootScope", "$scope", "groupRepository", function(e, t, r){
+          var u, s=o("#add-group-member-popup");
+          t.targetGruop=null, t.$on("start-add-group-member", (function(e, r){
+            return t.targetGroup=r.group, t.repeat=r.repeat||!1, u(), s.foundation("reveal", "open")
+          })), t.addMembers=function(){
+            var e=n.filter(t.students, {
+              selected:!0
+            });
+            r.addGroupMembers(t.targetGroup, e).then((function(){
+              return t.repeat&&0!==t.ungroupedStudents.length?u():s.foundation("reveal", "close")
+            }))
+          }, t.getSelectedUsers=()=>t.selectedUsers=n.filter(t.users, {
+            selected:!0
+          });
+          return t.search=function(){
+            var e;
+            return e=t.conditions.keyword?n.filter(t.students, (e=>{
+              return r=e, o=t.conditions.keyword, n=new RegExp(o.replace(/[
+                |\\{
+                }
+                ()[
+                  \
+                ]
+                ^$+*?.
+              ]
+              /g, "\\$&").replace(/ +/g, ".*"), "i"), !o||n.test(r.name)||n.test(r.user_no);
+              var r, o, n
+            })):t.students, t.users=e
+          }, u=function(){
+            return t.students=i.copy(t.ungroupedStudents), t.users=t.students, t.conditions={
+            }, t.selectedUsers=[
+            ]
+          }
+        }
+      ]
+    }, 141440:(e, t, r)=>{
+      r(350050)
+    }, 158823:(e, t, r)=>{
+      var o=r(248124), n=r(571478);
+      e.exports=[
+        "$rootScope", "$scope", "groupRepository", function(e, t, r){
+          var i=n(t), u=o("#add-group-set-popup");
+          t.errors={
+          }, t.ui={
+          };
+          var s=function(){
+            return t.ui.name="", t.ui.number=0, t.ui.randomGrouping=!0, t.ui.randomAddGroupLead=!1, t.ungroupedStudents=t.students, t.errors={
+            }
+          };
+          return t.addGroupSet=function(e){
+            var o;
+            i.show(), !0===t.ui.randomGrouping&&(o=e()), r.addGroupSet(t.ui.name, t.ui.randomGrouping, o).then((function(e){
+              i.hide(), u.foundation("reveal", "close");
+              var r={
+                mode:statistics.enums.Mode.normal, channel:statistics.enums.Channel.web, action:statistics.enums.GroupSetAction.create_group_set, module:statistics.enums.TeachingActionModule.group_set
+              };
+              return statistics.track(r), t.changeGroupSet(e)
+            })).catch((function(e){
+              return t.errors=e.errors, i.hide()
+            }))
+          }, t.reset=function(){
+            return t.$broadcast("reset"), s()
+          }, s()
+        }
+      ]
+    }, 180287:(e, t, r)=>{
+      r.d(t, {
+        A:()=>o
+      });
+      r(418665), r(678636), r(658379), r(14602);
+      const o=function(e){
+        var t={
+        };
+        return e.keys().forEach((function(r){
+          var o=e(r);
+          return t[
+            r.match(/[
+              \w-
+            ]
+            +/)[
+              0
+            ]
+          ]
+          =o.default||o
+        })), t
+      }
+    }, 193031:(e, t, r)=>{
+      var o=r(248124), n=r(571478);
+      e.exports=[
+        "$rootScope", "$scope", "groupRepository", function(e, t, r){
+          var i=n(t), u=o("#delete-last-member-popup");
+          return t.group=null, t.member=null, t.$on("delete-last-member", (function(e, r){
+            return t.group=r.group, t.member=r.member, u.foundation("reveal", "open")
+          })), t.delete=function(){
+            return i.show(), r.deleteGroupMember(t.group, t.member).then((function(){
+              return i.hide(), u.foundation("reveal", "close")
+            }))
+          }
+        }
+      ]
+    }, 223369:e=>{
+      e.exports=[
+        "$rootScope", "$scope", "groupRepository", "$routeParams", "$location", function(e, t, r, o, n){
+          t.groups=[
+          ], t.currentGroup=null, t.enterGroup=function(e){
+            if(e)return n.path("/".concat(e.groupSet.id, "/groups/").concat(e.id, "/info"))
+          };
+          return r.init().then((function(){
+            return t.students=r.students, t.groups=r.groups, r.loadGroupsSubmissionStatus()
+          }))
+        }
+      ]
+    }, 256119:(e, t, r)=>{
+      var o=r(302543);
+      r(418665), r(658379), r(14602), e.exports=function(){
+        return class{
+          constructor(e){
+            this.errorPriority=e, this.ui={
+              uploadSucceeded:!1, importConfirmed:!1, wizardStep:1
+            }
+          }
+          getHighestPriorityError(e){
+            return o.minBy(o.map(o.keys(e), (e=>({
+              key:e, priority:this.errorPriority[
+                e
+              ]
+            }))), "priority")
+          }
+          pickError(e){
+            if(e)return e[
+              this.getHighestPriorityError(e).key
+            ]
+          }
+          updateRecordsPickedError(e){
+            return o.forEach(e, (e=>(e.error=this.pickError(e.errors), !0)))
+          }
+          goStepFirst(){
+            return this.ui.wizardStep=1, this.ui.uploadSucceeded=!1
+          }
+          updateSecondStepData(e){
+            if(this.ui.wizardStep=2, 0===e.length)return this.ui.importConfirmed=!0
+          }
+        }
+      }
+    }, 319314:e=>{
+      e.exports=[
+        "$rootScope", "$scope", "groupRepository", "$location", function(e, t, r, o){
+          t.editFromInfo=!1, t.currentGroupId=null;
+          return t.editGroup=function(e){
+            var r=arguments.length>1&&void 0!==arguments[
+              1
+            ]
+            &&arguments[
+              1
+            ];
+            return t.currentGroupId=e, t.editFromInfo=r, o.path("/".concat(e, "/edit"))
+          }, t.cancelFromEdit=function(){
+            return t.editFromInfo?o.path("/".concat(t.currentGroupId, "/info")):o.path("/")
+          }, r.init().then((()=>t.groupsNumber=()=>r.groups.length))
+        }
+      ]
+    }, 344651:(e, t, r)=>{
+      r.d(t, {
+        $A:()=>S, Il:()=>p, sB:()=>_, uJ:()=>n, ul:()=>b, xY:()=>m, z$:()=>v
+      });
+      r(540590);
+      var o, n, i=r(738645), u=r(510543), s=r(152229), a=r(731904), c=(o=function(e, t){
+        return(o=Object.setPrototypeOf||{
+          __proto__:[
+          ]
+        }
+        instanceof Array&&function(e, t){
+          e.__proto__=t
+        }
+        ||function(e, t){
+          for(var r in t)Object.prototype.hasOwnProperty.call(t, r)&&(e[
+            r
+          ]
+          =t[
+            r
+          ])
+        })(e, t)
+      }, function(e, t){
+        if("function"!=typeof t&&null!==t)throw new TypeError("Class extends value "+String(t)+" is not a constructor or null");
+        function r(){
+          this.constructor=e
+        }
+        o(e, t), e.prototype=null===t?Object.create(t):(r.prototype=t.prototype, new r)
+      }), d=function(e, t, r, o){
+        var n, i=arguments.length, u=i<3?t:null===o?o=Object.getOwnPropertyDescriptor(t, r):o;
+        if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)u=Reflect.decorate(e, t, r, o);
+        else for(var s=e.length-1;
+        s>=0;
+        s--)(n=e[
+          s
+        ])&&(u=(i<3?n(u):i>3?n(t, r, u):n(t, r))||u);
+        return i>3&&u&&Object.defineProperty(t, r, u), u
+      }, l=[
+        "none", "auditing", "agree", "reject"
+      ], p=(function(){
+        function e(){
+        }
+        d([
+          (0, i.v)()
+        ], e.prototype, "id", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "duration", void 0)
+      }
+      (), function(){
+        function e(){
+        }
+        d([
+          (0, i.v)()
+        ], e.prototype, "id", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "name", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "size", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "deleted", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "type", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "status", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "videoSrcType", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "allowDownload", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "audio", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "videos", void 0)
+      }
+      (), function(){
+        function e(){
+        }
+        d([
+          (0, i.v)()
+        ], e.prototype, "id", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "uploads", void 0)
+      }
+      (), function(){
+        function e(){
+        }
+        d([
+          (0, i.v)()
+        ], e.prototype, "id", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "videoQuiz", void 0)
+      }
+      (), function(){
+        function e(){
+        }
+        d([
+          (0, i.v)()
+        ], e.prototype, "cameraType", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "fileUrl", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "label", void 0)
+      }
+      (), function(){
+        function e(){
+        }
+        d([
+          (0, i.v)()
+        ], e.prototype, "duration", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "status", void 0)
+      }
+      (), function(){
+        function e(){
+        }
+        d([
+          (0, i.v)()
+        ], e.prototype, "id", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "name", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "mimetype", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "appId", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "properties", void 0)
+      }
+      (), function(){
+        function e(){
+        }
+        d([
+          (0, i.v)(), (0, u.d)((function(e){
+            var t=e.value;
+            return a.TimeUtils.toLocalDate(t)
+          }), {
+            toClassOnly:!0
+          })
+        ], e.prototype, "startTime", void 0), d([
+          (0, i.v)(), (0, u.d)((function(e){
+            var t=e.value;
+            return a.TimeUtils.toLocalDate(t)
+          }), {
+            toClassOnly:!0
+          })
+        ], e.prototype, "endTime", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "videos", void 0)
+      }
+      (), function(){
+        function e(){
+        }
+        return d([
+          (0, i.v)()
+        ], e.prototype, "id", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "title", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "courseId", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "type", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "data", void 0), d([
+          (0, i.v)(), (0, u.d)((function(e){
+            var t=e.value;
+            return a.TimeUtils.toLocalDate(t)
+          }), {
+            toClassOnly:!0
+          })
+        ], e.prototype, "startTime", void 0), d([
+          (0, i.v)(), (0, u.d)((function(e){
+            var t=e.value;
+            return a.TimeUtils.toLocalDate(t)
+          }), {
+            toClassOnly:!0
+          })
+        ], e.prototype, "endTime", void 0), d([
+          (0, i.v)(), (0, u.d)((function(e){
+            var t=e.value;
+            return a.TimeUtils.toLocalDate(t)
+          }), {
+            toClassOnly:!0
+          })
+        ], e.prototype, "lastSubMeetingEndTime", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "canReprocessReplay", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "completionCriterion", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "completionCriterionKey", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "completionCriterionValue", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "interScoreMap", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "intraScoreMap", void 0), d([
+          (0, i.v)(), (0, u.d)((function(e){
+            return function(e){
+              return a.TimeUtils.isAfterByNow(e.startTime)?"notStarted":e.lastSubMeetingEndTime&&a.TimeUtils.isAfterByNow(e.lastSubMeetingEndTime)||!e.endTime||a.TimeUtils.isAfterByNow(e.endTime)?"inProgress":"expired"
+            }
+            (e.obj)
+          }))
+        ], e.prototype, "status", void 0), d([
+          (0, i.v)(), (0, u.d)((function(e){
+            var t=e.obj;
+            return l[
+              t.data.auditStatus
+            ]
+          }))
+        ], e.prototype, "auditStatus", void 0), d([
+          (0, i.v)(), (0, u.d)((function(e){
+            var t=e.value;
+            return a.TimeUtils.toLocalDate(t)
+          }), {
+            toClassOnly:!0
+          })
+        ], e.prototype, "createdAt", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "createdBy", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "meetingHostUser", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "isBookedLive", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "bookedCount", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "tencentMeetingType", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "orgId", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "moduleId", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "syllabusId", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "uploads", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "interactionActivityAttributes", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "lessonResource", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "videoSuite", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "viewUrl", void 0), e
+      }
+      ()), f=function(e){
+        this.type=e, this.recurringType=-1
+      }, m=function(e){
+        function t(){
+          return e.call(this, "chinamcloud_live")||this
+        }
+        return c(t, e), t
+      }
+      (f), v=function(e){
+        function t(){
+          var t=e.call(this, "lesson")||this;
+          return t.lessonType="lesson_replay", t
+        }
+        return c(t, e), t
+      }
+      (f), g=function(){
+        function e(){
+          this.leftSecond=0, this.progress=0, this.retryTimes=0
+        }
+        return d([
+          (0, i.v)()
+        ], e.prototype, "leftSecond", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "progress", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "retryTimes", void 0), e
+      }
+      (), h=function(){
+        function e(){
+        }
+        return d([
+          (0, i.v)()
+        ], e.prototype, "label", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "muted", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "streamUrl", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "type", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "flvSrc", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "flvType", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "defaultProtocal", void 0), e
+      }
+      (), y=function(){
+        function e(){
+        }
+        return d([
+          (0, i.v)()
+        ], e.prototype, "cameraType", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "cameraId", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "mute", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "url", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "mediaProtocol", void 0), e
+      }
+      (), b=function(){
+        function e(){
+          this.description="", this.progress=null, this.streams=null, this.replayVideos=null, this.controllerConfig={
+          }, this.liveCaptionConfig={
+          }, this.viewLive=!0, this.viewRecord=!0
+        }
+        return d([
+          (0, i.v)()
+        ], e.prototype, "instructorNames", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "description", void 0), d([
+          (0, i.v)(), (0, s.Z)((function(){
+            return g
+          }))
+        ], e.prototype, "progress", void 0), d([
+          (0, i.v)(), (0, s.Z)((function(){
+            return h
+          }))
+        ], e.prototype, "streams", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "status", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "replayId", void 0), d([
+          (0, i.v)(), (0, s.Z)((function(){
+            return y
+          }))
+        ], e.prototype, "replayVideos", void 0), d([
+          (0, i.v)(), (0, u.d)((function(e){
+            return e.value||{
+            }
+          }), {
+            toClassOnly:!0
+          })
+        ], e.prototype, "controllerConfig", void 0), d([
+          (0, i.v)(), (0, u.d)((function(e){
+            return e.value||{
+            }
+          }), {
+            toClassOnly:!0
+          })
+        ], e.prototype, "liveCaptionConfig", void 0), d([
+          (0, i.v)(), (0, u.d)((function(e){
+            return e.value.roomName
+          }), {
+            toClassOnly:!0
+          })
+        ], e.prototype, "room", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "type", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "isBookedLive", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "bookedCount", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "viewLive", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "viewRecord", void 0), e
+      }
+      (), S=function(){
+        function e(){
+        }
+        return d([
+          (0, i.v)()
+        ], e.prototype, "id", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "displayName", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "type", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "percentage", void 0), e
+      }
+      ();
+      !function(e){
+        function t(){
+          return null!==e&&e.apply(this, arguments)||this
+        }
+        c(t, e)
+      }
+      (f);
+      !function(e){
+        e[
+          e.init=0
+        ]
+        ="init", e[
+          e.running=1
+        ]
+        ="running", e[
+          e.success=2
+        ]
+        ="success", e[
+          e.failed=3
+        ]
+        ="failed", e[
+          e.cancel=4
+        ]
+        ="cancel"
+      }
+      (n||(n={
+      }));
+      var _=function(){
+        function e(){
+        }
+        return d([
+          (0, i.v)()
+        ], e.prototype, "id", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "createdAt", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "scoreMethod", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "version", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "oldScore", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "score", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "oldFinalScore", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "finalScore", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "operatorName", void 0), d([
+          (0, i.v)()
+        ], e.prototype, "operatorId", void 0), e
+      }
+      ()
+    }, 344870:(e, t, r)=>{
+      var o=r(248124), n=r(302543);
+      function i(e, t){
+        var r;
+        if("undefined"==typeof Symbol||null==e[
+          Symbol.iterator
+        ]){
+          if(Array.isArray(e)||(r=function(e, t){
+            if(!e)return;
+            if("string"==typeof e)return u(e, t);
+            var r=Object.prototype.toString.call(e).slice(8, -1);
+            "Object"===r&&e.constructor&&(r=e.constructor.name);
+            if("Map"===r||"Set"===r)return Array.from(e);
+            if("Arguments"===r||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(r))return u(e, t)
+          }
+          (e))||t&&e&&"number"==typeof e.length){
+            r&&(e=r);
+            var o=0, n=function(){
+            };
+            return{
+              s:n, n:function(){
+                return o>=e.length?{
+                  done:!0
+                }
+                :{
+                  done:!1, value:e[
+                    o++
+                  ]
+                }
+              }, e:function(e){
+                throw e
+              }, f:n
+            }
+          }
+          throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")
+        }
+        var i, s=!0, a=!1;
+        return{
+          s:function(){
+            r=e[
+              Symbol.iterator
+            ]
+            ()
+          }, n:function(){
+            var e=r.next();
+            return s=e.done, e
+          }, e:function(e){
+            a=!0, i=e
+          }, f:function(){
+            try{
+              s||null==r.return||r.return()
+            }
+            finally{
+              if(a)throw i
+            }
+          }
+        }
+      }
+      function u(e, t){
+        (null==t||t>e.length)&&(t=e.length);
+        for(var r=0, o=new Array(t);
+        r<t;
+        r++)o[
+          r
+        ]
+        =e[
+          r
+        ];
+        return o
+      }
+      r(219693), r(418665), r(168763), r(445708), r(43148), r(640173), r(14602);
+      var s=r(726330), a=(s.GroupSet, s.Group, s.GroupUser, s.groupFactory), c=s.groupSetFactory, d=s.updateGroupSet;
+      e.exports=[
+        "groupApi", "$q", function(e, t){
+          var r={
+          }, u={
+            courseId:o("#courseId").val(), groupSetData:[
+            ], studentMap:{
+            }, fullyLoadedGroupSetIds:new Set, ungroupedStudents:{
+            }, students:[
+            ], groupSets:[
+            ], groups:[
+            ], init(o){
+              var n=arguments.length>1&&void 0!==arguments[
+                1
+              ]
+              ?arguments[
+                1
+              ]
+              :0, i=arguments.length>2&&void 0!==arguments[
+                2
+              ]
+              &&arguments[
+                2
+              ], s=arguments.length>3&&void 0!==arguments[
+                3
+              ]
+              &&arguments[
+                3
+              ];
+              if(o&&(this.courseId=o), r[
+                this.courseId
+              ])return r[
+                this.courseId
+              ].promise;
+              r[
+                this.courseId
+              ]
+              =t.defer();
+              var a=t.defer(), c=t.defer(), d=t.defer(), l=[
+                a.promise, c.promise, d.promise
+              ];
+              return e.getGroupSets(this.courseId, n, (e=>(this.groupSetData=e.group_sets, a.resolve(this.groupSetData)))), e.getStudents(this.courseId, (function(e){
+                return u.students=e.students, c.resolve(e.students)
+              }), !1, "id,user_no,name,comment,nickname"), i?e.getEnrollments(this.courseId, (function(e){
+                return u.enrollments=e.enrollments, d.resolve(e.enrollments)
+              })):d.resolve(), t.all(l).then((()=>(u.initStudentsMap(this.students), u.initGroupSets(this.groupSetData, s), r[
+                this.courseId
+              ].resolve()))), r[
+                this.courseId
+              ].promise
+            }, initStudentsMap(e){
+              return this.studentMap={
+              }, e.map((e=>this.studentMap[
+                e.id
+              ]
+              =e))
+            }, initGroupSet(e){
+              var t=arguments.length>1&&void 0!==arguments[
+                1
+              ]
+              &&arguments[
+                1
+              ], r=c(e, this.studentMap, t);
+              return u.groupSets.push(r), e.groups&&u.fullyLoadedGroupSetIds.add(r.id), u.updateUngroupedStudentsOfGroupSet(r), r
+            }, initGroupSets(e){
+              var t=arguments.length>1&&void 0!==arguments[
+                1
+              ]
+              &&arguments[
+                1
+              ];
+              u.groupSets=[
+              ];
+              var r, o=i(e);
+              try{
+                for(o.s();
+                !(r=o.n()).done;
+                ){
+                  var n=r.value;
+                  u.initGroupSet(n, t)
+                }
+              }
+              catch(e){
+                o.e(e)
+              }
+              finally{
+                o.f()
+              }
+              return u.updateGroups(), u.groupSets
+            }, initWithEnrollments(e){
+              return this.init(e, -1, !0)
+            }, getGroups(r){
+              var o=t.defer();
+              return this.fullyLoadedGroupSetIds.has(r.id)?o.resolve(r.groups):e.getGroups(r.id, (e=>{
+                var t, n=i(e.groups);
+                try{
+                  for(n.s();
+                  !(t=n.n()).done;
+                  ){
+                    var s=t.value;
+                    r.addGroup(a(s, this.studentMap), !1)
+                  }
+                }
+                catch(e){
+                  n.e(e)
+                }
+                finally{
+                  n.f()
+                }
+                return r.refresh(), this.updateUngroupedStudentsOfGroupSet(r), e.groups&&this.fullyLoadedGroupSetIds.add(r.id), u.updateGroups(), o.resolve(r.groups)
+              })), o.promise
+            }, updateGroup:(t, r, o)=>e.updateGroup(t, r, o), addGroupMembers(r, o){
+              var n, u, s=t.defer(), a=(()=>{
+                var e, t=[
+                ], o=i(r.members);
+                try{
+                  for(o.s();
+                  !(e=o.n()).done;
+                  )n=e.value, t.push(n.id)
+                }
+                catch(e){
+                  o.e(e)
+                }
+                finally{
+                  o.f()
+                }
+                return t
+              })(), c=i(o);
+              try{
+                for(c.s();
+                !(u=c.n()).done;
+                ){
+                  var d=u.value;
+                  r.isMember(d)||a.push(d.id)
+                }
+              }
+              catch(e){
+                c.e(e)
+              }
+              finally{
+                c.f()
+              }
+              return e.addGroupMembers(r, {
+                members:a
+              }, (e=>{
+                var t, o=i(e.group.members);
+                try{
+                  for(o.s();
+                  !(t=o.n()).done;
+                  ){
+                    var u=t.value;
+                    null!=(n=this.studentMap[
+                      u
+                    ])&&r.addMember(n, e.group.leaders.includes(u), !1)
+                  }
+                }
+                catch(e){
+                  o.e(e)
+                }
+                finally{
+                  o.f()
+                }
+                return r.refresh(), r.groupSet.refresh(), this.updateUngroupedStudentsOfGroupSet(r.groupSet), s.resolve(r.members)
+              }), s.reject), s.promise
+            }, deleteGroupMember(r, o){
+              var n=t.defer();
+              return e.deleteGroupMember(r, o, (()=>(r.removeMember(o, !1), r.refresh(), r.groupSet.refresh(), this.updateUngroupedStudentsOfGroupSet(r.groupSet), n.resolve(o))), n.reject), n.promise
+            }, setGroupMemberLeadership(r, o, n){
+              var i=t.defer();
+              return e.updateGroupMember(r, o, {
+                isLeader:n
+              }, (function(){
+                return o.isLeader=n, i.resolve(o)
+              }), i.reject), i.promise
+            }, updateGroupInfo(r, o){
+              var n=t.defer();
+              return e.updateGroupInfo(r.id, o, (function(e){
+                return r.updateInfo(e.group), n.resolve(r)
+              }), n.reject), n.promise
+            }, sortGroups(r, o, n){
+              var i=t.defer();
+              return r.moveGroup(o, n), e.sortGroups(r, r.getSorting(), (()=>i.resolve(r.groups)), i.reject), i.promise
+            }, addGroup(r, o, n, i){
+              var s=t.defer(), c={
+                name:o, members:n?n.map((e=>e.id)):void 0, leaders:i?i.map((e=>e.id)):void 0
+              };
+              return e.addGroup(r.id, c, (e=>{
+                var t=a(e.group, this.studentMap);
+                return r.addGroup(t), u.updateUngroupedStudentsOfGroupSet(r), u.updateGroups(), s.resolve(t)
+              }), (e=>s.reject(e))), s.promise
+            }, deleteGroup(r){
+              var o=t.defer();
+              return e.deleteGroup(r, (function(){
+                var e=r.groupSet;
+                return r.groupSet.removeGroup(r), e.refresh(), u.updateUngroupedStudentsOfGroupSet(e), u.updateGroups(), o.resolve()
+              }), (e=>o.reject(e))), o.promise
+            }, updateGroupUploads:e=>n.find(u.groups, {
+              id:n.parseInt(e.id)
+            }).uploads=e.uploads, exportCourseGroupSetInfoToExcel(t, r){
+              return e.exportCourseGroupSetInfoToExcel(this.courseId, t, r)
+            }, exportGroupSetInfoToExcel:(t, r, o)=>e.exportGroupSetInfoToExcel(t, r, o), addGroupSet(r, o, n){
+              var i=t.defer(), s={
+                name:r, random_grouping:o, random_grouping_form:n?[
+                  n
+                ]
+                :[
+                ]
+              };
+              return e.addGroupSet(this.courseId, s, (function(e){
+                var t=u.initGroupSet(e.group_set);
+                return u.updateGroups(), i.resolve(t)
+              }), i.reject), i.promise
+            }, updateGroupSetName(r, o){
+              var n=t.defer(), i={
+                name:o
+              };
+              return e.updateGroupSet(r.id, i, (function(e){
+                return r.name=e.group_set.name, n.resolve(r)
+              }), n.reject), n.promise
+            }, deleteGroupSet(r){
+              var o=t.defer();
+              return e.deleteGroupSet(r.id, (()=>{
+                var e=this.groupSets.indexOf(r);
+                return e>-1&&(this.groupSets.splice(e, 1), delete this.ungroupedStudents[
+                  e
+                ], this.fullyLoadedGroupSetIds.delete(r.id), u.updateGroups()), o.resolve()
+              }), o.reject), o.promise
+            }, copyGroupSet(r, o){
+              var n=t.defer();
+              return e.copyGroupSet(this.courseId, r.id, o, (function(e){
+                return r=u.initGroupSet(e.group_set), u.updateGroups(), n.resolve(r)
+              }), n.reject), n.promise
+            }, findGroupSetById:e=>n.find(u.groupSets, {
+              id:parseInt(e)
+            }), loadGroupsSubmissionStatus(){
+              var r=t.defer();
+              return e.getGroupsSubmissionStatusOfUser(this.courseId, (e=>{
+                var t, o=i(e.submission_status);
+                try{
+                  for(o.s();
+                  !(t=o.n()).done;
+                  ){
+                    var n=t.value, u=this.findGroupSetById(n.group_set_id);
+                    u&&u.bucket&&null!=u.bucket[
+                      n.id
+                    ]
+                    &&u.bucket[
+                      n.id
+                    ].updateSubmissionStatus(n)
+                  }
+                }
+                catch(e){
+                  o.e(e)
+                }
+                finally{
+                  o.f()
+                }
+                return r.resolve()
+              }), r.reject), r.promise
+            }, loadActivitiesByGroupSet(r){
+              var o=t.defer();
+              return e.getActivitiesByGroupSet(r, (e=>o.resolve(e.activities)), o.reject), o.promise
+            }, updateUngroupedStudentsOfGroupSet:e=>(u.ungroupedStudents[
+              e.id
+            ]
+            ||(u.ungroupedStudents[
+              e.id
+            ]
+            =[
+            ]), u.ungroupedStudents[
+              e.id
+            ].splice(0, u.ungroupedStudents[
+              e.id
+            ].length), n.filter(u.students, (t=>!e.participants.has(t))).map((t=>u.ungroupedStudents[
+              e.id
+            ].push(t)))), updateGroups:()=>(u.groups=[
+            ], u.groupSets.map((e=>u.groups=u.groups.concat(e.groups)))), getUngroupedStudentsOfGroupSet:e=>u.ungroupedStudents[
+              e.id
+            ], getAvailableGroupSetNameWithSequentialNumber(e){
+              for(var t=new Set(u.groupSets.map((e=>e.name))), r=e.replace(/\ \(\d\)$/, ""), o=0, n="";
+              n=r+(o?" (".concat(o, ")"):""), t.has(n);
+              )o+=1;
+              return n
+            }, reloadGroupSet(r){
+              var o=t.defer();
+              u.fullyLoadedGroupSetIds.has(r.id)&&u.fullyLoadedGroupSetIds.delete(r.id);
+              return e.getGroupSet(r.id, (e=>(d(r, e.group_set, this.studentMap), o.resolve(r))), o.reject), o.promise
+            }, reloadGroupSetById(e){
+              var r=t.defer(), o=u.findGroupSetById(e);
+              return o?u.reloadGroupSet(o).then(r.resolve).catch(r.reject):r.reject({
+              }), r.promise
+            }, loadAllGroups(){
+              var e=t.defer();
+              return t.all(u.groupSets.map((e=>u.getGroups(e)))).then(e.resolve).catch(e.reject), e.promise
+            }, getTeachingTeamGroups(r){
+              var o=t.defer();
+              return e.getTeachingTeamGroups(r, (e=>o.resolve(e.result)), o.reject), o.promise
+            }, uploadFileToGroup:e.uploadFileToGroup, deleteFile:e.deleteFile, batchDownload:e.batchDownload, sendBatchDownload:e.sendBatchDownload
+          };
+          return u
+        }
+      ]
+    }, 350050:(e, t, r)=>{
+      var o=r(756029), n=r(557266);
+      o.module("group", [
+        "common"
+      ]).factory("groupApi", r(465857)).factory("rubricRepository", r(651534)).factory("examListRepository", r(980108)).factory("groupRepository", r(344870)).factory("util", r(933446)).factory("Rubric", r(131828)).factory("fileSelectModel", r(667164)).factory("homeworkApi", r(946650)).factory("homeworkRepository", r(429800)).factory("forumApi", r(675139)).factory("forumRepository", r(722538)).factory("api", r(427373)).factory("filter", r(827829)).factory("Department", r(860019)).factory("examRepository", r(489442)).factory("ExamHelper", r(715738)).factory("DataImportHelper", r(256119)).factory("enrollmentsRepository", r(757362)).factory("faceCheckHelper", r(130714)).factory("publishHelper", r(664011)).factory("activityRepository", r(566117)).filter("timeFromNow", r(667399)).directive("replyList", n.replyList).directive("unreadReply", n.unreadReply).directive("unvisiableReply", n.unvisiableReply).directive("onRepeatFinished", n.onRepeatFinished).directive("vueWrapper", n.vueWrapper).controller("UserCheckpointActivityController", r(22033)).controller("ImportGroupController", r(354060)).controller("GroupComponentController", r(809752)).controller("GroupController", r(319314)).controller("ListGroupSetController", r(136552)).controller("AddGroupSetController", r(158823)).controller("EditGroupSetController", r(100492)).controller("DeleteGroupSetController", r(366785)).controller("DeleteGroupController", r(356838)).controller("DeleteLastMemberController", r(193031)).controller("CopyGroupSetController", r(46083)).controller("AddGroupController", r(516936)).controller("AddGroupMemberController", r(138855)).controller("EditGroupController", r(554899)).controller("ListGroupController", r(896663)).controller("ListStudentGroupController", r(223369)).controller("RandomGroupingController", r(765374)).controller("ViewGroupController", r(793176)).controller("ViewGroupShareController", r(84822)).controller("GroupHomeworkListController", r(57955)).controller("GroupExamListController", r(525621)).controller("HomeworkActivityCtrl", r(618478)).controller("ExamActivityEditController", r(153645)).controller("RubricController", r(905519)).controller("GroupSharingController", r(520805)).controller("ActivityDeletePopupController", r(628325)).controller("SubmitHomeworkCtrl", r(473669)).controller("GroupForumController", r(490246)).controller("GroupForumTopicController", r(415824)).controller("TopicListController", r(112237)).controller("TopicController", r(384476)).controller("AddTopicController", r(621670)).controller("AddReplyController", r(736183)).controller("AddCommentController", r(894716)).controller("ForumEnrollmentController", r(696251)).controller("BatchImportController", r(566177)).controller("TopicCategoryListController", r(640266)).controller("ForumGiveScoreController", r(166785)).controller("ForumController", r(781757)).controller("SelectStudentController", r(963880)).controller("ActivityPublishStatusController", r(21331)).config([
+        "$routeProvider", e=>e.when("/", {
+          templateUrl:"group-set/_list.html"
+        }).when("/:groupSetId", {
+          templateUrl:"group-set/_list.html"
+        }).when("/:groupSetId/import", {
+          templateUrl:"group/_batch_import.html"
+        }).when("/:groupSetId/groups/:groupId/edit", {
+          templateUrl:"group/_list_with_details.html"
+        }).when("/:groupSetId/groups/:groupId/info", {
+          templateUrl:"group/_info.html"
+        }).when("/:groupSetId/groups/:groupId/forum/:categoryId", {
+          templateUrl:"group/_group_forum.html"
+        }).when("/topics/:topicId", {
+          templateUrl:"group/_group_forum_topic.html"
+        }).otherwise({
+          redirectTo:"/"
+        })
+      ]).run([
+        "$rootScope", e=>e.setFileSelectScopeId=t=>e.fileSelectScopeId=t
+      ])
+    }, 354060:(e, t, r)=>{
+      var o=r(302543), n=r(248124);
+      r(640173), r(658379), e.exports=[
+        "$rootScope", "$scope", "$route", "$location", "groupRepository", "uploadService", function(e, t, r, i, u, s){
+          return e.importType="courseGroup", e.groupSetId=parseInt(r.current.params.groupSetId), t.endImport=function(){
+            return delete e.uploaded, u.reloadGroupSetById(e.groupSetId), i.path("/".concat(e.groupSetId))
+          }, t.setUploaded=t=>e.uploaded=t, t.getUploaded=()=>e.uploaded, t.deleteUploaded=function(t){
+            return delete e.uploaded, t.uploadSucceeded=!1
+          }, t.setFileSelectContext=function(e){
+            return function(r, n){
+              var i;
+              if(!(r.length<=0))if(r.length>1)toastr.warning(e.errorText.singleFile);
+              else{
+                if(s.checkFiles(r, n, i=[
+                  "xls"
+                ]))return e.ui.uploadSucceeded=!0, o.forEach(r, (function(e){
+                  return e.progress=100, e.finished=!0, !0
+                })), t.setUploaded(r);
+                var u=n;
+                "object"==typeof n&&void 0!==n.DOCUMENT&&(u=n.DOCUMENT);
+                var a=s.humanizeBytes(u);
+                toastr.warning(e.errorText.formatAndLimit.replace(/\{
+                  0\
+                }
+                /gi, a).replace(/\{
+                  1\
+                }
+                /gi, i))
+              }
+            }
+          }, t.selectFile=function(){
+            return n('input[name="fileSelector"]').click(), !0
+          }
+        }
+      ]
+    }, 356838:(e, t, r)=>{
+      var o=r(248124), n=r(571478);
+      e.exports=[
+        "$rootScope", "$scope", "groupRepository", function(e, t, r){
+          var i=n(t), u=o("#delete-group-popup");
+          return t.group=null, t.$on("delete-group", (function(e, r){
+            return t.group=r.group, u.foundation("reveal", "open")
+          })), t.delete=function(){
+            return i.show(), r.deleteGroup(t.group).then((function(){
+              return i.hide(), u.foundation("reveal", "close")
+            }))
+          }
+        }
+      ]
+    }, 366785:(e, t, r)=>{
+      var o=r(248124);
+      r(219693);
+      var n=r(571478);
+      e.exports=[
+        "$rootScope", "$scope", "groupRepository", function(e, t, r){
+          var i=n(t), u=o("#delete-group-set-popup");
+          t.ui={
+            isExpanded:!1
+          };
+          return t.deleteGroupSet=function(){
+            i.show();
+            var e, o, n, s=(e=t.currentGroupSet, o=t.groupSets.length, n=t.groupSets.indexOf(e), 1===o?null:n===o-1?t.groupSets[
+              n-1
+            ]
+            :t.groupSets[
+              n+1
+            ]);
+            r.deleteGroupSet(t.currentGroupSet).then((function(){
+              return i.hide(), t.changeGroupSet(s), u.foundation("reveal", "close")
+            })).catch(i.hide())
+          }, t.toggleActivities=()=>t.ui.isExpanded=!t.ui.isExpanded
+        }
+      ]
+    }, 374302:(e, t, r)=>{
+      r.r(t), r.d(t, {
+        addActivityComment:()=>L, applyCommentLikeOperation:()=>K, checkTencentMeetingUserAuth:()=>se, checkUserLarkAuth:()=>O, createActivitiesInCourses:()=>T, createActivity:()=>p, createCalendarMeeting:()=>$, deleteActivity:()=>f, deleteActivityResource:()=>k, deleteSubmissionAttachMarkUpload:()=>N, getActivityCommentReplies:()=>F, getActivityComments:()=>j, getActivityCommentsReplies:()=>z, getActivityDetail:()=>y, getActivityHaveDependents:()=>w, getActivityReferences:()=>Q, getActivityResource:()=>G, getClasinJoinUrl:()=>g, getClassinWebcastUrl:()=>h, getCommentCountWithType:()=>J, getCompletionCriteria:()=>v, getCourseActivities:()=>S, getDingtalkWatchStats:()=>ae, getGroupSubmission:()=>oe, getGroupSubmissions:()=>D, getH5CoursewareViewUrl:()=>ce, getHomeworkDuplicateRate:()=>ie, getHomeworkInterScores:()=>Z, getInterGroupScores:()=>ee, getIntraGroupScores:()=>te, getMeetingStatistics:()=>C, getPageCommentStat:()=>W, getScoreItems:()=>A, getScoreRecords:()=>b, getStudentSubmission:()=>re, getStudentSubmissions:()=>M, getSubmissionAttachements:()=>E, logActivityRead:()=>x, logMgs:()=>I, refreshMarkedAttachment:()=>R, removeActivityComment:()=>B, removeActivityCommentReply:()=>Y, replaceSubmissionCorrectUploadReference:()=>U, replyActivityComment:()=>q, reprocessLectureLiveReplay:()=>_, trackSchedulePlay:()=>P, updateActivity:()=>m, updateActivityComment:()=>H, updateActivityCommentReply:()=>V, updateActivityResource:()=>de, updateCorrectUploads:()=>ue, updateHomeworkAnnounceMarkStatus:()=>ne, updateHomeworkScoreAndComment:()=>X, upsertH5CoursewareCmi:()=>le
+      });
+      r(540590), r(418665), r(169218), r(269193), r(14602);
+      var o=r(272505), n=r.n(o), i=r(218831), u=r(920453), s=r(344651), a=r(854184), c=function(){
+        return(c=Object.assign||function(e){
+          for(var t, r=1, o=arguments.length;
+          r<o;
+          r++)for(var n in t=arguments[
+            r
+          ])Object.prototype.hasOwnProperty.call(t, n)&&(e[
+            n
+          ]
+          =t[
+            n
+          ]);
+          return e
+        }).apply(this, arguments)
+      }, d=function(e, t, r, o){
+        return new(r||(r=Promise))((function(n, i){
+          function u(e){
+            try{
+              a(o.next(e))
+            }
+            catch(e){
+              i(e)
+            }
+          }
+          function s(e){
+            try{
+              a(o.throw(e))
+            }
+            catch(e){
+              i(e)
+            }
+          }
+          function a(e){
+            var t;
+            e.done?n(e.value):(t=e.value, t instanceof r?t:new r((function(e){
+              e(t)
+            }))).then(u, s)
+          }
+          a((o=o.apply(e, t||[
+          ])).next())
+        }))
+      }, l=function(e, t){
+        var r, o, n, i, u={
+          label:0, sent:function(){
+            if(1&n[
+              0
+            ])throw n[
+              1
+            ];
+            return n[
+              1
+            ]
+          }, trys:[
+          ], ops:[
+          ]
+        };
+        return i={
+          next:s(0), throw:s(1), return:s(2)
+        }, "function"==typeof Symbol&&(i[
+          Symbol.iterator
+        ]
+        =function(){
+          return this
+        }), i;
+        function s(s){
+          return function(a){
+            return function(s){
+              if(r)throw new TypeError("Generator is already executing.");
+              for(;
+              i&&(i=0, s[
+                0
+              ]
+              &&(u=0)), u;
+              )try{
+                if(r=1, o&&(n=2&s[
+                  0
+                ]
+                ?o.return:s[
+                  0
+                ]
+                ?o.throw||((n=o.return)&&n.call(o), 0):o.next)&&!(n=n.call(o, s[
+                  1
+                ])).done)return n;
+                switch(o=0, n&&(s=[
+                  2&s[
+                    0
+                  ], n.value
+                ]), s[
+                  0
+                ]){
+                  case 0:case 1:n=s;
+                  break;
+                  case 4:return u.label++, {
+                    value:s[
+                      1
+                    ], done:!1
+                  };
+                  case 5:u.label++, o=s[
+                    1
+                  ], s=[
+                    0
+                  ];
+                  continue;
+                  case 7:s=u.ops.pop(), u.trys.pop();
+                  continue;
+                  default:if(!(n=u.trys, (n=n.length>0&&n[
+                    n.length-1
+                  ])||6!==s[
+                    0
+                  ]
+                  &&2!==s[
+                    0
+                  ])){
+                    u=0;
+                    continue
+                  }
+                  if(3===s[
+                    0
+                  ]
+                  &&(!n||s[
+                    1
+                  ]
+                  >n[
+                    0
+                  ]
+                  &&s[
+                    1
+                  ]
+                  <n[
+                    3
+                  ])){
+                    u.label=s[
+                      1
+                    ];
+                    break
+                  }
+                  if(6===s[
+                    0
+                  ]
+                  &&u.label<n[
+                    1
+                  ]){
+                    u.label=n[
+                      1
+                    ], n=s;
+                    break
+                  }
+                  if(n&&u.label<n[
+                    2
+                  ]){
+                    u.label=n[
+                      2
+                    ], u.ops.push(s);
+                    break
+                  }
+                  n[
+                    2
+                  ]
+                  &&u.ops.pop(), u.trys.pop();
+                  continue
+                }
+                s=t.call(e, u)
+              }
+              catch(e){
+                s=[
+                  6, e
+                ], o=0
+              }
+              finally{
+                r=n=0
+              }
+              if(5&s[
+                0
+              ])throw s[
+                1
+              ];
+              return{
+                value:s[
+                  0
+                ]
+                ?s[
+                  1
+                ]
+                :void 0, done:!0
+              }
+            }
+            ([
+              s, a
+            ])
+          }
+        }
+      };
+      function p(e, t){
+        return n().post("/api/courses/".concat(e, "/activities"), t)
+      }
+      function f(e, t){
+        var r;
+        void 0===t&&(t={
+        });
+        var o={
+          params:t
+        };
+        return(null===(r=window.orgSettings)||void 0===r?void 0:r.enableShanghaitechMeeting)&&(o.validateStatus=function(){
+          return!0
+        }), n().delete("/api/activities/".concat(e), o)
+      }
+      function m(e, t){
+        return n().put("/api/activities/".concat(e), t)
+      }
+      function v(e, t){
+        return n().get("/api/completion-criteria", {
+          params:{
+            activity_type:t, course_id:e
+          }
+        })
+      }
+      function g(e, t, r){
+        return d(this, void 0, void 0, (function(){
+          return l(this, (function(o){
+            switch(o.label){
+              case 0:return[
+                4, n().get("/api/activies/classin/join-url", {
+                  params:{
+                    course_id:e, activity_id:t, user_id:r
+                  }
+                })
+              ];
+              case 1:return[
+                2, o.sent().data.url
+              ]
+            }
+          }))
+        }))
+      }
+      function h(e, t){
+        return d(this, void 0, void 0, (function(){
+          return l(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, n().get("/api/activities/classin/webcast-url", {
+                  params:{
+                    course_id:e, activity_id:t
+                  }
+                })
+              ];
+              case 1:return[
+                2, r.sent().data.url
+              ]
+            }
+          }))
+        }))
+      }
+      function y(e){
+        return d(this, void 0, void 0, (function(){
+          var t, r;
+          return l(this, (function(o){
+            switch(o.label){
+              case 0:return[
+                4, n().get("/api/activities/".concat(e))
+              ];
+              case 1:return t=o.sent(), r=(0, i.camelizeKeys)(t.data), [
+                2, (0, u.plainToClass)(s.Il, r)
+              ]
+            }
+          }))
+        }))
+      }
+      var b=function(e, t, r, o){
+        return d(void 0, void 0, void 0, (function(){
+          var a, c, d, p;
+          return l(this, (function(l){
+            switch(l.label){
+              case 0:return a=(0, i.decamelizeKeys)({
+                page:e, pageSize:t
+              }), [
+                4, n().get("/api/activity/".concat(r, "/submitter/").concat(o, "/score-records"), {
+                  params:a
+                })
+              ];
+              case 1:return c=l.sent(), d=(0, i.camelizeKeys)(c.data), p=(0, u.plainToClass)(s.sB, d.records, {
+                excludeExtraneousValues:!0
+              }), [
+                2, {
+                  page:e, pageSize:t, pages:d.pages, total:d.total, start:d.start, end:d.end, items:p
+                }
+              ]
+            }
+          }))
+        }))
+      }, S=function(e){
+        return d(void 0, void 0, void 0, (function(){
+          var t;
+          return l(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, n().get("/api/courses/".concat(e, "/activities"))
+              ];
+              case 1:return t=r.sent().data, [
+                2, (0, u.plainToClass)(s.Il, (0, i.camelizeKeys)(t.activities))
+              ]
+            }
+          }))
+        }))
+      };
+      function _(e, t){
+        return d(this, void 0, void 0, (function(){
+          return l(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, n().post("/api/courses/lecture-live-activity/".concat(e, "/reprocess"), {
+                  replay_id:t
+                })
+              ];
+              case 1:return r.sent(), [
+                2
+              ]
+            }
+          }))
+        }))
+      }
+      function w(e, t){
+        return d(this, void 0, void 0, (function(){
+          return l(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, n().get("/api/activities/have-dependents", {
+                  params:{
+                    activity_ids:e, activity_type:t
+                  }
+                })
+              ];
+              case 1:return[
+                2, r.sent().data.has_dependents
+              ]
+            }
+          }))
+        }))
+      }
+      function G(e){
+        return d(this, void 0, void 0, (function(){
+          return l(this, (function(t){
+            switch(t.label){
+              case 0:return[
+                4, n().get("/api/activities/".concat(e, "/resources"))
+              ];
+              case 1:return[
+                2, t.sent().data
+              ]
+            }
+          }))
+        }))
+      }
+      function k(e, t){
+        return d(this, void 0, void 0, (function(){
+          return l(this, (function(r){
+            return[
+              2, n().delete("/api/activities/".concat(e, "/resources/").concat(t))
+            ]
+          }))
+        }))
+      }
+      function C(e, t, r){
+        return d(this, void 0, void 0, (function(){
+          var o;
+          return l(this, (function(i){
+            return o="".concat(e, "/api/meeting/").concat(t, "/metrics?group_by=activity,upload_ref,student&meeting_type=").concat(r, "&jwt=").concat(window.statisticsSettings.mgsJwt), [
+              2, n().get(o)
+            ]
+          }))
+        }))
+      }
+      function A(e){
+        return d(this, void 0, void 0, (function(){
+          var t, r;
+          return l(this, (function(o){
+            switch(o.label){
+              case 0:return[
+                4, n().get("/api/courses/".concat(e, "/grade-score-items"))
+              ];
+              case 1:return t=o.sent(), r=(0, i.camelizeKeys)(t.data), [
+                2, (0, u.plainToClass)(s.$A, r, {
+                  excludeExtraneousValues:!1
+                })
+              ]
+            }
+          }))
+        }))
+      }
+      function T(e, t){
+        var r=c(c({
+        }, e), {
+          courses:t
+        });
+        return n().post("/api/courses/tencent-meeting/activities", r)
+      }
+      function $(e){
+        return n().post("/api/calendar-meeting", e)
+      }
+      function x(e, t){
+        return n().post("/api/course/activities-read/".concat(t), e)
+      }
+      function I(e, t){
+        window.st&&!window.st.isCanTrack()||n().post("".concat(e, "/api/lecture-live?jwt=").concat(window.statisticsSettings.mgsJwt), t)
+      }
+      function P(e, t){
+        return d(this, void 0, void 0, (function(){
+          var r;
+          return l(this, (function(o){
+            return r=c(c({
+            }, t), {
+              clientType:"web"
+            }), [
+              2, n().post("/api/lecture-live/schedule/".concat(e, "/player-visits"), (0, i.decamelizeKeys)(r))
+            ]
+          }))
+        }))
+      }
+      function O(){
+        return n().get("/api/lark/authorization/check")
+      }
+      function D(e, t){
+        return n().get("/api/activities/".concat(e, "/groups/").concat(t, "/submission_list"))
+      }
+      function M(e, t){
+        return n().get("/api/activities/".concat(e, "/students/").concat(t, "/submission_list"))
+      }
+      function E(e){
+        return n().get("/api/submissions/".concat(e, "/marked_attachments"))
+      }
+      function R(e, t){
+        return n().get("/api/submissions/".concat(e, "/marked_attachments/").concat(t)).then((function(e){
+          return e.data.marked_attachment
+        }))
+      }
+      function N(e){
+        return n().delete("/api/uploads/marked_attachment/".concat(e))
+      }
+      function U(e, t){
+        return n().put("/api/uploads/references/".concat(e), {
+          upload_id:t
+        })
+      }
+      function j(e, t, r, o, i, u){
+        return n().get("/api/activities/".concat(e, "/comments?page=").concat(t, "&page_size=").concat(r, "&order_key=").concat(o, "&order=").concat(i, "&conditions=").concat(JSON.stringify(u)))
+      }
+      function z(e, t){
+        return n().get("/api/activities/".concat(e, "/comments/replies"), {
+          params:{
+            comment_ids:t
+          }
+        })
+      }
+      function F(e, t, r, o){
+        return n().get("/api/activities/".concat(e, "/comments/").concat(t, "/replies?page=").concat(r, "&page_size=").concat(o))
+      }
+      function L(e, t){
+        return n().post("/api/activities/".concat(e, "/comments"), t)
+      }
+      function H(e, t, r){
+        return n().put("/api/activities/".concat(e, "/comments/").concat(t), r)
+      }
+      function B(e, t){
+        return n().delete("/api/activities/".concat(e, "/comments/").concat(t))
+      }
+      function q(e, t, r){
+        return n().post("/api/activities/".concat(e, "/comments/").concat(t, "/reply"), r)
+      }
+      function V(e, t, r){
+        return n().put("/api/activities/".concat(e, "/reply/").concat(t), r)
+      }
+      function Y(e, t){
+        return n().delete("/api/activities/".concat(e, "/reply/").concat(t))
+      }
+      function K(e, t){
+        return n().post("/api/activities/".concat(e, "/comments/operate"), t)
+      }
+      function Q(e){
+        return n().get("/api/activities/".concat(e, "/upload_references"))
+      }
+      function W(e, t){
+        return n().get("/api/activities/".concat(e, "/comment/page-count?conditions=").concat(JSON.stringify(t)))
+      }
+      function J(e, t){
+        return n().get("/api/activities/".concat(e, "/comment/count?conditions=").concat(JSON.stringify(t)))
+      }
+      function X(e, t, r, o){
+        var u=(0, i.decamelizeKeys)(t);
+        n()({
+          method:"PUT", url:"/api/course/activities/".concat(e, "/submission/score?fields=id,score,instructor_comment,rubric_score,final_score&need_submission_correct=true"), data:u, transformResponse:function(e){
+            var t=JSON.parse(e);
+            if(t.id)return t;
+            if(t.message)throw t.message;
+            if(t.errors)throw t.errors;
+            throw"unknown error"
+          }
+        }).then((function(e){
+          r(e)
+        })).catch((function(e){
+          o(e)
+        }))
+      }
+      function Z(e){
+        return d(this, void 0, void 0, (function(){
+          var t;
+          return l(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, n().get("/api/homework/".concat(e, "/inter-scores"))
+              ];
+              case 1:return t=r.sent(), [
+                2, (0, i.camelizeKeys)(t.data)
+              ]
+            }
+          }))
+        }))
+      }
+      function ee(e){
+        return d(this, void 0, void 0, (function(){
+          var t;
+          return l(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, n().get("/api/homework/".concat(e, "/intra-scores"))
+              ];
+              case 1:return t=r.sent(), [
+                2, (0, i.camelizeKeys)(t.data)
+              ]
+            }
+          }))
+        }))
+      }
+      function te(e, t){
+        return d(this, void 0, void 0, (function(){
+          var r;
+          return l(this, (function(o){
+            switch(o.label){
+              case 0:return[
+                4, n().get("/api/activities/".concat(e, "/group/").concat(t, "/intra_submission"))
+              ];
+              case 1:return r=o.sent(), [
+                2, (0, i.camelizeKeys)(r.data)
+              ]
+            }
+          }))
+        }))
+      }
+      function re(e, t){
+        return d(this, void 0, void 0, (function(){
+          return l(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, n().get("/api/course/activities/".concat(e, "/students/").concat(t, "/submission"))
+              ];
+              case 1:return[
+                2, r.sent().data
+              ]
+            }
+          }))
+        }))
+      }
+      function oe(e, t){
+        return d(this, void 0, void 0, (function(){
+          return l(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, n().get("/api/activities/".concat(e, "/groups/").concat(t, "/submission"))
+              ];
+              case 1:return[
+                2, r.sent().data
+              ]
+            }
+          }))
+        }))
+      }
+      function ne(e, t, r, o){
+        return d(this, void 0, void 0, (function(){
+          var u;
+          return l(this, (function(s){
+            switch(s.label){
+              case 0:return u=(0, i.decamelizeKeys)(t), [
+                4, n().put("/api/homework/".concat(e, "/announce-mark-status"), u).then((function(e){
+                  return r(e)
+                })).catch((function(e){
+                  return o(e)
+                }))
+              ];
+              case 1:return s.sent(), [
+                2
+              ]
+            }
+          }))
+        }))
+      }
+      function ie(e, t){
+        return d(this, void 0, void 0, (function(){
+          var r;
+          return l(this, (function(o){
+            switch(o.label){
+              case 0:return r="/api/homework/".concat(e, "/duplicate-detect/rate?target_ids=").concat(t.join(",")), [
+                4, n().get(r)
+              ];
+              case 1:return[
+                2, o.sent().data
+              ]
+            }
+          }))
+        }))
+      }
+      function ue(e, t){
+        return d(this, void 0, void 0, (function(){
+          var r, o;
+          return l(this, (function(u){
+            switch(u.label){
+              case 0:return r=(0, i.decamelizeKeys)(t), o="/api/course/activities/".concat(e, "/submissions/correct-uploads"), [
+                4, n().put(o, r)
+              ];
+              case 1:return[
+                2, u.sent().data
+              ]
+            }
+          }))
+        }))
+      }
+      function se(){
+        return d(this, void 0, void 0, (function(){
+          return l(this, (function(e){
+            switch(e.label){
+              case 0:return"/api/tencent_meeting/check-user-auth", [
+                4, n().get("/api/tencent_meeting/check-user-auth")
+              ];
+              case 1:return[
+                2, e.sent().data
+              ]
+            }
+          }))
+        }))
+      }
+      function ae(e){
+        return d(this, void 0, void 0, (function(){
+          var t, r, o;
+          return l(this, (function(s){
+            switch(s.label){
+              case 0:return t="/api/dingtalk-lives/".concat(e, "/watch-stats"), [
+                4, n().get(t)
+              ];
+              case 1:return r=s.sent(), o=(0, i.camelizeKeys)(r.data), [
+                2, (0, u.plainToClass)(a.n, o, {
+                  excludeExtraneousValues:!1
+                })
+              ]
+            }
+          }))
+        }))
+      }
+      function ce(e, t){
+        return d(this, void 0, void 0, (function(){
+          var r, o;
+          return l(this, (function(u){
+            switch(u.label){
+              case 0:return r="/api/h5-courseware/".concat(e, "/upload/").concat(t, "/url"), [
+                4, n().get(r)
+              ];
+              case 1:return o=u.sent(), [
+                2, (0, i.camelizeKeys)(o.data)
+              ]
+            }
+          }))
+        }))
+      }
+      function de(e, t, r){
+        return d(this, void 0, void 0, (function(){
+          return l(this, (function(o){
+            return[
+              2, n().put("/api/activities/".concat(e, "/resources/").concat(t), r)
+            ]
+          }))
+        }))
+      }
+      function le(e, t, r){
+        return d(this, void 0, void 0, (function(){
+          var o, u, s;
+          return l(this, (function(a){
+            switch(a.label){
+              case 0:return o=(0, i.decamelizeKeys)({
+                base64State:r
+              }), u="/api/h5-courseware/".concat(e, "/upload/").concat(t, "/cmi"), [
+                4, n().post(u, o)
+              ];
+              case 1:return s=a.sent(), [
+                2, (0, i.camelizeKeys)(s.data)
+              ]
+            }
+          }))
+        }))
+      }
+    }, 379681:(e, t, r)=>{
+      r.d(t, {
+        A:()=>i
+      });
+      var o=r(595738);
+      const n=(0, o.pM)({
+        props:{
+          activity:{
+            type:Object
+          }, scope:{
+            type:Object, required:!0
+          }, batch:{
+            type:Boolean
+          }
+        }, setup:function(e, t){
+          var r, n=(0, o.KR)(!0), i=(null===(r=window.orgSettings)||void 0===r?void 0:r.enableLamsLessonVirtualExperiment)||!1;
+          return{
+            modalStatus:n, enableLamsLessonVirtualExperiment:i, confirm:function(){
+              e.batch?e.scope.publishActivitiesUnderModule(e.scope.data, !1):e.scope.checkActivity(e.activity), n.value=!1
+            }, cancel:function(){
+              n.value=!1
+            }
+          }
+        }
+      });
+      const i=(0, r(514486).A)(n, (function(){
+        var e=this, t=e.$createElement, r=e._self._c||t;
+        return r("Modal", {
+          ref:"modal", staticClass:"publish-cancel-modal", attrs:{
+            title:e.$t("activityPublish.publishCancel")
+          }, scopedSlots:e._u([
+            {
+              key:"footer", fn:function(){
+                return[
+                  r("Button", {
+                    attrs:{
+                      type:"primary"
+                    }, on:{
+                      click:e.confirm
+                    }
+                  }, [
+                    e._v(e._s(e.$t("confirm")))
+                  ]), e._v(" "), r("Button", {
+                    on:{
+                      click:e.cancel
+                    }
+                  }, [
+                    e._v(e._s(e.$t("cancel")))
+                  ])
+                ]
+              }, proxy:!0
+            }
+          ]), model:{
+            value:e.modalStatus, callback:function(t){
+              e.modalStatus=t
+            }, expression:"modalStatus"
+          }
+        }, [
+          e.enableLamsLessonVirtualExperiment&&e.activity&&"virtual_experiment"===e.activity.type?[
+            e._v("\n    "+e._s(e.$t("activityPublish.virtualExperimentPublishCancelTips"))+"\n  ")
+          ]
+          :[
+            e._v("\n    "+e._s(e.$t("activityPublish.publishCancelTips"))+"\n  ")
+          ]
+        ], 2)
+      }), [
+      ], !1, null, null, null).exports
+    }, 392445:(e, t, r)=>{
+      r.d(t, {
+        A:()=>o
+      });
+      const o=new(r(962893).default)
+    }, 415824:(e, t, r)=>{
+      r(850785), e.exports=[
+        "$scope", "$location", (e, t)=>e.goBackTopicList=function(){
+          return st.trackVisit(), t.search().groupId&&e.isInstructorView?t.url("/".concat(t.search().groupId, "/info")):t.url("/"), t.search("content", "forum")
+        }
+      ]
+    }, 473669:(e, t, r)=>{
+      var o=r(248124), n=r(756029), i=r(302543);
+      r(269193), r(868329);
+      var u=r(592207);
+      function s(e, t, r, o, n, i, u){
+        try{
+          var s=e[
+            i
+          ]
+          (u), a=s.value
+        }
+        catch(e){
+          return void r(e)
+        }
+        s.done?t(a):Promise.resolve(a).then(o, n)
+      }
+      function a(e){
+        return function(){
+          var t=this, r=arguments;
+          return new Promise((function(o, n){
+            var i=e.apply(t, r);
+            function u(e){
+              s(i, o, n, u, a, "next", e)
+            }
+            function a(e){
+              s(i, o, n, u, a, "throw", e)
+            }
+            u(void 0)
+          }))
+        }
+      }
+      r(207452);
+      var c=r(571478);
+      r(792364);
+      var d=r(966491);
+      e.exports=[
+        "$rootScope", "$scope", "$http", "statHelper", "modelHelper", "fileSelectModel", "toastr", "homeworkRepository", function(e, t, r, s, l, p, f, m){
+          var v, g, h, y, b=c(t);
+          t.courseId=o("#courseId").val(), t.ui={
+            hasUnsavedChanges:!1
+          }, t.trackActivityVisit=!1, t.multipleChoice={
+            title:""
+          }, t.canShowDocumentPreviewTip=(null===(v=window.featureToggles)||void 0===v?void 0:v.documentPreviewNotice)&&!(null!==(g=window.featureToggles)&&void 0!==g&&g.privateWpsOffice)&&!(null!==(h=window.featureToggles)&&void 0!==h&&h.wps_preview)&&!(null!==(y=window.featureToggles)&&void 0!==y&&y.aliyun_office), o(document).on("open.fndtn.reveal", "#submit-popup", (()=>{
+            p.context.includeSlides=!0
+          })), o(document).on("closed.fndtn.reveal", "#submit-popup", (()=>{
+            t.trackActivityVisit&&window.st.trackVisit()
+          })), e.submitPopupShow=()=>{
+            k()
+          }, t.selectChange=()=>{
+            t.multipleChoiceTitleError=""
+          }, t.$on("fileSelectOpen", (function(){
+            return p.limitTypes=[
+            ], p.checkIsSelectable=e=>!e.is_folder
+          })), t.canSubmit=function(){
+            var e=t.uploads&&t.uploads.length>0, r=t.slides&&t.slides.length>0, o=t.submission&&t.submission.comment&&t.submission.comment.trim();
+            return Boolean(e||r||o)
+          };
+          var S=()=>{
+            o("#submit-popup").foundation("reveal", "close"), b.hide()
+          };
+          t.save=function(){
+            var s=a(u.mark((function s(c){
+              var p, m, v=arguments;
+              return u.wrap((function(s){
+                for(;
+                ;
+                )switch(s.prev=s.next){
+                  case 0:if(p=v.length>1&&void 0!==v[
+                    1
+                  ]
+                  &&v[
+                    1
+                  ], t.closeConfirmPopup(), t.canSubmit()){
+                    s.next=4;
+                    break
+                  }
+                  return s.abrupt("return");
+                  case 4:return b.show(), m=function(){
+                    var s=a(u.mark((function s(){
+                      var m, v, g, h, y, w, G, C, A, T;
+                      return u.wrap((function(s){
+                        for(;
+                        ;
+                        )switch(s.prev=s.next){
+                          case 0:v=n.copy(t.uploads), g=e=>"LARK"===e.source, h=i.uniq(i.map(t.uploads.filter((e=>!g(e))), "id")), y=i.filter(t.uploads, g), w=i.map(t.slides, "id"), G=(null!==(m=t.submission.comment)&&void 0!==m?m:"").trim(), C=d.parseUploadsFromRichText(G, "img", "image"), "multiple"===(A={
+                            comment:G, uploads:h, slides:w, is_draft:p, mode:t.homework.data.mode||"normal", other_resources:y, uploads_in_rich_text:C
+                          }).mode&&(A.multiple_choice_title=t.multipleChoice.title), T="POST", t.submission.draft_id&&(T="PUT", A.submission_id=t.submission.draft_id), r({
+                            method:T, url:"/api/course/activities/".concat(c, "/submissions"), data:A
+                          }).success(function(){
+                            var r=a(u.mark((function r(i){
+                              return u.wrap((function(r){
+                                for(;
+                                ;
+                                )switch(r.prev=r.next){
+                                  case 0:return o("#no-upload-popup").foundation("reveal", "close"), p?(S(), Array.isArray(t.homework.draft_submission_list)&&t.homework.draft_submission_list.unshift({
+                                    id:i.submission.id, comment:G, uploads:v
+                                  }), k()):(S(), t.homework.submission?n.copy(i.submission, t.homework.submission):t.homework.submission=i.submission, e.$emit("$refreshPrerequisitesStatus"), e.$emit("homeworkSubmitted", t.homework), t.homework.is_announce_score_time_passed=i.is_announce_score_time_passed, t.homework.student=i.student, t.homework.student.belongTo=l.getBelongTo(i.student), t.homework.make_up_record&&(t.homework.make_up_record.has_submitted=!0), (null!=t.submission?t.submission.draft_id:void 0)&&delete t.submission.draft_id, window.statistics.track({
+                                    activity_id:c, activity_type:"homework", action:statistics.enums.HomeworkAction.submit, mode:statistics.enums.Mode.normal, channel:statistics.enums.Channel.web
+                                  })), e.$emit("homeworkHasDraftSubmission", {
+                                    id:t.homework.id, has_draft:p
+                                  }), i.message&&f.success(i.message), r.abrupt("return", _());
+                                  case 5:case"end":return r.stop()
+                                }
+                              }), r)
+                            })));
+                            return function(e){
+                              return r.apply(this, arguments)
+                            }
+                          }
+                          ()).error((function(e){
+                            if(b.hide(), t.errors=e.errors, !e.errors||!e.errors.multiple_choice_title)return o("#submit-popup").foundation("reveal", "close"), e.message?f.error(e.message):void 0;
+                            t.multipleChoiceTitleError=e.errors.multiple_choice_title[
+                              0
+                            ]
+                          }));
+                          case 12:case"end":return s.stop()
+                        }
+                      }), s)
+                    })));
+                    return function(){
+                      return s.apply(this, arguments)
+                    }
+                  }
+                  (), s.next=8, m();
+                  case 8:t.reset();
+                  case 9:case"end":return s.stop()
+                }
+              }), s)
+            })));
+            return function(e){
+              return s.apply(this, arguments)
+            }
+          }
+          (), t.isUploads=function(){
+            return t.uploads&&t.uploads.length>0
+          }, t.addFiles=function(e){
+            var r=i.filter(e, (e=>"slide"!==e.type)), o=i.filter(e, (e=>"slide"===e.type));
+            return t.uploads=t.uploads.concat(r), t.slides=t.slides.concat(o), t.dataChangeTrigger()
+          }, t.deleteFile=function(e){
+            return i.remove(t.uploads, e), t.dataChangeTrigger()
+          }, t.deleteSlide=function(e){
+            return i.remove(t.slides, e), t.dataChangeTrigger()
+          }, t.reset=function(){
+            return t.uploads=[
+            ], t.slides=[
+            ], t.submission.comment=""
+          }, t.closeConfirmPopup=function(){
+            var e=o("#no-upload-popup");
+            n.element(e).scope().popupState.popupOpened&&e.foundation("reveal", "close")
+          }, t.closeSubmitPopup=function(){
+            t.ui.hasUnsavedChanges&&!window.confirm(t.unsavedMsg||"You haven't submitted the assignment. Are you sure you want to leave?")||(t.reset(), o("#submit-popup").foundation("reveal", "close"), _())
+          };
+          var _=function(){
+            t.ui.hasUnsavedChanges=!1
+          }, w=function(e){
+            var r={
+              course_id:t.courseId, activity_id:e.id
+            };
+            s.inPage(r), s.setActivityType(e.type), window.statistics.track({
+              activity_id:e.id, activity_type:e.type, action:statistics.enums.Action.open, mode:statistics.enums.Mode.normal, channel:statistics.enums.Channel.web
+            })
+          };
+          t.dataChangeTrigger=function(){
+            if(!t.ui.hasUnsavedChanges)return t.ui.hasUnsavedChanges=!0
+          }, t.initDraftSubmissionList=function(){
+            return m.loadSubmissionListForStudent(t.homework).then((function(e){
+              t.homework.draft_submission_list=i.filter(e.submission_list, {
+                is_draft:!0
+              }), t.homework.redo_submission=i.find(e.submission_list, (e=>{
+                var r=t.homework.submission?t.homework.submission.id:0;
+                return!0===e.is_redo&&e.id>=r
+              })), (t.homework.draft_submission_list.length>0||t.homework.redo_submission)&&(t.hasDraft=!0)
+            }))
+          }, e.$on("submitHomework", (function(e, r){
+            var o=arguments.length>2&&void 0!==arguments[
+              2
+            ]
+            &&arguments[
+              2
+            ];
+            return t.trackActivityVisit=o, t.homework=r, o&&w(r), k()
+          }));
+          var G=()=>{
+            if(t.homework.draft_submission_list&&t.homework.draft_submission_list.length>0){
+              var e=t.homework.draft_submission_list[
+                0
+              ];
+              t.submission.draft_id=e.id, t.submission.comment=e.comment, t.uploads=e.uploads
+            }
+            else t.homework.redo_submission&&(i.remove(t.homework.redo_submission.uploads, (e=>"auto-generated-pdf"===e.source)), t.submission.comment=t.homework.redo_submission.comment, t.uploads=t.homework.redo_submission.uploads)
+          };
+          t.$watch((()=>{
+            var e;
+            return null===(e=t.homework)||void 0===e?void 0:e.draft_submission_list
+          }), (e=>{
+            var r;
+            null!==(r=t.submission)&&void 0!==r&&r.comment||!e||G()
+          }));
+          var k=function(){
+            return t.submission={
+            }, t.uploads=[
+            ], t.slides=[
+            ], t.is_draft=!1, e.activityType="homework", t.homework.draft_submission_list?G():t.initDraftSubmissionList().then(G), t.ui.hasUnsavedChanges=!1
+          };
+          if(t.homework)return k()
+        }
+      ]
+    }, 489491:(e, t, r)=>{
+      r.d(t, {
+        A:()=>l
+      });
+      var o=r(962893), n=r(695353), i=r(590815), u=r(82240), s=r(755805);
+      function a(e, t){
+        var r=Object.keys(e);
+        if(Object.getOwnPropertySymbols){
+          var o=Object.getOwnPropertySymbols(e);
+          t&&(o=o.filter((function(t){
+            return Object.getOwnPropertyDescriptor(e, t).enumerable
+          }))), r.push.apply(r, o)
+        }
+        return r
+      }
+      function c(e){
+        for(var t=1;
+        t<arguments.length;
+        t++){
+          var r=null!=arguments[
+            t
+          ]
+          ?arguments[
+            t
+          ]
+          :{
+          };
+          t%2?a(Object(r), !0).forEach((function(t){
+            d(e, t, r[
+              t
+            ])
+          })):Object.getOwnPropertyDescriptors?Object.defineProperties(e, Object.getOwnPropertyDescriptors(r)):a(Object(r)).forEach((function(t){
+            Object.defineProperty(e, t, Object.getOwnPropertyDescriptor(r, t))
+          }))
+        }
+        return e
+      }
+      function d(e, t, r){
+        return t in e?Object.defineProperty(e, t, {
+          value:r, enumerable:!0, configurable:!0, writable:!0
+        }):e[
+          t
+        ]
+        =r, e
+      }
+      o.default.use(n.Ay);
+      const l=new n.Ay.Store(c(c({
+      }, i.A), {
+      }, {
+        modules:{
+          homeworkMark:u.A, airCredit:s.A
+        }, strict:!1
+      }))
+    }, 490246:e=>{
+      e.exports=[
+        "$scope", "$routeParams", function(e, t){
+          return e.currentGroupId=t.groupId, e.currentGroupSetId=t.groupSetId
+        }
+      ]
+    }, 516936:(e, t, r)=>{
+      var o=r(248124), n=r(571478);
+      e.exports=[
+        "$rootScope", "$scope", "groupRepository", function(e, t, r){
+          var i=n(t), u=o("#add-group-popup");
+          t.$on("start-add-group", (function(){
+            return s(), u.foundation("reveal", "open")
+          }));
+          var s=function(){
+            return t.ui={
+              name:""
+            }, t.errors={
+            }
+          };
+          return t.$on("continuallyAddGroup", (function(){
+            return t.curentGroupSet.getGroupNames()
+          })), t.addGroup=function(){
+            i.show(), r.addGroup(t.currentGroupSet, t.ui.name).then((function(t){
+              i.hide(), u.foundation("reveal", "close");
+              var r={
+                mode:statistics.enums.Mode.normal, channel:statistics.enums.Channel.web, action:statistics.enums.GroupSetAction.create_group, module:statistics.enums.TeachingActionModule.group_set
+              };
+              return statistics.track(r), e.$broadcast("start-add-group-member", {
+                group:t
+              })
+            })).catch((function(e){
+              return t.errors=e.errors, i.hide()
+            }))
+          }, t.reset=s, s()
+        }
+      ]
+    }, 520805:(e, t, r)=>{
+      var o=r(248124), n=r(302543);
+      e.exports=[
+        "$rootScope", "$scope", "groupRepository", (e, t, r)=>t.saveGroupUploads=function(){
+          if(t.uploaded.length){
+            return r.uploadFileToGroup(t.group, n.map(t.uploaded, "id"), (function(n){
+              return t.group.uploads=n.group.uploads, r.updateGroupUploads(t.group), e.uploaded=[
+              ], o("#myFilesUpload").foundation("reveal", "close")
+            }))
+          }
+        }
+      ]
+    }, 525621:(e, t, r)=>{
+      var o=r(248124);
+      function n(e, t){
+        return function(e){
+          if(Array.isArray(e))return e
+        }
+        (e)||function(e, t){
+          if("undefined"==typeof Symbol||!(Symbol.iterator in Object(e)))return;
+          var r=[
+          ], o=!0, n=!1, i=void 0;
+          try{
+            for(var u, s=e[
+              Symbol.iterator
+            ]
+            ();
+            !(o=(u=s.next()).done)&&(r.push(u.value), !t||r.length!==t);
+            o=!0);
+          }
+          catch(e){
+            n=!0, i=e
+          }
+          finally{
+            try{
+              o||null==s.return||s.return()
+            }
+            finally{
+              if(n)throw i
+            }
+          }
+          return r
+        }
+        (e, t)||function(e, t){
+          if(!e)return;
+          if("string"==typeof e)return i(e, t);
+          var r=Object.prototype.toString.call(e).slice(8, -1);
+          "Object"===r&&e.constructor&&(r=e.constructor.name);
+          if("Map"===r||"Set"===r)return Array.from(e);
+          if("Arguments"===r||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(r))return i(e, t)
+        }
+        (e, t)||function(){
+          throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")
+        }
+        ()
+      }
+      function i(e, t){
+        (null==t||t>e.length)&&(t=e.length);
+        for(var r=0, o=new Array(t);
+        r<t;
+        r++)o[
+          r
+        ]
+        =e[
+          r
+        ];
+        return o
+      }
+      r(215195), r(43148);
+      var u=r(181769), s=u.canEditActivity, a=u.hasEditPermissionForBlueprint, c=r(901499), d=r(302543);
+      e.exports=[
+        "$rootScope", "$scope", "$q", "activityRepository", "revealModalParams", "modelHelper", "$timeout", "examListRepository", function(e, t, r, i, u, l, p, f){
+          t.canShowOperations=e=>s(e), t.canEditActivitySelf=e=>a(e), t.editExam=function(r){
+            var o, n;
+            return"module"===r.referrer_type&&(o=r.referrer_id), "syllabus"===r.referrer_type&&(n=r.referrer_id), l.editActivity(e, t, t.course, o, n, p, r)
+          }, t.deleteExam=function(e){
+            t.deletingActivity=e;
+            var r="#activity-delete-popup";
+            return u[
+              r
+            ]
+            ={
+              fromPage:"list", activityType:"exam"
+            }, t.confirm=()=>f.deleteExam(e.id).then((function(){
+              if(o(r).foundation("reveal", "close"), d.remove(t.exams, {
+                id:examId
+              }), t.isCourseInCheckpointMode)return l.deleteActivityFromCourse(t.course, e), l.refreshPrerequisitesForAllDependantActivities(t.course, e), l.updateCriterionInfoForActivities(scope.course, t.exams)
+            })), o(r).foundation("reveal", "open"), null
+          }, t.$on("examUpdated", ((e, t)=>h(t))), e.$on("prerequisitesUpdated", ((e, r)=>l.refreshPrerequisitesForCurrentActivity(r, t.exams, t.course)));
+          var m=function(e){
+            if(t.isCourseInCheckpointMode&&(t._course=i._course, i.initActivitiesForActivityList(t._course), i.initExamsForActivityList(t._course), e))return d.each(t.course.modules, (function(t){
+              return l.removeOldActivity(t, e), l.addNewActivity(e, t)
+            })), c(t, i, e, l, t.exams).refreshPrerequisitesAfterActivityEdit()
+          }, v=e=>d.map(e, (function(e){
+            var t=d.isString(e.final_score)?e.final_score:e.score;
+            return d.extend(e, {
+              notSubmit:0===e.submission_count, notPublish:e.submission_count>0&&!e.is_announce_score_time_passed, scoreNotReady:e.submission_count>0&&e.is_announce_score_time_passed&&!d.isString(t), viewScore:t, hasScore:d.isString(t)
+            })
+          })), g=e=>d.filter(e, (e=>e.is_assigned_to_all||d.includes(e.assign_group_ids, t.group.id))), h=function(){
+            var e=arguments.length>0&&void 0!==arguments[
+              0
+            ]
+            ?arguments[
+              0
+            ]
+            :null, o=i.initCourseAndModules(), u=i.initGroupExams(t.currentGroupSet.id);
+            return r.all([
+              o, u
+            ]).then((function(){
+              var r=Array.from(arguments.length<=0?void 0:arguments[
+                0
+              ]), o=n(r, 2), i=o[
+                0
+              ], u=o[
+                1
+              ];
+              return v(u), t.course=i, t.exams=g(u), m(e)
+            }))
+          };
+          return h()
+        }
+      ]
+    }, 539963:(e, t, r)=>{
+      r.d(t, {
+        $D:()=>c, bC:()=>a, df:()=>s, eg:()=>u, vB:()=>d
+      });
+      var o=r(552979), n=r(795093), i=(e, t)=>{
+        if((e=>{
+          e.make_up_record&&(e.make_up_record.is_closed=n()>n(e.make_up_record.closed_time)), e.resubmit_record&&(e.resubmit_record.is_closed=n()>n(e.resubmit_record.closed_time))
+        })(t), !t.resubmit_record&&!t.make_up_record)return"";
+        if(!t.resubmit_record&&t.make_up_record)return"makeUp";
+        if(!t.make_up_record&&e)return"resubmit";
+        if(!e)return"makeUp";
+        var r=t.make_up_record.updated_at||t.make_up_record.created_at, o=t.resubmit_record.updated_at||t.resubmit_record.created_at;
+        return r>=o?"makeUp":r<o?"resubmit":""
+      };
+      function u(e, t){
+        var r={
+          isMarked:null, submitStatus:""
+        };
+        r.isMarked="marked"===t.mark;
+        var n=i(e, t);
+        return t.markedSubmitted&&[
+          "makeUp", "resubmit"
+        ].includes(n)?(r.submitStatus=o.default.t("homework.makeUp"), r):r
+      }
+      function s(e){
+        var t=e.submission_correct;
+        return t.instructor_score||t.comment
+      }
+      function a(e){
+        return(!e.submit_by_instructor||e.marked_submitted)&&!e.is_draft&&!e.is_redo
+      }
+      function c(e){
+        return e.submit_by_instructor&&!e.is_draft
+      }
+      function d(e){
+        return e.final_score||e.submission_correct.instructor_score||e.submission_correct.comment?"marked":"unmarked"
+      }
+    }, 554899:(e, t, r)=>{
+      var o=r(756029), n=r(302543);
+      r(219693), r(168763), r(43148), r(850785);
+      var i=r(111172);
+      e.exports=[
+        "$rootScope", "$scope", "$route", "$routeParams", "$location", "groupRepository", "toastr", "filter", function(e, t, r, u, s, a, c, d){
+          t.ui||(t.ui={
+          }), t.ui.showDetails=!1, t.ui.editing=!0, t.ui.loading=!0, t.condition={
+            keyword:""
+          };
+          var l=u.groupId, p=function(){
+            t.groups=o.copy(a.groups);
+            var e=n.find(t.groups, {
+              id:parseInt(l)
+            });
+            return l&&o.isUndefined(e)?s.path("/"):(f(e), m())
+          }, f=function(e){
+            return l?(t.currentGroup=o.copy(e), e.active=!0, t.ui.addGroup=!1):(t.currentGroup={
+              id:0, name:"", members:[
+              ], leaders:[
+              ], active:!0
+            }, t.groups.unshift(o.copy(t.currentGroup)), t.ui.addGroup=!0)
+          }, m=function(){
+            return t.students=o.copy(a.students), t.groupedStudents=n.filter(t.students, {
+              group_id:t.currentGroup.id
+            }), t.ungroupedStudents=n.filter(t.students, {
+              group_id:null
+            }), t.filteredStudents=t.ungroupedStudents, n.each(t.groupedStudents, (function(e){
+              e.isLeader=t.currentGroup.leaders.includes(e.id)
+            })), t.ui.loading=!1, t.changePage(1)
+          };
+          t.pageSize=100, t.pagination=i(t, s, "enrollments");
+          var v=function(e){
+            return t.pages=e.pages, t.pagedStudents=e.data
+          };
+          t.changePage=e=>t.pagination.changePageAtFrontEnd(e, t.filteredStudents, v);
+          t.groupedNumber=()=>t.groupedStudents.length, e.ungroupedNumber=()=>t.ungroupedStudents.length, t.hasLeader=e=>e.leaders.length>0, t.setCurrentGroup=function(e){
+            return h(), n.find(t.groups, {
+              id:t.currentGroup.id
+            }).active=!1, e.id&&s.path("/".concat(e.id, "/edit"), !1), l=e.id, p()
+          };
+          var g=function(e){
+            return e.isLeader=!1, t.currentGroup.leaders.splice(n.indexOf(t.currentGroup.leaders, e.id), 1)
+          };
+          t.toggleLeader=function(e){
+            return e.isLeader?g(e):function(e){
+              return e.isLeader=!0, t.currentGroup.leaders.push(e.id)
+            }
+            (e)
+          };
+          var h=function(){
+            return t.filteredStudents=n.filter(t.ungroupedStudents, (e=>d.filterEnrollments(t, e))), t.changePage(t.pageIndex), t.filteredStudentsNum=t.filteredStudents.length
+          };
+          return t.search=()=>h(), t.addToCurrentGroup=function(e){
+            return e.group_id=t.currentGroup.id, t.ungroupedStudents.splice(n.findIndex(t.ungroupedStudents, {
+              id:e.id
+            }), 1), t.groupedStudents.push(e), t.currentGroup.members.push(e.id), h()
+          }, t.removeFromCurrentGroup=function(e){
+            return e.isLeader&&g(e), e.group_id=null, t.groupedStudents.splice(n.findIndex(t.groupedStudents, {
+              id:e.id
+            }), 1), t.currentGroup.members.splice(n.indexOf(t.currentGroup.members, e.id), 1), t.ungroupedStudents.push(e), h()
+          }, t.save=function(){
+            t.loading=!0;
+            var e=o.copy(t.currentGroup);
+            delete e.active;
+            var r=function(){
+              return a.groups=o.copy(t.groups), a.students=o.copy(t.students)
+            }, i=function(e){
+              if(t.loading=!1, t.errors=e.errors, e.message&&c.error(e.message), e.errors.leaders)return c.error(e.errors.leaders)
+            };
+            return e.id?a.updateGroup(e, (function(e){
+              t.loading=!1;
+              var i=n.find(t.groups, {
+                id:e.group.id
+              });
+              return t.groups[
+                n.indexOf(t.groups, i)
+              ]
+              =o.copy(t.currentGroup), r()
+            }), i):a.addGroup(e, (function(e){
+              t.loading=!1;
+              var o=e.group;
+              return t.groups[
+                0
+              ]
+              =o, n.each(t.students, (function(e){
+                if(0===e.group_id)return e.group_id=o.id
+              })), s.path("/".concat(o.id, "/edit"), !1), l=o.id, r(), p()
+            }), i)
+          }, a.init().then(p)
+        }
+      ]
+    }, 566177:(e, t, r)=>{
+      var o=r(302543);
+      r(714913), r(158649), r(658379);
+      var n=r(966491), i=r(571478);
+      e.exports=[
+        "$scope", "$rootScope", "api", "Upload", "DataImportHelper", "toastr", "$timeout", "$http", function(e, t, r, u, s, a, c, d){
+          var l=i(e), p={
+            data:{
+            }
+          }, f={
+          };
+          e.humanizeBytes=n.humanizeBytes, e.init=function(){
+            var r=t.importType;
+            return p.importType=r, p.data.record_type={
+              editUser:"edit_user", editCourse:"edit_course", coursesEnrollment:"courses_enrollment", courseGroup:"group", editDepartment:"edit_department", classroomInfo:"classroom_info", offlineClassInfo:"offline_class", editOnlineStudent:"online_student", curriculumEnrollment:"curriculum_enrollment"
+            }
+            [
+              r
+            ]
+            ||r, p.errorPriority={
+              user:{
+                user_no:1, name:2, email:3, password:4, role:5, department_code:6, program_code:7, grade_name:8, class_name:9, end_at:10, active_at:11
+              }, editUser:{
+                user_no:1, name:2, email:3, password:4, role:5, department_code:6, program_code:7, grade_name:8, class_name:9, status:9, end_at:10, active_at:11
+              }, course:{
+                name:1, course_code:2, course_subject_code:3, scope:4, publish:5, compulsory:6, credit:7, department_code:8, start_date:9, end_date:10, subject_group:11, instructor_user_nos:12, academic_year:13, semester_name:14
+              }, editCourse:{
+                course_code:1, course_subject_code:2, name:3, scope:4, publish:5, compulsory:6, credit:7, department_code:8, start_date:9, end_date:10, subject_group:11, instructor_user_nos:12, delete:13, academic_year:14, semester_name:15
+              }, coursesEnrollment:{
+                course_code:1, user_no:2, role:3, status:4, seat_number:5
+              }, enrollment:{
+                user_no:1, role:2, status:3
+              }, courseGroup:{
+                group_name:1, user_no:2
+              }, classroomInfo:{
+                building:1, room_name:2, room_code:3, seats:4, introduction:5, duplicates:6
+              }, offlineClassInfo:{
+                start_time:1, end_time:2, course_code:3, course_name:4, activity_name:5, user_no:6, host_name:7, phone:8, department:9
+              }, rollcall:{
+                user_no:1, status:2
+              }, editDepartment:{
+                code:1, name:2, parent_code:3, status:4
+              }, editOnlineStudent:{
+                user_no:1, name:2, online:3
+              }, lab:{
+                name:1, code:2, capacity:3, campus_name:4, building_name:5, project_names:6, notes:7, description:8
+              }, curriculumEnrollment:{
+                code:1, user_no:2, status:3
+              }
+            }
+            [
+              r
+            ]
+            ||{
+              code:1, name:2, parent_code:3
+            }, "courseGroup"===r&&(p.data.group_set_id=t.groupSetId), f=new s(p.errorPriority), e.ui=f.ui
+          };
+          var m={
+          };
+          e.goStepFirst=function(){
+            if(2===e.ui.wizardStep)return delete m.access_key, delete e.failedRecords, f.goStepFirst(), e.deleteUploaded(e.ui)
+          }, e.doStepSecond=function(){
+            [
+              "rollcall"
+            ].includes(p.importType)&&(p.data.course_id=t.courseId, p.data.lesson_timetable_id=t.lessonTimetableId);
+            return l.show(), u.upload({
+              url:"/api/data-import/validation", file:e.getUploaded()[
+                0
+              ], method:"POST", data:p.data
+            }).then((function(t){
+              var r=o.filter(t.data.records, "errors");
+              e.failedRecords=r, e.passedRecords=t.data.passed_records;
+              var n=t.data.record_number;
+              return f.updateRecordsPickedError(e.failedRecords), m.access_key=t.data.access_key, l.hide(), f.updateSecondStepData(e.failedRecords), e.correctRecordNumber=n-r.length, e.ui.stepThirdEnable=e.ui.importConfirmed&&e.correctRecordNumber>0
+            }), (function(e){
+              return a.error(e.data.message), l.hide()
+            }))
+          };
+          return e.doStepThird=function(){
+            l.show();
+            var o={
+              access_key:m.access_key
+            };
+            [
+              "enrollment", "rollcall"
+            ].includes(p.importType)&&(o.courseId=t.courseId, "rollcall"==p.importType&&(o.lesson_timetable_id=t.lessonTimetableId)), "courseGroup"===p.importType&&(o.groupSetId=t.groupSetId);
+            var n, i;
+            return r[
+              (n=p.importType, i=n.split(""), i[
+                0
+              ]
+              =i[
+                0
+              ].toUpperCase(), "import".concat(i.join(""), "s"))
+            ]
+            (o, (t=>{
+              var r=t.job_id, o=()=>((e, t, r)=>d.get("/api/jobs/".concat(e, "/status")).success(t).error(a.decorateError(r)))(r, n), n=t=>{
+                if("finished"===t.status){
+                  var r;
+                  if((null===(r=t.result.identity_failed)||void 0===r?void 0:r.length)>0){
+                    var n="";
+                    t.result.identity_failed.forEach((e=>{
+                      n+="".concat(e.user_no, ",")
+                    })), e.identityFailedUserNos=n.slice(0, -1)
+                  }
+                  return function(t){
+                    var r="".concat(p.importType, "s"), o="".concat(p.importType, "s_failed");
+                    return e.importedRecords=t[
+                      r
+                    ], e.failedRecords=t[
+                      o
+                    ], f.updateRecordsPickedError(e.failedRecords), l.hide(), e.ui.wizardStep=3
+                  }
+                  (t.result)
+                }
+                return"failed"===t.status?(l.hide(), e.importFailed=!0, a.error(e.errorText.importFailed)):c(o, 5e3)
+              };
+              return c(o, 5e3)
+            }))
+          }, e.onFileSelect=e.setFileSelectContext(e), e.getHref=function(t){
+            var r=arguments.length>1&&void 0!==arguments[
+              1
+            ]
+            ?arguments[
+              1
+            ]
+            :"school";
+            t=t.toLowerCase();
+            var o="";
+            if("school"===r){
+              if("rollcall"===p.importType)return e.enableMentalHealthLeave?"/static/data_import_templates/school-rollcall-mental-health-".concat(t, ".xls"):"/static/data_import_templates/".concat(r, "-rollcall-").concat(t, ".xls");
+              if("curriculumEnrollment"===p.importType)return"/static/data_import_templates/changeScheduledTraining-".concat(t, ".xls");
+              if("editOnlineStudent"===p.importType)return"/static/data_import_templates/".concat(r, "-online-student-").concat(t, ".xls");
+              "user"===p.importType&&e.isAllowEmptyEmail&&"zh-cn"===t&&(o+="-allow-empty-email"), [
+                "course", "editCourse"
+              ].includes(p.importType)&&(e.allowCourseCurriculum&&(o+="-program"), e.isCourseNeedPublish&&(o+="-with-publish"), e.isTrialCourseOpen&&(o+="-trial"), e.isDistanceCourseOpen&&(o+="-distance")), [
+                "user", "course"
+              ].includes(p.importType)&&(e.isDepartmentRequired||e.enableCreateCourseWithDepartmentRequired)&&(o+="-department-required"), [
+                "course"
+              ].includes(p.importType)&&e.isAcademicAndSemesterRequired&&(o+="-academic_year-semester-required"), "coursesEnrollment"===p.importType&&e.isSeatNumberRequired&&(o="-seat-number-required"), [
+                "editUser", "user"
+              ].includes(p.importType)&&e.isStudentEducationRequired&&(o+="-allow-student-education")
+            }
+            return"/static/data_import_templates/".concat(r, "-").concat(p.importType, "s").concat(o, "-").concat(t, ".xls")
+          }
+        }
+      ]
+    }, 667164:(e, t, r)=>{
+      function o(e, t){
+        var r;
+        if("undefined"==typeof Symbol||null==e[
+          Symbol.iterator
+        ]){
+          if(Array.isArray(e)||(r=function(e, t){
+            if(!e)return;
+            if("string"==typeof e)return n(e, t);
+            var r=Object.prototype.toString.call(e).slice(8, -1);
+            "Object"===r&&e.constructor&&(r=e.constructor.name);
+            if("Map"===r||"Set"===r)return Array.from(e);
+            if("Arguments"===r||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(r))return n(e, t)
+          }
+          (e))||t&&e&&"number"==typeof e.length){
+            r&&(e=r);
+            var o=0, i=function(){
+            };
+            return{
+              s:i, n:function(){
+                return o>=e.length?{
+                  done:!0
+                }
+                :{
+                  done:!1, value:e[
+                    o++
+                  ]
+                }
+              }, e:function(e){
+                throw e
+              }, f:i
+            }
+          }
+          throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")
+        }
+        var u, s=!0, a=!1;
+        return{
+          s:function(){
+            r=e[
+              Symbol.iterator
+            ]
+            ()
+          }, n:function(){
+            var e=r.next();
+            return s=e.done, e
+          }, e:function(e){
+            a=!0, u=e
+          }, f:function(){
+            try{
+              s||null==r.return||r.return()
+            }
+            finally{
+              if(a)throw u
+            }
+          }
+        }
+      }
+      function n(e, t){
+        (null==t||t>e.length)&&(t=e.length);
+        for(var r=0, o=new Array(t);
+        r<t;
+        r++)o[
+          r
+        ]
+        =e[
+          r
+        ];
+        return o
+      }
+      r(43148), r(640173), r(850785), r(868329);
+      var i=r(374302).checkUserLarkAuth, u=r(302543), s=r(966491);
+      e.exports=[
+        "commonApi", "resourceGroupApi", "config", "toastr", "$http", function(e, t, r, n, a){
+          var c=function(e){
+            if(!e.type)return"slide";
+            if("scorm"===e.type)return"scorm";
+            if("evercam"===e.type)return"evercam";
+            if("folder"===e.type)return"folder";
+            if("video-quiz"===e.type)return"video-quiz";
+            if("subject-lib"===e.type)return"subject-lib";
+            if("lesson-resource"===e.type)return"lesson-resource";
+            if("link"===e.type)return"link";
+            if("other"===e.type)return"other";
+            var t=s.fileExtension(e.name, !0);
+            return u.includes(r.SUPPORTED_VIDEO_FORMATS, t)?"video":u.includes(r.SUPPORTED_AUDIO_FORMATS, t)?"audio":u.includes(r.SUPPORTED_IMAGE_FORMATS, t)?"image":u.includes(r.SUPPORTED_DOCUMENT_FORMATS, t)?"document":u.includes(r.SUPPORTED_FLASH_FORMATS, t)?"swf":"file"===e.type?"file":"other"
+          }, d=function(e){
+            return e.isThirdPartResource="third_part_resource"===p.tab, e.isChinamcloudResource="chinamcloud_resource"===p.tab, e.selectable=!u.isFunction(p.checkIsSelectable)||p.checkIsSelectable(e), "lark"===p.tab?(e.allow_download=!1, e.allow_forward_seeking=!1, e.origin_allow_download=!1, e.source="LARK", e.status="ready", e.selected=!!u.find(p.selectedUploads, {
+              token:e.token, source:"LARK"
+            }), void(e.deleted=!1)):"wedrive"===p.tab?(e.allow_download=!0, e.allow_forward_seeking=!1, e.origin_allow_download=!0, e.source="WEDRIVE", e.status="ready", e.selected=!!u.find(p.selectedUploads, {
+              fileid:e.fileid, source:"WEDRIVE"
+            }), e.selectable=1!==e.file_type, void(e.deleted=!1)):"chinamcloud_resource"===p.tab?(e.allow_download=!1, e.allow_forward_seeking=!1, e.origin_allow_download=!0, e.source="CHINAMCLOUD", e.deleted=!1, e.is_folder="folder"===e.type, e.status="processing", e.selectable="folder"!==e.type, e.selected=!!u.find(p.selectedUploads, {
+              id:e.id, isChinamcloudResource:e.isChinamcloudResource
+            }), void(p.mode="list")):"academic_learning_platform"===p.tab?(e.allow_download=!1, e.allow_forward_seeking=!1, e.origin_allow_download=!0, e.source="SHTVU", e.status="ready", void(e.deleted=!1)):("public_resource"!==p.tab&&(e.type=c(e), e.selected=!!u.find(p.selectedUploads, {
+              id:e.id, isThirdPartResource:e.isThirdPartResource
+            })), void(u.includes([
+              "repository", "public_resource", "group_resource", "vtrs_resource"
+            ], p.tab)&&(p.selectedIds&&(e.selected=p.selectedIds.includes(e.id)&&!e.is_folder, e.selected&&p.selectedUploads.push(e)), p.disabledIds&&(e.selectable=!p.disabledIds.includes(e.id)), e.is_folder&&!p.allowSelectFolder&&(e.selectable=!1), "vtrs_resource"===p.tab&&(e.id=e.upload_id), e.origin_allow_download=e.allow_download)))
+          }, l=()=>"knowledge_graph"===p.usePublicResourceScope?"/api/knowledge-nodes/".concat(p.nodeId, "/reference-resource"):"/api/public-resources", p={
+            onlyReady:!1, showPublicResource:!0, showLarkSpace:!0, showAcademicLearningPlatformTab:!1, showVirtualClassroomTab:!1, showMaterialTab:!1, activity:null, allowSelectFolder:!1, tab:"repository", fileType:"all", mode:"thumbnail", keyword:"", nodeId:0, selectedIds:[
+            ], disabledIds:[
+            ], searching:!1, selectedUploads:[
+            ], singleSelectedUpload:void 0, supportFormat:[
+            ], limitTypes:[
+            ], singleSelect:!1, context:{
+            }, filters:[
+            ], linkTypes:[
+            ], vtrsId:"", path:[
+            ], usePublicResourceScope:"", identifyFileType:c, pagination:{
+              currentList:[
+              ], currentPage:1, totalPage:1, inputPage:1
+            }, unSupportFolderUpload:!1, setPublicResourceScope(e){
+              p.usePublicResourceScope=e
+            }, resetPagination(){
+              p.pagination={
+                currentList:[
+                ], currentPage:1, totalPage:1, inputPage:1
+              }
+            }, changeFileType:(e, t)=>(p.resetPagination(), p.fileType=e, p.path=[
+            ], p.changePage(1, t)), changeVtrs:(e, t)=>(p.resetPagination(), p.vtrsId=void 0!==e?e:null, p.path=[
+            ], p.changePage(1, t)), getDefaultFileType:()=>1===p.limitTypes.length?p.limitTypes[
+              0
+            ]
+            :"all", changePath:(e, t)=>(p.path.push(e), p.changePage(1, t)), addUploads:e=>r.load().then((()=>(()=>{
+              var t, r=[
+              ], n=o(e);
+              try{
+                for(n.s();
+                !(t=n.n()).done;
+                ){
+                  var i=t.value;
+                  "academic_learning_platform"!==p.tab&&(i.type=c(i)), r.push(p.pagination.currentList.unshift(i))
+                }
+              }
+              catch(e){
+                n.e(e)
+              }
+              finally{
+                n.f()
+              }
+              return r
+            })())), removeUpload:e=>u.remove(p.pagination.currentList, {
+              id:e.id
+            }), cleanCreateFailed:()=>u.remove(p.pagination.currentList, {
+              createFailed:!0
+            }), search:e=>(p.searching=p.keyword.trim().length>0, p.changePage(1, e)), changePage:(o, s, c, f)=>function(o, s){
+              var c=arguments.length>2&&void 0!==arguments[
+                2
+              ]
+              ?arguments[
+                2
+              ]
+              :10, f=arguments.length>3&&void 0!==arguments[
+                3
+              ]
+              ?arguments[
+                3
+              ]
+              :"created_at", m=!(arguments.length>4&&void 0!==arguments[
+                4
+              ])||arguments[
+                4
+              ], v=function(e){
+                var t, n=e.uploads||e.resources||(null===(t=e.data)||void 0===t?void 0:t.items)||[
+                ];
+                return r.load().then((()=>{
+                  n.map((e=>d(e)))
+                })), p.pagination={
+                  currentList:n, currentPage:e.page, totalPage:e.pages, inputPage:e.page
+                }, o()
+              }, g=function(e){
+                return p.pagination={
+                  currentList:[
+                  ], currentPage:1, totalPage:1, inputPage:1
+                }, o(), n.error(e.message)
+              }, h=()=>{
+                i().then((e=>{
+                  if(!e.data.authorized){
+                    var t=window.location, r="".concat(t.pathname).concat(t.search).concat(t.hash), o="".concat(e.data.authorization_url, "&state=").concat(r);
+                    window.open(o, "_self")
+                  }
+                }))
+              }, y=p.searching?p.keyword:"", b={
+                keyword:y, includeSlides:p.context.includeSlides, includeSubjectLibs:p.context.includeSubjectLibs, includeVideoQuizzes:p.context.includeVideoQuizzes, includeLessonResources:p.context.includeLessonResources, limitTypes:p.limitTypes, fileType:p.fileType, fileExts:p.fileExts, parentId:p.path.length>0?p.path[
+                  p.path.length-1
+                ].id:0, folderToken:p.path.length>0?p.path.at(-1).token:"", resourceType:p.path.length>0?p.path[
+                  p.path.length-1
+                ].resource_type:null, filters:p.filters, linkTypes:p.linkTypes, only_ready:p.onlyReady, sortPredicate:f, reverse:m
+              };
+              if(p.limitTypes.includes("courseware")&&(b.fileExts=[
+                "zip"
+              ]), [
+                "repository", "material"
+              ].includes(p.tab))return e.getUserResources(s, c, b, v, g);
+              if("vtrs_resource"===p.tab)return""!==p.vtrsId&&(b.vtrs_id=p.vtrsId), e.getVtrsesShareResources(s, c, b, v, g);
+              if("third_part_resource"===p.tab)return e.getThirdPartUserResources(s, c, b, v, g);
+              if("lark"===p.tab)return h(), e.getResourceFromLark(s, c, b.folderToken, v, g);
+              if("wedrive"===p.tab){
+                var S="/api/wedrive/files?page=".concat(s, "&page_size=").concat(c);
+                p.path.length>0&&(S="/api/wedrive/files?page=".concat(s, "&page_size=").concat(c, "&file_id=").concat(p.path.at(-1).fileid)), a.get(S).success(v).error(g)
+              }
+              if("other_video_resources"===p.tab)return e.getOtherVideoResources(s, c, v, g);
+              if("academic_learning_platform"===p.tab)return e.getAcademicLearningPlatformResources(s, c, y, p.courseCode, p.filterFileTypes, v, g);
+              if("group_resource"===p.tab){
+                var _, w, G=[
+                ], k=[
+                ], C={
+                  keyword:y, parent_id:p.path.length>0?p.path[
+                    p.path.length-1
+                  ].resource_id:0, group_folder_id:p.path.length>0?p.path[
+                    p.path.length-1
+                  ].group_folder_id:0, file_type:p.fileType, limit_types:p.limitTypes, sort_predicate:"created_at", reverse:!0
+                }, A=function(e){
+                  return e.resources.map((e=>{
+                    var t=e.upload;
+                    t.cc_license_code=e.cc_license_name, t.group_id=e.group.id, t.group_name=e.group.name, t.resource_id=e.id, t.group_folder_id=e.group_folder_id, "folder"===t.type&&(t.is_folder=!0), t.allow_download=e.origin_allow_download, k.push(t)
+                  })), r.load().then((()=>{
+                    p.selectedUploads=[
+                    ], k.map((e=>d(e)))
+                  })), w=G.length>0&&_==s?G.length>=c?G:G.concat(k):k, p.pagination={
+                    currentList:w, currentPage:e.page, totalPage:e.pages, inputPage:e.page
+                  }, o()
+                }, T=function(e){
+                  _=e.page, G=e.folders, u.each(G, (function(e){
+                    e.is_folder=!0, e.selectable=!1, e.group_name=e.resource_group.name, e.group_folder_id=e.id
+                  })), t.getAllPagedResourceGroupResources(s, c, C, A)
+                };
+                "all"===p.fileType?t.getAllPagedResourceGroupFolders(s, c, C, T):t.getAllPagedResourceGroupResources(s, c, C, A)
+              }
+              if("public_resource"===p.tab){
+                var $, x=l();
+                a.get(x, {
+                  params:{
+                    page:s, page_size:c, keyword:y, limit_types:p.limitTypes, parent_id:null===($=p.path.at(-1))||void 0===$?void 0:$.resource_reference_id, file_type:p.fileType
+                  }
+                }).success(v).error(g)
+              }
+              if("chinamcloud_resource"===p.tab&&!p.context.lesson_resource_only&&![
+                "courseware", "scorm"
+              ].includes(p.fileType)){
+                var I, P=p.limitTypes.filter((e=>![
+                  "folder", "video-quiz"
+                ].includes(e)));
+                p.fileType=0===P.length||P.includes(p.fileType)?p.fileType:P[
+                  0
+                ];
+                var O="/api/chinamcloud/resources";
+                a.get(O, {
+                  params:{
+                    page:s, page_size:c, keyword:y, parent_id:null===(I=p.path.at(-1))||void 0===I?void 0:I.resource_id, file_type:p.fileType
+                  }
+                }).success(v).error(g)
+              }
+              return"virtual_classroom"===p.tab?e.getVirtualClassroomResources(s, c, y, p.fileType, v, g):void 0
+            }
+            (s, o, void 0, c, f), getSelectedUploads:()=>p.singleSelect?p.singleSelectedUpload?[
+              p.singleSelectedUpload
+            ]
+            :[
+            ]
+            :u.filter(p.selectedUploads, {
+              selectable:!0
+            }), copySelectedThirdPartResources(t, r){
+              if(0!==r.length)return function(t, r){
+                return e.copyThirdPartResources(u.filter(t, {
+                  isThirdPartResource:!0
+                }).map((e=>e.id)), (function(e){
+                  var o=e.uploads||[
+                  ];
+                  return r(o.concat(u.filter(t, {
+                    isThirdPartResource:!1
+                  })))
+                }), (function(){
+                }))
+              }
+              (r, t)
+            }, uploadSelectedChinamcloudResources(t, r){
+              if(0!==r.length)return function(t, r){
+                return e.updateChinamcloudResources(u.filter(t, {
+                  isChinamcloudResource:!0
+                }), (function(e){
+                  var o=e.uploads||[
+                  ];
+                  return r(o.concat(u.filter(t, {
+                    isChinamcloudResource:!1
+                  })))
+                }), (function(){
+                }))
+              }
+              (r, t)
+            }, clearSelected(){
+              var e, t=o(p.pagination.currentList);
+              try{
+                for(t.s();
+                !(e=t.n()).done;
+                ){
+                  e.value.selected=!1
+                }
+              }
+              catch(e){
+                t.e(e)
+              }
+              finally{
+                t.f()
+              }
+              return p.selectedUploads=[
+              ], p.singleSelectedUpload=void 0
+            }, getSupportFormatString(e){
+              if(p.fileExts&&p.fileExts.length)return".".concat(p.fileExts.join(",."));
+              var t, r=[
+              ], n=o(e);
+              try{
+                for(n.s();
+                !(t=n.n()).done;
+                ){
+                  var i=t.value;
+                  r=r.concat(p.supportFormat[
+                    i
+                  ])
+                }
+              }
+              catch(e){
+                n.e(e)
+              }
+              finally{
+                n.f()
+              }
+              return 0===r.length&&(r=s.getSupportedFormats()), ".".concat(r.join(",."))
+            }, getSupportFormatMsg:e=>p.getSupportFormatString(e).replace(/\./g, ""), getSupportFormatMsgWithSpaces:e=>p.getSupportFormatString(e).replace(/\./g, " ").replace(/^[
+              \s
+            ]
+            +/, ""), verifyPageIndexInput(){
+              if(p.pagination.inputPage){
+                var e=String(p.pagination.inputPage).replace(/\./, "");
+                return p.pagination.inputPage=isNaN(e)||e<1||e>p.pagination.totalPage?p.pagination.currentPage:parseInt(e)
+              }
+            }
+          };
+          return r.load().then((function(){
+            return p.supportFormat.video=r.SUPPORTED_VIDEO_FORMATS, p.supportFormat.audio=r.SUPPORTED_AUDIO_FORMATS, p.supportFormat.document=r.SUPPORTED_DOCUMENT_FORMATS, p.supportFormat.image=r.SUPPORTED_IMAGE_FORMATS, p.supportFormat.scorm="zip", p.supportFormat.evercam="zip", p.supportFormat.courseware="zip", p.supportFormat.swf=r.SUPPORTED_FLASH_FORMATS, p.supportFormat[
+              "open-office"
+            ]
+            =r.SUPPORTED_OPEN_OFFICE_FORMATS
+          })), p
+        }
+      ]
+    }, 726330:(e, t, r)=>{
+      var o=r(302543);
+      function n(e, t){
+        var r;
+        if("undefined"==typeof Symbol||null==e[
+          Symbol.iterator
+        ]){
+          if(Array.isArray(e)||(r=function(e, t){
+            if(!e)return;
+            if("string"==typeof e)return i(e, t);
+            var r=Object.prototype.toString.call(e).slice(8, -1);
+            "Object"===r&&e.constructor&&(r=e.constructor.name);
+            if("Map"===r||"Set"===r)return Array.from(e);
+            if("Arguments"===r||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(r))return i(e, t)
+          }
+          (e))||t&&e&&"number"==typeof e.length){
+            r&&(e=r);
+            var o=0, n=function(){
+            };
+            return{
+              s:n, n:function(){
+                return o>=e.length?{
+                  done:!0
+                }
+                :{
+                  done:!1, value:e[
+                    o++
+                  ]
+                }
+              }, e:function(e){
+                throw e
+              }, f:n
+            }
+          }
+          throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")
+        }
+        var u, s=!0, a=!1;
+        return{
+          s:function(){
+            r=e[
+              Symbol.iterator
+            ]
+            ()
+          }, n:function(){
+            var e=r.next();
+            return s=e.done, e
+          }, e:function(e){
+            a=!0, u=e
+          }, f:function(){
+            try{
+              s||null==r.return||r.return()
+            }
+            finally{
+              if(a)throw u
+            }
+          }
+        }
+      }
+      function i(e, t){
+        (null==t||t>e.length)&&(t=e.length);
+        for(var r=0, o=new Array(t);
+        r<t;
+        r++)o[
+          r
+        ]
+        =e[
+          r
+        ];
+        return o
+      }
+      r(418665), r(714913), r(335231), r(445708), r(43148), r(14602), Function.prototype.property=function(e, t){
+        return Object.defineProperty(this.prototype, e, t)
+      };
+      var u=e=>o.sortBy(e, [
+        "user_no"
+      ]), s=function(e){
+        var t=o.sortBy(e, (e=>e.name));
+        return o.sortBy(t, (e=>e.sort))
+      };
+      class a{
+        static initClass(){
+          this.property("id", {
+            get(){
+              return this.user.id
+            }
+          }), this.property("name", {
+            get(){
+              return this.user.name
+            }
+          }), this.property("nickname", {
+            get(){
+              return this.user.nickname
+            }
+          }), this.property("seat_number", {
+            get(){
+              return this.user.seat_number||""
+            }
+          }), this.property("user_no", {
+            get(){
+              return this.user.user_no
+            }
+          }), this.property("avatar_small_url", {
+            get(){
+              return this.user.avatar_small_url
+            }
+          }), this.property("is_auditor", {
+            get(){
+              return this.user.is_auditor
+            }
+          })
+        }
+        constructor(e, t){
+          this.user=e, this.isLeader=t
+        }
+      }
+      a.initClass();
+      class c{
+        static initClass(){
+          this.property("memberNumber", {
+            get(){
+              return this.members.length
+            }
+          }), this.property("hasMembers", {
+            get(){
+              return this.members.length>0
+            }
+          }), this.property("hideOverFlowMembers", {
+            get(){
+              return this.members.length>7
+            }
+          }), this.property("nonOverFlowMembers", {
+            get(){
+              return this.members.length>7?this.members.slice(0, 7):this.members
+            }
+          }), this.property("hasLeader", {
+            get(){
+              return this.leaders.length>0
+            }
+          })
+        }
+        constructor(e, t, r){
+          this.id=e, this.name=t, this.sort=r, this.groupSet=null, this.leaders={
+          }, this.normalMember={
+          }, this.members=[
+          ], this.uploads=[
+          ], this.topicCategories=[
+          ], this.memberSortingStrategy=u, this.submissionStatus={
+          }
+        }
+        refresh(){
+          var e, t=arguments.length>0&&void 0!==arguments[
+            0
+          ]
+          &&arguments[
+            0
+          ];
+          return this.members=t?(e=o.assign({
+          }, this.leaders, this.normalMember), o.sortBy(e, [
+            "is_auditor"
+          ])):this.memberSortingStrategy(o.assign({
+          }, this.leaders, this.normalMember))
+        }
+        getMember(e){
+          return e in this.leaders?this.leaders[
+            e
+          ]
+          :e in this.normalMember?this.normalMember[
+            e
+          ]
+          :null
+        }
+        removeMember(e){
+          e.id in this.leaders?delete this.leaders[
+            e.id
+          ]
+          :e.id in this.normalMember&&delete this.normalMember[
+            e.id
+          ]
+        }
+        addMember(e, t){
+          var r=!(arguments.length>2&&void 0!==arguments[
+            2
+          ])||arguments[
+            2
+          ];
+          if(!(e.id in this.normalMember)&&!(e.id in this.leaders)){
+            var o=t?this.leaders:this.normalMember;
+            return o[
+              e.id
+            ]
+            =new a(e, t), r&&this.refresh(), o[
+              e.id
+            ]
+          }
+        }
+        findBucket(e){
+          var t=null;
+          return e.id in this.normalMember&&(t=this.normalMember), e.id in this.leaders&&(t=this.leaders), t
+        }
+        removeMember(e){
+          var t=!(arguments.length>1&&void 0!==arguments[
+            1
+          ])||arguments[
+            1
+          ], r=this.findBucket(e);
+          if(r)return delete r[
+            e.id
+          ], t&&this.refresh(), e
+        }
+        updateInfo(e){
+          return this.name=e.name
+        }
+        updateSubmissionStatus(e){
+          return this.submissionStatus=e
+        }
+        assignToGroupSet(e){
+          return this.groupSet=e
+        }
+        dischargeFromGroupSet(){
+          return this.groupSet=null
+        }
+        assignUploads(e){
+          return this.uploads=e
+        }
+        assignTopicCategories(e){
+          return this.topicCategories=e
+        }
+        isMember(e){
+          return!!this.findBucket(e)
+        }
+      }
+      c.initClass();
+      class d{
+        constructor(e, t){
+          this.id=e, this.name=t, this.bucket=null, this.groups=[
+          ], this.participants=new Set, this.groupSortingStrategy=s
+        }
+        hasGroup(){
+          return this.groups.length>0
+        }
+        getParticipants(){
+          var e=new Set;
+          for(var t in this.bucket){
+            var r, o=n(this.bucket[
+              t
+            ].members);
+            try{
+              for(o.s();
+              !(r=o.n()).done;
+              ){
+                var i=r.value;
+                e.add(i.user)
+              }
+            }
+            catch(e){
+              o.e(e)
+            }
+            finally{
+              o.f()
+            }
+          }
+          return e
+        }
+        refresh(){
+          return this.groups=this.groupSortingStrategy(this.bucket), this.participants=this.getParticipants()
+        }
+        addGroup(e){
+          var t=!(arguments.length>1&&void 0!==arguments[
+            1
+          ])||arguments[
+            1
+          ];
+          if(null==this.bucket&&(this.bucket={
+          }), !(e.id in this.bucket))return e.assignToGroupSet(this), this.bucket[
+            e.id
+          ]
+          =e, t&&this.refresh(), e
+        }
+        removeGroup(e){
+          var t=!(arguments.length>1&&void 0!==arguments[
+            1
+          ])||arguments[
+            1
+          ];
+          if(e.id in this.bucket)return e.dischargeFromGroupSet(), delete this.bucket[
+            e.id
+          ], t&&this.refresh(), e
+        }
+        getGroup(e){
+          return e in this.bucket?this.bucket[
+            e
+          ]
+          :null
+        }
+        getGroupNames(){
+          return new Set(this.groups.map((e=>e.name)))
+        }
+        moveGroup(e, t){
+          return function(e, t, r){
+            if(t!==r&&t>=0&&e.length>t&&r>=0&&e.length>r){
+              var o, n, i, u, s, a=e[
+                t
+              ];
+              if(t<r)for(o=t, n=t<=(i=r-1);
+              n?o<=i:o>=i;
+              n?o++:o--)e[
+                o
+              ]
+              =e[
+                o+1
+              ];
+              else for(o=t, u=t<=(s=r+1);
+              u?o<=s:o>=s;
+              u?o++:o--)e[
+                o
+              ]
+              =e[
+                o-1
+              ];
+              e[
+                r
+              ]
+              =a
+            }
+          }
+          (this.groups, e, t), (()=>{
+            var e=[
+            ];
+            for(var t in this.groups){
+              var r=this.groups[
+                t
+              ];
+              e.push(r.sort=t+1)
+            }
+            return e
+          })()
+        }
+        getSorting(){
+          var e, t={
+          }, r=n(this.groups);
+          try{
+            for(r.s();
+            !(e=r.n()).done;
+            ){
+              var o=e.value;
+              t[
+                o.id
+              ]
+              =o.sort
+            }
+          }
+          catch(e){
+            r.e(e)
+          }
+          finally{
+            r.f()
+          }
+          return t
+        }
+      }
+      var l=function(e, t){
+        var r, o=arguments.length>2&&void 0!==arguments[
+          2
+        ]
+        &&arguments[
+          2
+        ], i=new c(e.id, e.name, e.sort), u=n(e.members);
+        try{
+          for(u.s();
+          !(r=u.n()).done;
+          ){
+            var s=r.value, a=t[
+              s
+            ];
+            null!=a&&i.addMember(a, e.leaders.includes(s), !1)
+          }
+        }
+        catch(e){
+          u.e(e)
+        }
+        finally{
+          u.f()
+        }
+        return i.assignUploads(e.uploads), i.assignTopicCategories(e.topic_category), i.refresh(o), i
+      }, p=function(e, t, r){
+        var o;
+        e.name=t.name, e.sort=t.sort;
+        var i, u=n(t.members);
+        try{
+          for(u.s();
+          !(i=u.n()).done;
+          ){
+            var s=i.value;
+            (o=e.getMember(s))||null!=(o=r[
+              s
+            ])&&e.addMember(o, t.leaders.includes(s), !1)
+          }
+        }
+        catch(e){
+          u.e(e)
+        }
+        finally{
+          u.f()
+        }
+        var a, c=n(e.members);
+        try{
+          for(c.s();
+          !(a=c.n()).done;
+          )(o=a.value).id in gorupInfo.members||e.removeMember(o)
+        }
+        catch(e){
+          c.e(e)
+        }
+        finally{
+          c.f()
+        }
+        return e.assignUploads(t.uploads), e.assignTopicCategories(t.topic_category), e.refresh(), e
+      };
+      e.exports={
+        GroupSet:d, Group:c, GroupUser:a, groupFactory:l, groupSetFactory:function(e, t){
+          var r=arguments.length>2&&void 0!==arguments[
+            2
+          ]
+          &&arguments[
+            2
+          ], o=new d(e.id, e.name);
+          if(null!=e.groups){
+            var i, u=n(e.groups);
+            try{
+              for(u.s();
+              !(i=u.n()).done;
+              ){
+                var s=i.value;
+                o.addGroup(l(s, t, r), !1)
+              }
+            }
+            catch(e){
+              u.e(e)
+            }
+            finally{
+              u.f()
+            }
+            o.refresh()
+          }
+          return o
+        }, updateGroupSet:function(e, t, r){
+          if(e.name=t.name, t.groups){
+            var i, u, s, a=n(t.groups);
+            try{
+              for(a.s();
+              !(s=a.n()).done;
+              )u=s.value, (i=e.getGroup(u))?p(i, u):e.addGroup(l(u, r), !1)
+            }
+            catch(e){
+              a.e(e)
+            }
+            finally{
+              a.f()
+            }
+            var c, d=n(e.groups);
+            try{
+              for(d.s();
+              !(c=d.n()).done;
+              )i=c.value, o.find(u, {
+                id:i.id
+              })||e.removeGroup(i)
+            }
+            catch(e){
+              d.e(e)
+            }
+            finally{
+              d.f()
+            }
+            e.refresh()
+          }
+          return e
+        }
+      }
+    }, 765374:(e, t, r)=>{
+      var o=r(302543), n=r(248124), i=r(571478);
+      e.exports=[
+        "$rootScope", "$scope", "groupApi", "$window", function(e, t, r, u){
+          var s=i(t);
+          t.$watch("ui.groupingMethod", (function(e, r){
+            if(e!==r)return t.getGroupingPlan()
+          }));
+          var a=function(){
+            if(t.ui.groupingMethod="groupsNumber", t.ui.randomAddGroupLead=null!=t.$parent.ui.randomAddGroupLead&&t.$parent.ui.randomAddGroupLead, t.ui.gorupsNumber=0, t.ui.number=0, t.groupSetId=null!=t.$parent.currentGroupSet?t.$parent.currentGroupSet.id:void 0, t.hasPlan=!1, t.noneNormalGroupsNumber=0, !t.errors)return t.errors={
+            }
+          }, c=function(){
+            return""===t.ui.number||void 0===t.ui.number?(t.errors.ui_number=[
+              t.requiredError
+            ], !1):o.isNaN(t.ui.number)||t.ui.number%1!=0?(t.errors.ui_number=[
+              t.invalidIntegerError
+            ], !1):parseInt(t.ui.number)<1?(t.errors.ui_number=[
+              t.invalidError
+            ], !1):!(parseInt(t.ui.number)>t.ungroupedStudents.length)||(t.errors.ui_number="groupsNumber"===t.ui.groupingMethod?[
+              t.groupsOverflowError
+            ]
+            :[
+              t.studentsOverflowError
+            ], !1)
+          };
+          return t.getGroupingPlan=function(){
+            return c()?("groupsNumber"===t.ui.groupingMethod?(t.normalGroupStudentsNumber=parseInt(t.ungroupedStudents.length/parseInt(t.ui.number)), t.noneNormalGroupStudentsNumber=t.normalGroupStudentsNumber+1, t.noneNormalGroupsNumber=t.ungroupedStudents.length%parseInt(t.ui.number), t.normalGroupsNumber=t.ui.number-t.noneNormalGroupsNumber):(t.normalGroupStudentsNumber=t.ui.number, t.noneNormalGroupStudentsNumber=t.ungroupedStudents.length%parseInt(t.ui.number), t.noneNormalGroupsNumber=t.noneNormalGroupStudentsNumber>0?1:0, t.normalGroupsNumber=parseInt(t.ungroupedStudents.length/parseInt(t.ui.number))), t.hasPlan=!0):(t.hasPlan=!1, t.noneNormalGroupsNumber=0)
+          }, t.resetGroupingMethod=function(){
+            return t.ui.number=0, t.hasPlan=!1
+          }, t.grouping=function(){
+            if(c()){
+              s.show();
+              var e=t.generateRandomGroupingForm();
+              return r.randomGrouping(t.currentGroupSet.id, e, (function(){
+                return s.hide(), n("#random-groups-popup").foundation("reveal", "close"), u.location.reload()
+              }), (function(e){
+                return s.hide(), t.errors=e.errors
+              }))
+            }
+          }, t.generateRandomGroupingForm=function(){
+            var e=[
+              {
+                group_number:t.normalGroupsNumber, students_number:t.normalGroupStudentsNumber
+              }
+            ];
+            return t.noneNormalGroupsNumber>0&&e.push({
+              group_number:t.noneNormalGroupsNumber, students_number:t.noneNormalGroupStudentsNumber
+            }), {
+              student_ids:o.map(t.ungroupedStudents, "id"), groups:e, add_leader:t.ui.randomAddGroupLead
+            }
+          }, t.reset=()=>a(), t.$on("reset", a), a()
+        }
+      ]
+    }, 769075:(e, t, r)=>{
+      r.d(t, {
+        A:()=>a
+      });
+      r(269193);
+      var o=r(962893), n=r(679578);
+      function i(e, t){
+        var r=Object.keys(e);
+        if(Object.getOwnPropertySymbols){
+          var o=Object.getOwnPropertySymbols(e);
+          t&&(o=o.filter((function(t){
+            return Object.getOwnPropertyDescriptor(e, t).enumerable
+          }))), r.push.apply(r, o)
+        }
+        return r
+      }
+      function u(e){
+        for(var t=1;
+        t<arguments.length;
+        t++){
+          var r=null!=arguments[
+            t
+          ]
+          ?arguments[
+            t
+          ]
+          :{
+          };
+          t%2?i(Object(r), !0).forEach((function(t){
+            s(e, t, r[
+              t
+            ])
+          })):Object.getOwnPropertyDescriptors?Object.defineProperties(e, Object.getOwnPropertyDescriptors(r)):i(Object(r)).forEach((function(t){
+            Object.defineProperty(e, t, Object.getOwnPropertyDescriptor(r, t))
+          }))
+        }
+        return e
+      }
+      function s(e, t, r){
+        return t in e?Object.defineProperty(e, t, {
+          value:r, enumerable:!0, configurable:!0, writable:!0
+        }):e[
+          t
+        ]
+        =r, e
+      }
+      n.A.open=function(){
+        var e=arguments.length>0&&void 0!==arguments[
+          0
+        ]
+        ?arguments[
+          0
+        ]
+        :{
+        };
+        return new Promise((t=>{
+          var r=new o.default({
+            data:()=>({
+              visible:!1
+            }), render(t){
+              var o={
+              };
+              return e.render&&(o.default=()=>e.render(t, r)), e.renderHeader&&(o.header=()=>e.renderHeader(t, r)), e.renderFooter&&(o.footer=()=>e.renderFooter(t, r)), t(n.A, {
+                props:u(u({
+                }, e), {
+                }, {
+                  value:this.visible
+                }), scopedSlots:o
+              })
+            }, methods:{
+              show(){
+                this.visible=!0
+              }, close(){
+                this.visible=!1
+              }
+            }
+          });
+          r.$mount(), document.body.append(r.$el), r.show();
+          var i=r.$children[
+            0
+          ];
+          i.$on("on-ok", (()=>{
+            r.visible=!1, t(!0)
+          })), i.$on("on-cancel", (()=>{
+            r.visible=!1, t(!1)
+          })), i.$on("on-hidden", (()=>{
+            t(!1), r.$el.remove()
+          }))
+        }))
+      };
+      const a=n.A
+    }, 793176:(e, t, r)=>{
+      var o=r(302543), n=r(248124), i=r(756029);
+      r(219693), r(168763), r(850785), e.exports=[
+        "$rootScope", "$scope", "$routeParams", "$location", "groupRepository", "toastr", "$timeout", function(e, t, r, u, s, a, c){
+          t.ui={
+            showDetails:!0, editing:!1, showBatchDownload:!1, loading:!0
+          }, t.content=r.content?r.content:"members";
+          t.toggleCheckAll=function(){
+            return t.allChecked?(o.each(t.group.uploads, (function(e){
+              e.checked=!1
+            })), t.allChecked=!1, t.noneChecked=!0, t.indeterminate=!1):(o.each(t.group.uploads, (function(e){
+              e.checked=!0
+            })), t.allChecked=!0, t.noneChecked=!1, t.indeterminate=!1)
+          }, t.updateCheckStatus=function(){
+            return t.allChecked=o.every(t.group.uploads, {
+              checked:!0
+            }), t.noneChecked=o.every(t.group.uploads, {
+              checked:!1
+            }), t.indeterminate=!t.allChecked&&!t.noneChecked
+          }, t.deleteFile=function(e){
+            return s.deleteFile(t.group, e, (function(){
+              return t.group.uploads.splice(o.indexOf(t.group.uploads, e), 1), s.updateGroupUploads(t.group)
+            }))
+          }, t.changeGroup=()=>c((()=>u.path("/".concat(t.currentGroupSet.id, "/groups/").concat(t.selectGroup.id, "/info")))), t.setContent=function(e){
+            return t.content=e, u.search("content", e)
+          }, t.activeContent=e=>t.content===e, t.download=function(e){
+            var r=o.map(o.filter(t.group.uploads, {
+              checked:!0
+            }), "id");
+            if(0!==r.length){
+              return s.batchDownload(r, (function(e){
+                if("local"===e.type)return location.href=e.url;
+                var r={
+                  files:e.files, user:e.user, zip_name:e.zip_name, course:{
+                    id:t.course.id, name:t.course.name
+                  }
+                };
+                return s.sendBatchDownload(e.url, r, (function(){
+                }), (function(){
+                }))
+              }), (function(){
+              }))
+            }
+            a.warning(n(e.target).data("propmpt-no-check"))
+          }, t.saveGroupUploads=function(e){
+            if(e.length){
+              return s.uploadFileToGroup(t.group, o.map(e, "id"), (function(e){
+                return t.group.uploads=e.group.uploads, o.each(t.group.uploads, (function(e){
+                  if(!e.referenced_at)return e.referenced_at=(new Date).toISOString()
+                })), s.updateGroupUploads(t.group)
+              }))
+            }
+          };
+          t.displayUserNo=function(e){
+            return t.showSeatNumber?"".concat(t.i18nMessages.userNo, ": ").concat(e.user_no):e.user_no
+          }, t.displaySeatNo=function(e){
+            return t.showSeatNumber?"".concat(t.i18nMessages.seatNumber, ": ").concat(e.seat_number):""
+          }, t.displayNickname=function(e){
+            return t.showNickname?e.nickname:""
+          };
+          return s.init(n("#courseId").val(), parseInt(r.groupSetId)).then((function(){
+            return t.students=s.students, t.groupSets=s.groupSets, t.currentGroupSet=o.find(t.groupSets, {
+              id:parseInt(r.groupSetId)
+            }), t.currentGroupSet&&(t.groups=t.currentGroupSet.groups, t.group=o.find(t.groups, {
+              id:parseInt(r.groupId)
+            }), t.currentGroup=t.group, t.selectGroup=i.copy(t.group)), function(){
+              if(t.group){
+                if(t.group.members.length>=4?t.avatarNumbers=o.range(4):t.avatarNumbers=o.range(t.group.members.length), t.group.members.length>4){
+                  var e=o.filter(t.group.members, (e=>""!==e.avatar_small_url));
+                  return t.groupAvatars=o.map(e, (e=>e.avatar_small_url))
+                }
+                t.groupAvatars=o.map(t.group.members, (e=>e.avatar_small_url))
+              }
+            }
+            (), t.ui.loading=!1
+          }))
+        }
+      ]
+    }, 809752:e=>{
+      e.exports=[
+        "$rootScope", "$scope", "$location", "groupRepository", function(e, t, r, o){
+          var n=t.group;
+          return t.ui={
+            editingName:!1, isExpanded:!0, name:n.name
+          }, t.enter=()=>r.path("/".concat(n.groupSet.id, "/groups/").concat(n.id, "/info")), t.editName=()=>t.ui.editingName=!0, t.saveName=function(){
+            if(t.ui.name!==n.name){
+              var e={
+                id:n.id, name:t.ui.name
+              };
+              return o.updateGroupInfo(n, e).then((()=>t.ui.editingName=!1)).catch((e=>t.errors=e.errors))
+            }
+            t.ui.editingName=!1
+          }, t.toggle=()=>t.ui.isExpanded=!t.ui.isExpanded, t.addMember=()=>e.$broadcast("start-add-group-member", {
+            group:n
+          }), t.assignLeader=e=>o.setGroupMemberLeadership(n, e, !0), t.unassignLeader=e=>o.setGroupMemberLeadership(n, e, !1), t.kickMember=function(t){
+            return 1===n.groupSet.participants.size?e.$broadcast("delete-last-member", {
+              group:n, member:t
+            }):o.deleteGroupMember(n, t)
+          }, t.delete=()=>e.$broadcast("delete-group", {
+            group:n
+          })
+        }
+      ]
+    }, 818183:(e, t, r)=>{
+      r.d(t, {
+        A:()=>i
+      });
+      var o=r(962893), n=function(){
+        function e(){
+        }
+        return e.success=function(e, t, r, n){
+          void 0===t&&(t=3), void 0===r&&(r=24), o.default.prototype.$Message.config({
+            top:r
+          }), o.default.prototype.$Message.success({
+            content:e, duration:t, onClose:function(){
+              n&&n()
+            }
+          })
+        }, e.warning=function(e, t, r, n){
+          void 0===t&&(t=3), void 0===r&&(r=24), o.default.prototype.$Message.config({
+            top:r
+          }), o.default.prototype.$Message.warning({
+            content:e, duration:t, onClose:function(){
+              n&&n()
+            }
+          })
+        }, e.error=function(e, t, r, n){
+          void 0===t&&(t=3), void 0===r&&(r=24), o.default.prototype.$Message.config({
+            top:r
+          }), o.default.prototype.$Message.error({
+            content:e, duration:t, onClose:function(){
+              n&&n()
+            }
+          })
+        }, e.info=function(e, t, r, n){
+          void 0===t&&(t=3), void 0===r&&(r=24), o.default.prototype.$Message.config({
+            top:r
+          }), o.default.prototype.$Message.info({
+            content:e, duration:t, onClose:function(){
+              n&&n()
+            }
+          })
+        }, e
+      }
+      ();
+      const i=n;
+      window.toast=n
+    }, 896663:(e, t, r)=>{
+      var o=r(795093), n=r(302543);
+      r(168763);
+      var i=r(791936);
+      e.exports=[
+        "$rootScope", "$scope", "groupRepository", "$location", function(e, t, r, u){
+          t.ui={
+          }, t.ui.showDetails=!1, t.ui.editing=!1, t.ui.loading=!0;
+          var s=function(){
+            return t.ui.loading=!1, e.ungroupedNumber=()=>t.ungroupedStudents.length
+          };
+          t.exportGroupingPlan=function(){
+            return r.exportGroupSetInfoToExcel(t.currentGroupSet.id, (function(e){
+              var t=new Blob([
+                e
+              ], {
+                type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              }), r=o(new Date).format("YYYY-MM-DD");
+              return i.saveAs(t, "Group_list_".concat(r, ".xlsx"))
+            }))
+          }, t.importGroupingPlan=function(){
+            if(t.currentGroupSet)return u.path("/".concat(t.currentGroupSet.id, "/import"), !0)
+          }, t.deleteGroup=function(e){
+            return t.ui.loading=!0, r.deleteGroup(e, (function(){
+              return n.each(e.members, (function(e){
+                n.find(r.students, {
+                  id:e
+                }).group_id=null
+              })), r.groups.splice(n.findIndex(r.groups, {
+                id:e.id
+              }), 1), s(), t.ui.loading=!1
+            }), (()=>t.ui.loading=!1))
+          }, t.resort=(e, o)=>r.sortGroups(t.currentGroupSet, e, o);
+          return r.init().then(s)
+        }
+      ]
+    }, 951708:(e, t, r)=>{
+      r.r(t), r.d(t, {
+        addStoreQuizAnalysis:()=>te, createAiQuizzes:()=>$, deleteKnowledgeBaseResource:()=>J, generateAiQuizzes:()=>C, generateAiQuizzesByResource:()=>A, generateAiQuizzesByText:()=>T, getActivitiesByModule:()=>k, getActivityAiQuizzes:()=>I, getAiQuizSettings:()=>O, getAiQuizSubjects:()=>P, getAirActivityEnableMap:()=>B, getAirQuizAnalyze:()=>H, getAnalysisStatus:()=>Z, getCourseModules:()=>G, getCurrentCourseCredits:()=>j, getCurrentUserAirToken:()=>z, getCurrentUserCredits:()=>N, getDocumentModule:()=>W, getDocumentPreviewUrl:()=>Q, getFormatStreamSubjects:()=>L, getInstructorCreditsByResource:()=>U, getKnowledgeBase:()=>V, getKnowledgeBaseResources:()=>K, getSelfSubmissions:()=>M, getStatistics:()=>E, getStoredQuizAnalysis:()=>ee, getSubjectAnswerStatistic:()=>R, getUserHasAnyCourseAiAbility:()=>q, retryKnowledgeBaseResource:()=>X, startSSEStream:()=>F, submitSubmissions:()=>D, updateAiQuizzes:()=>x, uploadKnowledgeBaseResource:()=>Y
+      });
+      r(540590), r(418665), r(335231), r(107918), r(169218), r(269193), r(445708), r(658379), r(14602);
+      var o=r(272505), n=r.n(o), i=r(302543), u=r.n(i), s=r(920453), a=r(218831), c=r(552979), d=r(940085), l=r(467086), p=r(448941), f=r(886009), m=r(731904), v=function(){
+        return(v=Object.assign||function(e){
+          for(var t, r=1, o=arguments.length;
+          r<o;
+          r++)for(var n in t=arguments[
+            r
+          ])Object.prototype.hasOwnProperty.call(t, n)&&(e[
+            n
+          ]
+          =t[
+            n
+          ]);
+          return e
+        }).apply(this, arguments)
+      }, g=function(e, t, r, o){
+        return new(r||(r=Promise))((function(n, i){
+          function u(e){
+            try{
+              a(o.next(e))
+            }
+            catch(e){
+              i(e)
+            }
+          }
+          function s(e){
+            try{
+              a(o.throw(e))
+            }
+            catch(e){
+              i(e)
+            }
+          }
+          function a(e){
+            var t;
+            e.done?n(e.value):(t=e.value, t instanceof r?t:new r((function(e){
+              e(t)
+            }))).then(u, s)
+          }
+          a((o=o.apply(e, t||[
+          ])).next())
+        }))
+      }, h=function(e, t){
+        var r, o, n, i, u={
+          label:0, sent:function(){
+            if(1&n[
+              0
+            ])throw n[
+              1
+            ];
+            return n[
+              1
+            ]
+          }, trys:[
+          ], ops:[
+          ]
+        };
+        return i={
+          next:s(0), throw:s(1), return:s(2)
+        }, "function"==typeof Symbol&&(i[
+          Symbol.iterator
+        ]
+        =function(){
+          return this
+        }), i;
+        function s(s){
+          return function(a){
+            return function(s){
+              if(r)throw new TypeError("Generator is already executing.");
+              for(;
+              i&&(i=0, s[
+                0
+              ]
+              &&(u=0)), u;
+              )try{
+                if(r=1, o&&(n=2&s[
+                  0
+                ]
+                ?o.return:s[
+                  0
+                ]
+                ?o.throw||((n=o.return)&&n.call(o), 0):o.next)&&!(n=n.call(o, s[
+                  1
+                ])).done)return n;
+                switch(o=0, n&&(s=[
+                  2&s[
+                    0
+                  ], n.value
+                ]), s[
+                  0
+                ]){
+                  case 0:case 1:n=s;
+                  break;
+                  case 4:return u.label++, {
+                    value:s[
+                      1
+                    ], done:!1
+                  };
+                  case 5:u.label++, o=s[
+                    1
+                  ], s=[
+                    0
+                  ];
+                  continue;
+                  case 7:s=u.ops.pop(), u.trys.pop();
+                  continue;
+                  default:if(!(n=u.trys, (n=n.length>0&&n[
+                    n.length-1
+                  ])||6!==s[
+                    0
+                  ]
+                  &&2!==s[
+                    0
+                  ])){
+                    u=0;
+                    continue
+                  }
+                  if(3===s[
+                    0
+                  ]
+                  &&(!n||s[
+                    1
+                  ]
+                  >n[
+                    0
+                  ]
+                  &&s[
+                    1
+                  ]
+                  <n[
+                    3
+                  ])){
+                    u.label=s[
+                      1
+                    ];
+                    break
+                  }
+                  if(6===s[
+                    0
+                  ]
+                  &&u.label<n[
+                    1
+                  ]){
+                    u.label=n[
+                      1
+                    ], n=s;
+                    break
+                  }
+                  if(n&&u.label<n[
+                    2
+                  ]){
+                    u.label=n[
+                      2
+                    ], u.ops.push(s);
+                    break
+                  }
+                  n[
+                    2
+                  ]
+                  &&u.ops.pop(), u.trys.pop();
+                  continue
+                }
+                s=t.call(e, u)
+              }
+              catch(e){
+                s=[
+                  6, e
+                ], o=0
+              }
+              finally{
+                r=n=0
+              }
+              if(5&s[
+                0
+              ])throw s[
+                1
+              ];
+              return{
+                value:s[
+                  0
+                ]
+                ?s[
+                  1
+                ]
+                :void 0, done:!0
+              }
+            }
+            ([
+              s, a
+            ])
+          }
+        }
+      };
+      var y, b, S, _, w, G=function(e){
+        return g(void 0, void 0, void 0, (function(){
+          return h(this, (function(t){
+            switch(t.label){
+              case 0:return[
+                4, n().get("/api/courses/".concat(e, "/modules"))
+              ];
+              case 1:return[
+                2, t.sent().data.modules
+              ]
+            }
+          }))
+        }))
+      }, k=function(e){
+        return g(void 0, void 0, void 0, (function(){
+          return h(this, (function(t){
+            switch(t.label){
+              case 0:return[
+                4, n().get("/api/courses/".concat(e, "/activities?sub_course_id=0"))
+              ];
+              case 1:return[
+                2, t.sent().data.activities
+              ]
+            }
+          }))
+        }))
+      }, C=function(e, t){
+        return g(void 0, void 0, void 0, (function(){
+          return h(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, n().post("/api/courseware-quiz/activity/".concat(e, "/subjects"), t)
+              ];
+              case 1:return[
+                2, r.sent().data.subjects.map((function(e){
+                  return(0, s.plainToClass)(l.AiSubject, e, {
+                    excludeExtraneousValues:!0
+                  })
+                }))
+              ]
+            }
+          }))
+        }))
+      }, A=function(e){
+        return g(void 0, void 0, void 0, (function(){
+          return h(this, (function(t){
+            switch(t.label){
+              case 0:return[
+                4, n().post("/api/courseware-quiz/generate-subjects", e)
+              ];
+              case 1:return[
+                2, t.sent().data.subjects.map((function(e){
+                  return(0, s.plainToClass)(l.AiSubject, e, {
+                    excludeExtraneousValues:!0
+                  })
+                }))
+              ]
+            }
+          }))
+        }))
+      }, T=function(e){
+        return g(void 0, void 0, void 0, (function(){
+          return h(this, (function(t){
+            switch(t.label){
+              case 0:return[
+                4, n().post("/api/courseware-quiz/generate-subjects-by-text", e)
+              ];
+              case 1:return[
+                2, t.sent().data.subjects.map((function(e){
+                  return(0, s.plainToClass)(l.AiSubject, e, {
+                    excludeExtraneousValues:!0
+                  })
+                }))
+              ]
+            }
+          }))
+        }))
+      }, $=function(e, t){
+        return g(void 0, void 0, void 0, (function(){
+          return h(this, (function(r){
+            switch(r.label){
+              case 0:return r.trys.push([
+                0, 2, , 3
+              ]), [
+                4, n().post("/api/courseware-quiz/activity/".concat(e, "/quizzes"), {
+                  upload_reference_id:t.uploadReferenceId, subjects:t.subjects.map((function(e){
+                    return(0, s.classToPlain)(e)
+                  }))
+                })
+              ];
+              case 1:return[
+                2, 200===r.sent().status
+              ];
+              case 2:return r.sent(), [
+                2, !1
+              ];
+              case 3:return[
+                2
+              ]
+            }
+          }))
+        }))
+      }, x=function(e, t, r){
+        return void 0===r&&(r=!1), g(void 0, void 0, void 0, (function(){
+          var o;
+          return h(this, (function(i){
+            switch(i.label){
+              case 0:return i.trys.push([
+                0, 2, , 3
+              ]), o=t.subjects.map((function(e){
+                return(0, s.classToPlain)(e)
+              })), r&&o.forEach((function(e){
+                delete e.id
+              })), [
+                4, n().put("/api/courseware-quiz/quiz/".concat(e, "/subjects"), {
+                  subjects:o
+                })
+              ];
+              case 1:return[
+                2, [
+                  i.sent().data.quiz_id, !0
+                ]
+              ];
+              case 2:return i.sent(), [
+                2, [
+                  e, !1
+                ]
+              ];
+              case 3:return[
+                2
+              ]
+            }
+          }))
+        }))
+      }, I=function(e){
+        return g(void 0, void 0, void 0, (function(){
+          var t, r;
+          return h(this, (function(o){
+            switch(o.label){
+              case 0:return o.trys.push([
+                0, 2, , 3
+              ]), [
+                4, n().get("/api/courseware-quiz/activity/".concat(e, "/quizzes"))
+              ];
+              case 1:return t=o.sent(), r=t.data, 200===t.status?[
+                2, r.map((function(e){
+                  return(0, s.plainToClass)(l.CoursewareQuizzes, e, {
+                    excludeExtraneousValues:!0
+                  })
+                }))
+              ]
+              :[
+                2, null
+              ];
+              case 2:return o.sent(), [
+                2, null
+              ];
+              case 3:return[
+                2
+              ]
+            }
+          }))
+        }))
+      }, P=function(e){
+        return g(void 0, void 0, void 0, (function(){
+          var t, r;
+          return h(this, (function(o){
+            switch(o.label){
+              case 0:return o.trys.push([
+                0, 2, , 3
+              ]), [
+                4, n().get("/api/courseware-quiz/quiz/".concat(e, "/subjects"))
+              ];
+              case 1:return t=o.sent(), r=t.data, 200===t.status?[
+                2, r.subjects.sort((function(e, t){
+                  return e.sort-t.sort
+                })).map((function(e){
+                  return(0, s.plainToClass)(l.AiSubject, e, {
+                    excludeExtraneousValues:!0
+                  })
+                }))
+              ]
+              :[
+                2, null
+              ];
+              case 2:return o.sent(), [
+                2, null
+              ];
+              case 3:return[
+                2
+              ]
+            }
+          }))
+        }))
+      }, O=function(){
+        return g(void 0, void 0, void 0, (function(){
+          var e, t;
+          return h(this, (function(r){
+            switch(r.label){
+              case 0:return r.trys.push([
+                0, 2, , 3
+              ]), [
+                4, n().get("/api/courseware-quiz/settings")
+              ];
+              case 1:return e=r.sent(), t=e.data, 200===e.status?[
+                2, (0, s.plainToClass)(l.QuizSettings, t.setting, {
+                  excludeExtraneousValues:!0
+                })
+              ]
+              :[
+                2, null
+              ];
+              case 2:return r.sent(), [
+                2, null
+              ];
+              case 3:return[
+                2
+              ]
+            }
+          }))
+        }))
+      }, D=function(e, t){
+        return g(void 0, void 0, void 0, (function(){
+          var r, o, i;
+          return h(this, (function(u){
+            switch(u.label){
+              case 0:return u.trys.push([
+                0, 2, , 3
+              ]), [
+                4, n().post("/api/courseware-quiz/quiz/".concat(e, "/submissions"), (0, s.classToPlain)(t))
+              ];
+              case 1:return[
+                2, 200===u.sent().status
+              ];
+              case 2:return r=u.sent(), o=r.response.data.errors, i=(0, f.u1)(o), m.Toast.error("".concat(c.default.t("air.saveFail"), ",").concat(i)), [
+                2, !1
+              ];
+              case 3:return[
+                2
+              ]
+            }
+          }))
+        }))
+      }, M=function(e){
+        return g(void 0, void 0, void 0, (function(){
+          var t, r, o;
+          return h(this, (function(i){
+            switch(i.label){
+              case 0:return i.trys.push([
+                0, 2, , 3
+              ]), [
+                4, n().get("/api/courseware-quiz/quiz/".concat(e, "/my-submission"))
+              ];
+              case 1:return t=i.sent(), r=t.status, o=t.data, 200===r?[
+                2, (0, s.plainToClass)(l.StudentSubmission, o, {
+                  excludeExtraneousValues:!0
+                })
+              ]
+              :[
+                2, null
+              ];
+              case 2:return i.sent(), [
+                2, null
+              ];
+              case 3:return[
+                2
+              ]
+            }
+          }))
+        }))
+      }, E=function(e){
+        return g(void 0, void 0, void 0, (function(){
+          var t, r, o;
+          return h(this, (function(i){
+            switch(i.label){
+              case 0:return i.trys.push([
+                0, 2, , 3
+              ]), [
+                4, n().get("/api/courseware-quiz/quiz/".concat(e, "/statistic"))
+              ];
+              case 1:return t=i.sent(), r=t.status, o=t.data, 200===r?[
+                2, (0, s.plainToClass)(l.AiQuizStatistic, o, {
+                  excludeExtraneousValues:!0
+                })
+              ]
+              :[
+                2, null
+              ];
+              case 2:return i.sent(), [
+                2, null
+              ];
+              case 3:return[
+                2
+              ]
+            }
+          }))
+        }))
+      }, R=function(e, t, r, o, i, u){
+        return void 0===i&&(i=1), void 0===u&&(u=10), g(void 0, void 0, void 0, (function(){
+          var c, d, p;
+          return h(this, (function(f){
+            switch(f.label){
+              case 0:return c=(0, a.decamelizeKeys)({
+                page:i, pageSize:u, conditions:o
+              }), [
+                4, n().get("/api/course/".concat(e, "/courseware-quiz/quiz/").concat(t, "/subject/").concat(r, "/statistic"), {
+                  params:c
+                })
+              ];
+              case 1:return d=f.sent(), p=(0, s.plainToClass)(l.UserAnswerSubjectStatistic, d.data.items), [
+                2, {
+                  page:d.data.page, pageSize:d.data.page_size, pages:d.data.pages, total:d.data.total, items:p
+                }
+              ]
+            }
+          }))
+        }))
+      }, N=(y=function(){
+        return g(void 0, void 0, void 0, (function(){
+          var e;
+          return h(this, (function(t){
+            switch(t.label){
+              case 0:return[
+                4, n().get("/api/air-credit/user")
+              ];
+              case 1:return e=t.sent().data, [
+                2, (0, s.plainToClass)(p.mU, e)
+              ]
+            }
+          }))
+        }))
+      }, S=new Set, _=new Set, w=u().debounce((function(e){
+        y.apply(void 0, e).then((function(){
+          for(var e=[
+          ], t=0;
+          t<arguments.length;
+          t++)e[
+            t
+          ]
+          =arguments[
+            t
+          ];
+          S.forEach((function(t){
+            return t.apply(void 0, e)
+          })), S.clear()
+        })).catch((function(){
+          for(var e=[
+          ], t=0;
+          t<arguments.length;
+          t++)e[
+            t
+          ]
+          =arguments[
+            t
+          ];
+          _.forEach((function(t){
+            return t.apply(void 0, e)
+          })), _.clear()
+        }))
+      }), b), function(){
+        for(var e=[
+        ], t=0;
+        t<arguments.length;
+        t++)e[
+          t
+        ]
+        =arguments[
+          t
+        ];
+        return new Promise((function(t, r){
+          S.add(t), _.add(r), w(e)
+        }))
+      }), U=function(e){
+        return g(void 0, void 0, void 0, (function(){
+          var t;
+          return h(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, n().get("/api/air-credit/resources/".concat(e, "/credits"))
+              ];
+              case 1:return t=r.sent().data, [
+                2, (0, s.plainToClass)(p.mU, t)
+              ]
+            }
+          }))
+        }))
+      }, j=function(e){
+        return g(void 0, void 0, void 0, (function(){
+          var t;
+          return h(this, (function(r){
+            switch(r.label){
+              case 0:return[
+                4, n().get("/api/air-credit/course", {
+                  params:{
+                    course_id:e
+                  }
+                })
+              ];
+              case 1:return t=r.sent().data, [
+                2, (0, s.plainToClass)(p.aN, t)
+              ]
+            }
+          }))
+        }))
+      }, z=function(e, t){
+        return g(void 0, void 0, void 0, (function(){
+          var r, o, i;
+          return h(this, (function(s){
+            switch(s.label){
+              case 0:return r={
+              }, u().isEmpty(e)||(e.id&&(r.module_id=e.id), e.type&&(r.module_type=e.type)), t&&("lesson"===t.type?r.resource_name=null!==(i=t.resourceName)&&void 0!==i?i:"":r.upload_id=t.id), [
+                4, n().get("/api/air-credit/user/token", {
+                  params:r
+                })
+              ];
+              case 1:return o=s.sent().data, [
+                2, (0, a.camelizeKeys)(o)
+              ]
+            }
+          }))
+        }))
+      }, F=function(e, t, r){
+        var o=r.onOpen, n=r.onMessage, i=r.onMessageError, u=r.onClose, s=r.onError, a=new AbortController, c=a.signal;
+        return(0, d.y)(e, {
+          method:"POST", headers:{
+            "Content-Type":"application/json"
+          }, body:JSON.stringify(t), signal:c, onopen:function(e){
+            return g(this, void 0, void 0, (function(){
+              var t, r;
+              return h(this, (function(n){
+                switch(n.label){
+                  case 0:return e.ok?o?[
+                    4, o(e)
+                  ]
+                  :[
+                    3, 2
+                  ]
+                  :[
+                    3, 3
+                  ];
+                  case 1:n.sent(), n.label=2;
+                  case 2:return[
+                    3, 5
+                  ];
+                  case 3:return[
+                    4, e.json()
+                  ];
+                  case 4:throw t=n.sent(), r="", t&&(r=t.message), new Error(r);
+                  case 5:return[
+                    2
+                  ]
+                }
+              }))
+            }))
+          }, openWhenHidden:!0, onmessage:function(e){
+            if(""===e.event||"message"===e.event){
+              if("error"in JSON.parse(e.data)){
+                var t=JSON.parse(e.data), r=null==t?void 0:t.error;
+                throw m.Toast.error(r), i&&i(r), new Error("onMessageError")
+              }
+              n&&n(e.data)
+            }
+          }, onclose:function(){
+            u&&u()
+          }, onerror:function(e){
+            throw"onMessageError"!==e.message&&s&&s(e), e
+          }
+        }), a
+      }, L=function(e){
+        return g(void 0, void 0, void 0, (function(){
+          var t, r;
+          return h(this, (function(o){
+            switch(o.label){
+              case 0:return o.trys.push([
+                0, 2, , 3
+              ]), [
+                4, n().post("/api/courseware-quiz/format-question", e)
+              ];
+              case 1:return t=o.sent(), r=t.data, 200===t.status?[
+                2, r.subjects.map((function(e){
+                  return(0, s.plainToClass)(l.AiSubject, e, {
+                    excludeExtraneousValues:!0
+                  })
+                }))
+              ]
+              :[
+                2, null
+              ];
+              case 2:return o.sent(), [
+                2, null
+              ];
+              case 3:return[
+                2
+              ]
+            }
+          }))
+        }))
+      }, H=function(e){
+        return g(void 0, void 0, void 0, (function(){
+          var t, r;
+          return h(this, (function(o){
+            switch(o.label){
+              case 0:return o.trys.push([
+                0, 2, , 3
+              ]), [
+                4, n().post("/api/courseware-quiz/quiz/".concat(e, "/analyze"))
+              ];
+              case 1:return t=o.sent(), r=t.data, t.status, [
+                2, r
+              ];
+              case 2:return o.sent(), [
+                2, null
+              ];
+              case 3:return[
+                2
+              ]
+            }
+          }))
+        }))
+      }, B=function(){
+        var e, t, r;
+        return new Map([
+          [
+            "lesson", null===(e=window.featureToggles)||void 0===e?void 0:e.airLessonQuiz
+          ], [
+            "material", null===(t=window.featureToggles)||void 0===t?void 0:t.airDocQuiz
+          ], [
+            "online_video", null===(r=window.featureToggles)||void 0===r?void 0:r.airVideoQuiz
+          ]
+        ])
+      }, q=function(){
+        return g(void 0, void 0, void 0, (function(){
+          var e;
+          return h(this, (function(t){
+            switch(t.label){
+              case 0:return[
+                4, n().get("/api/air-credit/user/courses/ai-ability")
+              ];
+              case 1:return e=t.sent().data, [
+                2, (0, a.camelizeKeys)(e)
+              ]
+            }
+          }))
+        }))
+      }, V=function(e){
+        return g(void 0, void 0, void 0, (function(){
+          return h(this, (function(t){
+            switch(t.label){
+              case 0:return[
+                4, n().get("/api/course/".concat(e, "/knowledge-base"))
+              ];
+              case 1:return[
+                2, t.sent().data
+              ]
+            }
+          }))
+        }))
+      }, Y=function(e, t, r){
+        return g(void 0, void 0, void 0, (function(){
+          var o;
+          return h(this, (function(i){
+            switch(i.label){
+              case 0:return(o=new FormData).append("file", r), [
+                4, n().post("/api/course/".concat(e, "/knowledge-base/").concat(t, "/resources/uploads"), o)
+              ];
+              case 1:return[
+                2, i.sent().data
+              ]
+            }
+          }))
+        }))
+      }, K=function(e, t, r, o, i){
+        return g(void 0, void 0, void 0, (function(){
+          var u, s;
+          return h(this, (function(c){
+            switch(c.label){
+              case 0:return u=(0, a.decamelizeKeys)(v({
+                page:r, pageSize:o
+              }, i)), [
+                4, n().get("/api/course/".concat(e, "/knowledge-base/").concat(t, "/resources"), {
+                  params:u
+                })
+              ];
+              case 1:return s=c.sent().data, [
+                2, (0, a.camelizeKeys)(s)
+              ]
+            }
+          }))
+        }))
+      }, Q=function(e){
+        return g(void 0, void 0, void 0, (function(){
+          return h(this, (function(t){
+            switch(t.label){
+              case 0:return[
+                4, n().get("/api/uploads/document/".concat(e, "/url?preview=true"))
+              ];
+              case 1:return[
+                2, t.sent().data
+              ]
+            }
+          }))
+        }))
+      }, W=function(e, t){
+        return g(void 0, void 0, void 0, (function(){
+          var r, o;
+          return h(this, (function(i){
+            switch(i.label){
+              case 0:return r=(0, a.decamelizeKeys)({
+                courseId:e, uploadIds:t
+              }), [
+                4, n().post("/api/uploads/details/query", r)
+              ];
+              case 1:return o=i.sent().data, [
+                2, (0, a.camelizeKeys)(o.items)
+              ]
+            }
+          }))
+        }))
+      }, J=function(e, t, r){
+        return g(void 0, void 0, void 0, (function(){
+          return h(this, (function(o){
+            switch(o.label){
+              case 0:return[
+                4, n().post("/api/course/".concat(e, "/knowledge-base/").concat(t, "/resources/remove"), {
+                  resource_id:r
+                })
+              ];
+              case 1:return[
+                2, o.sent().data
+              ]
+            }
+          }))
+        }))
+      }, X=function(e, t, r){
+        return g(void 0, void 0, void 0, (function(){
+          return h(this, (function(o){
+            switch(o.label){
+              case 0:return[
+                4, n().post("/api/course/".concat(e, "/knowledge-base/").concat(t, "/resources/retry"), {
+                  resource_ids:r
+                })
+              ];
+              case 1:return[
+                2, o.sent().data
+              ]
+            }
+          }))
+        }))
+      }, Z=function(e, t){
+        return g(void 0, void 0, void 0, (function(){
+          var r;
+          return h(this, (function(o){
+            switch(o.label){
+              case 0:return[
+                4, n().get("/api/submissions/".concat(e, "/").concat(t, "/analysis/can-reanalyze"))
+              ];
+              case 1:return r=o.sent().data, [
+                2, (0, a.camelizeKeys)(r)
+              ]
+            }
+          }))
+        }))
+      }, ee=function(e, t){
+        return g(void 0, void 0, void 0, (function(){
+          var r;
+          return h(this, (function(o){
+            switch(o.label){
+              case 0:return[
+                4, n().get("/api/submissions/".concat(e, "/").concat(t, "/analysis"))
+              ];
+              case 1:return r=o.sent().data, [
+                2, (0, a.camelizeKeys)(r)
+              ]
+            }
+          }))
+        }))
+      }, te=function(e, t, r){
+        return g(void 0, void 0, void 0, (function(){
+          return h(this, (function(o){
+            switch(o.label){
+              case 0:return[
+                4, n().post("/api/submissions/".concat(e, "/").concat(t, "/analysis"), {
+                  content:r
+                })
+              ];
+              case 1:return[
+                2, o.sent()
+              ]
+            }
+          }))
+        }))
+      }
+    }, 980108:e=>{
+      e.exports=[
+        "$q", "examApi", function(e, t){
+          var r={
+          }, o=()=>r={
+          };
+          return{
+            initExamsWithPage(o, n){
+              if(r[
+                n.page
+              ]
+              &&!n.reloadPage)return r[
+                n.page
+              ].promise;
+              r[
+                n.page
+              ]
+              =e.defer();
+              return t.initExamsWithPage(o, n, (e=>r[
+                n.page
+              ].resolve(e)), (()=>r[
+                n.page
+              ].resolve(null))), r[
+                n.page
+              ].promise
+            }, addExam:(e, r, n, i)=>t.saveExam(e, r, (function(e){
+              return o(), n(e)
+            }), i), editExam:(e, r, n)=>t.editExam(e, (function(e){
+              return o(), r(e)
+            }), n), deleteExam:e=>t.deleteExam(e, (()=>o()), (function(){
+            })), batchDeleteExams:e=>t.deleteExams(e, (()=>o()), (function(){
+            })), checkExamQualification:(e, r, n, i)=>t.checkExamQualification(e, r, (function(e){
+              return o(), n(e)
+            }), (e=>i(e)))
+          }
+        }
+      ]
+    }
+  }
+]);

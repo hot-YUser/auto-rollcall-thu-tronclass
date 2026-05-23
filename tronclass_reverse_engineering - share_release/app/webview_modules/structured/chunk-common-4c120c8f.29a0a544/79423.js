@@ -1,0 +1,3 @@
+// Extracted from decompiled/apktool/base/assets/public/js/chunk-common-4c120c8f.29a0a544.js
+// Webpack module id: 79423
+function(A,e,t){"use strict";t(92222);e["Z"]={getMyLive:"/rms-api/current-user-schedules",bookLive:function(A){return"/rms-api/schedules/".concat(A,"/book-live")},getInCastCourses:function(A){return"/rms-api/courses?user_no=".concat(A)},getCapturesLive:function(A,e){return"/rms-api/captures/".concat(A,"?token=").concat(e)},getExtensionLive:function(A,e){return"/rms-api/lives/".concat(A,"/streams?token=").concat(e)},inCastSetting:"/rms-api/settings",validTimeSchedules:"/rms-api/valid-time-period-by-schedules",getInCastClassRooms:function(A){return"/rms-api/classrooms?orgCode=".concat(A)},createSchedule:"/rms-api/schedules"}}

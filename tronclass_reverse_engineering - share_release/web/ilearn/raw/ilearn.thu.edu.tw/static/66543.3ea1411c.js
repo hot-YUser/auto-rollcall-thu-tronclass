@@ -1,0 +1,1 @@
+(self.webpackChunklms=self.webpackChunklms||[]).push([[66543],{710287:(e,s,c)=>{c(840351)},840351:(e,s,c)=>{c(756029).module("course-package",["common"])}}]);

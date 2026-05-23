@@ -1,0 +1,3 @@
+// Extracted from decompiled/apktool/base/assets/public/js/chunk-vendors-f945abb9.6643cd0b.js
+// Webpack module id: 307
+function(t,e,n){"use strict";n.d(e,{B:function(){return u}});var r=n(59562),i=[/([a-z0-9])([A-Z])/g,/([A-Z])([A-Z][a-z])/g],o=/[^A-Z0-9]+/gi;function u(t,e){void 0===e&&(e={});var n=e.splitRegexp,u=void 0===n?i:n,a=e.stripRegexp,f=void 0===a?o:a,c=e.transform,l=void 0===c?r.U:c,h=e.delimiter,p=void 0===h?" ":h,d=s(s(t,u,"$1\0$2"),f,"\0"),g=0,m=d.length;while("\0"===d.charAt(g))g++;while("\0"===d.charAt(m-1))m--;return d.slice(g,m).split("\0").map(l).join(p)}function s(t,e,n){return e instanceof RegExp?t.replace(e,n):e.reduce((function(t,e){return t.replace(e,n)}),t)}}

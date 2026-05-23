@@ -1,0 +1,3 @@
+// Extracted from decompiled/apktool/base/assets/public/js/chunk-common-d87c119a.ad41826a.js
+// Webpack module id: 12784
+function(e,t,n){n.d(t,{q:function(){return u}});var o=n(89564),r=(n(54678),n(23352)),a={verifyFinalScoreByModify:function(e){if(!e)return{success:!1,message:r["default"].global.t("course.score.scoreIsEmpty")};var t=parseFloat(e);return isNaN(t)||t<0||t>100?{success:!1,message:r["default"].global.t("course.score.scoreNotInBetween",[0,100])}:{success:!0}}},l=a,i=(n(26699),n(32023),{verifyFinalScoreByModify:function(e){var t=l.verifyFinalScoreByModify(e);return t.success?e.includes(".")?{success:!1,message:r["default"].global.t("course.score.scoreNotIsInteger")}:{success:!0}:t}}),s=i,u=function(){return"OUYA"===o.Z.deliveryOrg?s:l}}

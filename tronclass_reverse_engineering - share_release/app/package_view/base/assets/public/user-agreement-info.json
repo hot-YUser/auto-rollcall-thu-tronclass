@@ -1,0 +1,29 @@
+{
+  "updateInfo": {
+    "effectiveTime": "2021-08-18",
+    "updateTime": "2023-10-18"
+  },
+  "i18n": {
+    "zh-CN": {
+      "title": "畅课（TronClass）用户协议",
+      "effectiveTime": "生效时间：",
+      "updateTime": "更新时间：",
+      "developer": "开发者：",
+      "developerName": "西安智园软件开发管理有限公司"
+    },
+    "zh-TW": {
+      "title": "TronClass 使用者服務條款",
+      "effectiveTime": "生效時間：",
+      "updateTime": "更新時間：",
+      "developer": "開發者：",
+      "developerName": "智園軟件開發管理有限公司"
+    },
+    "en": {
+      "title": "TronClass User Agreement",
+      "effectiveTime": "Effective Time: ",
+      "updateTime": "Update Time: ",
+      "developer": "Developer: ",
+      "developerName": "Wisdom Garden Limited"
+    }
+  }
+}

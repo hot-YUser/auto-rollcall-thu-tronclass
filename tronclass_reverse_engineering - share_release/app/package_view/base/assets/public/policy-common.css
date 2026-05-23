@@ -1,0 +1,25 @@
+body, div {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-size: 16px;
+  word-break: break-all;
+}
+
+.content {
+  padding: 12px;
+}
+
+.markdown p {
+  white-space: pre-line;
+  margin-bottom: 1rem;
+  margin-top: 1rem;
+}
+
+.markdown blockquote {
+  margin: 0;
+  padding-left: 1.4rem;
+  border-left: 4px solid #dadada;
+}
