@@ -5,9 +5,9 @@
 
 > 請只在你有權限、且符合學校與課程規範的情境下使用。不要分享帳密、token、cookie、`state/`、`log/`、真實 QR payload 或未遮蔽的 API 回應。不要把填好帳密的 `config.yaml` 傳給別人。
 
-## 版本狀態：v1.1-alpha.3
+## 版本狀態：v1.2-alpha.1
 
-`v1.1-alpha.3` 是目前功能整合版。主要能力仍屬 alpha，尚未經實際課堂環境完整驗收；請把這版視為未完整測試的預發布版本。
+`v1.2-alpha.1` 是目前功能整合版，新增 number 點名越權直接讀碼（讀 `student_rollcalls` 的 `number_code` 單發提交，讀不到再退回暴力猜碼）。主要能力仍屬 alpha，**尚未經實際課堂環境完整驗收**；請把這版視為未完整測試的預發布版本，務必自行確認符合校規後再使用。
 
 目前重點：
 
@@ -16,6 +16,7 @@
 - 常見輸入會自動修正前後空白與多餘空格；QR payload 只 trim 前後空白，不改內部內容
 - 排程可在 `config.advanced.yaml` 設定 IANA timezone；每日可有多段 range
 - THU / TKU 是預設使用者可見 provider；登入後監控、number、radar、QR、課程與學期 API 走同一套 endpoint-driven runtime
+- number 點名先走越權直接讀碼（讀 `student_rollcalls` 的 `number_code` 單發提交，旗標 `number.direct_code_lookup` 預設開）；讀不到時自動退回暴力猜碼，確保不退化
 - Discord HTTP Interactions 是推薦 production 入口；optional Gateway、QR modal、schema sync 已有核心
 - research probe 只在明確 opt-in 下記錄高風險端點的 HTTP 狀態與欄位形狀，不記錄答案值，也不進 daily automation
 - Windows zip release build runner 會跑 unittest、PyInstaller、artifact validation 與 temp-extract smoke
@@ -66,7 +67,7 @@ python -m troTHU.tron validation local-smoke --json
 Release zip 名稱格式：
 
 ```text
-THU_Auto_Rollcall-v1.1.0a3-windows-x64.zip
+THU_Auto_Rollcall-v1.2.0a1-windows-x64.zip
 ```
 
 下載後請完整解壓縮，再在資料夾內執行 `auto-rollcall-thu-tronclass.exe`。不要直接在 zip 裡雙擊執行。第一次啟動會在 exe 同層建立或使用 `config.yaml`、`state/`、`log/`。

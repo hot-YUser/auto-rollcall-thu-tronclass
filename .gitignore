@@ -75,4 +75,14 @@ tests/test_login.js
 tests/test_login.py
 tests/test_login2.py
 tests/test_login3.js
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Source archives / raw re-captures. The de-identified reverse-engineering tree
+# under "tronclass_reverse_engineering - share_release/" is intentionally tracked,
+# but compressed source archives and fresh raw captures must not be committed.
+*.7z
 tests/test_rollcalls.js
