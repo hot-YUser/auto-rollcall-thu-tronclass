@@ -1,3 +1,11 @@
+# Base runtime dependencies — install with:  pip install -r requirements.txt
 aiohttp>=3.9.5
 PyYAML>=6.0.2
 PyNaCl>=1.5.0
+
+# Optional features live in extras (pip install -e .[<extra>]):
+#   .[qr-image]   opencv-python-headless, Pillow  — decode QR from an image / clipboard screenshot
+#   .[browser]    playwright                      — browser-assisted login (TKU auto, others opt-in)
+#   .[packaging]  PyInstaller                     — build the Windows release zip
+#   .[keyring]    keyring                         — store credentials in the OS keyring
+# Clipboard QR auto-submit: image clipboard needs Pillow (.[qr-image]); text payloads use stdlib tkinter.

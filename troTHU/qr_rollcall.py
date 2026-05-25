@@ -382,6 +382,7 @@ async def answer_qr_rollcall(
     request_ssl: Any = None,
     session_id: str = "",
     base_url: str = TRON,
+    capture: Any = None,
 ) -> Dict[str, Any]:
     url, body = build_qr_answer_request(qr_data, device_id, base_url=base_url)
     headers = {"Content-Type": "application/json"}
@@ -394,6 +395,11 @@ async def answer_qr_rollcall(
 
     async with session.put(url, **request_kwargs) as resp:
         body_text = await resp.text()
+        if capture is not None:
+            try:
+                capture(url, body, resp.status, dict(resp.headers), body_text)
+            except Exception:
+                pass
         if resp.status in (200, 201, 204):
             try:
                 return json.loads(body_text) if body_text else {"ok": True}

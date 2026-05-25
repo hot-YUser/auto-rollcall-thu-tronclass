@@ -815,6 +815,7 @@ _LEGACY_EXPORTS = {
     'courses_command': ('troTHU.cli_courses', 'courses_command'),
     'capture_realtime': ('troTHU.realtime_capture', 'capture_realtime'),
     'capture_rollcall_full': ('troTHU.rollcall_capture', 'capture_rollcall_full'),
+    'append_rollcall_exchange': ('troTHU.rollcall_capture', 'append_rollcall_exchange'),
     'capture_rollcall_probe': ('troTHU.research_sandbox', 'capture_rollcall_probe'),
     'capture_student_rollcalls_probe': ('troTHU.research_sandbox', 'capture_student_rollcalls_probe'),
     'validate_probe_target': ('troTHU.research_sandbox', 'validate_probe_target'),

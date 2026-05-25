@@ -256,7 +256,11 @@ async def submit_qr_payload(session: ctx.aiohttp.ClientSession, raw_payload: str
     rollcall_id = qr_data.rollcall_id
     if not rollcall_id:
         raise ValueError('QR 內容缺少 rollcallId，無法送出。')
-    result = await ctx.answer_qr_rollcall(session, qr_data, device_id=ctx.random_id(), request_ssl=ctx.get_ssl_request_setting(), session_id=ctx.get_session_id_header(session), base_url=ctx.get_active_http_endpoints().base_url)
+
+    def _capture_qr_exchange(url, request_body, status, response_headers, response_text):
+        ctx.append_rollcall_exchange(ctx.BASE_DIR, rollcall_id=rollcall_id, rollcall_type='qrcode', label='answer_qr_rollcall', method='PUT', url=url, request_body=request_body, status=status, response_headers=response_headers, response_text=response_text, config=ctx.CONFIG)
+
+    result = await ctx.answer_qr_rollcall(session, qr_data, device_id=ctx.random_id(), request_ssl=ctx.get_ssl_request_setting(), session_id=ctx.get_session_id_header(session), base_url=ctx.get_active_http_endpoints().base_url, capture=_capture_qr_exchange)
     text = 'QR Code 點名 #{} 已送出。'.format(rollcall_id)
     ctx.log(event='qrcode_rollcall_answered', status='success', rollcall_id=rollcall_id, rollcall_type='qrcode', message=text, payload_excerpt={'field_names': sorted(qr_data.fields.keys()), 'extra_field_names': sorted(qr_data.extras.keys()), 'result': result})
     ctx.log_print(text)

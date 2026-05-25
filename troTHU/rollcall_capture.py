@@ -26,7 +26,7 @@ student-callable rollcall reads:
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 from urllib.parse import quote
 
 
@@ -49,6 +49,86 @@ def capture_enabled(config: Any) -> bool:
     if isinstance(value, str):
         return value.strip().lower() not in ("0", "false", "no", "off")
     return bool(value)
+
+
+# Per-rollcall exchange counters, so a number brute-force can't flood the log.
+_EXCHANGE_COUNTS: Dict[str, int] = {}
+
+
+def _exchange_cap(config: Any) -> int:
+    """Max in-operation exchanges recorded per rollcall (0 = unlimited).
+
+    Default 600 is ample for radar (~4 probes + candidates) and number direct
+    lookup (1), while bounding a worst-case number brute-force.
+    """
+    default = 600
+    if isinstance(config, Mapping):
+        section = config.get("capture")
+        if isinstance(section, Mapping) and section.get("max_exchanges_per_rollcall") is not None:
+            try:
+                return max(0, int(section.get("max_exchanges_per_rollcall")))
+            except (TypeError, ValueError):
+                return default
+    return default
+
+
+def append_rollcall_exchange(
+    base_dir: Any,
+    *,
+    rollcall_id: Any,
+    rollcall_type: str,
+    label: str = "",
+    method: str = "",
+    url: str = "",
+    request_body: Any = None,
+    status: Any = None,
+    response_headers: Any = None,
+    response_text: str = "",
+    config: Any = None,
+) -> Optional[str]:
+    """Append one full, unredacted request+response exchange that happens DURING
+    a rollcall operation (e.g. each radar probe/answer or number attempt) to
+    ``log/rollcall_capture/exchanges_<rollcall_id>.jsonl``. Best-effort; never raises."""
+    try:
+        if config is not None and not capture_enabled(config):
+            return None
+        rid = str(rollcall_id if rollcall_id not in (None, "") else "unknown")
+        cap = _exchange_cap(config)
+        used = _EXCHANGE_COUNTS.get(rid, 0)
+        if cap and used >= cap:
+            return None
+        _EXCHANGE_COUNTS[rid] = used + 1
+
+        parsed: Any = None
+        if response_text:
+            try:
+                parsed = json.loads(response_text)
+            except ValueError:
+                parsed = None
+
+        record = {
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "rollcall_id": rid,
+            "rollcall_type": rollcall_type,
+            "label": label,
+            "seq": used + 1,
+            "request": {"method": method, "url": url, "body": request_body},
+            "response": {
+                "status": status,
+                "headers": {str(k): str(v) for k, v in dict(response_headers or {}).items()},
+                "body_text": response_text,
+                "json": parsed,
+            },
+        }
+        out_dir = _capture_dir(base_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / "exchanges_{}.jsonl".format(quote(rid, safe=""))
+        with out_path.open("a", encoding="utf-8") as file:
+            file.write(json.dumps(record, ensure_ascii=False, default=str))
+            file.write("\n")
+        return str(out_path)
+    except Exception:  # pragma: no cover - defensive; capture must never break a rollcall
+        return None
 
 
 def _coerce_id(value: Any) -> str:

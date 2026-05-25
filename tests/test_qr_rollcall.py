@@ -202,6 +202,26 @@ class QrRollcallAnswerTest(unittest.IsolatedAsyncioTestCase):
             await answer_qr_rollcall(session, qr, "device-2")
         self.assertNotIn("secret-payload", str(caught.exception))
 
+    async def test_answer_qr_rollcall_invokes_capture_callback_with_full_exchange(self) -> None:
+        qr = parse_qr_payload(json.dumps({"rollcallId": 99, "data": "payload-token"}))
+        response = MagicMock()
+        response.status = 200
+        response.headers = {"Content-Type": "application/json"}
+        response.text = AsyncMock(return_value='{"ok": true}')
+        session = MagicMock()
+        session.put.return_value = make_context_manager(response)
+        captured = []
+
+        result = await answer_qr_rollcall(session, qr, "device-9", capture=lambda *a: captured.append(a))
+
+        self.assertEqual(result, {"ok": True})
+        self.assertEqual(len(captured), 1)
+        url, body, status, headers, text = captured[0]
+        self.assertTrue(url.endswith("/api/rollcall/99/answer_qr_rollcall"))
+        self.assertEqual(body, {"data": "payload-token", "deviceId": "device-9"})
+        self.assertEqual(status, 200)
+        self.assertEqual(text, '{"ok": true}')
+
     def test_tron_qr_preview_contains_diagnostic_without_raw_data(self) -> None:
         preview = tron.build_qr_preview(json.dumps({"rollcallId": 88, "data": "super-secret-qr"}))
         encoded = json.dumps(preview, ensure_ascii=False)

@@ -246,6 +246,19 @@ def select_rollcall(rollcalls: ctx.Any) -> ctx.Tuple[str, ctx.Optional[ctx.Dict[
     return ctx.engine_select_rollcall(rollcalls)
 
 
+def _open_rollcall_type_hint(rollcall: ctx.Dict[str, ctx.Any]) -> str:
+    if not isinstance(rollcall, dict):
+        return 'unknown'
+    if rollcall.get('is_number'):
+        return 'number'
+    type_text = ctx.normalize_text(rollcall.get('type') or rollcall.get('rollcall_type') or rollcall.get('name')).lower()
+    if rollcall.get('is_radar') or 'radar' in type_text:
+        return 'radar'
+    if 'qr' in type_text or any(rollcall.get(key) for key in ('is_qrcode', 'is_qr_code', 'is_qr')):
+        return 'qrcode'
+    return 'unknown'
+
+
 async def check_rollcall(session: ctx.aiohttp.ClientSession, cnt: int=-1) -> str:
     if not ctx.provider_is_daily_allowed():
         message = ctx.provider_block_message('rollcall polling')
@@ -262,8 +275,13 @@ async def check_rollcall(session: ctx.aiohttp.ClientSession, cnt: int=-1) -> str
     selected_message = decision.message
     ctx.log(event='rollcall_poll', counter=cnt, status='ok', url=result.url, http_status=result.status_code, rollcall_id=selected_rollcall.get('rollcall_id') if selected_rollcall else None, rollcall_type=selected_rollcall_type, message='完成一次點名輪詢。', payload_excerpt=result.payload, extra={'rollcall_count': len(rollcalls), 'selected_status': selected_status})
     ctx.record_check_runtime(selected_status, rollcall_id=selected_rollcall.get('rollcall_id') if selected_rollcall else '', rollcall_type=selected_rollcall_type)
-    if selected_rollcall is not None and selected_status not in ('not_call', 'on_call_fine'):
-        await ctx.run_full_rollcall_capture(session, client, selected_rollcall, selected_status, selected_rollcall_type, result.payload, cnt)
+    # Capture EVERY open rollcall on EVERY poll, regardless of status — including
+    # after the student has checked in (the entry flips to on_call_fine) — until
+    # the rollcall id is closed (gone from /api/radar/rollcalls -> not_call).
+    # This never stops early just because we already answered.
+    for open_rollcall in rollcalls:
+        if isinstance(open_rollcall, dict):
+            await ctx.run_full_rollcall_capture(session, client, open_rollcall, selected_status, _open_rollcall_type_hint(open_rollcall), result.payload, cnt)
     if selected_status == 'not_call':
         ctx.reset_unsupported_rollcall_state()
         return 'not call'

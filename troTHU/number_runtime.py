@@ -63,6 +63,7 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
                     if stop_event.is_set() and found_code != 'NA':
                         return
                     body = await resp.text()
+                    ctx.append_rollcall_exchange(ctx.BASE_DIR, rollcall_id=rcid, rollcall_type='number', label=payload['numberCode'], method='PUT', url=request_url, request_body=payload, status=resp.status, response_headers=dict(resp.headers), response_text=body, config=ctx.CONFIG)
                     classification = ctx.classify_number_response(resp.status, body)
                     if classification.status == ctx.NumberAttemptStatus.SUCCESS:
                         found_code = payload['numberCode']

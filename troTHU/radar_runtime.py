@@ -56,6 +56,7 @@ async def radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str,
             request_url = f'{base_url}/api/rollcall/{rollcall_id}/answer?api_version=1.76'
             async with session.put(request_url, json=payload, ssl=request_ssl) as resp:
                 body_text = await resp.text()
+                ctx.append_rollcall_exchange(ctx.BASE_DIR, rollcall_id=rollcall_id, rollcall_type='radar', label=label, method='PUT', url=request_url, request_body=payload, status=resp.status, response_headers=dict(resp.headers), response_text=body_text, config=ctx.CONFIG)
                 if resp.status in (401, 403) or 'login' in str(resp.url).lower():
                     raise ctx.UnauthorizedError('雷達點名座標送出未授權，Cookie 可能已過期。')
                 result = ctx.parse_radar_answer_result(resp.status, body_text)

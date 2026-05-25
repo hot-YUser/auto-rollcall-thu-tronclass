@@ -5,7 +5,9 @@ from pathlib import Path
 
 import aiohttp
 
+import troTHU.rollcall_capture as rollcall_capture
 from troTHU.rollcall_capture import (
+    append_rollcall_exchange,
     build_capture_targets,
     capture_enabled,
     capture_rollcall_full,
@@ -97,6 +99,66 @@ class RollcallCaptureIntegrationTest(unittest.IsolatedAsyncioTestCase):
 
                 self.assertEqual(summary["status"], "disabled")
                 self.assertEqual(list(Path(tmp).glob("**/*.json")), [])
+
+
+class RollcallExchangeCaptureTest(unittest.TestCase):
+    def setUp(self) -> None:
+        rollcall_capture._EXCHANGE_COUNTS.clear()
+
+    def test_append_exchange_writes_full_unredacted_jsonl(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = append_rollcall_exchange(
+                Path(tmp),
+                rollcall_id="382506",
+                rollcall_type="radar",
+                label="probe-1",
+                method="PUT",
+                url="https://ilearn.thu.edu.tw/api/rollcall/382506/answer?api_version=1.76",
+                request_body={"latitude": 24.17980301, "longitude": 120.61594101, "deviceId": "dev"},
+                status=400,
+                response_headers={"Content-Type": "application/json"},
+                response_text='{"error_code":"radar_out_of_rollcall_scope","distance":1085.69}',
+            )
+            self.assertTrue(path)
+            lines = Path(path).read_text(encoding="utf-8").splitlines()
+            self.assertEqual(len(lines), 1)
+            record = json.loads(lines[0])
+            self.assertEqual(record["rollcall_type"], "radar")
+            self.assertEqual(record["label"], "probe-1")
+            self.assertEqual(record["response"]["json"]["distance"], 1085.69)
+            # Request coordinates recorded verbatim (unredacted).
+            self.assertEqual(record["request"]["body"]["latitude"], 24.17980301)
+
+    def test_append_exchange_respects_cap(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = ""
+            for index in range(3):
+                path = append_rollcall_exchange(
+                    Path(tmp),
+                    rollcall_id="r1",
+                    rollcall_type="number",
+                    label="{:04d}".format(index),
+                    method="PUT",
+                    url="u",
+                    request_body={"numberCode": "{:04d}".format(index)},
+                    status=400,
+                    response_text="{}",
+                    config={"capture": {"max_exchanges_per_rollcall": 2}},
+                ) or path
+            lines = Path(path).read_text(encoding="utf-8").splitlines()
+            self.assertEqual(len(lines), 2)
+
+    def test_append_exchange_disabled_writes_nothing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            result = append_rollcall_exchange(
+                Path(tmp),
+                rollcall_id="r2",
+                rollcall_type="radar",
+                response_text="{}",
+                config={"capture": {"rollcall_full_capture": False}},
+            )
+            self.assertIsNone(result)
+            self.assertEqual(list(Path(tmp).glob("**/*.jsonl")), [])
 
 
 if __name__ == "__main__":

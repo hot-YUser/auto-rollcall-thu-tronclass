@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "auto-rollcall-thu-tronclass"
-version = "1.2.0a2"
+version = "1.2.0a3"
 description = "THU TronClass auto rollcall helper"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -35,7 +35,7 @@ dependencies = [
 [project.optional-dependencies]
 keyring = ["keyring>=24"]
 packaging = ["PyInstaller>=6"]
-qr-image = ["opencv-python-headless>=4.9"]
+qr-image = ["opencv-python-headless>=4.9", "Pillow>=10"]
 browser = ["playwright>=1.44"]
 dev = ["PyInstaller>=6", "keyring>=24"]
 
