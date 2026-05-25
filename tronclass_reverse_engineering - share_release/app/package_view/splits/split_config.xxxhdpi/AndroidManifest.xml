@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:splitTypes="base__density" package="com.wisdomgarden.trpc" split="config.xxxhdpi">
-    <application android:extractNativeLibs="true" android:hasCode="false">
-        <meta-data android:name="com.android.vending.derived.apk.id" android:value="3"/>
-    </application>
-</manifest>

@@ -1,3 +1,0 @@
-// Extracted from decompiled/apktool/base/assets/public/js/chunk-mathjax-bdfa1fd7.b355b28e.js
-// Webpack module id: _getOperator
-function(t){switch(t){case"+":return" {}+{} ";case"-":return" {}-{} ";case"=":return" {}={} ";case"<":return" {}<{} ";case">":return" {}>{} ";case"<<":return" {}\\ll{} ";case">>":return" {}\\gg{} ";case"\\pm":return" {}\\pm{} ";case"\\approx":return" {}\\approx{} ";case"$\\approx$":return" {}\\approx{} ";case"v":return" \\downarrow{} ";case"(v)":return" \\downarrow{} ";case"^":return" \\uparrow{} ";case"(^)":return" \\uparrow{} ";default:throw o(t),["MhchemBugT","mhchem bug T. Please report."]}}

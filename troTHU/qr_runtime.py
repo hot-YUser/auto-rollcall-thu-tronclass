@@ -263,4 +263,8 @@ async def submit_qr_payload(session: ctx.aiohttp.ClientSession, raw_payload: str
     active = ctx.get_active_profile(ctx.CONFIG)
     ctx.remove_pending_qr(ctx.BASE_DIR, profile=active.name, rollcall_id=rollcall_id, provider=ctx.get_active_provider_key())
     await ctx.notify_event(ctx.NotificationEvent(event='qrcode_rollcall_answered', title=text, body='已使用手動提供的 QR 內容完成送出。', attendance_type=ctx.AttendanceType.QRCODE, rollcall_id=rollcall_id))
+    try:
+        await ctx.report_rollcall_progress(session, rollcall_id)
+    except Exception:
+        pass
     return True

@@ -86,6 +86,44 @@ async def run_full_rollcall_capture(session: ctx.aiohttp.ClientSession, client: 
 
 
 _REALTIME_CAPTURED_ROLLCALLS: set = set()
+_LAST_CLIPBOARD_QR_HASH: str = ''
+
+
+async def try_clipboard_qr_autosubmit(session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str, ctx.Any]) -> bool:
+    """If the clipboard holds a QR for THIS rollcall, decode and submit it.
+
+    Clipboard-only assist for QR rollcalls (the `data` token is never in any
+    student API, so it must come from the displayed QR). Each distinct clipboard
+    content is attempted once; a payload whose rollcallId does not match the
+    active rollcall is skipped for safety. Best-effort; never raises."""
+    global _LAST_CLIPBOARD_QR_HASH
+    try:
+        if not ctx.clipboard_autosubmit_enabled(ctx.CONFIG):
+            return False
+        read = ctx.read_clipboard_qr_payload()
+        if not read.get('ok'):
+            return False
+        content_hash = ctx.normalize_text(read.get('content_hash'))
+        if content_hash and content_hash == _LAST_CLIPBOARD_QR_HASH:
+            return False
+        _LAST_CLIPBOARD_QR_HASH = content_hash
+        payload = str(read.get('payload') or '')
+        try:
+            clip_rollcall_id = ctx.normalize_text(ctx.parse_qr_payload(payload).rollcall_id)
+        except Exception:
+            clip_rollcall_id = ''
+        current_rollcall_id = ctx.normalize_text(rollcall.get('rollcall_id') if isinstance(rollcall, dict) else '')
+        if clip_rollcall_id and current_rollcall_id and clip_rollcall_id != current_rollcall_id:
+            ctx.log_print('剪貼簿 QR 對應點名 {} 與目前 {} 不符，略過。'.format(clip_rollcall_id, current_rollcall_id))
+            ctx.log(event='clipboard_qr_autosubmit', status='rollcall_mismatch', rollcall_id=current_rollcall_id, rollcall_type='qrcode', message='剪貼簿 QR 與目前點名不符。', extra={'clipboard_rollcall_id': clip_rollcall_id, 'source': read.get('source')})
+            return False
+        await ctx.submit_qr_payload(session, payload)
+        ctx.log_print('已從剪貼簿（{}）自動送出 QR 點名 #{}。'.format(read.get('source'), current_rollcall_id or clip_rollcall_id))
+        ctx.log(event='clipboard_qr_autosubmit', status='submitted', rollcall_id=current_rollcall_id or clip_rollcall_id, rollcall_type='qrcode', message='已從剪貼簿自動送出 QR 點名。', extra={'source': read.get('source')})
+        return True
+    except Exception as exc:
+        ctx.log(event='clipboard_qr_autosubmit', status='error', rollcall_type='qrcode', message='剪貼簿自動送出失敗。', error=exc)
+        return False
 
 
 async def run_realtime_capture(session: ctx.aiohttp.ClientSession, client: ctx.Any, rollcall: ctx.Dict[str, ctx.Any], status: str, rollcall_type: str, cnt: int) -> None:
@@ -208,5 +246,9 @@ async def check_rollcall(session: ctx.aiohttp.ClientSession, cnt: int=-1) -> str
         return 'radar_failed'
     if selected_rollcall is not None:
         await ctx.run_realtime_capture(session, client, selected_rollcall, selected_status, selected_rollcall_type, cnt)
-        await ctx.maybe_notify_unsupported_rollcall(selected_status, selected_rollcall, selected_message, selected_rollcall_type)
+        submitted_from_clipboard = False
+        if selected_status == 'unsupported_qrcode':
+            submitted_from_clipboard = await ctx.try_clipboard_qr_autosubmit(session, selected_rollcall)
+        if not submitted_from_clipboard:
+            await ctx.maybe_notify_unsupported_rollcall(selected_status, selected_rollcall, selected_message, selected_rollcall_type)
     return selected_status

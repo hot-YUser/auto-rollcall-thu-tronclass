@@ -1,3 +1,0 @@
-// Extracted from decompiled/apktool/base/assets/public/js/chunk-mathjax-7c75637d.3367d5fe.js
-// Webpack module id: 549
-function(t,e,a){a.r(e);var o=a(32067),n=a(57434);(0,o.combineWithMathJax)({_:{input:{tex:{mhchem:{MhchemConfiguration:n}}}}})}

@@ -6,10 +6,13 @@ from pathlib import Path
 import aiohttp
 
 from troTHU.realtime_capture import (
+    _header_get,
     build_pubsub_ws_url,
     capture_realtime,
     extract_notification_host,
+    extract_notification_host_from_html,
     extract_user_id,
+    extract_user_id_from_session_id,
     realtime_capture_enabled,
 )
 from tests.fake_tron_server import FakeTronServer
@@ -45,6 +48,22 @@ class RealtimeCaptureUnitTest(unittest.TestCase):
     def test_realtime_capture_enabled_defaults_on(self) -> None:
         self.assertTrue(realtime_capture_enabled({}))
         self.assertFalse(realtime_capture_enabled({"capture": {"realtime_capture": False}}))
+
+    def test_extract_user_id_from_session_id(self) -> None:
+        # Real-shape session id: 2nd dot-segment is base64("238730").
+        sid = "V2-1-c344ef5c-94f7-475b-9d9a-2d2b4e1c3905.MjM4NzMw.1779680060362.RHtzarW7nogOV4UNUpGVAr1VL9Y"
+        self.assertEqual(extract_user_id_from_session_id(sid), "238730")
+        self.assertEqual(extract_user_id_from_session_id(""), "")
+        self.assertEqual(extract_user_id_from_session_id("no-dots"), "")
+
+    def test_extract_notification_host_from_html(self) -> None:
+        html = 'window.APPRuntime={"apiPrefix":{"ntf":"https://ntf.example","api":"https://x"}};'
+        self.assertEqual(extract_notification_host_from_html(html), "https://ntf.example")
+        self.assertEqual(extract_notification_host_from_html("<html></html>"), "")
+
+    def test_header_get_is_case_insensitive(self) -> None:
+        self.assertEqual(_header_get({"X-SESSION-ID": "abc"}, "x-session-id"), "abc")
+        self.assertEqual(_header_get({}, "x-session-id"), "")
 
 
 class RealtimeCaptureIntegrationTest(unittest.IsolatedAsyncioTestCase):

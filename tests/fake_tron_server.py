@@ -331,6 +331,12 @@ class FakeTronServer:
             payload["end_time"] = self.student_rollcalls_end_time
         return web.json_response(payload)
 
+    async def rollcall_answers_api(self, request):
+        scripted = self._script_response("rollcall_answers")
+        if scripted is not None:
+            return scripted
+        return web.json_response({"answers": [{"student_id": 1, "updated_at": "2026-05-25T02:34:18Z"}], "last_timestamp": 0})
+
     async def org_settings_api(self, request):
         scripted = self._script_response("org_settings")
         if scripted is not None:
@@ -374,6 +380,7 @@ class FakeTronServer:
         app.router.add_put("/api/rollcall/{rollcall_id}/answer", self.answer_radar)
         app.router.add_put("/api/rollcall/{rollcall_id}/answer_qr_rollcall", self.answer_qr)
         app.router.add_get("/api/rollcall/{rollcall_id}/student_rollcalls", self.student_rollcalls_api)
+        app.router.add_get("/api/rollcall/{rollcall_id}/answers", self.rollcall_answers_api)
         app.router.add_get("/api/orgs/{org_id}/org-settings", self.org_settings_api)
         app.router.add_get("/api/users/me", self.users_me_api)
         app.router.add_get("/users/{user_id}/notifications", self.notifications_api)

@@ -23,7 +23,10 @@ written verbatim/unredacted to ``log/rollcall_capture``. Best-effort: this never
 raises into the monitor loop.
 """
 
+import base64
+import binascii
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional
@@ -99,6 +102,51 @@ def extract_user_id(payload: Any) -> str:
                 found = extract_user_id(nested)
                 if found:
                     return found
+    return ""
+
+
+def _header_get(headers: Any, name: str) -> str:
+    """Case-insensitive header lookup over a plain dict of captured headers."""
+    if not isinstance(headers, Mapping):
+        return ""
+    target = name.lower()
+    for key, value in headers.items():
+        if str(key).lower() == target:
+            return str(value or "")
+    return ""
+
+
+def extract_user_id_from_session_id(session_id: str) -> str:
+    """TronClass session ids look like ``V2-1-<uuid>.<b64(userId)>.<ts>.<sig>``;
+    the 2nd dot-segment is base64 of the numeric user id (e.g. MjM4NzMw -> 238730)."""
+    parts = str(session_id or "").split(".")
+    if len(parts) < 2:
+        return ""
+    token = parts[1].strip()
+    if not token:
+        return ""
+    padded = token + "=" * (-len(token) % 4)
+    for decoder in (base64.urlsafe_b64decode, base64.b64decode):
+        try:
+            decoded = decoder(padded).decode("utf-8", errors="strict")
+        except (binascii.Error, ValueError, UnicodeDecodeError):
+            continue
+        if decoded.isdigit():
+            return decoded
+    return ""
+
+
+def extract_notification_host_from_html(html: str) -> str:
+    """Find the notification/pubsub base URL injected into the SPA bootstrap HTML."""
+    text = str(html or "")
+    # e.g. "ntf":"https://ntf.host" / 'pubsub':"wss://..." inside window.APPRuntime
+    for pattern in (
+        r'["\'](?:ntf|notification|pubsub)["\']\s*:\s*["\'](wss?://[^"\']+|https?://[^"\']+)["\']',
+        r'(wss?://[^"\'\s]+/pubsub[^"\'\s]*)',
+    ):
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            return match.group(1)
     return ""
 
 
@@ -205,16 +253,28 @@ async def capture_realtime(
         reads: Dict[str, Any] = {}
         reads["org_settings"] = await _get(session, "{}/api/orgs/{}/org-settings".format(base, quote(org, safe="")), request_ssl)
         reads["users_me"] = await _get(session, "{}/api/users/me".format(base), request_ssl)
+        reads["home"] = await _get(session, base, request_ssl)
 
-        # If neither core read produced a real HTTP response, there is nothing to
-        # record (e.g. an unauthenticated/mock session) — skip writing.
+        # If no read produced a real HTTP response, there is nothing to record
+        # (e.g. an unauthenticated/mock session) — skip writing.
         if not any(isinstance(record.get("status"), int) and not record.get("error") for record in reads.values()):
             summary["status"] = "no_response"
             return summary
 
-        ntf_host = extract_notification_host(reads["org_settings"].get("json"))
-        user_id = extract_user_id(reads["users_me"].get("json"))
+        # Session id: prefer the caller's; otherwise harvest from any response header
+        # (the server echoes X-SESSION-ID on every response).
+        if not session_id:
+            for record in reads.values():
+                session_id = _header_get(record.get("headers"), "x-session-id")
+                if session_id:
+                    break
 
+        # ntf/pubsub host: org-settings JSON first, else the bootstrap HTML.
+        ntf_host = extract_notification_host(reads["org_settings"].get("json")) or extract_notification_host_from_html(reads["home"].get("body_text"))
+        # user id: users/me JSON, else decoded from the session id.
+        user_id = extract_user_id(reads["users_me"].get("json")) or extract_user_id_from_session_id(session_id)
+
+        # Notifications REST (the push payload's REST form) — needs the ntf host.
         if ntf_host and user_id:
             notif_base = ntf_host.rstrip("/")
             reads["notifications"] = await _get(
@@ -223,12 +283,18 @@ async def capture_realtime(
                 request_ssl,
             )
 
+        # Build the atmosphere WS URL; if no ntf host was found, try same-origin.
         ws_url = build_pubsub_ws_url(ntf_host, user_id, session_id)
+        ws_fallback_used = False
+        if not ws_url and user_id:
+            ws_url = build_pubsub_ws_url(base, user_id, session_id)
+            ws_fallback_used = bool(ws_url)
         ws_result: Dict[str, Any]
         if ws_url:
             ws_result = await _ws_listen(session, ws_url, request_ssl, ws_seconds)
+            ws_result["same_origin_fallback"] = ws_fallback_used
         else:
-            ws_result = {"status": "config_incomplete", "ntf_host": ntf_host, "user_id_found": bool(user_id)}
+            ws_result = {"status": "config_incomplete", "ntf_host": ntf_host, "user_id_found": bool(user_id), "session_id_found": bool(session_id)}
 
         document = {
             "timestamp": datetime.now().isoformat(timespec="seconds"),

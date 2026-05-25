@@ -1,1 +1,0 @@
-(self.webpackChunklms=self.webpackChunklms||[]).push([[59661],{880040:(s,t,e)=>{e.r(t),e.d(t,{default:()=>c});var l=e(595738),n=e(905709);const a=(0,l.pM)({components:{List:n.A}});const c=(0,e(514486).A)(a,(function(){var s=this.$createElement;return(this._self._c||s)("List",{staticClass:"data-list row card"})}),[],!1,null,"19b58b94",null).exports}}]);

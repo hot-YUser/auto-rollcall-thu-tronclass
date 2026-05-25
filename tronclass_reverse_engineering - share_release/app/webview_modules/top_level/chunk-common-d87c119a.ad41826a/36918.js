@@ -1,3 +1,0 @@
-// Extracted from decompiled/apktool/base/assets/public/js/chunk-common-d87c119a.ad41826a.js
-// Webpack module id: 36918
-function(e,t,n){var o;n.d(t,{Z:function(){return l}}),function(e){e.NAMESPACE="/group_set",e.GROUP_SET_CHANGED="group_set_changed"}(o||(o={}));var r=n(42325),a=function(){function e(e){this.groupSetSocket=null,this.groupSetId=e,this.groupSetSocket=(0,r.s)(o.NAMESPACE,{groupSetId:this.groupSetId},{forceNew:!0})}return e.prototype.disconnect=function(){var e;null===(e=this.groupSetSocket)||void 0===e||e.disconnect()},e.prototype.onGroupSetChanged=function(e){var t;null===(t=this.groupSetSocket)||void 0===t||t.on(o.GROUP_SET_CHANGED,e)},e}(),l=a}

@@ -130,6 +130,7 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
                 with (
                     patch.object(tron, "mes", mes_mock),
                     patch.object(tron, "log_print"),
+                    patch.object(tron, "try_clipboard_qr_autosubmit", AsyncMock(return_value=False)),
                 ):
                     first = await tron.check_rollcall(session, 1)
                     second = await tron.check_rollcall(session, 2)

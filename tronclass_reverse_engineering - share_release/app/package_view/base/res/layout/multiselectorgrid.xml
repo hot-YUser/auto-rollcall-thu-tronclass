@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout android:orientation="vertical" android:layout_width="match_parent" android:layout_height="match_parent"
-  xmlns:android="http://schemas.android.com/apk/res/android">
-    <GridView android:gravity="center" android:id="@id/gridview" android:fadingEdgeLength="10.0dp" android:layout_width="match_parent" android:layout_height="0.0dp" android:scrollingCache="true" android:horizontalSpacing="8.0dp" android:verticalSpacing="8.0dp" android:stretchMode="columnWidth" android:columnWidth="0.0dp" android:numColumns="3" android:layout_weight="1.0" android:fastScrollEnabled="true" android:requiresFadingEdge="vertical" />
-</LinearLayout>

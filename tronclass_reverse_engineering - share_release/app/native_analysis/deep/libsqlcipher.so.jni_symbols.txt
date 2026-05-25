@@ -1,7 +1,0 @@
-0x1ad6ac	268	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher43register_android_database_SQLiteCompiledSqlEP7_JNIEnv => sqlcipher::register_android_database_SQLiteCompiledSql(_JNIEnv*)
-0x1ae274	208	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher40register_android_database_SQLiteDatabaseEP7_JNIEnv => sqlcipher::register_android_database_SQLiteDatabase(_JNIEnv*)
-0x1ae344	276	STT_FUNC	STB_GLOBAL	.dynsym	JNI_OnLoad
-0x1aed64	268	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher39register_android_database_SQLiteProgramEP7_JNIEnv => sqlcipher::register_android_database_SQLiteProgram(_JNIEnv*)
-0x1af3b4	268	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher37register_android_database_SQLiteQueryEP7_JNIEnv => sqlcipher::register_android_database_SQLiteQuery(_JNIEnv*)
-0x1afbe8	268	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher41register_android_database_SQLiteStatementEP7_JNIEnv => sqlcipher::register_android_database_SQLiteStatement(_JNIEnv*)
-0x1affec	356	STT_FUNC	STB_GLOBAL	.dynsym	_ZN9sqlcipher38register_android_database_CursorWindowEP7_JNIEnv => sqlcipher::register_android_database_CursorWindow(_JNIEnv*)
