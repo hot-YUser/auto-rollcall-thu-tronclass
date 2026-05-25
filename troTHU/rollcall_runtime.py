@@ -18,6 +18,13 @@ def classify_rollcall(rollcall: ctx.Dict[str, ctx.Any]) -> ctx.Tuple[str, str, s
 def reset_unsupported_rollcall_state() -> None:
     ctx.UNSUPPORTED_ROLLCALL_STATE['rollcall_id'] = None
     ctx.UNSUPPORTED_ROLLCALL_STATE['status'] = ''
+    _QR_INFO_CAPTURED_ROLLCALLS.clear()
+    for key, task in list(_QR_INFO_CAPTURE_TASKS.items()):
+        if task.done():
+            _QR_INFO_CAPTURE_TASKS.pop(key, None)
+            continue
+        task.cancel()
+        _QR_INFO_CAPTURE_TASKS.pop(key, None)
 
 
 def number_rollcall_key(rollcall_id: ctx.Any) -> str:
@@ -86,6 +93,8 @@ async def run_full_rollcall_capture(session: ctx.aiohttp.ClientSession, client: 
 
 
 _REALTIME_CAPTURED_ROLLCALLS: set = set()
+_QR_INFO_CAPTURED_ROLLCALLS: set = set()
+_QR_INFO_CAPTURE_TASKS: dict = {}
 _LAST_CLIPBOARD_QR_HASH: str = ''
 
 
@@ -154,6 +163,65 @@ async def run_realtime_capture(session: ctx.aiohttp.ClientSession, client: ctx.A
             ctx.log_print('已記錄即時通道回應：{}（ntf_host={}, ws_frames={}）'.format(summary.get('output_path', ''), summary.get('ntf_host_found'), summary.get('ws_frames')))
     except Exception as exc:
         ctx.log(event='realtime_capture', counter=cnt, status='error', rollcall_type=rollcall_type, message='即時通道擷取失敗。', error=exc)
+
+
+async def run_qr_info_capture_for_rollcall(session: ctx.aiohttp.ClientSession, client: ctx.Any, rollcall: ctx.Dict[str, ctx.Any], status: str, rollcall_type: str, cnt: int) -> None:
+    """Run the deeper QR diagnostic capture from the normal monitor flow.
+
+    Output is written into the existing ``log/rollcall_capture`` tree and a
+    compact summary is appended to the daily JSONL log via ``ctx.log``.
+    """
+    try:
+        if not ctx.qr_info_capture_enabled(ctx.CONFIG):
+            return
+        session_type = getattr(ctx.aiohttp, 'ClientSession', None)
+        if isinstance(session_type, type) and not isinstance(session, session_type):
+            return
+        options = ctx.build_qr_info_capture_options_for_rollcall(rollcall, config=ctx.CONFIG)
+        rollcall_id = ctx.normalize_text(options.rollcall_id or (rollcall.get('rollcall_id') if isinstance(rollcall, dict) else ''))
+        provider = ctx.get_active_provider_key()
+        key = '{}:{}'.format(provider, rollcall_id or ctx.normalize_text(cnt))
+        current_task = _QR_INFO_CAPTURE_TASKS.get(key)
+        if current_task is not None and not current_task.done():
+            return
+        if rollcall_id and key in _QR_INFO_CAPTURED_ROLLCALLS:
+            return
+
+        async def _capture() -> None:
+            try:
+                user_id = ''
+                try:
+                    fetched_user_id = await client.fetch_user_id()
+                    user_id = ctx.normalize_text(fetched_user_id)
+                except Exception as exc:
+                    ctx.log(event='qr_info_capture_user_id', counter=cnt, status='failed', rollcall_id=rollcall_id, rollcall_type=rollcall_type, message='QR 線索擷取無法取得 APPRuntime user id。', error=exc)
+                summary = await ctx.run_qr_info_capture(
+                    session,
+                    endpoints=client.endpoints,
+                    base_dir=ctx.BASE_DIR,
+                    options=options,
+                    request_ssl=ctx.get_ssl_request_setting(),
+                    profile=ctx.get_active_profile(ctx.CONFIG).name,
+                    provider=provider,
+                    user_id=user_id,
+                )
+                if rollcall_id:
+                    _QR_INFO_CAPTURED_ROLLCALLS.add(key)
+                ctx.log(event='qr_info_capture', counter=cnt, status=summary.get('status', 'unknown'), rollcall_id=rollcall_id, rollcall_type=rollcall_type, message='已擷取 QR 點名線索（完整未脫敏）。', extra=summary)
+            except ctx.asyncio.CancelledError:
+                ctx.log(event='qr_info_capture', counter=cnt, status='cancelled', rollcall_id=rollcall_id, rollcall_type=rollcall_type, message='QR 線索擷取已停止。', extra={'duration_seconds': options.duration_seconds, 'browser': options.browser})
+                raise
+
+        duration = options.duration_seconds
+        if duration is None or duration > 0 or options.browser:
+            task = ctx.asyncio.create_task(_capture())
+            _QR_INFO_CAPTURE_TASKS[key] = task
+            task.add_done_callback(lambda _task, _key=key: _QR_INFO_CAPTURE_TASKS.pop(_key, None))
+            ctx.log(event='qr_info_capture', counter=cnt, status='started', rollcall_id=rollcall_id, rollcall_type=rollcall_type, message='QR 線索擷取已於背景啟動。', extra={'duration_seconds': options.duration_seconds, 'browser': options.browser})
+            return
+        await _capture()
+    except Exception as exc:
+        ctx.log(event='qr_info_capture', counter=cnt, status='error', rollcall_type=rollcall_type, message='QR 線索擷取失敗。', error=exc)
 
 
 def record_check_runtime(status: str, *, rollcall_id: ctx.Any='', rollcall_type: str='') -> None:
@@ -245,6 +313,8 @@ async def check_rollcall(session: ctx.aiohttp.ClientSession, cnt: int=-1) -> str
             return 'is_radar'
         return 'radar_failed'
     if selected_rollcall is not None:
+        if selected_status == 'unsupported_qrcode':
+            await ctx.run_qr_info_capture_for_rollcall(session, client, selected_rollcall, selected_status, selected_rollcall_type, cnt)
         await ctx.run_realtime_capture(session, client, selected_rollcall, selected_status, selected_rollcall_type, cnt)
         submitted_from_clipboard = False
         if selected_status == 'unsupported_qrcode':

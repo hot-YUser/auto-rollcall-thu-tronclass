@@ -75,6 +75,7 @@ HIDDEN_IMPORTS = sorted(
             "troTHU.provider_fixture_review",
             "troTHU.provider_verification",
             "troTHU.providers",
+            "troTHU.qr_info_capture",
             "troTHU.qr_rollcall",
             "troTHU.qr_runtime",
             "troTHU.radar_rollcall",

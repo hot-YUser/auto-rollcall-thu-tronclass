@@ -154,6 +154,14 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
             [entry["event"] for entry in entries].count("rollcall_poll"),
             2,
         )
+        self.assertEqual(
+            [entry["event"] for entry in entries].count("qr_info_capture"),
+            1,
+        )
+        qr_capture_entry = next(entry for entry in entries if entry["event"] == "qr_info_capture")
+        self.assertEqual(qr_capture_entry["status"], "ok")
+        self.assertIn("rollcall_capture", qr_capture_entry["output_dir"])
+        self.assertTrue(Path(qr_capture_entry["events_path"]).exists())
 
     async def test_radar_flow_uses_lite_beacon_payload_and_safe_diagnostics(self) -> None:
         probe_plan = tron.build_probe_plan(tron.DEFAULT_CONFIG["radar"]["boundary_points"])

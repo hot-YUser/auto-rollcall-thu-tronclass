@@ -242,7 +242,7 @@ THU、TKU 在預設使用者入口中是可見 ready provider；兩校都可啟�
 - `webview preview/import`：只做 cookie sync contract 與本地 cookie cache bridge；真正 import 必須同時開 config gate 與 `--save`。
 - `research status/api/browser-check/browser-capture`：明確 opt-in 的 read-only metadata capture；不查答案、不保存 raw body/header/cookie/token/QR。
 - `research probe <target> --rollcall-id <id>`：獨立的 shape-only **取證**探測（與日常直接讀碼分開），只記 HTTP 狀態與欄位形狀；目標支援 `student_rollcalls`、`lite`、`ongoing_rollcalls`（後者免 `--rollcall-id`）；需要 `research.enabled=true`、`allow_api_exploration=true`、`allow_risky_probe=true`，且不會把答案值寫入輸出。
-- **點名診斷擷取（diagnostic capture，預設開）**：裸跑 `python -m troTHU.tron` 時，每次偵測到點名都會把相關端點的**完整、未脫敏**伺服器回應寫到本機 `log/rollcall_capture/`（已被 `.gitignore` 完全排除），用於個人排查與找出隱藏資訊（例如 QR 的 `data`）；QR／未支援點名另會盡力擷取通知通道與 atmosphere WebSocket frame。此輸出**可能含敏感值，請勿分享 `log/`、勿提交版控**。可於 `config.advanced.yaml` 以 `capture.rollcall_full_capture` / `capture.realtime_capture` 關閉、`capture.org_id` 覆寫。
+- **點名診斷擷取（diagnostic capture，預設開）**：裸跑 `python -m troTHU.tron` 時，每次偵測到點名都會把相關端點的**完整、未脫敏**伺服器回應寫到本機 `log/rollcall_capture/`（已被 `.gitignore` 完全排除），用於個人排查與找出隱藏資訊（例如 QR 的 `data`）；QR／未支援點名另會自動擷取通知通道、atmosphere WebSocket frame，以及 QR 專用的 session/匿名只讀 GET 對照與老師 QR 頁 HTML。此輸出**可能含敏感值，請勿分享 `log/`、勿提交版控**。可於 `config.advanced.yaml` 以 `capture.rollcall_full_capture` / `capture.realtime_capture` / `capture.qr_info_capture` 關閉、`capture.org_id` 覆寫；若要延長 QR 線索擷取視窗，可設 `capture.qr_info_duration_seconds` 與 `capture.qr_info_interval_seconds`，其中 `capture.qr_info_duration_seconds: always` 會在該場 QR 點名期間持續背景紀錄，直到點名狀態消失或程式關閉。
 - `auth.browser_assisted_login.enabled=true`：一般 provider 遇到 CAS/登入頁改版時，可手動啟用 Playwright 後備登入；TKU 預設先跑 HTTP fast SSO，必要時自動使用 Playwright 作為保底。兩者都不保存 header/body/密碼。
 
 ## R1/R2/R3 驗收
