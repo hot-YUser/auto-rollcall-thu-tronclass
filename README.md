@@ -5,9 +5,9 @@
 
 > 請只在你有權限、且符合學校與課程規範的情境下使用。不要分享帳密、token、cookie、`state/`、`log/`、真實 QR payload 或未遮蔽的 API 回應。不要把填好帳密的 `config.yaml` 傳給別人。
 
-## 版本狀態：v1.2-alpha.1
+## 版本狀態：v1.2-alpha.2
 
-`v1.2-alpha.1` 是目前功能整合版，新增 number 點名越權直接讀碼（讀 `student_rollcalls` 的 `number_code` 單發提交，讀不到再退回暴力猜碼）。主要能力仍屬 alpha，**尚未經實際課堂環境完整驗收**；請把這版視為未完整測試的預發布版本，務必自行確認符合校規後再使用。
+`v1.2-alpha.2` 是目前功能整合版，新增 number 點名越權直接讀碼（讀 `student_rollcalls` 的 `number_code` 單發提交，讀不到再退回暴力猜碼）與點名診斷擷取。主要能力仍屬 alpha，**尚未經實際課堂環境完整驗收**；請把這版視為未完整測試的預發布版本，務必自行確認符合校規後再使用。
 
 目前重點：
 
@@ -67,7 +67,7 @@ python -m troTHU.tron validation local-smoke --json
 Release zip 名稱格式：
 
 ```text
-THU_Auto_Rollcall-v1.2.0a1-windows-x64.zip
+THU_Auto_Rollcall-v1.2.0a2-windows-x64.zip
 ```
 
 下載後請完整解壓縮，再在資料夾內執行 `auto-rollcall-thu-tronclass.exe`。不要直接在 zip 裡雙擊執行。第一次啟動會在 exe 同層建立或使用 `config.yaml`、`state/`、`log/`。
@@ -241,7 +241,8 @@ THU、TKU 在預設使用者入口中是可見 ready provider；兩校都可啟�
 - `app serve --open`：開 localhost read-only companion shell，所有 `/app/api/*` 需要短效 local token。
 - `webview preview/import`：只做 cookie sync contract 與本地 cookie cache bridge；真正 import 必須同時開 config gate 與 `--save`。
 - `research status/api/browser-check/browser-capture`：明確 opt-in 的 read-only metadata capture；不查答案、不保存 raw body/header/cookie/token/QR。
-- `research probe student_rollcalls --rollcall-id <id>`：獨立的 shape-only **取證**探測（與日常直接讀碼分開），只記 HTTP 狀態與欄位形狀；需要 `research.enabled=true`、`allow_api_exploration=true`、`allow_risky_probe=true`，且不會把 `number_code` 值寫入輸出。
+- `research probe <target> --rollcall-id <id>`：獨立的 shape-only **取證**探測（與日常直接讀碼分開），只記 HTTP 狀態與欄位形狀；目標支援 `student_rollcalls`、`lite`、`ongoing_rollcalls`（後者免 `--rollcall-id`）；需要 `research.enabled=true`、`allow_api_exploration=true`、`allow_risky_probe=true`，且不會把答案值寫入輸出。
+- **點名診斷擷取（diagnostic capture，預設開）**：裸跑 `python -m troTHU.tron` 時，每次偵測到點名都會把相關端點的**完整、未脫敏**伺服器回應寫到本機 `log/rollcall_capture/`（已被 `.gitignore` 完全排除），用於個人排查與找出隱藏資訊（例如 QR 的 `data`）；QR／未支援點名另會盡力擷取通知通道與 atmosphere WebSocket frame。此輸出**可能含敏感值，請勿分享 `log/`、勿提交版控**。可於 `config.advanced.yaml` 以 `capture.rollcall_full_capture` / `capture.realtime_capture` 關閉、`capture.org_id` 覆寫。
 - `auth.browser_assisted_login.enabled=true`：一般 provider 遇到 CAS/登入頁改版時，可手動啟用 Playwright 後備登入；TKU 預設先跑 HTTP fast SSO，必要時自動使用 Playwright 作為保底。兩者都不保存 header/body/密碼。
 
 ## R1/R2/R3 驗收
