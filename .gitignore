@@ -60,6 +60,10 @@ PLAN.md
 # External reference projects are kept locally for Codex analysis only.
 其他專案參考/
 
+# Local reverse-engineering reference (decompiled app + web frontend dumps).
+# Kept locally for analysis only; never publish or commit.
+APP和網頁前端/
+
 # Local/private live school verification helpers.
 # These call real-school flows through TRON_USER / TRON_PASS and are not
 # part of the public source tree.

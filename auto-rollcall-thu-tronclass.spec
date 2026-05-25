@@ -85,6 +85,8 @@ HIDDEN_IMPORTS = sorted(
             "troTHU.research_mode",
             "troTHU.research_sandbox",
             "troTHU.release_checklist",
+            "troTHU.realtime_capture",
+            "troTHU.rollcall_capture",
             "troTHU.rollcall_engine",
             "troTHU.rollcall_models",
             "troTHU.rollcall_runtime",

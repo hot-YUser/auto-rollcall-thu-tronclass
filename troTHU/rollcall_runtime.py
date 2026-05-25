@@ -57,6 +57,67 @@ async def maybe_notify_unsupported_rollcall(status: str, rollcall: ctx.Dict[str,
     ctx.log(event='unsupported_rollcall_detected', status=status, rollcall_id=rollcall_id, rollcall_type=rollcall_type, message=message, payload_excerpt=rollcall)
 
 
+async def run_full_rollcall_capture(session: ctx.aiohttp.ClientSession, client: ctx.Any, rollcall: ctx.Dict[str, ctx.Any], status: str, rollcall_type: str, source_payload: ctx.Any, cnt: int) -> None:
+    """Fire-and-record the unredacted full capture for any detected rollcall.
+
+    Best-effort: never raises into the monitor loop. Runs for every rollcall
+    type (number/radar/qr/unsupported) so every server response seen during a
+    rollcall is written verbatim to log/rollcall_capture.
+    """
+    try:
+        capture_summary = await ctx.capture_rollcall_full(
+            session,
+            rollcall,
+            endpoints=client.endpoints,
+            base_dir=ctx.BASE_DIR,
+            request_ssl=ctx.get_ssl_request_setting(),
+            profile=ctx.get_active_profile(ctx.CONFIG).name,
+            provider=ctx.get_active_provider_key(),
+            trigger_status=status,
+            source_payload=source_payload,
+            config=ctx.CONFIG,
+        )
+        ctx.log(event='rollcall_full_capture', counter=cnt, status=capture_summary.get('status', 'unknown'), rollcall_id=rollcall.get('rollcall_id'), rollcall_type=rollcall_type, message='已擷取點名相關端點的完整伺服器回應。', extra=capture_summary)
+        if capture_summary.get('status') == 'ok':
+            hint = capture_summary.get('endpoints_with_fields') or []
+            ctx.log_print('已記錄完整伺服器回應：{}{}'.format(capture_summary.get('output_path', ''), '（關鍵欄位出現於：{}）'.format(', '.join(hint)) if hint else ''))
+    except Exception as exc:
+        ctx.log(event='rollcall_full_capture', counter=cnt, status='error', rollcall_id=rollcall.get('rollcall_id') if isinstance(rollcall, dict) else '', rollcall_type=rollcall_type, message='完整擷取失敗。', error=exc)
+
+
+_REALTIME_CAPTURED_ROLLCALLS: set = set()
+
+
+async def run_realtime_capture(session: ctx.aiohttp.ClientSession, client: ctx.Any, rollcall: ctx.Dict[str, ctx.Any], status: str, rollcall_type: str, cnt: int) -> None:
+    """Capture the realtime/notification channel (incl. the atmosphere WebSocket)
+    once per rollcall id. Best-effort; the WS listen has its own timeout so it
+    cannot stall the monitor loop indefinitely. Never raises."""
+    try:
+        rollcall_id = ctx.normalize_text(rollcall.get('rollcall_id') if isinstance(rollcall, dict) else '')
+        key = '{}:{}'.format(ctx.get_active_provider_key(), rollcall_id)
+        if rollcall_id and key in _REALTIME_CAPTURED_ROLLCALLS:
+            return
+        summary = await ctx.capture_realtime(
+            session,
+            base_url=getattr(client.endpoints, 'base_url', ''),
+            session_id=ctx.get_session_id_header(session),
+            request_ssl=ctx.get_ssl_request_setting(),
+            base_dir=ctx.BASE_DIR,
+            profile=ctx.get_active_profile(ctx.CONFIG).name,
+            provider=ctx.get_active_provider_key(),
+            rollcall_id=rollcall_id,
+            trigger_status=status,
+            config=ctx.CONFIG,
+        )
+        if rollcall_id:
+            _REALTIME_CAPTURED_ROLLCALLS.add(key)
+        ctx.log(event='realtime_capture', counter=cnt, status=summary.get('status', 'unknown'), rollcall_id=rollcall_id, rollcall_type=rollcall_type, message='已擷取即時/通知通道（含 WebSocket）回應。', extra=summary)
+        if summary.get('status') == 'ok':
+            ctx.log_print('已記錄即時通道回應：{}（ntf_host={}, ws_frames={}）'.format(summary.get('output_path', ''), summary.get('ntf_host_found'), summary.get('ws_frames')))
+    except Exception as exc:
+        ctx.log(event='realtime_capture', counter=cnt, status='error', rollcall_type=rollcall_type, message='即時通道擷取失敗。', error=exc)
+
+
 def record_check_runtime(status: str, *, rollcall_id: ctx.Any='', rollcall_type: str='') -> None:
     try:
         ctx.mark_check_result(ctx.BASE_DIR, ctx.get_active_profile(ctx.CONFIG).name, status, rollcall_id=rollcall_id, rollcall_type=rollcall_type)
@@ -95,6 +156,8 @@ async def check_rollcall(session: ctx.aiohttp.ClientSession, cnt: int=-1) -> str
     selected_message = decision.message
     ctx.log(event='rollcall_poll', counter=cnt, status='ok', url=result.url, http_status=result.status_code, rollcall_id=selected_rollcall.get('rollcall_id') if selected_rollcall else None, rollcall_type=selected_rollcall_type, message='完成一次點名輪詢。', payload_excerpt=result.payload, extra={'rollcall_count': len(rollcalls), 'selected_status': selected_status})
     ctx.record_check_runtime(selected_status, rollcall_id=selected_rollcall.get('rollcall_id') if selected_rollcall else '', rollcall_type=selected_rollcall_type)
+    if selected_rollcall is not None and selected_status not in ('not_call', 'on_call_fine'):
+        await ctx.run_full_rollcall_capture(session, client, selected_rollcall, selected_status, selected_rollcall_type, result.payload, cnt)
     if selected_status == 'not_call':
         ctx.reset_unsupported_rollcall_state()
         return 'not call'
@@ -144,5 +207,6 @@ async def check_rollcall(session: ctx.aiohttp.ClientSession, cnt: int=-1) -> str
             return 'is_radar'
         return 'radar_failed'
     if selected_rollcall is not None:
+        await ctx.run_realtime_capture(session, client, selected_rollcall, selected_status, selected_rollcall_type, cnt)
         await ctx.maybe_notify_unsupported_rollcall(selected_status, selected_rollcall, selected_message, selected_rollcall_type)
     return selected_status

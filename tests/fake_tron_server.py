@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import json
 import math
 from typing import Any, Dict, List, Optional
 
@@ -330,6 +331,33 @@ class FakeTronServer:
             payload["end_time"] = self.student_rollcalls_end_time
         return web.json_response(payload)
 
+    async def org_settings_api(self, request):
+        scripted = self._script_response("org_settings")
+        if scripted is not None:
+            return scripted
+        return web.json_response({"id": request.match_info.get("org_id", "1"), "notification_url": self.base_url})
+
+    async def users_me_api(self, request):
+        scripted = self._script_response("users_me")
+        if scripted is not None:
+            return scripted
+        return web.json_response({"id": 238730, "name": "Test User"})
+
+    async def notifications_api(self, request):
+        scripted = self._script_response("notifications")
+        if scripted is not None:
+            return scripted
+        return web.json_response(
+            {"notifications": [{"id": 1, "type": "qr_rollcall_started", "rollcall_id": 42}]}
+        )
+
+    async def pubsub_ws(self, request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.send_str(json.dumps({"type": "qr_rollcall_started", "rollcall_id": 42}))
+        await ws.close()
+        return ws
+
     async def start(self) -> "FakeTronServer":
         if web is None:
             raise RuntimeError("aiohttp.web is required for FakeTronServer")
@@ -346,6 +374,10 @@ class FakeTronServer:
         app.router.add_put("/api/rollcall/{rollcall_id}/answer", self.answer_radar)
         app.router.add_put("/api/rollcall/{rollcall_id}/answer_qr_rollcall", self.answer_qr)
         app.router.add_get("/api/rollcall/{rollcall_id}/student_rollcalls", self.student_rollcalls_api)
+        app.router.add_get("/api/orgs/{org_id}/org-settings", self.org_settings_api)
+        app.router.add_get("/api/users/me", self.users_me_api)
+        app.router.add_get("/users/{user_id}/notifications", self.notifications_api)
+        app.router.add_get("/pubsub/{user_id}", self.pubsub_ws)
 
         self.runner = web.AppRunner(app)
         await self.runner.setup()

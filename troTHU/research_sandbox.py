@@ -19,7 +19,11 @@ SAFE_API_TARGETS = ("home", "rollcalls", "current_semester", "semester", "course
 CAPTURE_TARGETS = ("home", "rollcalls", "current_semester", "courses")
 TARGET_ALIASES = {"semester": "current_semester"}
 BROWSER_TARGETS = ("login", "home")
-RISKY_PROBE_TARGETS = ("student_rollcalls",)
+RISKY_PROBE_TARGETS = ("student_rollcalls", "lite", "ongoing_rollcalls")
+PROBE_TARGETS_NEED_ROLLCALL_ID = ("student_rollcalls", "lite")
+# Field names whose presence in a probed response is worth flagging (presence
+# only — the value itself is never recorded).
+PROBE_FIELD_PRESENCE_CHECKS = ("data", "number_code")
 DENIED_TARGET_PARTS = (
     "student_rollcalls",
     "answer_number_rollcall",
@@ -264,12 +268,60 @@ def _json_shape_summary(payload: Any) -> Dict[str, Any]:
     return {"shape": type(payload).__name__}
 
 
-def _student_rollcalls_probe_url(endpoints: Any, rollcall_id: Any) -> str:
+def _shape_field_present(summary: Any, name: str) -> bool:
+    """Detect whether a shape summary exposes a field by name (presence only).
+
+    Operates on the un-sanitized shape summary so it can see field names that
+    sanitize_research_value would later redact. Only a boolean is returned, so
+    the field's value is never recorded.
+    """
+    if not isinstance(summary, Mapping):
+        return False
+    target = name.lower()
+    for key in ("field_names", "item_field_names"):
+        names = summary.get(key)
+        if isinstance(names, list) and any(str(item).lower() == target for item in names):
+            return True
+    list_fields = summary.get("list_fields")
+    if isinstance(list_fields, Mapping):
+        for key, sub in list_fields.items():
+            if str(key).lower() == target:
+                return True
+            if _shape_field_present(sub, name):
+                return True
+    return False
+
+
+def validate_probe_target(target: Any) -> str:
+    text = str(target or "").strip().lower().replace("-", "_")
+    if not text:
+        text = "student_rollcalls"
+    if text not in RISKY_PROBE_TARGETS:
+        raise ResearchCaptureError("probe_target_not_allowed", "Unknown probe target.")
+    return text
+
+
+def _rollcall_probe_url(endpoints: Any, target: str, rollcall_id: Any) -> str:
     base_url = str(getattr(endpoints, "base_url", "") or "").rstrip("/")
+    if not base_url:
+        raise ResearchCaptureError("probe_target_incomplete", "base URL is required.")
+    if target == "ongoing_rollcalls":
+        rollcalls_url = str(getattr(endpoints, "rollcalls_url", "") or "")
+        if not rollcalls_url:
+            raise ResearchCaptureError("probe_target_incomplete", "rollcalls URL is required.")
+        return rollcalls_url
     safe_rollcall_id = quote(str(rollcall_id or "").strip(), safe="")
-    if not base_url or not safe_rollcall_id:
+    if not safe_rollcall_id:
         raise ResearchCaptureError("probe_target_incomplete", "base URL and rollcall id are required.")
-    return "{}/api/rollcall/{}/student_rollcalls".format(base_url, safe_rollcall_id)
+    if target == "student_rollcalls":
+        return "{}/api/rollcall/{}/student_rollcalls".format(base_url, safe_rollcall_id)
+    if target == "lite":
+        return "{}/api/rollcall/{}/lite".format(base_url, safe_rollcall_id)
+    raise ResearchCaptureError("probe_target_not_allowed", "Unknown probe target.")
+
+
+def _student_rollcalls_probe_url(endpoints: Any, rollcall_id: Any) -> str:
+    return _rollcall_probe_url(endpoints, "student_rollcalls", rollcall_id)
 
 
 async def _capture_one(session: Any, target: str, *, endpoints: Any, request_ssl: Any = None) -> Dict[str, Any]:
@@ -357,16 +409,20 @@ async def capture_research_api_target(
     )
 
 
-async def capture_student_rollcalls_probe(
+async def capture_rollcall_probe(
     session: Any,
-    rollcall_id: Any,
+    target: Any,
+    rollcall_id: Any = "",
     *,
     endpoints: Any,
     config: Mapping[str, Any],
     request_ssl: Any = None,
 ) -> Dict[str, Any]:
     ensure_research_allowed(config, "risky_probe")
-    url = _student_rollcalls_probe_url(endpoints, rollcall_id)
+    normalized = validate_probe_target(target)
+    if normalized in PROBE_TARGETS_NEED_ROLLCALL_ID and not str(rollcall_id or "").strip():
+        raise ResearchCaptureError("probe_target_incomplete", "rollcall id is required for this probe target.")
+    url = _rollcall_probe_url(endpoints, normalized, rollcall_id)
     kwargs = {}
     if request_ssl is not None:
         kwargs["ssl"] = request_ssl
@@ -384,23 +440,49 @@ async def capture_student_rollcalls_probe(
             invalid_json = True
 
     content_summary = {"shape": "invalid_json", "content_type": content_type, "content_length": len(text)}
+    present_field_names: List[str] = []
     if not invalid_json:
         content_summary = _json_shape_summary(payload)
         content_summary["content_type"] = content_type
+        # Presence is computed before sanitization, so a field named e.g. "data"
+        # is still detectable even though its value is never recorded. Reported as
+        # a list (not sensitive keys) so sanitize_research_value keeps the names.
+        present_field_names = [
+            name for name in PROBE_FIELD_PRESENCE_CHECKS if _shape_field_present(content_summary, name)
+        ]
 
     report = {
         "status": _status_from_http(status_code, invalid_json=invalid_json),
-        "target": "student_rollcalls",
+        "target": normalized,
         "probe_only": True,
         "read_only": True,
         "daily_runtime_import": False,
         "rollcall_id": str(rollcall_id or ""),
-        "url_kind": "student_rollcalls",
+        "url_kind": normalized,
         "http_status": status_code,
         "content_summary": content_summary,
+        "present_field_names": present_field_names,
         "warnings": ["probe_only_no_answer_values_recorded"],
     }
     return sanitize_research_value(report)
+
+
+async def capture_student_rollcalls_probe(
+    session: Any,
+    rollcall_id: Any,
+    *,
+    endpoints: Any,
+    config: Mapping[str, Any],
+    request_ssl: Any = None,
+) -> Dict[str, Any]:
+    return await capture_rollcall_probe(
+        session,
+        "student_rollcalls",
+        rollcall_id,
+        endpoints=endpoints,
+        config=config,
+        request_ssl=request_ssl,
+    )
 
 
 def append_research_capture(path: Path, record: Mapping[str, Any]) -> Path:
