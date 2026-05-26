@@ -173,6 +173,13 @@ def main(argv: ctx.Optional[ctx.List[str]]=None) -> int:
         image_path = ctx.normalize_text(getattr(args, 'image', ''))
         if qr_action == 'pending':
             return ctx.print_pending_qr(json_output=args.json)
+        if qr_action == 'data-probe':
+            rollcall_id = ctx.normalize_text(getattr(args, 'rollcall_id', '')) or (qr_args[1] if len(qr_args) > 1 else '')
+            try:
+                return ctx.asyncio.run(ctx.qr_data_probe_command(rollcall_id, samples=int(getattr(args, 'samples', 5) or 5), timestamp=ctx.normalize_text(getattr(args, 'timestamp', '')), json_output=args.json))
+            except Exception as exc:
+                print('QR data-probe failed: {}'.format(exc))
+                return 1
         if qr_action == 'image' or (image_path and qr_action in {'', 'paste'}):
             path = image_path or (' '.join(qr_args[1:]).strip() if qr_action == 'image' else '')
             if not path:

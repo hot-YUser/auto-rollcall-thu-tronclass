@@ -1179,6 +1179,8 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
             patch.object(tron, "log", return_value=True),
             patch.object(tron, "mes", mes_mock),
             patch.object(tron, "log_print") as log_print,
+            patch.object(tron, "run_qr_data_probe_for_rollcall", AsyncMock(return_value=False)),
+            patch.object(tron, "try_clipboard_qr_autosubmit", AsyncMock(return_value=False)),
         ):
             first = await tron.check_rollcall(session, 1)
             second = await tron.check_rollcall(session, 2)

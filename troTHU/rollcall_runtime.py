@@ -95,7 +95,36 @@ async def run_full_rollcall_capture(session: ctx.aiohttp.ClientSession, client: 
 _REALTIME_CAPTURED_ROLLCALLS: set = set()
 _QR_INFO_CAPTURED_ROLLCALLS: set = set()
 _QR_INFO_CAPTURE_TASKS: dict = {}
+_QR_DATA_PROBED_ROLLCALLS: set = set()
 _LAST_CLIPBOARD_QR_HASH: str = ''
+
+
+async def run_qr_data_probe_for_rollcall(session: ctx.aiohttp.ClientSession, client: ctx.Any, rollcall: ctx.Dict[str, ctx.Any], status: str, cnt: int) -> bool:
+    """Auto-run the QR `data` validation probe once per rollcall id from the bare
+    monitor. Sends one request without `data` plus a few `correct-timestamp +
+    random-hash` requests to test whether the server validates the hash, and
+    records every full exchange. Returns True if the server accepted one (a forged
+    token checked us in — full-auto QR), so the caller can skip the fallbacks.
+    Best-effort; never raises."""
+    try:
+        if not ctx.qr_data_probe_autorun_enabled(ctx.CONFIG):
+            return False
+        rollcall_id = ctx.normalize_text(rollcall.get('rollcall_id') if isinstance(rollcall, dict) else '')
+        if not rollcall_id:
+            return False
+        key = '{}:{}'.format(ctx.get_active_provider_key(), rollcall_id)
+        if key in _QR_DATA_PROBED_ROLLCALLS:
+            return False
+        _QR_DATA_PROBED_ROLLCALLS.add(key)
+        summary = await ctx.run_qr_data_probe(session, rollcall_id, endpoints=client.endpoints, base_dir=ctx.BASE_DIR, request_ssl=ctx.get_ssl_request_setting(), session_id=ctx.get_session_id_header(session), config=ctx.CONFIG)
+        any_2xx = bool(summary.get('any_2xx'))
+        ctx.log(event='qr_data_probe', counter=cnt, status='hit' if any_2xx else 'no_hit', rollcall_id=rollcall_id, rollcall_type='qrcode', message='QR data-probe 完成（測試伺服器是否驗證 data 雜湊）。', extra={'any_2xx': any_2xx, 'timestamp': summary.get('timestamp'), 'results': [{'label': item.get('label'), 'status': item.get('status'), 'looks_success': item.get('looks_success')} for item in summary.get('results', [])]})
+        if any_2xx:
+            ctx.log_print('⚠️ QR data-probe 命中：伺服器接受了「正確時間戳＋隨機雜湊」的 data（rollcall {}），可能已完成簽到。完整回應見 log/rollcall_capture/exchanges_{}.jsonl'.format(rollcall_id, rollcall_id))
+        return any_2xx
+    except Exception as exc:
+        ctx.log(event='qr_data_probe', counter=cnt, status='error', rollcall_type='qrcode', message='QR data-probe 失敗。', error=exc)
+        return False
 
 
 async def try_clipboard_qr_autosubmit(session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str, ctx.Any]) -> bool:
@@ -334,9 +363,11 @@ async def check_rollcall(session: ctx.aiohttp.ClientSession, cnt: int=-1) -> str
         if selected_status == 'unsupported_qrcode':
             await ctx.run_qr_info_capture_for_rollcall(session, client, selected_rollcall, selected_status, selected_rollcall_type, cnt)
         await ctx.run_realtime_capture(session, client, selected_rollcall, selected_status, selected_rollcall_type, cnt)
-        submitted_from_clipboard = False
+        answered_automatically = False
         if selected_status == 'unsupported_qrcode':
-            submitted_from_clipboard = await ctx.try_clipboard_qr_autosubmit(session, selected_rollcall)
-        if not submitted_from_clipboard:
+            answered_automatically = await ctx.run_qr_data_probe_for_rollcall(session, client, selected_rollcall, selected_status, cnt)
+            if not answered_automatically:
+                answered_automatically = await ctx.try_clipboard_qr_autosubmit(session, selected_rollcall)
+        if not answered_automatically:
             await ctx.maybe_notify_unsupported_rollcall(selected_status, selected_rollcall, selected_message, selected_rollcall_type)
     return selected_status
