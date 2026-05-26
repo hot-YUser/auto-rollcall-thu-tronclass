@@ -820,6 +820,8 @@ _LEGACY_EXPORTS = {
     'run_qr_data_probe_for_rollcall': ('troTHU.rollcall_runtime', 'run_qr_data_probe_for_rollcall'),
     'qr_data_probe_autorun_enabled': ('troTHU.qr_data_probe', 'qr_data_probe_autorun_enabled'),
     'build_qr_data_probe_cases': ('troTHU.qr_data_probe', 'build_qr_data_probe_cases'),
+    'derive_qr_timestamp_from_server_time': ('troTHU.qr_data_probe', 'derive_qr_timestamp_from_server_time'),
+    'extract_rollcall_time_value': ('troTHU.qr_data_probe', 'extract_rollcall_time_value'),
     'qr_data_probe_command': ('troTHU.cli_qr', 'qr_data_probe_command'),
     'capture_rollcall_probe': ('troTHU.research_sandbox', 'capture_rollcall_probe'),
     'capture_student_rollcalls_probe': ('troTHU.research_sandbox', 'capture_student_rollcalls_probe'),

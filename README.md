@@ -21,7 +21,7 @@
 - research probe 只在明確 opt-in 下記錄高風險端點的 HTTP 狀態與欄位形狀，不記錄答案值，也不進 daily automation
 - 點名診斷擷取（預設開）：偵測到點名後，對每一筆仍開啟的點名於每輪輪詢擷取學生可讀端點的**完整未脫敏**伺服器回應，直到點名 id 關閉才停（含已簽到後）；雷達探測／數字猜碼／QR 送出另有逐筆交握記錄。輸出寫入 gitignored `log/rollcall_capture/`，**可能含敏感值，請勿分享或提交版控**
 - QR 剪貼簿自動送出（預設開）：偵測到 QR 點名時監看剪貼簿，截圖（需 `.[qr-image]` 的 Pillow/OpenCV）或文字 payload 解出後，**僅在 rollcallId 與當前點名相符時**自動送出
-- QR `data` 雜湊驗證自動探測（預設開，`qr.data_probe_autorun`）：偵測到 QR 點名時**每場一次**送出「不含 data」與「正確時間戳＋隨機 32 位雜湊」測試伺服器驗證行為，完整記錄回應；若任一筆被接受（2xx）即視為自動簽到並跳過後備。亦可用 `python -m troTHU.tron qr data-probe --rollcall-id <id>` 手動控制測試
+- QR `data` 雜湊驗證自動探測（預設開，`qr.data_probe_autorun`）：偵測到 QR 點名時**每場一次**送出「不含 data」與「伺服器 rollcall_time + 伺服器 Date 推得的 QR 時間戳＋隨機 32 位雜湊」測試伺服器驗證行為，完整記錄回應；若任一筆被接受（2xx）即視為自動簽到並跳過後備。亦可用 `python -m troTHU.tron qr data-probe --rollcall-id <id>` 手動控制測試
 - Windows zip release build runner 會跑 unittest、PyInstaller、artifact validation 與 temp-extract smoke
 
 ## 5 分鐘快速開始

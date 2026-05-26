@@ -7,16 +7,19 @@ send a small, bounded set of requests to `/api/rollcall/{id}/answer_qr_rollcall`
 and record the full, unredacted server responses:
 
   1. one request that OMITS the `data` field entirely;
-  2. N requests with `data = <current unix ts><random 32-hex>`.
+  2. N requests with `data = <server-derived qr ts><random 32-hex>`.
 
 This mirrors the existing number brute-force / radar probing (send candidates,
-observe the server) and is scoped to the user's own rollcall. It is only ever
-run from an explicit `qr data-probe` command — never automatically.
+observe the server) and is scoped to the user's own rollcall. It can run from
+an explicit `qr data-probe` command or once per detected QR rollcall when the
+autorun config is enabled.
 """
 
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 import secrets
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 from urllib.parse import quote
 
 try:  # pragma: no cover - package import path
@@ -37,8 +40,80 @@ def qr_data_probe_autorun_enabled(config: Any) -> bool:
     return bool(value)
 
 
+QR_REFRESH_SECONDS = 15
+ROLLCALL_TIME_KEYS = ("rollcall_time", "create_time", "created_at", "start_time", "published_at")
+
+
 def _random_hex32() -> str:
     return secrets.token_hex(16)  # 16 bytes -> 32 hex chars
+
+
+def coerce_epoch_seconds(value: Any) -> Optional[int]:
+    """Parse TronClass/API timestamps into unix seconds."""
+    if value in (None, ""):
+        return None
+    if isinstance(value, datetime):
+        dt = value
+    elif isinstance(value, (int, float)):
+        number = float(value)
+        if number > 9999999999:
+            number = number / 1000.0
+        return int(number)
+    else:
+        text = str(value or "").strip()
+        if not text:
+            return None
+        try:
+            number = float(text)
+        except ValueError:
+            number = None
+        if number is not None:
+            if number > 9999999999:
+                number = number / 1000.0
+            return int(number)
+        try:
+            dt = parsedate_to_datetime(text)
+        except (TypeError, ValueError, IndexError):
+            normalized = text.replace("Z", "+00:00")
+            try:
+                dt = datetime.fromisoformat(normalized)
+            except ValueError:
+                return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return int(dt.timestamp())
+
+
+def extract_rollcall_time_value(rollcall: Any) -> Tuple[str, Any]:
+    """Return the first server rollcall timestamp field we can use as QR anchor."""
+    if not isinstance(rollcall, Mapping):
+        return "", None
+    for key in ROLLCALL_TIME_KEYS:
+        value = rollcall.get(key)
+        if coerce_epoch_seconds(value) is not None:
+            return key, value
+    return "", None
+
+
+def derive_qr_timestamp_from_server_time(
+    rollcall_time: Any,
+    server_now: Any,
+    *,
+    refresh_seconds: int = QR_REFRESH_SECONDS,
+) -> Optional[int]:
+    """Derive the displayed QR timestamp from server rollcall time and Date.
+
+    TronClass QR timestamps appear to be anchored at rollcall_time and advance
+    every 15 seconds, instead of aligning to wall-clock :00/:15/:30/:45.
+    """
+    anchor = coerce_epoch_seconds(rollcall_time)
+    now = coerce_epoch_seconds(server_now)
+    if anchor is None or now is None:
+        return None
+    interval = max(1, int(refresh_seconds))
+    if now <= anchor:
+        return anchor
+    return anchor + ((now - anchor) // interval) * interval
 
 
 def build_qr_data_probe_cases(timestamp: Any, samples: int, device_id: str) -> List[Dict[str, Any]]:
@@ -59,6 +134,9 @@ async def run_qr_data_probe(
     base_dir: Any,
     request_ssl: Any = None,
     timestamp: Any = None,
+    rollcall: Any = None,
+    rollcall_time: Any = None,
+    require_server_timestamp: bool = False,
     samples: int = 5,
     device_id: str = "",
     session_id: str = "",
@@ -69,7 +147,6 @@ async def run_qr_data_probe(
     rid = str(rollcall_id or "").strip()
     if not base or not rid:
         return {"ok": False, "status": "incomplete", "results": []}
-    ts = int(timestamp) if str(timestamp or "").strip() else int(time.time())
     device = device_id or ctx.random_id()
     url = "{}/api/rollcall/{}/answer_qr_rollcall".format(base, quote(rid, safe=""))
     headers = {"Content-Type": "application/json"}
@@ -78,6 +155,62 @@ async def run_qr_data_probe(
     request_kwargs: Dict[str, Any] = {"headers": headers}
     if request_ssl is not None:
         request_kwargs["ssl"] = request_ssl
+
+    timestamp_source = "local_time"
+    timestamp_field = ""
+    server_date = ""
+    timestamp_error = ""
+    if str(timestamp or "").strip():
+        ts = int(timestamp)
+        timestamp_source = "explicit"
+    else:
+        if rollcall_time in (None, ""):
+            timestamp_field, rollcall_time = extract_rollcall_time_value(rollcall)
+        if rollcall_time not in (None, ""):
+            timestamp_field = timestamp_field or "rollcall_time"
+            lite_url = "{}/api/rollcall/{}/lite".format(base, quote(rid, safe=""))
+            try:
+                async with session.get(lite_url, **request_kwargs) as resp:
+                    server_date = str(resp.headers.get("Date", "") or "")
+                    await resp.read()
+            except Exception as exc:
+                timestamp_error = "{}: {}".format(type(exc).__name__, exc)
+            derived = derive_qr_timestamp_from_server_time(rollcall_time, server_date)
+            if derived is not None:
+                ts = derived
+                timestamp_source = "server_rollcall_time_plus_server_date"
+            elif require_server_timestamp:
+                return {
+                    "ok": False,
+                    "status": "missing_server_timestamp",
+                    "rollcall_id": rid,
+                    "timestamp": None,
+                    "timestamp_source": "missing",
+                    "timestamp_field": timestamp_field,
+                    "rollcall_time": rollcall_time,
+                    "server_date": server_date,
+                    "timestamp_error": timestamp_error,
+                    "results": [],
+                }
+            else:
+                anchor = coerce_epoch_seconds(rollcall_time)
+                ts = anchor if anchor is not None else int(time.time())
+                timestamp_source = "rollcall_time_anchor" if anchor is not None else "local_time"
+        elif require_server_timestamp:
+            return {
+                "ok": False,
+                "status": "missing_rollcall_time",
+                "rollcall_id": rid,
+                "timestamp": None,
+                "timestamp_source": "missing",
+                "timestamp_field": "",
+                "rollcall_time": "",
+                "server_date": server_date,
+                "timestamp_error": timestamp_error,
+                "results": [],
+            }
+        else:
+            ts = int(time.time())
 
     results: List[Dict[str, Any]] = []
     for case in build_qr_data_probe_cases(ts, samples, device):
@@ -117,6 +250,11 @@ async def run_qr_data_probe(
         "ok": True,
         "rollcall_id": rid,
         "timestamp": ts,
+        "timestamp_source": timestamp_source,
+        "timestamp_field": timestamp_field,
+        "rollcall_time": rollcall_time if rollcall_time not in (None, "") else "",
+        "server_date": server_date,
+        "refresh_seconds": QR_REFRESH_SECONDS,
         "device_id": device,
         "any_2xx": any(item.get("looks_success") for item in results),
         "results": results,

@@ -177,7 +177,7 @@ def build_arg_parser() -> ctx.argparse.ArgumentParser:
     qr_parser.add_argument('--image', default='', help='decode QR payload from a static image file')
     qr_parser.add_argument('--rollcall-id', default='', help='rollcall id for `qr data-probe`')
     qr_parser.add_argument('--samples', type=int, default=5, help='`qr data-probe` random-hash samples (timestamp kept correct)')
-    qr_parser.add_argument('--timestamp', default='', help='`qr data-probe` unix timestamp prefix (default: current time)')
+    qr_parser.add_argument('--timestamp', default='', help='`qr data-probe` unix timestamp prefix (default: derive from server rollcall_time + Date)')
     logs_parser = subcommands.add_parser('logs', help='inspect sanitized local logs')
     logs_subcommands = logs_parser.add_subparsers(dest='logs_command')
     logs_tail = logs_subcommands.add_parser('tail', help='print recent JSONL log records')

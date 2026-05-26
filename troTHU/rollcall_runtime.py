@@ -116,9 +116,13 @@ async def run_qr_data_probe_for_rollcall(session: ctx.aiohttp.ClientSession, cli
         if key in _QR_DATA_PROBED_ROLLCALLS:
             return False
         _QR_DATA_PROBED_ROLLCALLS.add(key)
-        summary = await ctx.run_qr_data_probe(session, rollcall_id, endpoints=client.endpoints, base_dir=ctx.BASE_DIR, request_ssl=ctx.get_ssl_request_setting(), session_id=ctx.get_session_id_header(session), config=ctx.CONFIG)
+        summary = await ctx.run_qr_data_probe(session, rollcall_id, endpoints=client.endpoints, base_dir=ctx.BASE_DIR, request_ssl=ctx.get_ssl_request_setting(), rollcall=rollcall, require_server_timestamp=True, session_id=ctx.get_session_id_header(session), config=ctx.CONFIG)
         any_2xx = bool(summary.get('any_2xx'))
-        ctx.log(event='qr_data_probe', counter=cnt, status='hit' if any_2xx else 'no_hit', rollcall_id=rollcall_id, rollcall_type='qrcode', message='QR data-probe 完成（測試伺服器是否驗證 data 雜湊）。', extra={'any_2xx': any_2xx, 'timestamp': summary.get('timestamp'), 'results': [{'label': item.get('label'), 'status': item.get('status'), 'looks_success': item.get('looks_success')} for item in summary.get('results', [])]})
+        probe_status = 'hit' if any_2xx else ('no_hit' if summary.get('ok') else summary.get('status', 'error'))
+        ctx.log(event='qr_data_probe', counter=cnt, status=probe_status, rollcall_id=rollcall_id, rollcall_type='qrcode', message='QR data-probe 完成（測試伺服器是否驗證 data 雜湊）。', extra={'any_2xx': any_2xx, 'timestamp': summary.get('timestamp'), 'timestamp_source': summary.get('timestamp_source'), 'timestamp_field': summary.get('timestamp_field'), 'rollcall_time': summary.get('rollcall_time'), 'server_date': summary.get('server_date'), 'results': [{'label': item.get('label'), 'status': item.get('status'), 'looks_success': item.get('looks_success')} for item in summary.get('results', [])]})
+        if not summary.get('ok'):
+            ctx.log_print('QR data-probe 略過：無法從伺服器 rollcall_time 與 Date 推得正確 QR timestamp（rollcall {}）。'.format(rollcall_id))
+            return False
         if any_2xx:
             ctx.log_print('⚠️ QR data-probe 命中：伺服器接受了「正確時間戳＋隨機雜湊」的 data（rollcall {}），可能已完成簽到。完整回應見 log/rollcall_capture/exchanges_{}.jsonl'.format(rollcall_id, rollcall_id))
         return any_2xx

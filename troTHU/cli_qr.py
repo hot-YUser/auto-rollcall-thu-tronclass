@@ -60,11 +60,25 @@ async def qr_data_probe_command(rollcall_id: str, *, samples: int=5, timestamp: 
             if not login_result.ok:
                 print('Login failed: {}'.format(login_result.status))
                 return 1
-        summary = await ctx.run_qr_data_probe(session, rollcall_id, endpoints=ctx.get_active_http_endpoints(), base_dir=ctx.BASE_DIR, request_ssl=ctx.get_ssl_request_setting(), timestamp=timestamp or None, samples=samples, session_id=ctx.get_session_id_header(session), config=ctx.CONFIG)
+        probe_rollcall = None
+        if not timestamp:
+            try:
+                client = ctx.create_tron_http_client(session, ctx.get_ssl_request_setting())
+                rollcalls_result = await client.fetch_rollcalls()
+                for item in rollcalls_result.payload.get('rollcalls', []):
+                    if isinstance(item, dict) and ctx.normalize_text(item.get('rollcall_id') or item.get('rollcallId') or item.get('id')) == rollcall_id:
+                        probe_rollcall = item
+                        break
+            except Exception:
+                probe_rollcall = None
+            if probe_rollcall is None:
+                print('找不到 rollcall #{} 的伺服器 rollcall_time；請改用 --timestamp 明確指定。'.format(rollcall_id))
+                return 1
+        summary = await ctx.run_qr_data_probe(session, rollcall_id, endpoints=ctx.get_active_http_endpoints(), base_dir=ctx.BASE_DIR, request_ssl=ctx.get_ssl_request_setting(), timestamp=timestamp or None, rollcall=probe_rollcall, require_server_timestamp=not bool(timestamp), samples=samples, session_id=ctx.get_session_id_header(session), config=ctx.CONFIG)
     if json_output:
         print(ctx.json_text(summary))
     else:
-        print('QR data-probe rollcall #{}（時間戳 {}）：'.format(summary.get('rollcall_id'), summary.get('timestamp')))
+        print('QR data-probe rollcall #{}（時間戳 {}，來源 {}）：'.format(summary.get('rollcall_id'), summary.get('timestamp'), summary.get('timestamp_source') or '-'))
         for item in summary.get('results', []):
             print('  {} -> HTTP {} {}'.format(item.get('label'), item.get('status'), '(2xx!)' if item.get('looks_success') else ''))
         print('任何 2xx 成功？ {}（完整回應已記錄到 log/rollcall_capture/exchanges_{}.jsonl）'.format('是' if summary.get('any_2xx') else '否', summary.get('rollcall_id')))
