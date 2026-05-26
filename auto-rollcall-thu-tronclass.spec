@@ -114,7 +114,6 @@ HIDDEN_IMPORTS = sorted(
 
 EXCLUDES = [
     "aiohttp.pytest_plugin",
-    "distutils",
     "mypy",
     "pydantic",
     "pydantic_core",
