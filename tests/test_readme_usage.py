@@ -34,7 +34,7 @@ class ReadmeUsageTest(unittest.TestCase):
             "## Bot / 通知",
             "HTTP Interactions",
             "optional Gateway",
-            "## Provider：THU / TKU ready",
+            "## Provider：THU / TKU / TronClass ready",
             "## App shell / WebView / Research",
             "## 打包與 Git hygiene",
         ):

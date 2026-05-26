@@ -99,7 +99,7 @@ def config_doctor_report(config: Mapping[str, Any] | None = None) -> Dict[str, A
     warnings = list(summary.get("warnings", []))
     if summary["profile_count"] <= 0:
         warnings.append("尚未設定任何帳號 profile。")
-    if summary["provider"] not in {"thu", "fju", "tku"}:
+    if summary["provider"] not in {"thu", "fju", "tku", "tronclass"}:
         warnings.append("provider 不在目前支援清單中，將 fallback 到 THU。")
     return {
         "status": "warn" if warnings else "ok",

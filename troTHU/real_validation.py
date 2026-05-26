@@ -242,6 +242,7 @@ def build_real_validation_checklist(config: Any = None) -> Dict[str, Any]:
             "thu": {"support_level": "ready", "verification": "verified", "required_live_validation": True},
             "fju": {"support_level": "ready", "verification": "unverified", "required_live_validation": False, "user_visible": False, "auth_flow": "manual_cookie_only"},
             "tku": {"support_level": "ready", "verification": "account_pending", "required_live_validation": False},
+            "tronclass": {"support_level": "ready", "verification": "verified", "required_live_validation": False, "auth_flow": "public_cloud_email"},
         },
         "record_path": "state/validation/{}".format(VALIDATION_RECORD_FILENAME),
         "accepted_live_block_reason": ACCEPTED_LIVE_BLOCK_REASON,
@@ -305,14 +306,17 @@ def _provider_scope_is_safe(scope: Mapping[str, Any]) -> bool:
     thu = scope.get("thu", {}) if isinstance(scope.get("thu"), Mapping) else {}
     fju = scope.get("fju", {}) if isinstance(scope.get("fju"), Mapping) else {}
     tku = scope.get("tku", {}) if isinstance(scope.get("tku"), Mapping) else {}
+    tronclass = scope.get("tronclass", {}) if isinstance(scope.get("tronclass"), Mapping) else {}
     known_verification_values = {"verified", "account_pending", "unverified"}
     return (
         str(thu.get("support_level") or "") == "ready"
         and str(fju.get("support_level") or "") == "ready"
         and str(tku.get("support_level") or "") == "ready"
+        and str(tronclass.get("support_level") or "") == "ready"
         and str(thu.get("verification") or "") == "verified"
         and str(fju.get("verification") or "") in known_verification_values
         and str(tku.get("verification") or "") in known_verification_values
+        and str(tronclass.get("verification") or "") == "verified"
     )
 
 

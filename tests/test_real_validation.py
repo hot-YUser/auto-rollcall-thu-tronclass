@@ -135,7 +135,7 @@ class RealValidationTest(unittest.TestCase):
         )
         self.assertIn("Live acceptance still blocking", "\n".join(format_real_validation_summary(summary)))
 
-    def test_fju_tku_are_ready_with_internal_verification_ledger(self) -> None:
+    def test_fju_tku_tronclass_are_ready_with_internal_verification_ledger(self) -> None:
         checklist = build_real_validation_checklist()
 
         self.assertEqual(checklist["provider_scope"]["fju"]["support_level"], "ready")
@@ -144,8 +144,12 @@ class RealValidationTest(unittest.TestCase):
         self.assertEqual(checklist["provider_scope"]["fju"]["auth_flow"], "manual_cookie_only")
         self.assertEqual(checklist["provider_scope"]["tku"]["support_level"], "ready")
         self.assertEqual(checklist["provider_scope"]["tku"]["verification"], "account_pending")
+        self.assertEqual(checklist["provider_scope"]["tronclass"]["support_level"], "ready")
+        self.assertEqual(checklist["provider_scope"]["tronclass"]["verification"], "verified")
+        self.assertEqual(checklist["provider_scope"]["tronclass"]["auth_flow"], "public_cloud_email")
         self.assertFalse(checklist["provider_scope"]["fju"]["required_live_validation"])
         self.assertFalse(checklist["provider_scope"]["tku"]["required_live_validation"])
+        self.assertFalse(checklist["provider_scope"]["tronclass"]["required_live_validation"])
 
     def test_local_smoke_is_offline_and_sanitized(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -201,6 +205,7 @@ class RealValidationTest(unittest.TestCase):
                         "thu": {"support_level": "ready", "verification": "verified"},
                         "fju": {"support_level": "ready", "verification": "unverified"},
                         "tku": {"support_level": "ready", "verification": "account_pending"},
+                        "tronclass": {"support_level": "ready", "verification": "verified"},
                     },
                 },
             )

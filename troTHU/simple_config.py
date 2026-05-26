@@ -11,7 +11,7 @@ except ImportError:  # pragma: no cover - direct script fallback
 PLACEHOLDER_PREFIXES = ("(", "（")
 SIMPLE_WEEKDAY_TO_INTERNAL = {0: 6, 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5}
 INTERNAL_WEEKDAY_TO_SIMPLE = {value: key for key, value in SIMPLE_WEEKDAY_TO_INTERNAL.items()}
-VISIBLE_DEFAULT_SCHOOLS = ("THU", "TKU")
+VISIBLE_DEFAULT_SCHOOLS = ("THU", "TKU", "TRONCLASS")
 
 
 def _strip_value(value: ctx.Any) -> str:
@@ -44,6 +44,14 @@ def _canonical_school(value: ctx.Any) -> str:
         "輔仁": "fju",
         "輔仁大學": "fju",
         "fju": "fju",
+        "tc": "tronclass",
+        "tron": "tronclass",
+        "tronclass": "tronclass",
+        "tronclass.com": "tronclass",
+        "tronclass.com.tw": "tronclass",
+        "www.tronclass.com.tw": "tronclass",
+        "官方": "tronclass",
+        "官方站": "tronclass",
     }
     return aliases.get(school, school or "thu")
 
@@ -51,7 +59,7 @@ def _canonical_school(value: ctx.Any) -> str:
 def _profile_school(profile: ctx.Mapping[str, ctx.Any], default: str = "thu") -> str:
     for key in ("school", "label"):
         school = _canonical_school(profile.get(key))
-        if school in {"thu", "tku", "fju"}:
+        if school in {"thu", "tku", "fju", "tronclass"}:
             return school
     return default
 

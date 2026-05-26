@@ -22,6 +22,7 @@ class ConfigViewTest(unittest.TestCase):
         self.assertIn("account:", text)
         self.assertIn("group:", text)
         self.assertIn("school:TKU", text)
+        self.assertIn("school:TRONCLASS", text)
         self.assertNotIn("school:FJU", text)
         self.assertNotIn("LEGACY CONFIG", text)
         self.assertNotIn("user-agent", text)

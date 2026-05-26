@@ -35,9 +35,10 @@ class ProviderConfigTest(unittest.TestCase):
 
     def test_aliases_and_unknown_provider_fall_back_to_thu(self) -> None:
         self.assertEqual(get_provider("Tunghai").key, DEFAULT_PROVIDER)
+        self.assertEqual(get_provider("www.tronclass.com.tw").key, "tronclass")
         self.assertEqual(get_provider("not-a-provider").key, DEFAULT_PROVIDER)
 
-    def test_registry_keeps_fju_hidden_and_tku_visible(self) -> None:
+    def test_registry_keeps_fju_hidden_and_tku_tronclass_visible(self) -> None:
         registry = provider_registry_config()
 
         self.assertEqual(registry["current"], "thu")
@@ -47,6 +48,8 @@ class ProviderConfigTest(unittest.TestCase):
         self.assertFalse(registry["available"]["fju"]["user_visible"])
         self.assertTrue(registry["available"]["tku"]["ready"])
         self.assertTrue(registry["available"]["tku"]["user_visible"])
+        self.assertTrue(registry["available"]["tronclass"]["ready"])
+        self.assertTrue(registry["available"]["tronclass"]["user_visible"])
         self.assertEqual(registry["available"]["fju"]["support_level"], "ready")
         self.assertEqual(registry["available"]["fju"]["verification"], "unverified")
         self.assertEqual(registry["available"]["fju"]["auth_flow"], "manual_cookie_only")
@@ -56,17 +59,21 @@ class ProviderConfigTest(unittest.TestCase):
         self.assertEqual(registry["available"]["tku"]["base_url"], "https://iclass.tku.edu.tw")
         self.assertEqual(registry["available"]["tku"]["auth_flow"], "tku_sso_browser")
         self.assertTrue(registry["available"]["tku"]["capabilities"]["radar"])
+        self.assertEqual(registry["available"]["tronclass"]["base_url"], "https://www.tronclass.com.tw")
+        self.assertEqual(registry["available"]["tronclass"]["auth_flow"], "public_cloud_email")
+        self.assertEqual(registry["available"]["tronclass"]["verification"], "verified")
+        self.assertTrue(registry["available"]["tronclass"]["capabilities"]["course_discovery"])
 
     def test_supported_provider_registry_hides_fju_by_default(self) -> None:
         self.assertEqual(
             [provider.key for provider in list_supported_providers()],
-            ["thu", "tku"],
+            ["thu", "tku", "tronclass"],
         )
         self.assertEqual(
             [provider.key for provider in list_supported_providers(include_hidden=True)],
-            ["fju", "thu", "tku"],
+            ["fju", "thu", "tku", "tronclass"],
         )
-        self.assertEqual([provider.key for provider in list_all_providers()], ["fju", "thu", "tku"])
+        self.assertEqual([provider.key for provider in list_all_providers()], ["fju", "thu", "tku", "tronclass"])
 
     def test_tronclass_api_endpoint_builder_is_shared(self) -> None:
         endpoints = tronclass_api_endpoints("https://school.example/")
@@ -113,10 +120,11 @@ class ProviderConfigTest(unittest.TestCase):
         self.assertEqual(normalized["requested"], "nfu")
         self.assertEqual(normalized["fallback_reason"], "unknown_provider")
 
-    def test_provider_support_report_marks_fju_tku_daily_ready_without_experimental_gate(self) -> None:
+    def test_provider_support_report_marks_fju_tku_tronclass_daily_ready_without_experimental_gate(self) -> None:
         fju = get_provider("fju")
         blocked = provider_support_report(fju)
         allowed = provider_support_report(fju, allow_experimental=True)
+        tronclass = provider_support_report(get_provider("tronclass"))
 
         self.assertEqual(blocked["support_level"], "ready")
         self.assertEqual(blocked["verification"], "unverified")
@@ -125,6 +133,9 @@ class ProviderConfigTest(unittest.TestCase):
         self.assertTrue(blocked["capabilities"]["radar"])
         self.assertTrue(allowed["daily_ready"])
         self.assertTrue(allowed["endpoint_configured"]["base_url"])
+        self.assertEqual(tronclass["verification"], "verified")
+        self.assertTrue(tronclass["daily_ready"])
+        self.assertTrue(tronclass["user_visible"])
 
     def test_tron_normalize_config_adds_provider_and_research_defaults(self) -> None:
         normalized = tron.normalize_config({"config": {"user-agent": []}})
@@ -316,8 +327,14 @@ class ResearchModeConfigTest(unittest.TestCase):
         self.assertEqual(result["status"], "ok")
         self.assertEqual(result["course_count"], 1)
 
-    def test_fju_tku_number_rollcall_uses_provider_base_url(self) -> None:
-        for provider in ("fju", "tku"):
+    def test_tronclass_provider_endpoints_can_target_fake_server(self) -> None:
+        result = __import__("asyncio").run(self._discover_courses_with_provider("tronclass"))
+
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["course_count"], 1)
+
+    def test_fju_tku_tronclass_number_rollcall_uses_provider_base_url(self) -> None:
+        for provider in ("fju", "tku", "tronclass"):
             with self.subTest(provider=provider):
                 result = __import__("asyncio").run(self._number_rollcall_with_provider(provider))
 
@@ -325,8 +342,8 @@ class ResearchModeConfigTest(unittest.TestCase):
                 self.assertEqual(result["attempts"][0]["rollcall_id"], "42")
                 self.assertEqual(result["attempts"][0]["body"]["numberCode"], "0000")
 
-    def test_fju_tku_qr_submit_uses_provider_base_url(self) -> None:
-        for provider in ("fju", "tku"):
+    def test_fju_tku_tronclass_qr_submit_uses_provider_base_url(self) -> None:
+        for provider in ("fju", "tku", "tronclass"):
             with self.subTest(provider=provider):
                 result = __import__("asyncio").run(self._qr_submit_with_provider(provider))
 

@@ -171,6 +171,26 @@ PROVIDERS: Dict[str, ProviderDefinition] = {
         ),
         notes="Ready for user-level daily flow. TKU SSO uses HTTP fast SSO first and falls back to browser-assisted login when the SSO form or API validation changes; internal verification ledger is account-pending while sanitized evidence is collected.",
     ),
+    "tronclass": ProviderDefinition(
+        key="tronclass",
+        label="TronClass Public Cloud",
+        base_url="https://www.tronclass.com.tw",
+        login_url="https://www.tronclass.com.tw/login",
+        auth_flow="public_cloud_email",
+        status="ready",
+        support_level="ready",
+        verification="verified",
+        capabilities=ProviderCapabilities(
+            number=True,
+            radar=True,
+            qrcode=True,
+            course_discovery=True,
+            manual_qr=True,
+            local_scanner=True,
+            direct_code_lookup=True,
+        ),
+        notes="Public TronClass cloud tenant. Uses the shared TronClass APIs after an email/password login form POST.",
+    ),
 }
 
 PROVIDER_ALIASES = {
@@ -187,6 +207,14 @@ PROVIDER_ALIASES = {
     "tamkang": "tku",
     "淡江": "tku",
     "淡江大學": "tku",
+    "tc": "tronclass",
+    "tron": "tronclass",
+    "tronclass": "tronclass",
+    "tronclass.com": "tronclass",
+    "tronclass.com.tw": "tronclass",
+    "www.tronclass.com.tw": "tronclass",
+    "官方": "tronclass",
+    "官方站": "tronclass",
 }
 
 

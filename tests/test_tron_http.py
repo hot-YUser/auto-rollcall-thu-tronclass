@@ -390,6 +390,60 @@ class TronHttpClientTest(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(tron_http.has_session_cookie(session, "ilearn.thu.edu.tw"))
         session.get.assert_called_once_with("https://school.example")
 
+    async def test_public_cloud_login_view_builds_email_form(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = FakeCookieJar()
+        html = """
+        <html>
+          <login-view
+            email-login-hidden-tag='<input id="next" name="next" type="hidden" value="/user/index">'
+            :email-login-form='{"captcha_code": "", "email": "", "next": null, "org_id": "", "password": "", "remember": false, "submit": false}'
+            :org-id='0'
+          ></login-view>
+        </html>
+        """
+        session.get.return_value = make_context_manager(
+            make_response(url="https://www.tronclass.com.tw/login", text=html)
+        )
+        endpoints = tron_http.endpoints_from_provider(tron.get_provider("tronclass").to_config())
+        client = tron_http.TronHttpClient(session, endpoints=endpoints)
+
+        form = await client.fetch_login_form()
+
+        self.assertEqual(form.action_url, "https://www.tronclass.com.tw/login?next=%2Fuser%2Findex&login=email")
+        self.assertEqual(form.username_field, "email")
+        self.assertEqual(form.fields["next"], "/user/index")
+        self.assertEqual(form.fields["org_id"], "")
+        self.assertEqual(form.fields["submit"], "login")
+
+    async def test_public_cloud_submit_uses_email_field(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = FakeCookieJar([FakeCookie("session", "www.tronclass.com.tw")])
+        session.post.return_value = make_context_manager(
+            make_response(url="https://www.tronclass.com.tw/user/index")
+        )
+        endpoints = tron_http.endpoints_from_provider(tron.get_provider("tronclass").to_config())
+        client = tron_http.TronHttpClient(session, endpoints=endpoints)
+        form = tron_http.LoginForm(
+            action_url="https://www.tronclass.com.tw/login?login=email",
+            fields={"next": "", "org_id": "", "submit": "login"},
+            username_field="email",
+        )
+
+        outcome = await client.submit_login(form, "student@example.com", "pass1")
+
+        self.assertTrue(outcome.has_session)
+        session.post.assert_called_once_with(
+            "https://www.tronclass.com.tw/login?login=email",
+            data={
+                "next": "",
+                "org_id": "",
+                "submit": "login",
+                "email": "student@example.com",
+                "password": "pass1",
+            },
+        )
+
     async def test_fetch_rollcalls_raises_on_unauthorized_status(self) -> None:
         session = MagicMock()
         session.cookie_jar = FakeCookieJar()

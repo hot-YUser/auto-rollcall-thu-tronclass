@@ -246,6 +246,20 @@ async def _wait_for_browser_assisted_navigation(page: ctx.Any, endpoints: ctx.An
         await page.wait_for_timeout(1000)
 
 
+async def _browser_assisted_fill_first(page: ctx.Any, selectors: ctx.Iterable[str], value: str, timeout_ms: int) -> None:
+    per_selector_timeout = max(1000, min(int(timeout_ms or 45000), 5000))
+    last_error: ctx.Any = None
+    for selector in selectors:
+        try:
+            await page.locator(selector).first.fill(value, timeout=per_selector_timeout)
+            return
+        except Exception as exc:
+            last_error = exc
+    if isinstance(last_error, Exception):
+        raise last_error
+    raise RuntimeError("no_login_input_selector")
+
+
 async def browser_assisted_login(session: ctx.aiohttp.ClientSession, *, user: str, passwd: str, credential_source: str) -> ctx.LoginResult:
     config = ctx.get_browser_assisted_login_config()
     if not ctx.should_try_browser_assisted_login():
@@ -268,8 +282,25 @@ async def browser_assisted_login(session: ctx.aiohttp.ClientSession, *, user: st
             page = await context.new_page()
             timeout_ms = int(config.get('timeout_ms') or 45000)
             await page.goto(str(endpoints.login_url), wait_until='domcontentloaded', timeout=timeout_ms)
-            await page.locator('input[name="username"], input#username').first.fill(user, timeout=timeout_ms)
-            await page.locator('input[name="password"], input#password').first.fill(passwd, timeout=timeout_ms)
+            await _browser_assisted_fill_first(
+                page,
+                (
+                    'input[name="username"]',
+                    'input#username',
+                    'input[name="email"]',
+                    'input#email',
+                    'input[name="user_name"]',
+                    'input#user_no',
+                ),
+                user,
+                timeout_ms,
+            )
+            await _browser_assisted_fill_first(
+                page,
+                ('input[name="password"]', 'input#password'),
+                passwd,
+                timeout_ms,
+            )
             await page.locator('button[type="submit"], input[type="submit"]').first.click(timeout=timeout_ms)
             await _wait_for_browser_assisted_navigation(page, endpoints, timeout_ms)
             final_url = str(page.url)

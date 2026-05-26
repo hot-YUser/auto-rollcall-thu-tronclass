@@ -15,7 +15,7 @@
 - `config.yaml` 是沒有註解的極簡人類格式，只保留 `now`、帳號、群組與上課時間；進階項放在同層 `config.advanced.yaml`
 - 常見輸入會自動修正前後空白與多餘空格；QR payload 只 trim 前後空白，不改內部內容
 - 排程可在 `config.advanced.yaml` 設定 IANA timezone；每日可有多段 range
-- THU / TKU 是預設使用者可見 provider；登入後監控、number、radar、QR、課程與學期 API 走同一套 endpoint-driven runtime
+- THU / TKU / TronClass public cloud 是預設使用者可見 provider；登入後監控、number、radar、QR、課程與學期 API 走同一套 endpoint-driven runtime
 - number 點名先走越權直接讀碼（讀 `student_rollcalls` 的 `number_code` 單發提交，旗標 `number.direct_code_lookup` 預設開）；讀不到時自動退回暴力猜碼，確保不退化
 - Discord HTTP Interactions 是推薦 production 入口；optional Gateway、QR modal、schema sync 已有核心
 - research probe 只在明確 opt-in 下記錄高風險端點的 HTTP 狀態與欄位形狀，不記錄答案值，也不進 daily automation
@@ -130,6 +130,14 @@ account:
   passwd:(密碼1)
   school:THU
 
+  user:(帳號2)
+  passwd:(密碼2)
+  school:TKU
+
+  user:(帳號3)
+  passwd:(密碼3)
+  school:TRONCLASS
+
 group:
   class:A
     school:THU
@@ -227,16 +235,17 @@ Telegram 目前支援 outbound notification bus sink：
 python -m troTHU.tron account bind telegram TELEGRAM_CHAT_ID default
 ```
 
-## Provider：THU / TKU ready
+## Provider：THU / TKU / TronClass ready
 
 ```bash
 python -m troTHU.tron provider list
 python -m troTHU.tron provider show tku --json
+python -m troTHU.tron provider show tronclass --json
 python -m troTHU.tron provider fixture review-template tku --json
 python -m troTHU.tron provider ready-gate tku --fixture fixture.json --json
 ```
 
-THU、TKU 在預設使用者入口中是可見 ready provider；兩校都可啟動完整日常流程，不需要 `provider.allow_experimental`。這個舊欄位會保留作為相容 no-op。TKU 會優先使用 HTTP fast SSO 路徑模擬 iClass/SSO 表單、ImageValidate 與 redirect，並在登入後用 iClass API 驗證 session；若 fast path 失敗或 API 驗證失敗，才自動回退到 Playwright browser-assisted login。fixture review / ready-gate 只處理 sanitized fixture 與人工 acceptance，不會保存密碼、cookie、raw response、完整 QR payload 或 number code。NFU/GUET/XMU 不在 provider ready 目標內。
+THU、TKU、TronClass public cloud 在預設使用者入口中是可見 ready provider；三者都可啟動完整日常流程，不需要 `provider.allow_experimental`。這個舊欄位會保留作為相容 no-op。TKU 會優先使用 HTTP fast SSO 路徑模擬 iClass/SSO 表單、ImageValidate 與 redirect，並在登入後用 iClass API 驗證 session；若 fast path 失敗或 API 驗證失敗，才自動回退到 Playwright browser-assisted login。TronClass public cloud 使用 `/login?login=email` 的 email/password HTTP 登入，取得 session 後共用 TronClass API runtime。fixture review / ready-gate 只處理 sanitized fixture 與人工 acceptance，不會保存密碼、cookie、raw response、完整 QR payload 或 number code。NFU/GUET/XMU 不在 provider ready 目標內。
 
 ## App shell / WebView / Research
 
@@ -246,7 +255,7 @@ THU、TKU 在預設使用者入口中是可見 ready provider；兩校都可啟�
 - `research status/api/browser-check/browser-capture`：明確 opt-in 的 read-only metadata capture；不查答案、不保存 raw body/header/cookie/token/QR。
 - `research probe <target> --rollcall-id <id>`：獨立的 shape-only **取證**探測（與日常直接讀碼分開），只記 HTTP 狀態與欄位形狀；目標支援 `student_rollcalls`、`lite`、`ongoing_rollcalls`（後者免 `--rollcall-id`）；需要 `research.enabled=true`、`allow_api_exploration=true`、`allow_risky_probe=true`，且不會把答案值寫入輸出。
 - **點名診斷擷取（diagnostic capture，預設開）**：裸跑 `python -m troTHU.tron` 時，偵測到點名後對**每一筆仍開啟的點名於每輪輪詢**擷取相關端點的**完整、未脫敏**伺服器回應到本機 `log/rollcall_capture/`（已被 `.gitignore` 完全排除），**直到點名 id 關閉才停（含已簽到之後）**，用於個人排查與找出隱藏資訊（例如 QR 的 `data`）；雷達探測點／數字猜碼／QR 送出另以逐筆交握寫入 `exchanges_<id>.jsonl`（每場上限 `capture.max_exchanges_per_rollcall`，預設 600）。QR／未支援點名另會自動擷取通知通道、atmosphere WebSocket frame，以及 QR 專用的 session/匿名只讀 GET 對照與老師 QR 頁 HTML；偵測到 QR 時也會監看剪貼簿自動送出（`qr.clipboard_autosubmit`），送出後顯示簽到進度。此輸出**可能含敏感值，請勿分享 `log/`、勿提交版控**。可於 `config.advanced.yaml` 以 `capture.rollcall_full_capture` / `capture.realtime_capture` / `capture.qr_info_capture` 關閉、`capture.org_id` 覆寫；若要延長 QR 線索擷取視窗，可設 `capture.qr_info_duration_seconds` 與 `capture.qr_info_interval_seconds`，其中 `capture.qr_info_duration_seconds: always` 會在該場 QR 點名期間持續背景紀錄，直到點名狀態消失或程式關閉。
-- `auth.browser_assisted_login.enabled=true`：一般 provider 遇到 CAS/登入頁改版時，可手動啟用 Playwright 後備登入；TKU 預設先跑 HTTP fast SSO，必要時自動使用 Playwright 作為保底。兩者都不保存 header/body/密碼。
+- `auth.browser_assisted_login.enabled=true`：一般 provider 遇到 CAS/登入頁改版時，可手動啟用 Playwright 後備登入；TKU 預設先跑 HTTP fast SSO，必要時自動使用 Playwright 作為保底；TronClass public cloud 預設走 email HTTP fast login。這些流程都不保存 header/body/密碼。
 
 ## R1/R2/R3 驗收
 
@@ -327,7 +336,7 @@ python -m troTHU.tron release-build --dry-run --json
 ## 目前限制
 
 - R1 真實 THU live acceptance records 尚未補齊；功能已具備，但完整宣稱仍需 live validation。
-- TKU 的 `verification` ledger 尚待補齊 sanitized evidence；完整可用性仍需實際課堂環境驗收。
+- TKU 的 `verification` ledger 尚待補齊 sanitized evidence；TronClass public cloud 已通過 email 登入與課程 API smoke，但完整點名可用性仍需實際課堂環境驗收。
 - native/mobile App、App-side encrypted vault、map SDK 仍不是本版本目標。
 - Telegram inbound command bot 不做；目前只提供 outbound notification sink。
 - number 直接讀碼已是日常能力（`number.direct_code_lookup`，預設開）：先讀 `student_rollcalls` 的 `number_code` 單發提交、讀不到再退回暴力猜碼；真實 THU live 行為仍待 R1 課堂驗收記錄。`research probe` 維持獨立的 shape-only 取證工具。

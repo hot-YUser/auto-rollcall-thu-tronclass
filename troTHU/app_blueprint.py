@@ -272,7 +272,7 @@ def build_app_blueprint(config: Mapping[str, Any] | None = None) -> Dict[str, An
                 "prototype_status": "webview_cookie_sync_contract",
                 "default_mode": "preview_only",
                 "write_requires": ["webview.cookie_sync.enabled", "allow_cookie_import", "explicit_save"],
-                "provider_rule": "Hidden providers and TKU use ready provider scope; WebView import still requires explicit cookie-sync gates.",
+                "provider_rule": "Hidden providers, TKU, and TronClass public cloud use ready provider scope; WebView import still requires explicit cookie-sync gates.",
             },
         ),
         _screen(

@@ -4,7 +4,7 @@ import re
 from http.cookies import SimpleCookie
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
-from urllib.parse import unquote, urljoin, urlparse
+from urllib.parse import parse_qs, urlencode, unquote, urljoin, urlparse
 
 try:
     import aiohttp
@@ -33,6 +33,8 @@ COURSES_URL = "{}/api/my-courses?page=1&page_size=50".format(TRON)
 
 TKU_SSO_HOST = "sso.tku.edu.tw"
 TKU_ICLASS_HOST = "iclass.tku.edu.tw"
+PUBLIC_CLOUD_HOSTS = {"www.tronclass.com.tw", "tronclass.com.tw"}
+PUBLIC_CLOUD_AUTH_FLOW = "public_cloud_email"
 TKU_SSO_LOGIN_FORM_URL_TEMPLATE = "https://sso.tku.edu.tw/NEAI/logineb.jsp?myurl={}"
 HTML_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 LANGUAGE_ACCEPT = "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7"
@@ -97,6 +99,19 @@ META_REFRESH_PATTERN = re.compile(
     r"<meta\b[^>]*http-equiv\s*=\s*(['\"])refresh\1[^>]*content\s*=\s*(['\"])[^'\"]*url=([^'\"]+)\2",
     re.IGNORECASE | re.DOTALL,
 )
+PUBLIC_CLOUD_LOGIN_VIEW_PATTERN = re.compile(r"<login-view\b", re.IGNORECASE)
+PUBLIC_CLOUD_EMAIL_FORM_PATTERN = re.compile(
+    r":email-login-form\s*=\s*(['\"])(.*?)\1",
+    re.IGNORECASE | re.DOTALL,
+)
+PUBLIC_CLOUD_EMAIL_HIDDEN_PATTERN = re.compile(
+    r"email-login-hidden-tag\s*=\s*(['\"])(.*?)\1",
+    re.IGNORECASE | re.DOTALL,
+)
+PUBLIC_CLOUD_ORG_ID_PATTERN = re.compile(
+    r":org-id\s*=\s*(['\"])(.*?)\1",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 class TronHttpError(Exception):
@@ -123,6 +138,8 @@ class UnexpectedResponseError(TronHttpError):
 class LoginForm:
     action_url: str
     fields: Dict[str, str]
+    username_field: str = "username"
+    password_field: str = "password"
 
 
 @dataclass(frozen=True)
@@ -146,6 +163,7 @@ class TronHttpEndpoints:
     current_semester_url: str = CURRENT_SEMESTER_URL
     courses_url: str = COURSES_URL
     session_cookie_domain: str = "ilearn.thu.edu.tw"
+    auth_flow: str = "thu_cas"
 
 
 DEFAULT_ENDPOINTS = TronHttpEndpoints()
@@ -159,6 +177,7 @@ def default_endpoints() -> TronHttpEndpoints:
         current_semester_url=CURRENT_SEMESTER_URL,
         courses_url=COURSES_URL,
         session_cookie_domain=urlparse(TRON).hostname or DEFAULT_ENDPOINTS.session_cookie_domain,
+        auth_flow="thu_cas",
     )
 
 
@@ -181,6 +200,7 @@ def endpoints_from_provider(provider: Any) -> TronHttpEndpoints:
             provider.get("courses_url") or "{}/api/my-courses?page=1&page_size=50".format(base_url)
         ),
         session_cookie_domain=cookie_domain,
+        auth_flow=str(provider.get("auth_flow") or ""),
     )
 
 
@@ -214,6 +234,71 @@ def extract_login_form(html_text: str, base_url: str = LOGIN_URL) -> LoginForm:
         return LoginForm(action_url=urljoin(base_url, action), fields=fields)
 
     raise LoginPageChangedError("找不到登入表單的 action URL，可能網站結構已更改。")
+
+
+def _extract_public_cloud_attr(pattern: re.Pattern[str], html_text: str) -> str:
+    match = pattern.search(html_text)
+    if not match:
+        return ""
+    return html.unescape(match.group(2))
+
+
+def _extract_public_cloud_json_attr(pattern: re.Pattern[str], html_text: str) -> Dict[str, Any]:
+    raw = _extract_public_cloud_attr(pattern, html_text)
+    if not raw:
+        return {}
+    try:
+        value = json.loads(raw)
+    except ValueError:
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def make_public_cloud_email_login_url(base_url: str, next_value: str = "") -> str:
+    parsed = urlparse(base_url or "")
+    origin = "{}://{}".format(parsed.scheme or "https", parsed.netloc)
+    query: Dict[str, str] = {}
+    next_text = str(next_value or "").strip()
+    if next_text:
+        query["next"] = next_text
+    query["login"] = "email"
+    return "{}?{}".format(urljoin(origin + "/", "login"), urlencode(query))
+
+
+def extract_public_cloud_email_login_form(html_text: str, base_url: str = LOGIN_URL) -> LoginForm:
+    if not PUBLIC_CLOUD_LOGIN_VIEW_PATTERN.search(html_text):
+        raise LoginPageChangedError("找不到 TronClass public cloud 登入元件。")
+
+    fields: Dict[str, str] = {}
+    hidden_html = _extract_public_cloud_attr(PUBLIC_CLOUD_EMAIL_HIDDEN_PATTERN, html_text)
+    for input_tag in INPUT_PATTERN.findall(hidden_html):
+        input_attrs = parse_tag_attributes(input_tag)
+        name = input_attrs.get("name")
+        if name:
+            fields[name] = input_attrs.get("value", "")
+
+    form_data = _extract_public_cloud_json_attr(PUBLIC_CLOUD_EMAIL_FORM_PATTERN, html_text)
+    next_value = str(fields.get("next") or form_data.get("next") or "").strip()
+    if not next_value:
+        query_next = parse_qs(urlparse(base_url or "").query).get("next", [""])
+        next_value = str(query_next[0] or "").strip()
+    org_id = str(form_data.get("org_id") or "").strip()
+    if not org_id:
+        org_id = _extract_public_cloud_attr(PUBLIC_CLOUD_ORG_ID_PATTERN, html_text).strip()
+        if org_id == "0":
+            org_id = ""
+
+    fields.setdefault("next", next_value)
+    fields.setdefault("org_id", org_id)
+    fields["submit"] = "login"
+    if form_data.get("remember") or form_data.get("remember_me"):
+        fields.setdefault("remember_me", "true")
+
+    return LoginForm(
+        action_url=make_public_cloud_email_login_url(base_url, next_value),
+        fields=fields,
+        username_field="email",
+    )
 
 
 def extract_html_redirect(html_text: str, base_url: str) -> Optional[str]:
@@ -265,6 +350,12 @@ class TronHttpClient:
         host = urlparse(self.endpoints.base_url).hostname or ""
         login_host = urlparse(self.endpoints.login_url).hostname or ""
         return host.lower() == TKU_ICLASS_HOST or login_host.lower() == TKU_ICLASS_HOST
+
+    def is_public_cloud_email_login(self) -> bool:
+        auth_flow = str(getattr(self.endpoints, "auth_flow", "") or "").strip().lower()
+        host = (urlparse(self.endpoints.base_url).hostname or "").lower()
+        login_host = (urlparse(self.endpoints.login_url).hostname or "").lower()
+        return auth_flow == PUBLIC_CLOUD_AUTH_FLOW or host in PUBLIC_CLOUD_HOSTS or login_host in PUBLIC_CLOUD_HOSTS
 
     def _set_tku_browser_cookie(self, name: str, value: str, path: str = "/") -> None:
         if URL is None:
@@ -365,6 +456,11 @@ class TronHttpClient:
 
     async def fetch_login_form(self) -> LoginForm:
         html_text, current_url = await self._get_login_form_response(self.endpoints.login_url)
+        if self.is_public_cloud_email_login():
+            try:
+                return extract_public_cloud_email_login_form(html_text, current_url)
+            except LoginPageChangedError:
+                return extract_login_form(html_text, current_url)
         if not self.is_tku_fast_sso():
             return extract_login_form(html_text, self.endpoints.login_url)
 
@@ -387,8 +483,8 @@ class TronHttpClient:
         form_data = dict(form.fields)
         form_data.update(
             {
-                "username": username,
-                "password": password,
+                form.username_field: username,
+                form.password_field: password,
             }
         )
 
