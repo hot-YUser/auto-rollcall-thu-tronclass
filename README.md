@@ -184,25 +184,34 @@ number 點名會先嘗試**直接讀碼**：透過 `student_rollcalls` 端點讀
 ```bash
 python -m troTHU.tron teacher status --json
 python -m troTHU.tron teacher rollcall list --course-id 55379 --json
+python -m troTHU.tron teacher rollcall summary --course-id 55379 --json
 python -m troTHU.tron teacher rollcall create --course-id 55379 --type number --number-code 2468 --start --json
+python -m troTHU.tron teacher rollcall create --course-id 55379 --payload-json payload.json --json
 python -m troTHU.tron teacher rollcall module-create --course-id 55379 --module-id 12345 --type qr --json
 python -m troTHU.tron teacher rollcall roster --course-id 55379 --json
+python -m troTHU.tron teacher rollcall info 29943 --action manual_refresh --json
 python -m troTHU.tron teacher rollcall students 29943 --action manual_refresh --json
 python -m troTHU.tron teacher rollcall pagination-students 29943 --page 1 --page-size 20 --json
 python -m troTHU.tron teacher rollcall count 29943 --json
-python -m troTHU.tron teacher rollcall student-history --course-id 55379 --student-id 12345 --json
+python -m troTHU.tron teacher rollcall student-history --course-id 55379 --student-id 12345 --rollcall-ids 29943 --json
+python -m troTHU.tron teacher rollcall update 29943 --payload-json '{"status":"finished"}' --json
+python -m troTHU.tron teacher rollcall update-radar-position 29943 --latitude 24.1786 --longitude 120.6473 --json
+python -m troTHU.tron teacher rollcall setting --course-id 55379 --payload-json setting.json --json
+python -m troTHU.tron teacher rollcall grade --rollcall-ids 29943,29944 --json
+python -m troTHU.tron teacher rollcall export-stat-report --kind rollcall --payload-json export.json --output rollcall.xlsx --json
 python -m troTHU.tron teacher rollcall stop 29943 --type number --json
 python -m troTHU.tron teacher rollcall delete 29943 --yes --json
 ```
 
-支援 `manual`、`number`、`radar`、`qr`、`self_registration`；radar 建立需提供 `--latitude` 與 `--longitude`。TronClass 教師端建立點名的標題需符合前端格式 `YYYY.MM.DD HH:mm`，CLI 未指定 `--title` 時會自動使用該格式。教師端封裝也涵蓋 roster、單次點名詳情、學生進行中點名、請假紀錄、分頁明細、出席統計、跨點名學生狀態更新與 `/api/qrcode` 圖片產生。
+支援 `manual`、`number`、`radar`、`qr`、`self_registration`；radar 建立需提供 `--latitude` 與 `--longitude`。TronClass 教師端建立點名的標題需符合前端格式 `YYYY.MM.DD HH:mm`，CLI 未指定 `--title` 時會自動使用該格式。教師端封裝也涵蓋 roster、單次點名詳情、學生進行中點名、請假紀錄、分頁明細、出席統計、跨點名學生狀態更新、raw payload 建立/更新、merged rollcall、點名設定/分數/匯入/計分與統計匯出，以及 `/api/qrcode` 圖片產生。
 
 已封裝的教師/點名 API 包含：
 
-- 建立與控制：`POST /api/course/{courseId}/rollcall`、`POST /api/module/{courseId}/rollcall`、`POST /api/rollcall/{rollcallId}/start-rollcall`、`PUT /api/rollcall/{rollcallId}/activate`、`PUT /api/rollcall/{rollcallId}/stop_qr_rollcall`、`DELETE /api/rollcall/{rollcallId}`。
-- 學生簽到：`PUT /api/rollcall/{rollcallId}/answer_qr_rollcall`、`PUT /api/rollcall/{rollcallId}/answer_number_rollcall`、`PUT /api/rollcall/{rollcallId}/answer_radar_rollcall`。既有 radar runtime 仍保留實測相容的 `/api/rollcall/{rollcallId}/answer?api_version=1.76` 後備路徑。
-- 教師手動修改：`PUT /api/rollcall/{rollcallId}?api_version=1.1.0`、`PUT /api/course/{courseId}/student/{studentId}/rollcalls`，學生狀態值包含 `no_status`。
-- 查詢與工具：`GET /api/course/{courseId}/students`、`GET /api/course/{courseId}/rollcalls`、`GET /api/course/{courseId}/rollcall/{rollcallId}`、`GET /api/course/{courseId}/student-onprogress-rollcalls`、`GET /api/course/{courseId}/leave-record`、`GET /api/rollcall/{rollcallId}/student_rollcalls`、`GET /api/rollcall/{rollcallId}/pagination_students_rollcalls`、`GET /api/rollcall/{rollcallId}/student_rollcall_count`、`GET /api/course/{courseId}/student/{studentId}/rollcalls`、`GET /api/courses/rollcall_status/{rollcallId}/result`、`GET /api/qrcode`。
+- 建立與控制：`POST /api/course/{courseId}/rollcall`、`POST /api/module/{courseId}/rollcall`、`POST /api/rollcall/{rollcallId}/start-rollcall`、`PUT /api/rollcall/{rollcallId}/activate`、`PUT /api/rollcall/{rollcallId}/stop_qr_rollcall`、`DELETE /api/rollcall/{rollcallId}`、`POST /api/rollcall/merged-rollcall`。
+- 學生簽到：`PUT /api/rollcall/{rollcallId}/answer_qr_rollcall`、`PUT /api/rollcall/{rollcallId}/answer_number_rollcall`、`PUT /api/rollcall/{rollcallId}/answer?api_version=1.76`。
+- 教師手動修改：`PUT /api/rollcall/{rollcallId}?api_version=1.1.0`、`PUT /api/rollcall/{rollcallId}/position`、`PUT /api/rollcall/merged-rollcall/student-rollcalls`、`PUT /api/course/{courseId}/student/{studentId}/rollcalls`、`PUT /api/course/{courseId}/rollcall/setting`、`PUT /api/enrollment/{enrollmentId}/rollcall-score`，學生狀態值包含 `no_status`。
+- 匯入、計分與匯出：`POST /api/data-import/course/{courseId}/rollcall`、`POST /api/course/rollcalls/count/grade`、`POST /api/stat/courses/rollcall/export`、`POST /api/stat/courses/rollcall/export-by-class`。
+- 查詢與工具：`GET /api/course/{courseId}/students`、`GET /api/course/{courseId}/rollcalls`、`GET /api/course/{courseId}/rollcall/{rollcallId}`、`GET /api/course/{courseId}/student-onprogress-rollcalls`、`GET /api/course/{courseId}/leave-record`、`GET /api/course/{courseId}/rollcall/setting`、`GET /api/course/{courseId}/rollcall-score`、`GET /api/course/{courseId}/rollcall/scores`、`GET /api/course/{courseId}/students_rollcalls`、`GET /api/course/{courseId}/pagination_students_rollcalls`、`GET /api/timetable_rollcalls`、`GET /api/rollcall/{rollcallId}`、`GET /api/rollcall/{rollcallId}/lite`、`GET /api/rollcall/{rollcallId}/student_rollcalls`、`GET /api/rollcall/{rollcallId}/pagination_students_rollcalls`、`GET /api/rollcall/{rollcallId}/student_rollcall_count`、`GET /api/rollcall/{rollcallId}/answers`、`GET /api/course/{courseId}/student/{studentId}/rollcalls`、`GET /api/courses/rollcall_status/{rollcallId}/result`、`GET /api/qrcode`。
 
 ### radar
 

@@ -50,6 +50,16 @@ class FakeTronServer:
         self.module_rollcalls: List[Dict[str, Any]] = []
         self.teacher_course_enrollments: Dict[str, Dict[str, Any]] = {}
         self.teacher_rollcall_updates: List[Dict[str, Any]] = []
+        self.teacher_rollcall_starts: List[Dict[str, Any]] = []
+        self.radar_position_updates: List[Dict[str, Any]] = []
+        self.merged_rollcalls: List[Dict[str, Any]] = []
+        self.merged_rollcall_updates: List[Dict[str, Any]] = []
+        self.rollcall_settings: Dict[str, Dict[str, Any]] = {}
+        self.rollcall_setting_updates: List[Dict[str, Any]] = []
+        self.rollcall_scores: List[Dict[str, Any]] = []
+        self.imported_rollcalls: List[Dict[str, Any]] = []
+        self.graded_rollcalls: List[Dict[str, Any]] = []
+        self.stat_exports: List[Dict[str, Any]] = []
         self.student_history_updates: List[Dict[str, Any]] = []
         self.teacher_rollcall_stops: List[Dict[str, Any]] = []
         self.teacher_rollcall_deletes: List[str] = []
@@ -494,6 +504,86 @@ class FakeTronServer:
         ]
         return web.json_response({"rollcalls": rollcalls})
 
+    async def rollcall_detail_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("rollcall_detail")
+        if scripted is not None:
+            return scripted
+        rollcall = self._teacher_rollcall(request.match_info["rollcall_id"])
+        if rollcall is None:
+            return web.Response(status=404, text="not found")
+        return web.json_response(rollcall)
+
+    async def course_rollcall_setting_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("course_rollcall_setting")
+        if scripted is not None:
+            return scripted
+        course_id = request.match_info["course_id"]
+        if request.method == "PUT":
+            body = await request.json()
+            setting = dict(body)
+            setting["course_id"] = course_id
+            self.rollcall_settings[course_id] = setting
+            self.rollcall_setting_updates.append({"course_id": course_id, "body": body})
+            return web.json_response(setting)
+        setting = self.rollcall_settings.get(
+            course_id,
+            {"course_id": course_id, "enabled": True, "score_policy": "attendance"},
+        )
+        return web.json_response(setting)
+
+    async def course_rollcall_score_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("course_rollcall_score")
+        if scripted is not None:
+            return scripted
+        return web.json_response(
+            {
+                "course_id": request.match_info["course_id"],
+                "rollcall_score": 100,
+            }
+        )
+
+    async def course_rollcall_scores_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("course_rollcall_scores")
+        if scripted is not None:
+            return scripted
+        return web.json_response(
+            {
+                "course_id": request.match_info["course_id"],
+                "scores": self.rollcall_scores,
+            }
+        )
+
+    async def timetable_rollcalls_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("timetable_rollcalls")
+        if scripted is not None:
+            return scripted
+        course_ids = {
+            value.strip()
+            for value in request.query.get("course_ids", "").split(",")
+            if value.strip()
+        }
+        rollcalls = [
+            rollcall
+            for rollcall in self.teacher_rollcalls
+            if not course_ids or str(rollcall.get("course_id")) in course_ids
+        ]
+        return web.json_response({"rollcalls": rollcalls, "query": dict(request.query)})
+
     async def course_students_api(self, request):
         unauthorized = self._unauthorized_if_needed(request)
         if unauthorized is not None:
@@ -536,7 +626,9 @@ class FakeTronServer:
             if str(rollcall.get("course_id")) == str(course_id)
             and rollcall.get("status") in {"waiting", "in_progress"}
         ]
-        return web.json_response({"course_id": course_id, "rollcalls": rollcalls})
+        return web.json_response(
+            {"course_id": course_id, "rollcalls": rollcalls, "query": dict(request.query)}
+        )
 
     async def leave_record_api(self, request):
         unauthorized = self._unauthorized_if_needed(request)
@@ -618,6 +710,34 @@ class FakeTronServer:
             }
         )
 
+    async def course_pagination_students_rollcalls_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("course_pagination_students_rollcalls")
+        if scripted is not None:
+            return scripted
+        page = max(1, int(request.query.get("page", "1")))
+        page_size = max(1, int(request.query.get("page_size", "20")))
+        start = (page - 1) * page_size
+        rows = [
+            {
+                "student_id": student.get("id"),
+                "student_name": student.get("name"),
+                "rollcall_status": "on_call",
+            }
+            for student in self.course_students
+        ]
+        return web.json_response(
+            {
+                "course_id": request.match_info["course_id"],
+                "page": page,
+                "page_size": page_size,
+                "total": len(rows),
+                "student_rollcalls": rows[start:start + page_size],
+            }
+        )
+
     async def create_module_rollcall_api(self, request):
         unauthorized = self._unauthorized_if_needed(request)
         if unauthorized is not None:
@@ -677,7 +797,27 @@ class FakeTronServer:
         for key in ("title", "type", "is_number", "is_radar", "number_code"):
             if key in body:
                 rollcall[key] = body[key]
+        for key, value in body.items():
+            if key not in {"student_rollcalls"}:
+                rollcall.setdefault(key, value)
         rollcall["updated_at"] = "2026-05-27T10:00:00+08:00"
+        return web.json_response(rollcall)
+
+    async def update_radar_position_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("update_radar_position")
+        if scripted is not None:
+            return scripted
+        body = await request.json()
+        rollcall_id = request.match_info["rollcall_id"]
+        self.radar_position_updates.append({"rollcall_id": rollcall_id, "body": body})
+        rollcall = self._teacher_rollcall(rollcall_id)
+        if rollcall is None:
+            return web.Response(status=404, text="not found")
+        rollcall.update(body)
+        rollcall["position_updated"] = True
         return web.json_response(rollcall)
 
     async def delete_rollcall_api(self, request):
@@ -701,10 +841,21 @@ class FakeTronServer:
         scripted = self._script_response("start_teacher_rollcall")
         if scripted is not None:
             return scripted
+        body: Dict[str, Any] = {}
+        if request.can_read_body:
+            try:
+                body = await request.json()
+            except json.JSONDecodeError:
+                body = {}
         rollcall = self._teacher_rollcall(request.match_info["rollcall_id"])
         if rollcall is None:
             return web.Response(status=404, text="not found")
+        self.teacher_rollcall_starts.append(
+            {"rollcall_id": request.match_info["rollcall_id"], "body": body}
+        )
         rollcall["status"] = "in_progress"
+        if body:
+            rollcall["start_payload"] = body
         return web.json_response(rollcall)
 
     async def activate_rollcall_api(self, request):
@@ -754,6 +905,86 @@ class FakeTronServer:
                 "total": len(students),
                 "attended": len(attended),
             }
+        )
+
+    async def create_merged_rollcall_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("create_merged_rollcall")
+        if scripted is not None:
+            return scripted
+        body = await request.json()
+        self.next_teacher_rollcall_id += 1
+        rollcall = dict(body)
+        rollcall.setdefault("status", "in_progress")
+        rollcall["id"] = self.next_teacher_rollcall_id
+        rollcall["source"] = "merged"
+        self.merged_rollcalls.append(rollcall)
+        self.teacher_rollcalls.append(rollcall)
+        return web.json_response(rollcall, status=201)
+
+    async def update_merged_rollcall_students_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("update_merged_rollcall_students")
+        if scripted is not None:
+            return scripted
+        body = await request.json()
+        self.merged_rollcall_updates.append(body)
+        return web.json_response({"updated": True, "payload": body})
+
+    async def update_rollcall_score_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("update_rollcall_score")
+        if scripted is not None:
+            return scripted
+        body = await request.json()
+        record = {
+            "enrollment_id": request.match_info["enrollment_id"],
+            "rollcall_score": body.get("rollcall_score"),
+        }
+        self.rollcall_scores.append(record)
+        return web.json_response(record)
+
+    async def import_rollcalls_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("import_rollcalls")
+        if scripted is not None:
+            return scripted
+        body = await request.json()
+        course_id = request.match_info["course_id"]
+        record = {"course_id": course_id, "body": body}
+        self.imported_rollcalls.append(record)
+        return web.json_response({"imported": True, "course_id": course_id, "payload": body})
+
+    async def grade_rollcalls_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("grade_rollcalls")
+        if scripted is not None:
+            return scripted
+        body = await request.json()
+        ids = [str(item) for item in body.get("rollcall_ids", [])]
+        self.graded_rollcalls.append(body)
+        return web.json_response({"graded": ids, "count": len(ids)})
+
+    async def rollcall_stat_export_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        body = await request.json()
+        kind = "rollcall-by-class" if request.path.endswith("export-by-class") else "rollcall"
+        self.stat_exports.append({"kind": kind, "body": body})
+        return web.Response(
+            body=b"rollcall,stat\n",
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
     async def qrcode_api(self, request):
@@ -812,20 +1043,35 @@ class FakeTronServer:
         app.router.add_get("/api/course/{course_id}/enrollment", self.course_enrollment_api)
         app.router.add_get("/api/course/{course_id}/students", self.course_students_api)
         app.router.add_get("/api/course/{course_id}/rollcalls", self.course_rollcalls_api)
+        app.router.add_get("/api/course/{course_id}/rollcall/setting", self.course_rollcall_setting_api)
+        app.router.add_put("/api/course/{course_id}/rollcall/setting", self.course_rollcall_setting_api)
+        app.router.add_get("/api/course/{course_id}/rollcall-score", self.course_rollcall_score_api)
+        app.router.add_get("/api/course/{course_id}/rollcall/scores", self.course_rollcall_scores_api)
+        app.router.add_get("/api/timetable_rollcalls", self.timetable_rollcalls_api)
         app.router.add_get("/api/course/{course_id}/rollcall/{rollcall_id}", self.course_rollcall_detail_api)
         app.router.add_get("/api/course/{course_id}/student-onprogress-rollcalls", self.student_onprogress_rollcalls_api)
         app.router.add_get("/api/course/{course_id}/leave-record", self.leave_record_api)
         app.router.add_get("/api/course/{course_id}/student/{student_id}/rollcalls", self.student_history_rollcalls_api)
         app.router.add_put("/api/course/{course_id}/student/{student_id}/rollcalls", self.update_student_history_rollcalls_api)
         app.router.add_get("/api/course/{course_id}/students_rollcalls", self.course_students_rollcalls_api)
+        app.router.add_get("/api/course/{course_id}/pagination_students_rollcalls", self.course_pagination_students_rollcalls_api)
         app.router.add_post("/api/course/{course_id}/rollcall", self.create_course_rollcall_api)
         app.router.add_post("/api/module/{course_id}/rollcall", self.create_module_rollcall_api)
+        app.router.add_post("/api/rollcall/merged-rollcall", self.create_merged_rollcall_api)
+        app.router.add_put("/api/rollcall/merged-rollcall/student-rollcalls", self.update_merged_rollcall_students_api)
+        app.router.add_get("/api/rollcall/{rollcall_id}", self.rollcall_detail_api)
         app.router.add_put("/api/rollcall/{rollcall_id}", self.update_rollcall_api)
         app.router.add_delete("/api/rollcall/{rollcall_id}", self.delete_rollcall_api)
+        app.router.add_put("/api/rollcall/{rollcall_id}/position", self.update_radar_position_api)
         app.router.add_post("/api/rollcall/{rollcall_id}/start-rollcall", self.start_rollcall_api)
         app.router.add_put("/api/rollcall/{rollcall_id}/activate", self.activate_rollcall_api)
         app.router.add_put("/api/rollcall/{rollcall_id}/{stop_endpoint:stop_number_rollcall|stop_radar|stop_qr_rollcall|stop_time_table_rollcall}", self.stop_rollcall_api)
         app.router.add_get("/api/courses/rollcall_status/{rollcall_id}/result", self.rollcall_status_result_api)
+        app.router.add_put("/api/enrollment/{enrollment_id}/rollcall-score", self.update_rollcall_score_api)
+        app.router.add_post("/api/data-import/course/{course_id}/rollcall", self.import_rollcalls_api)
+        app.router.add_post("/api/course/rollcalls/count/grade", self.grade_rollcalls_api)
+        app.router.add_post("/api/stat/courses/rollcall/export", self.rollcall_stat_export_api)
+        app.router.add_post("/api/stat/courses/rollcall/export-by-class", self.rollcall_stat_export_api)
         app.router.add_put("/api/rollcall/{rollcall_id}/answer_number_rollcall", self.answer_number)
         app.router.add_get("/api/rollcall/{rollcall_id}/lite", self.radar_lite)
         app.router.add_put("/api/rollcall/{rollcall_id}/answer", self.answer_radar)

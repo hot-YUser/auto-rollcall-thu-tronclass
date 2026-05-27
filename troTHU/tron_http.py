@@ -397,10 +397,13 @@ class TronHttpClient:
         method: str,
         url: str,
         *,
+        json_payload: Any = None,
         params: Optional[Dict[str, Any]] = None,
         expected_status: tuple[int, ...] = (200,),
     ) -> BinaryResult:
         kwargs = self.request_kwargs()
+        if json_payload is not None:
+            kwargs["json"] = json_payload
         if params is not None:
             kwargs["params"] = params
         request = getattr(self.session, method.lower())
@@ -635,6 +638,35 @@ class TronHttpClient:
             self.api_url("/api/course/{}/rollcalls".format(course_id_text)),
         )
 
+    async def fetch_course_rollcall_setting(self, course_id: Any) -> Any:
+        course_id_text = str(course_id).strip()
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/course/{}/rollcall/setting".format(course_id_text)),
+        )
+
+    async def fetch_course_rollcall_score(self, course_id: Any) -> Any:
+        course_id_text = str(course_id).strip()
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/course/{}/rollcall-score".format(course_id_text)),
+        )
+
+    async def fetch_course_rollcall_scores(self, course_id: Any) -> Any:
+        course_id_text = str(course_id).strip()
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/course/{}/rollcall/scores".format(course_id_text)),
+        )
+
+    async def fetch_timetable_rollcalls(self, course_id: Any) -> Any:
+        course_id_text = str(course_id).strip()
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/timetable_rollcalls"),
+            params={"course_ids": course_id_text},
+        )
+
     async def fetch_course_students(self, course_id: Any) -> Any:
         course_id_text = str(course_id).strip()
         return await self.request_json(
@@ -652,11 +684,21 @@ class TronHttpClient:
             ),
         )
 
-    async def fetch_student_onprogress_rollcalls(self, course_id: Any) -> Any:
+    async def fetch_student_onprogress_rollcalls(
+        self,
+        course_id: Any,
+        *,
+        group_rollcall: Any = "",
+    ) -> Any:
         course_id_text = str(course_id).strip()
+        params = {}
+        group_rollcall_text = str(group_rollcall or "").strip()
+        if group_rollcall_text:
+            params["group_rollcall"] = group_rollcall_text
         return await self.request_json(
             "GET",
             self.api_url("/api/course/{}/student-onprogress-rollcalls".format(course_id_text)),
+            params=params or None,
         )
 
     async def fetch_course_leave_record(
@@ -689,11 +731,46 @@ class TronHttpClient:
             self.api_url("/api/course/{}/students_rollcalls".format(course_id_text)),
         )
 
+    async def fetch_course_pagination_students_rollcalls(
+        self,
+        course_id: Any,
+        *,
+        page: Any = 1,
+        page_size: Any = 20,
+    ) -> Any:
+        course_id_text = str(course_id).strip()
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/course/{}/pagination_students_rollcalls".format(course_id_text)),
+            params={"page": page, "page_size": page_size},
+        )
+
     async def fetch_rollcall_status_result(self, rollcall_id: Any) -> Any:
         rollcall_id_text = str(rollcall_id).strip()
         return await self.request_json(
             "GET",
             self.api_url("/api/courses/rollcall_status/{}/result".format(rollcall_id_text)),
+        )
+
+    async def fetch_teacher_rollcall_detail(self, rollcall_id: Any) -> Any:
+        rollcall_id_text = str(rollcall_id).strip()
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/rollcall/{}".format(rollcall_id_text)),
+        )
+
+    async def fetch_teacher_rollcall_lite(self, rollcall_id: Any) -> Any:
+        rollcall_id_text = str(rollcall_id).strip()
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/rollcall/{}/lite".format(rollcall_id_text)),
+        )
+
+    async def fetch_teacher_rollcall_answers(self, rollcall_id: Any) -> Any:
+        rollcall_id_text = str(rollcall_id).strip()
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/rollcall/{}/answers".format(rollcall_id_text)),
         )
 
     async def create_teacher_rollcall(self, course_id: Any, payload: Dict[str, Any]) -> Any:
@@ -732,11 +809,12 @@ class TronHttpClient:
             expected_status=(200, 204),
         )
 
-    async def start_teacher_rollcall(self, rollcall_id: Any) -> Any:
+    async def start_teacher_rollcall(self, rollcall_id: Any, payload: Optional[Dict[str, Any]] = None) -> Any:
         rollcall_id_text = str(rollcall_id).strip()
         return await self.request_json(
             "POST",
             self.api_url("/api/rollcall/{}/start-rollcall".format(rollcall_id_text)),
+            json_payload=payload,
             expected_status=(200, 204),
         )
 
@@ -788,9 +866,74 @@ class TronHttpClient:
         rollcall_id_text = str(rollcall_id).strip()
         return await self.request_json(
             "PUT",
-            self.api_url("/api/rollcall/{}/answer_radar_rollcall".format(rollcall_id_text)),
+            self.api_url("/api/rollcall/{}/answer".format(rollcall_id_text)),
+            json_payload=payload,
+            params={"api_version": "1.76"},
+            expected_status=(200, 204),
+        )
+
+    async def update_radar_rollcall_position(self, rollcall_id: Any, payload: Dict[str, Any]) -> Any:
+        rollcall_id_text = str(rollcall_id).strip()
+        return await self.request_json(
+            "PUT",
+            self.api_url("/api/rollcall/{}/position".format(rollcall_id_text)),
             json_payload=payload,
             expected_status=(200, 204),
+        )
+
+    async def create_merged_rollcall(self, payload: Dict[str, Any]) -> Any:
+        return await self.request_json(
+            "POST",
+            self.api_url("/api/rollcall/merged-rollcall"),
+            json_payload=payload,
+            expected_status=(200, 201),
+        )
+
+    async def update_merged_rollcall_students(self, payload: Dict[str, Any]) -> Any:
+        return await self.request_json(
+            "PUT",
+            self.api_url("/api/rollcall/merged-rollcall/student-rollcalls"),
+            json_payload=payload,
+            expected_status=(200, 204),
+        )
+
+    async def update_rollcall_setting(self, course_id: Any, payload: Dict[str, Any]) -> Any:
+        course_id_text = str(course_id).strip()
+        return await self.request_json(
+            "PUT",
+            self.api_url("/api/course/{}/rollcall/setting".format(course_id_text)),
+            json_payload=payload,
+            expected_status=(200, 204),
+        )
+
+    async def update_rollcall_score(self, enrollment_id: Any, score: Any) -> Any:
+        enrollment_id_text = str(enrollment_id).strip()
+        return await self.request_json(
+            "PUT",
+            self.api_url("/api/enrollment/{}/rollcall-score".format(enrollment_id_text)),
+            json_payload={"rollcall_score": score},
+            expected_status=(200, 204),
+        )
+
+    async def import_rollcalls(self, course_id: Any, payload: Dict[str, Any]) -> Any:
+        course_id_text = str(course_id).strip()
+        return await self.request_json(
+            "POST",
+            self.api_url("/api/data-import/course/{}/rollcall".format(course_id_text)),
+            json_payload=payload,
+            expected_status=(200, 201, 204),
+        )
+
+    async def grade_rollcalls(self, rollcall_ids: Any) -> Any:
+        if isinstance(rollcall_ids, (list, tuple, set)):
+            ids = [str(item).strip() for item in rollcall_ids if str(item).strip()]
+        else:
+            ids = [str(rollcall_ids).strip()] if str(rollcall_ids).strip() else []
+        return await self.request_json(
+            "POST",
+            self.api_url("/api/course/rollcalls/count/grade"),
+            json_payload={"rollcall_ids": ids},
+            expected_status=(200, 201, 204),
         )
 
     async def fetch_rollcalls(self) -> RollcallsResult:
@@ -861,6 +1004,7 @@ class TronHttpClient:
         *,
         page: Any = 1,
         page_size: Any = 10,
+        rollcall_ids: Any = "",
     ) -> Any:
         course_id_text = str(course_id).strip()
         student_id_text = str(student_id).strip()
@@ -869,6 +1013,15 @@ class TronHttpClient:
             params["page"] = page
         if page_size not in (None, ""):
             params["page_size"] = page_size
+        if rollcall_ids not in (None, ""):
+            if isinstance(rollcall_ids, (list, tuple, set)):
+                values = [str(item).strip() for item in rollcall_ids if str(item).strip()]
+                if values:
+                    params["rollcall_ids"] = ",".join(values)
+            else:
+                rollcall_ids_text = str(rollcall_ids or "").strip()
+                if rollcall_ids_text:
+                    params["rollcall_ids"] = rollcall_ids_text
         return await self.request_json(
             "GET",
             self.api_url(
@@ -899,6 +1052,24 @@ class TronHttpClient:
             "GET",
             self.api_url("/api/qrcode"),
             params={"url": str(url or "")},
+        )
+
+    async def download_rollcall_stat_report_export(
+        self,
+        kind: Any = "rollcall",
+        payload: Optional[Dict[str, Any]] = None,
+    ) -> BinaryResult:
+        kind_text = str(kind or "").strip().lower().replace("_", "-")
+        paths = {
+            "rollcall": "/api/stat/courses/rollcall/export",
+            "rollcall-by-class": "/api/stat/courses/rollcall/export-by-class",
+        }
+        if kind_text not in paths:
+            raise UnexpectedResponseError("Unsupported rollcall stat export kind: {}".format(kind))
+        return await self.request_bytes(
+            "POST",
+            self.api_url(paths[kind_text]),
+            json_payload=payload if payload is not None else {},
         )
 
     async def fetch_current_semester(self) -> Dict[str, Any]:
