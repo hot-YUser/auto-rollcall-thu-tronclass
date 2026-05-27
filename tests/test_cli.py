@@ -146,6 +146,601 @@ class TronCliSmokeTest(unittest.TestCase):
         self.assertEqual(result, 0)
         asyncio_run.assert_called_once()
 
+    def test_teacher_extended_commands_dispatch(self) -> None:
+        def fake_run(coro):
+            coro.close()
+            return 0
+
+        cases = [
+            (
+                ["teacher", "update-score-publish-item-maps", "--payload-json", "{}"],
+                "teacher_update_score_publish_item_maps_command",
+            ),
+            (["teacher", "submit-edu-scores", "--payload-json", "{}"], "teacher_submit_edu_scores_command"),
+            (["teacher", "create-rubric", "--payload-json", "{}"], "teacher_create_rubric_command"),
+            (["teacher", "update-rubric", "3", "--payload-json", "{}"], "teacher_update_rubric_command"),
+            (["teacher", "delete-rubrics", "--rubric-ids", "3"], "teacher_delete_rubrics_command"),
+            (["teacher", "groups"], "teacher_groups_command"),
+            (["teacher", "bulletins"], "teacher_bulletins_command"),
+            (["teacher", "stats"], "teacher_stats_command"),
+            (["teacher", "air-credit", "--target", "course"], "teacher_air_credit_command"),
+            (["teacher", "management-calendar-meetings"], "teacher_management_calendar_meetings_command"),
+            (["teacher", "calendar-meetings"], "teacher_calendar_meetings_command"),
+            (["teacher", "teaching-calendars"], "teacher_teaching_calendars_command"),
+            (["teacher", "vtrses"], "teacher_vtrses_command"),
+            (["teacher", "departments"], "teacher_departments_command"),
+            (["teacher", "ai-ppt"], "teacher_ai_ppt_command"),
+            (["teacher", "platform"], "teacher_platform_command"),
+            (["teacher", "org-bulletins"], "teacher_org_bulletins_command"),
+            (["teacher", "catalog"], "teacher_catalog_command"),
+            (["teacher", "media"], "teacher_media_command"),
+            (["teacher", "authoring"], "teacher_authoring_command"),
+            (["teacher", "create-bulletin", "--payload-json", "{}"], "teacher_create_bulletin_command"),
+            (["teacher", "create-calendar-meeting", "--payload-json", "{}"], "teacher_create_calendar_meeting_command"),
+            (
+                ["teacher", "update-calendar-meeting", "meeting1", "--payload-json", "{}"],
+                "teacher_update_calendar_meeting_command",
+            ),
+            (["teacher", "delete-calendar-meeting", "meeting1"], "teacher_delete_calendar_meeting_command"),
+            (
+                ["teacher", "create-air-credit-assignments", "--payload-json", "{}"],
+                "teacher_create_air_credit_assignments_command",
+            ),
+            (
+                ["teacher", "update-air-credit-assignments", "--payload-json", "{}"],
+                "teacher_update_air_credit_assignments_command",
+            ),
+            (
+                ["teacher", "update-air-credit-status", "--payload-json", "{}"],
+                "teacher_update_air_credit_status_command",
+            ),
+            (
+                ["teacher", "clear-air-credit-remaining", "--payload-json", "{}"],
+                "teacher_clear_air_credit_remaining_credits_command",
+            ),
+            (
+                ["teacher", "update-air-credit-course-usage-limit", "--usage-limit", "30"],
+                "teacher_update_air_credit_course_usage_limit_command",
+            ),
+            (
+                ["teacher", "create-teaching-calendar", "--payload-json", "{}"],
+                "teacher_create_teaching_calendar_command",
+            ),
+            (
+                ["teacher", "update-teaching-calendar", "tc1", "--payload-json", "{}"],
+                "teacher_update_teaching_calendar_command",
+            ),
+            (["teacher", "delete-teaching-calendar", "tc1"], "teacher_delete_teaching_calendar_command"),
+            (
+                ["teacher", "notify-outline-editing", "--course-ids", "101"],
+                "teacher_notify_outline_editing_command",
+            ),
+            (
+                ["teacher", "sync-courses-from-urp", "--course-ids", "101"],
+                "teacher_sync_courses_from_urp_command",
+            ),
+            (
+                ["teacher", "update-chinamcloud-resources", "--resources-json", "[]"],
+                "teacher_update_chinamcloud_resources_command",
+            ),
+            (["teacher", "update-course-outline", "301", "--payload-json", "{}"], "teacher_update_course_outline_command"),
+            (["teacher", "create-outline-setting", "3", "--payload-json", "{}"], "teacher_create_outline_setting_command"),
+            (["teacher", "update-outline-setting", "3", "--payload-json", "{}"], "teacher_update_outline_setting_command"),
+            (["teacher", "sort-outline-setting", "3", "--payload-json", "{}"], "teacher_sort_outline_setting_command"),
+            (
+                ["teacher", "delete-outline-setting-option", "3", "objective"],
+                "teacher_delete_outline_setting_option_command",
+            ),
+            (["teacher", "toggle-outline-setting"], "teacher_toggle_outline_setting_command"),
+            (
+                ["teacher", "update-outline-required-options", "3", "--required-options-json", "[]"],
+                "teacher_update_outline_required_options_command",
+            ),
+            (
+                ["teacher", "update-enrollment-role", "en1", "--role", "assistant_instructor"],
+                "teacher_update_enrollment_role_command",
+            ),
+            (
+                ["teacher", "update-enrollments-role", "--enrollment-ids", "en1,en2", "--role", "student"],
+                "teacher_update_enrollments_role_command",
+            ),
+            (["teacher", "delete-enrollment", "en2"], "teacher_delete_enrollment_command"),
+            (
+                ["teacher", "delete-enrollments", "--enrollment-ids", "en3,en4"],
+                "teacher_delete_enrollments_command",
+            ),
+            (["teacher", "update-bulletin", "b1", "--payload-json", "{}"], "teacher_update_bulletin_command"),
+            (["teacher", "delete-bulletin", "b1"], "teacher_delete_bulletin_command"),
+            (["teacher", "mark-bulletin-read", "b1"], "teacher_mark_bulletin_read_command"),
+            (["teacher", "create-module", "--payload-json", "{}"], "teacher_create_module_command"),
+            (["teacher", "update-module", "m1", "--payload-json", "{}"], "teacher_update_module_command"),
+            (["teacher", "delete-module", "m1"], "teacher_delete_module_command"),
+            (["teacher", "sort-modules", "--payload-json", "{}"], "teacher_sort_modules_command"),
+            (["teacher", "check-module-dependents", "m1"], "teacher_check_module_dependents_command"),
+            (["teacher", "create-syllabus", "--payload-json", "{}"], "teacher_create_syllabus_command"),
+            (["teacher", "update-syllabus", "s1", "--payload-json", "{}"], "teacher_update_syllabus_command"),
+            (["teacher", "delete-syllabus", "s1"], "teacher_delete_syllabus_command"),
+            (["teacher", "sort-syllabuses", "--payload-json", "{}"], "teacher_sort_syllabuses_command"),
+            (["teacher", "check-syllabus-dependents", "s1"], "teacher_check_syllabus_dependents_command"),
+            (
+                ["teacher", "sort-module-activities", "m1", "--payload-json", "{}"],
+                "teacher_sort_module_activities_command",
+            ),
+            (
+                ["teacher", "sort-syllabus-activities", "s1", "--payload-json", "{}"],
+                "teacher_sort_syllabus_activities_command",
+            ),
+            (["teacher", "resort-activity", "--payload-json", "{}"], "teacher_resort_activity_command"),
+            (["teacher", "import-course-groups", "--payload-json", "{}"], "teacher_import_course_groups_command"),
+            (["teacher", "import-enrollments", "--payload-json", "{}"], "teacher_import_enrollments_command"),
+            (["teacher", "import-scores", "--payload-json", "{}"], "teacher_import_scores_command"),
+            (["teacher", "import-item-scores", "--payload-json", "{}"], "teacher_import_item_scores_command"),
+            (["teacher", "import-seat-numbers", "--payload-json", "{}"], "teacher_import_seat_numbers_command"),
+            (["teacher", "import-rollcalls", "--payload-json", "{}"], "teacher_import_rollcalls_command"),
+            (["teacher", "group-set", "g1"], "teacher_group_set_command"),
+            (["teacher", "create-group-set", "--payload-json", "{}"], "teacher_create_group_set_command"),
+            (["teacher", "update-group-set", "g1", "--payload-json", "{}"], "teacher_update_group_set_command"),
+            (["teacher", "delete-group-set", "g1"], "teacher_delete_group_set_command"),
+            (["teacher", "copy-group-set", "g1", "--payload-json", "{}"], "teacher_copy_group_set_command"),
+            (["teacher", "random-grouping", "g1", "--payload-json", "{}"], "teacher_random_grouping_command"),
+            (["teacher", "create-group", "g1", "--payload-json", "{}"], "teacher_create_group_command"),
+            (["teacher", "update-group", "group1", "--payload-json", "{}"], "teacher_update_group_command"),
+            (["teacher", "update-group-info", "group1", "--payload-json", "{}"], "teacher_update_group_info_command"),
+            (["teacher", "delete-group", "group1"], "teacher_delete_group_command"),
+            (["teacher", "sort-groups", "g1", "--payload-json", "{}"], "teacher_sort_groups_command"),
+            (
+                ["teacher", "update-group-members", "group1", "--payload-json", "{}"],
+                "teacher_update_group_members_command",
+            ),
+            (
+                ["teacher", "update-group-member", "group1", "member1", "--payload-json", "{}"],
+                "teacher_update_group_member_command",
+            ),
+            (
+                ["teacher", "delete-group-member", "group1", "member1"],
+                "teacher_delete_group_member_command",
+            ),
+            (
+                ["teacher", "check-activity-dependents", "--activity-ids", "77"],
+                "teacher_check_activity_dependents_command",
+            ),
+            (
+                ["teacher", "completion-criteria", "--activity-type", "homework"],
+                "teacher_completion_criteria_command",
+            ),
+            (["teacher", "course-completion-criteria"], "teacher_course_completion_criteria_command"),
+            (["teacher", "forum-categories"], "teacher_forum_categories_command"),
+            (["teacher", "forum-category", "cat1"], "teacher_forum_category_command"),
+            (["teacher", "activity-uploads-license", "77"], "teacher_activity_uploads_license_command"),
+            (["teacher", "subject-libs"], "teacher_subject_libs_command"),
+            (["teacher", "subject-lib-subjects", "lib1"], "teacher_subject_lib_subjects_command"),
+            (["teacher", "subject-lib-statistic", "lib1"], "teacher_subject_lib_statistic_command"),
+            (["teacher", "subject-lib-knowledge-nodes", "lib1"], "teacher_subject_lib_knowledge_nodes_command"),
+            (["teacher", "subject-lib-folders"], "teacher_subject_lib_folders_command"),
+            (["teacher", "create-subject-lib", "--title", "Bank"], "teacher_create_subject_lib_command"),
+            (
+                ["teacher", "copy-subject-lib", "lib1", "--target", "exam", "--target-id", "1"],
+                "teacher_copy_subject_lib_command",
+            ),
+            (["teacher", "update-subject-lib", "lib1", "--title", "Bank"], "teacher_update_subject_lib_command"),
+            (
+                ["teacher", "move-subject-libs", "--payload-json", "{}"],
+                "teacher_move_subject_libs_command",
+            ),
+            (
+                ["teacher", "copy-subject-libs-to-user", "--payload-json", "{}"],
+                "teacher_copy_subject_libs_to_user_command",
+            ),
+            (
+                ["teacher", "move-subject-lib-subjects", "--payload-json", "{}"],
+                "teacher_move_subject_lib_subjects_command",
+            ),
+            (
+                ["teacher", "copy-subject-lib-subjects", "--payload-json", "{}"],
+                "teacher_copy_subject_lib_subjects_command",
+            ),
+            (["teacher", "delete-subject-lib", "lib1"], "teacher_delete_subject_lib_command"),
+            (
+                ["teacher", "delete-subject-lib-subjects", "lib1", "--subject-ids", "sub1"],
+                "teacher_delete_subject_lib_subjects_command",
+            ),
+            (
+                ["teacher", "questionnaire-submissions", "q1", "--subject-id", "qs1"],
+                "teacher_questionnaire_submissions_command",
+            ),
+            (["teacher", "course-estimates"], "teacher_course_estimates_command"),
+            (
+                ["teacher", "course-estimate-replies", "ce1"],
+                "teacher_course_estimate_replies_command",
+            ),
+            (
+                ["teacher", "course-estimate-user", "ce1", "2"],
+                "teacher_course_estimate_user_command",
+            ),
+            (["teacher", "course-packages"], "teacher_course_packages_command"),
+            (["teacher", "course-package-course", "cp1"], "teacher_course_package_course_command"),
+            (["teacher", "courseware-quizzes", "77"], "teacher_courseware_quizzes_command"),
+            (["teacher", "courseware-quiz-subjects", "cwq1"], "teacher_courseware_quiz_subjects_command"),
+            (["teacher", "courseware-quiz-settings"], "teacher_courseware_quiz_settings_command"),
+            (["teacher", "resource-groups"], "teacher_resource_groups_command"),
+            (["teacher", "resource-group", "rg1"], "teacher_resource_group_command"),
+            (["teacher", "resource-group-members", "rg1"], "teacher_resource_group_members_command"),
+            (["teacher", "resource-group-folders", "rg1"], "teacher_resource_group_folders_command"),
+            (["teacher", "resource-group-resources", "rg1"], "teacher_resource_group_resources_command"),
+            (["teacher", "resource-group-rubrics", "rg1"], "teacher_resource_group_rubrics_command"),
+            (
+                ["teacher", "resource-group-subject-libs", "rg1"],
+                "teacher_resource_group_subject_libs_command",
+            ),
+            (["teacher", "user-resources"], "teacher_user_resources_command"),
+            (["teacher", "user-resource-folder-info", "ur1"], "teacher_user_resource_folder_info_command"),
+            (["teacher", "shared-resources"], "teacher_shared_resources_command"),
+            (
+                ["teacher", "shared-resource-collections", "u1"],
+                "teacher_shared_resource_collections_command",
+            ),
+            (
+                ["teacher", "shared-resource-comments", "sr1"],
+                "teacher_shared_resource_comments_command",
+            ),
+            (
+                ["teacher", "shared-resource-classifications"],
+                "teacher_shared_resource_classifications_command",
+            ),
+            (["teacher", "shared-resource-tags"], "teacher_shared_resource_tags_command"),
+            (
+                ["teacher", "shared-resource-recommendations"],
+                "teacher_shared_resource_recommendations_command",
+            ),
+            (
+                ["teacher", "shared-resource-track-users"],
+                "teacher_shared_resource_track_users_command",
+            ),
+            (["teacher", "shared-resource-followers"], "teacher_shared_resource_followers_command"),
+            (["teacher", "cc-license-groups"], "teacher_cc_license_groups_command"),
+            (["teacher", "cc-license-map"], "teacher_cc_license_map_command"),
+            (
+                ["teacher", "download", "/api/uploads/up1/blob", "--output", "out.bin"],
+                "teacher_download_command",
+            ),
+            (
+                ["teacher", "download-request", "GET", "/api/questionnaire/q1/export/excel", "--output", "out.xlsx"],
+                "teacher_download_request_command",
+            ),
+            (
+                ["teacher", "download-upload", "up1", "--output", "out.bin"],
+                "teacher_download_upload_command",
+            ),
+            (
+                ["teacher", "download-upload-thumbnail", "up1", "--output", "out.bin"],
+                "teacher_download_upload_thumbnail_command",
+            ),
+            (
+                ["teacher", "download-upload-modified-image", "up1", "--output", "out.bin"],
+                "teacher_download_upload_modified_image_command",
+            ),
+            (
+                ["teacher", "download-upload-swf", "up1", "--output", "out.bin"],
+                "teacher_download_upload_swf_command",
+            ),
+            (
+                ["teacher", "download-upload-reference", "ref1", "--output", "out.bin"],
+                "teacher_download_upload_reference_command",
+            ),
+            (
+                ["teacher", "download-shared-resource", "sr1", "--output", "out.bin"],
+                "teacher_download_shared_resource_command",
+            ),
+            (
+                ["teacher", "download-wedrive-file", "file1", "--output", "out.bin"],
+                "teacher_download_wedrive_file_command",
+            ),
+            (
+                ["teacher", "download-third-part-upload", "tp1", "--output", "out.bin"],
+                "teacher_download_third_part_upload_command",
+            ),
+            (
+                ["teacher", "export-questionnaire", "q1", "--output", "out.xlsx"],
+                "teacher_export_questionnaire_command",
+            ),
+            (
+                ["teacher", "export-topic", "topic1", "--output", "out.xlsx"],
+                "teacher_export_topic_command",
+            ),
+            (
+                ["teacher", "export-category-topics", "cat1", "--output", "out.xlsx"],
+                "teacher_export_category_topics_command",
+            ),
+            (
+                ["teacher", "export-shared-resource-subject-lib", "sr1", "--output", "out.xlsx"],
+                "teacher_export_shared_resource_subject_lib_command",
+            ),
+            (
+                ["teacher", "export-stat-students", "--output", "out.xlsx"],
+                "teacher_export_stat_students_command",
+            ),
+            (
+                ["teacher", "export-stat-report", "rollcall", "--output", "out.xlsx"],
+                "teacher_export_stat_report_command",
+            ),
+            (
+                ["teacher", "export-department-user-attendance", "org1", "--output", "out.xlsx"],
+                "teacher_export_department_user_attendance_command",
+            ),
+            (
+                ["teacher", "export-department-attendance", "org1", "--output", "out.xlsx"],
+                "teacher_export_department_attendance_command",
+            ),
+            (
+                ["teacher", "export-stat-vtrses-data", "--output", "out.xlsx"],
+                "teacher_export_stat_vtrses_data_command",
+            ),
+            (
+                ["teacher", "export-ai-ppt-usage", "--output", "out.xlsx"],
+                "teacher_export_ai_ppt_usage_command",
+            ),
+            (
+                ["teacher", "export-air-credit", "course", "--output", "out.xlsx"],
+                "teacher_export_air_credit_command",
+            ),
+            (
+                ["teacher", "export-management-calendar", "--output", "out.xlsx"],
+                "teacher_export_management_calendar_command",
+            ),
+            (
+                ["teacher", "upload-file", "lesson.txt", "--metadata-json", "{}", "--execute", "--yes"],
+                "teacher_upload_file_command",
+            ),
+            (["teacher", "entries"], "teacher_entries_command"),
+            (["teacher", "entry", "entry1"], "teacher_entry_command"),
+            (["teacher", "entry-references", "entry1"], "teacher_entry_references_command"),
+            (["teacher", "slides"], "teacher_slides_command"),
+            (["teacher", "slide", "slide1"], "teacher_slide_command"),
+            (["teacher", "slide-records", "slide1"], "teacher_slide_records_command"),
+            (["teacher", "slide-export-status", "slide1"], "teacher_slide_export_status_command"),
+            (["teacher", "published-slides"], "teacher_published_slides_command"),
+            (
+                ["teacher", "create-resource-group", "--payload-json", "{}"],
+                "teacher_create_resource_group_command",
+            ),
+            (
+                ["teacher", "update-resource-group", "rg1", "--payload-json", "{}"],
+                "teacher_update_resource_group_command",
+            ),
+            (["teacher", "delete-resource-group", "rg1"], "teacher_delete_resource_group_command"),
+            (
+                ["teacher", "delete-resource-group-members", "rg1", "--payload-json", "{}"],
+                "teacher_delete_resource_group_members_command",
+            ),
+            (
+                ["teacher", "delete-resource-group-folder", "rg1", "folder1"],
+                "teacher_delete_resource_group_folder_command",
+            ),
+            (
+                ["teacher", "update-resource-group-resource", "rg1", "sr1", "--payload-json", "{}"],
+                "teacher_update_resource_group_resource_command",
+            ),
+            (
+                ["teacher", "delete-resource-group-resource", "sr1"],
+                "teacher_delete_resource_group_resource_command",
+            ),
+            (["teacher", "leave-resource-group", "rg1"], "teacher_leave_resource_group_command"),
+            (["teacher", "save-shared-resource", "sr1"], "teacher_save_shared_resource_command"),
+            (
+                ["teacher", "batch-save-shared-resources", "--resource-ids", "sr1,sr2"],
+                "teacher_batch_save_shared_resources_command",
+            ),
+            (
+                ["teacher", "set-shared-resource-collection", "sr1", "u1"],
+                "teacher_set_shared_resource_collection_command",
+            ),
+            (
+                ["teacher", "unset-shared-resource-collection", "sr1", "u1"],
+                "teacher_unset_shared_resource_collection_command",
+            ),
+            (
+                ["teacher", "publish-shared-resource", "--payload-json", "{}"],
+                "teacher_publish_shared_resource_command",
+            ),
+            (["teacher", "delete-shared-resource", "sr1"], "teacher_delete_shared_resource_command"),
+            (["teacher", "delete-shared-resource-to", "sr1"], "teacher_delete_shared_resource_to_command"),
+            (
+                ["teacher", "add-shared-resource-comment", "sr1", "--payload-json", "{}"],
+                "teacher_add_shared_resource_comment_command",
+            ),
+            (
+                ["teacher", "delete-shared-resource-comment", "comment1"],
+                "teacher_delete_shared_resource_comment_command",
+            ),
+            (["teacher", "create-entry", "--payload-json", "{}"], "teacher_create_entry_command"),
+            (["teacher", "update-entry", "entry1", "--payload-json", "{}"], "teacher_update_entry_command"),
+            (["teacher", "delete-entry", "entry1"], "teacher_delete_entry_command"),
+            (
+                ["teacher", "batch-delete-entries", "--entry-ids", "entry1,entry2"],
+                "teacher_batch_delete_entries_command",
+            ),
+            (["teacher", "update-slide", "slide1", "--payload-json", "{}"], "teacher_update_slide_command"),
+            (["teacher", "export-slide", "slide1"], "teacher_export_slide_command"),
+            (["teacher", "delete-slide", "slide1"], "teacher_delete_slide_command"),
+            (
+                ["teacher", "batch-delete-slides", "--slide-ids", "slide1,slide2"],
+                "teacher_batch_delete_slides_command",
+            ),
+            (
+                ["teacher", "update-slide-video-info", "slide1", "--payload-json", "{}"],
+                "teacher_update_slide_video_info_command",
+            ),
+            (["teacher", "delete-slide-record", "record1"], "teacher_delete_slide_record_command"),
+            (
+                ["teacher", "create-course-package", "--payload-json", "{}"],
+                "teacher_create_course_package_command",
+            ),
+            (
+                ["teacher", "export-course-package", "--payload-json", "{}"],
+                "teacher_export_course_package_command",
+            ),
+            (
+                ["teacher", "update-course-package", "cp1", "--payload-json", "{}"],
+                "teacher_update_course_package_command",
+            ),
+            (["teacher", "delete-course-package", "cp1"], "teacher_delete_course_package_command"),
+            (["teacher", "save-course-package", "cp1"], "teacher_save_course_package_command"),
+            (
+                ["teacher", "import-course-package", "cp1", "--payload-json", "{}"],
+                "teacher_import_course_package_command",
+            ),
+            (
+                ["teacher", "create-courseware-quiz-subjects", "77", "--payload-json", "{}"],
+                "teacher_create_courseware_quiz_subjects_command",
+            ),
+            (
+                ["teacher", "update-courseware-quiz-subjects", "cwq1", "--payload-json", "{}"],
+                "teacher_update_courseware_quiz_subjects_command",
+            ),
+            (
+                ["teacher", "generate-courseware-quiz-subjects", "--payload-json", "{}"],
+                "teacher_generate_courseware_quiz_subjects_command",
+            ),
+            (
+                ["teacher", "generate-courseware-quiz-subjects-by-text", "--payload-json", "{}"],
+                "teacher_generate_courseware_quiz_subjects_by_text_command",
+            ),
+            (
+                ["teacher", "format-courseware-quiz-question", "--payload-json", "{}"],
+                "teacher_format_courseware_quiz_question_command",
+            ),
+            (
+                ["teacher", "copy-subject-libs-to-courseware-quiz", "cwq1", "--payload-json", "{}"],
+                "teacher_copy_subject_libs_to_courseware_quiz_command",
+            ),
+            (
+                ["teacher", "create-questionnaire-subject", "q1", "--payload-json", "{}"],
+                "teacher_create_questionnaire_subject_command",
+            ),
+            (
+                ["teacher", "update-questionnaire-subject", "q1", "qs1", "--payload-json", "{}"],
+                "teacher_update_questionnaire_subject_command",
+            ),
+            (
+                ["teacher", "delete-questionnaire-subject", "q1", "qs1"],
+                "teacher_delete_questionnaire_subject_command",
+            ),
+            (
+                ["teacher", "import-questionnaire-subjects", "q1", "--payload-json", "{}"],
+                "teacher_import_questionnaire_subjects_command",
+            ),
+            (
+                ["teacher", "import-questionnaire-campus-subjects", "q1", "--payload-json", "{}"],
+                "teacher_import_questionnaire_campus_subjects_command",
+            ),
+            (
+                ["teacher", "create-course-estimate", "--payload-json", "{}"],
+                "teacher_create_course_estimate_command",
+            ),
+            (
+                ["teacher", "update-course-estimate", "ce1", "--payload-json", "{}"],
+                "teacher_update_course_estimate_command",
+            ),
+            (["teacher", "delete-course-estimate", "ce1"], "teacher_delete_course_estimate_command"),
+            (
+                ["teacher", "create-course-estimate-reply", "--payload-json", "{}"],
+                "teacher_create_course_estimate_reply_command",
+            ),
+            (
+                ["teacher", "delete-course-estimate-reply", "cer1"],
+                "teacher_delete_course_estimate_reply_command",
+            ),
+            (["teacher", "create-activity", "--payload-json", "{}"], "teacher_create_activity_command"),
+            (["teacher", "update-activity", "77", "--payload-json", "{}"], "teacher_update_activity_command"),
+            (["teacher", "delete-activity", "77"], "teacher_delete_activity_command"),
+            (
+                ["teacher", "publish-activities", "--activity-keys", "homework-77", "--published", "true"],
+                "teacher_publish_activities_command",
+            ),
+            (["teacher", "save-activity-resource", "r1"], "teacher_save_activity_resource_command"),
+            (
+                ["teacher", "log-activity-read", "77", "--payload-json", "{}"],
+                "teacher_log_activity_read_command",
+            ),
+            (
+                ["teacher", "log-exam-activity-read", "1", "--payload-json", "{}"],
+                "teacher_log_exam_activity_read_command",
+            ),
+            (
+                ["teacher", "update-activity-resource", "77", "r1", "--payload-json", "{}"],
+                "teacher_update_activity_resource_command",
+            ),
+            (
+                ["teacher", "delete-activity-resource", "77", "r1"],
+                "teacher_delete_activity_resource_command",
+            ),
+            (
+                ["teacher", "add-activity-comment", "77", "--payload-json", "{}"],
+                "teacher_add_activity_comment_command",
+            ),
+            (
+                ["teacher", "update-activity-comment", "77", "c1", "--payload-json", "{}"],
+                "teacher_update_activity_comment_command",
+            ),
+            (
+                ["teacher", "delete-activity-comment", "77", "c1"],
+                "teacher_delete_activity_comment_command",
+            ),
+            (
+                ["teacher", "reply-activity-comment", "77", "c1", "--payload-json", "{}"],
+                "teacher_reply_activity_comment_command",
+            ),
+            (
+                ["teacher", "update-activity-comment-reply", "77", "r1", "--payload-json", "{}"],
+                "teacher_update_activity_comment_reply_command",
+            ),
+            (
+                ["teacher", "delete-activity-comment-reply", "77", "r1"],
+                "teacher_delete_activity_comment_reply_command",
+            ),
+            (
+                ["teacher", "operate-activity-comments", "77", "--payload-json", "{}"],
+                "teacher_operate_activity_comments_command",
+            ),
+            (["teacher", "grade-rollcalls", "--rollcall-ids", "42"], "teacher_grade_rollcalls_command"),
+            (["teacher", "recommend-submissions", "--submission-ids", "9"], "teacher_recommend_submissions_command"),
+            (["teacher", "cancel-recommend-submission", "9"], "teacher_cancel_recommend_submission_command"),
+            (
+                ["teacher", "update-forum-status", "77", "--enable", "false"],
+                "teacher_update_forum_status_command",
+            ),
+            (["teacher", "delete-exams", "--exam-ids", "1"], "teacher_delete_exams_command"),
+            (["teacher", "classroom", "c1"], "teacher_classroom_command"),
+            (["teacher", "questionnaire", "q1"], "teacher_questionnaire_command"),
+            (["teacher", "create-classroom-exam", "--payload-json", "{}"], "teacher_create_classroom_exam_command"),
+            (["teacher", "update-classroom-exam", "c1", "--payload-json", "{}"], "teacher_update_classroom_exam_command"),
+            (["teacher", "delete-classroom", "c1"], "teacher_delete_classroom_command"),
+            (["teacher", "update-classroom-status", "c1", "--payload-json", "{}"], "teacher_update_classroom_status_command"),
+            (
+                ["teacher", "update-classroom-subject-status", "c1", "sub1", "--payload-json", "{}"],
+                "teacher_update_classroom_subject_status_command",
+            ),
+            (["teacher", "save-classroom-subjects", "c1", "--payload-json", "{}"], "teacher_save_classroom_subjects_command"),
+            (
+                ["teacher", "delete-classroom-subjects", "c1", "--subject-ids", "sub1"],
+                "teacher_delete_classroom_subjects_command",
+            ),
+            (["teacher", "score-classroom", "--payload-json", "{}"], "teacher_score_classroom_command"),
+        ]
+
+        for argv, command_name in cases:
+            with self.subTest(command=argv[1]):
+                with (
+                    patch.object(tron, "bootstrap_config"),
+                    patch.object(tron.asyncio, "run", side_effect=fake_run) as asyncio_run,
+                    patch.object(tron, command_name, AsyncMock(return_value=0)) as command,
+                ):
+                    result = tron.main(argv)
+
+                self.assertEqual(result, 0)
+                asyncio_run.assert_called_once()
+                command.assert_called_once()
+
     def test_package_check_json_command_dispatches(self) -> None:
         outputs = []
         with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):

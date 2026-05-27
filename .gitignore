@@ -38,9 +38,13 @@ log/
 log_/
 state/
 cookies/
+teacher-downloads/
+teacher-exports/
+qr-output/
 config-full-backup-*.yaml
 config-legacy-backup-*.yaml
 config-broken-*.yaml
+*.tmp.db
 
 # Local release/build artifacts. Rebuild with:
 #   python -m troTHU.tron release-build --execute --json
