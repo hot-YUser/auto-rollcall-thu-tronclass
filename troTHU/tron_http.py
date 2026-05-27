@@ -156,6 +156,14 @@ class RollcallsResult:
 
 
 @dataclass(frozen=True)
+class BinaryResult:
+    url: str
+    status_code: int
+    content_type: str
+    body: bytes
+
+
+@dataclass(frozen=True)
 class TronHttpEndpoints:
     base_url: str = TRON
     login_url: str = LOGIN_URL
@@ -345,6 +353,71 @@ class TronHttpClient:
         if self.request_ssl is None:
             return {}
         return {"ssl": self.request_ssl}
+
+    def api_url(self, path: str) -> str:
+        return "{}{}".format(self.endpoints.base_url.rstrip("/"), path)
+
+    async def request_json(
+        self,
+        method: str,
+        url: str,
+        *,
+        json_payload: Any = None,
+        params: Optional[Dict[str, Any]] = None,
+        expected_status: tuple[int, ...] = (200,),
+    ) -> Any:
+        kwargs = self.request_kwargs()
+        if json_payload is not None:
+            kwargs["json"] = json_payload
+        if params is not None:
+            kwargs["params"] = params
+        request = getattr(self.session, method.lower())
+        async with request(url, **kwargs) as resp:
+            response_url = str(resp.url)
+            status_code = resp.status
+            if status_code == 401 or "login" in response_url.lower():
+                raise UnauthorizedError("Cookie 已過期或導向登入頁。")
+            if status_code not in expected_status:
+                body = await resp.text()
+                raise UnexpectedResponseError("HTTP {}: {}".format(status_code, body[:200]))
+            if status_code == 204:
+                return {}
+            try:
+                return await resp.json(encoding="utf-8")
+            except (aiohttp.ContentTypeError, ValueError):
+                body = await resp.text()
+                if not body.strip():
+                    return {}
+                raise UnexpectedResponseError(
+                    "Unexpected response body: {}".format(body[:200])
+                )
+
+    async def request_bytes(
+        self,
+        method: str,
+        url: str,
+        *,
+        params: Optional[Dict[str, Any]] = None,
+        expected_status: tuple[int, ...] = (200,),
+    ) -> BinaryResult:
+        kwargs = self.request_kwargs()
+        if params is not None:
+            kwargs["params"] = params
+        request = getattr(self.session, method.lower())
+        async with request(url, **kwargs) as resp:
+            response_url = str(resp.url)
+            status_code = resp.status
+            if status_code == 401 or "login" in response_url.lower():
+                raise UnauthorizedError("Cookie 已過期或導向登入頁。")
+            if status_code not in expected_status:
+                body = await resp.text()
+                raise UnexpectedResponseError("HTTP {}: {}".format(status_code, body[:200]))
+            return BinaryResult(
+                url=response_url,
+                status_code=status_code,
+                content_type=str(resp.headers.get("Content-Type", "")),
+                body=await resp.read(),
+            )
 
     def is_tku_fast_sso(self) -> bool:
         host = urlparse(self.endpoints.base_url).hostname or ""
@@ -542,6 +615,184 @@ class TronHttpClient:
         user_id = runtime.get("USER", {}).get("id")
         return user_id if isinstance(user_id, int) else None
 
+    async def fetch_users_me(self) -> Dict[str, Any]:
+        payload = await self.request_json("GET", self.api_url("/api/users/me"))
+        return payload if isinstance(payload, dict) else {}
+
+    async def fetch_course_enrollment(self, course_id: Any) -> Dict[str, Any]:
+        course_id_text = str(course_id).strip()
+        payload = await self.request_json(
+            "GET",
+            self.api_url("/api/course/{}/enrollment".format(course_id_text)),
+            params={"fields": "roles,aliases,group_id"},
+        )
+        return payload if isinstance(payload, dict) else {}
+
+    async def fetch_course_rollcalls(self, course_id: Any) -> Any:
+        course_id_text = str(course_id).strip()
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/course/{}/rollcalls".format(course_id_text)),
+        )
+
+    async def fetch_course_students(self, course_id: Any) -> Any:
+        course_id_text = str(course_id).strip()
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/course/{}/students".format(course_id_text)),
+        )
+
+    async def fetch_course_rollcall_detail(self, course_id: Any, rollcall_id: Any) -> Any:
+        course_id_text = str(course_id).strip()
+        rollcall_id_text = str(rollcall_id).strip()
+        return await self.request_json(
+            "GET",
+            self.api_url(
+                "/api/course/{}/rollcall/{}".format(course_id_text, rollcall_id_text)
+            ),
+        )
+
+    async def fetch_student_onprogress_rollcalls(self, course_id: Any) -> Any:
+        course_id_text = str(course_id).strip()
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/course/{}/student-onprogress-rollcalls".format(course_id_text)),
+        )
+
+    async def fetch_course_leave_record(
+        self,
+        course_id: Any,
+        *,
+        timestamp: Any = "",
+        page: Any = None,
+        page_size: Any = None,
+    ) -> Any:
+        course_id_text = str(course_id).strip()
+        params: Dict[str, Any] = {}
+        timestamp_text = str(timestamp or "").strip()
+        if timestamp_text:
+            params["timestamp"] = timestamp_text
+        if page not in (None, ""):
+            params["page"] = page
+        if page_size not in (None, ""):
+            params["page_size"] = page_size
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/course/{}/leave-record".format(course_id_text)),
+            params=params or None,
+        )
+
+    async def fetch_course_students_rollcalls(self, course_id: Any) -> Any:
+        course_id_text = str(course_id).strip()
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/course/{}/students_rollcalls".format(course_id_text)),
+        )
+
+    async def fetch_rollcall_status_result(self, rollcall_id: Any) -> Any:
+        rollcall_id_text = str(rollcall_id).strip()
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/courses/rollcall_status/{}/result".format(rollcall_id_text)),
+        )
+
+    async def create_teacher_rollcall(self, course_id: Any, payload: Dict[str, Any]) -> Any:
+        course_id_text = str(course_id).strip()
+        return await self.request_json(
+            "POST",
+            self.api_url("/api/course/{}/rollcall".format(course_id_text)),
+            json_payload=payload,
+            expected_status=(200, 201),
+        )
+
+    async def create_module_rollcall(self, course_id: Any, payload: Dict[str, Any]) -> Any:
+        course_id_text = str(course_id).strip()
+        return await self.request_json(
+            "POST",
+            self.api_url("/api/module/{}/rollcall".format(course_id_text)),
+            json_payload=payload,
+            expected_status=(200, 201),
+        )
+
+    async def update_teacher_rollcall(self, rollcall_id: Any, payload: Dict[str, Any]) -> Any:
+        rollcall_id_text = str(rollcall_id).strip()
+        return await self.request_json(
+            "PUT",
+            self.api_url("/api/rollcall/{}".format(rollcall_id_text)),
+            json_payload=payload,
+            params={"api_version": "1.1.0"},
+            expected_status=(200, 204),
+        )
+
+    async def delete_teacher_rollcall(self, rollcall_id: Any) -> Any:
+        rollcall_id_text = str(rollcall_id).strip()
+        return await self.request_json(
+            "DELETE",
+            self.api_url("/api/rollcall/{}".format(rollcall_id_text)),
+            expected_status=(200, 204),
+        )
+
+    async def start_teacher_rollcall(self, rollcall_id: Any) -> Any:
+        rollcall_id_text = str(rollcall_id).strip()
+        return await self.request_json(
+            "POST",
+            self.api_url("/api/rollcall/{}/start-rollcall".format(rollcall_id_text)),
+            expected_status=(200, 204),
+        )
+
+    async def activate_teacher_rollcall(self, rollcall_id: Any) -> Any:
+        rollcall_id_text = str(rollcall_id).strip()
+        return await self.request_json(
+            "PUT",
+            self.api_url("/api/rollcall/{}/activate".format(rollcall_id_text)),
+            expected_status=(200, 204),
+        )
+
+    async def stop_teacher_rollcall(
+        self,
+        rollcall_id: Any,
+        *,
+        rollcall: Any = None,
+        rollcall_type: Any = "manual",
+    ) -> Any:
+        try:
+            from troTHU.teacher_rollcall import teacher_stop_path
+        except ImportError:  # pragma: no cover - direct script fallback
+            from teacher_rollcall import teacher_stop_path  # type: ignore
+
+        return await self.request_json(
+            "PUT",
+            self.api_url(teacher_stop_path(rollcall_id, rollcall, rollcall_type)),
+            expected_status=(200, 204),
+        )
+
+    async def answer_qr_rollcall(self, rollcall_id: Any, payload: Dict[str, Any]) -> Any:
+        rollcall_id_text = str(rollcall_id).strip()
+        return await self.request_json(
+            "PUT",
+            self.api_url("/api/rollcall/{}/answer_qr_rollcall".format(rollcall_id_text)),
+            json_payload=payload,
+            expected_status=(200, 204),
+        )
+
+    async def answer_number_rollcall(self, rollcall_id: Any, payload: Dict[str, Any]) -> Any:
+        rollcall_id_text = str(rollcall_id).strip()
+        return await self.request_json(
+            "PUT",
+            self.api_url("/api/rollcall/{}/answer_number_rollcall".format(rollcall_id_text)),
+            json_payload=payload,
+            expected_status=(200, 204),
+        )
+
+    async def answer_radar_rollcall(self, rollcall_id: Any, payload: Dict[str, Any]) -> Any:
+        rollcall_id_text = str(rollcall_id).strip()
+        return await self.request_json(
+            "PUT",
+            self.api_url("/api/rollcall/{}/answer_radar_rollcall".format(rollcall_id_text)),
+            json_payload=payload,
+            expected_status=(200, 204),
+        )
+
     async def fetch_rollcalls(self) -> RollcallsResult:
         async with self.session.get(self.endpoints.rollcalls_url, **self.request_kwargs()) as resp:
             url = str(resp.url)
@@ -563,26 +814,92 @@ class TronHttpClient:
         return RollcallsResult(url=url, status_code=status_code, payload=payload)
 
     async def fetch_student_rollcalls(self, rollcall_id: Any, action: str = "") -> Any:
-        base = self.endpoints.base_url.rstrip("/")
-        url = "{}/api/rollcall/{}/student_rollcalls".format(base, str(rollcall_id).strip())
         action_text = str(action or "").strip()
-        if action_text:
-            url = "{}?action={}".format(url, action_text)
-        async with self.session.get(url, **self.request_kwargs()) as resp:
-            response_url = str(resp.url)
-            status_code = resp.status
-            if status_code == 401 or "login" in response_url.lower():
-                raise UnauthorizedError("Cookie 已過期或導向登入頁。")
-            if status_code != 200:
-                body = await resp.text()
-                raise UnexpectedResponseError("HTTP {}: {}".format(status_code, body[:200]))
-            try:
-                return await resp.json(encoding="utf-8")
-            except (aiohttp.ContentTypeError, ValueError):
-                body = await resp.text()
-                raise UnexpectedResponseError(
-                    "Unexpected response body: {}".format(body[:200])
-                )
+        params = {"action": action_text} if action_text else None
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/rollcall/{}/student_rollcalls".format(str(rollcall_id).strip())),
+            params=params,
+        )
+
+    async def fetch_pagination_student_rollcalls(
+        self,
+        rollcall_id: Any,
+        *,
+        page: Any = 1,
+        page_size: Any = 20,
+        rollcall_status: Any = "",
+    ) -> Any:
+        rollcall_id_text = str(rollcall_id).strip()
+        params: Dict[str, Any] = {}
+        if page not in (None, ""):
+            params["page"] = page
+        if page_size not in (None, ""):
+            params["page_size"] = page_size
+        rollcall_status_text = str(rollcall_status or "").strip()
+        if rollcall_status_text:
+            params["rollcall_status"] = rollcall_status_text
+        return await self.request_json(
+            "GET",
+            self.api_url(
+                "/api/rollcall/{}/pagination_students_rollcalls".format(rollcall_id_text)
+            ),
+            params=params or None,
+        )
+
+    async def fetch_student_rollcall_count(self, rollcall_id: Any) -> Any:
+        rollcall_id_text = str(rollcall_id).strip()
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/rollcall/{}/student_rollcall_count".format(rollcall_id_text)),
+        )
+
+    async def fetch_course_student_rollcalls(
+        self,
+        course_id: Any,
+        student_id: Any,
+        *,
+        page: Any = 1,
+        page_size: Any = 10,
+    ) -> Any:
+        course_id_text = str(course_id).strip()
+        student_id_text = str(student_id).strip()
+        params: Dict[str, Any] = {}
+        if page not in (None, ""):
+            params["page"] = page
+        if page_size not in (None, ""):
+            params["page_size"] = page_size
+        return await self.request_json(
+            "GET",
+            self.api_url(
+                "/api/course/{}/student/{}/rollcalls".format(course_id_text, student_id_text)
+            ),
+            params=params or None,
+        )
+
+    async def update_course_student_rollcalls(
+        self,
+        course_id: Any,
+        student_id: Any,
+        payload: Dict[str, Any],
+    ) -> Any:
+        course_id_text = str(course_id).strip()
+        student_id_text = str(student_id).strip()
+        return await self.request_json(
+            "PUT",
+            self.api_url(
+                "/api/course/{}/student/{}/rollcalls".format(course_id_text, student_id_text)
+            ),
+            json_payload=payload,
+            expected_status=(200, 204),
+        )
+
+    async def fetch_qrcode_image(self, url: Any) -> BinaryResult:
+        return await self.request_bytes(
+            "GET",
+            self.api_url("/api/qrcode"),
+            params={"url": str(url or "")},
+        )
 
     async def fetch_current_semester(self) -> Dict[str, Any]:
         async with self.session.get(self.endpoints.current_semester_url, **self.request_kwargs()) as resp:

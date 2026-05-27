@@ -11,6 +11,7 @@ class ProviderCapabilities:
     radar: bool = False
     qrcode: bool = False
     course_discovery: bool = False
+    teacher_rollcall: bool = False
     manual_qr: bool = False
     local_scanner: bool = False
     bot_adapter: bool = False
@@ -23,6 +24,7 @@ class ProviderCapabilities:
             "radar": self.radar,
             "qrcode": self.qrcode,
             "course_discovery": self.course_discovery,
+            "teacher_rollcall": self.teacher_rollcall,
             "manual_qr": self.manual_qr,
             "local_scanner": self.local_scanner,
             "bot_adapter": self.bot_adapter,
@@ -124,6 +126,7 @@ PROVIDERS: Dict[str, ProviderDefinition] = {
             radar=True,
             qrcode=True,
             course_discovery=True,
+            teacher_rollcall=True,
             manual_qr=True,
             local_scanner=True,
             direct_code_lookup=True,
@@ -145,6 +148,7 @@ PROVIDERS: Dict[str, ProviderDefinition] = {
             radar=True,
             qrcode=True,
             course_discovery=True,
+            teacher_rollcall=True,
             manual_qr=True,
             local_scanner=True,
             direct_code_lookup=True,
@@ -165,6 +169,7 @@ PROVIDERS: Dict[str, ProviderDefinition] = {
             radar=True,
             qrcode=True,
             course_discovery=True,
+            teacher_rollcall=True,
             manual_qr=True,
             local_scanner=True,
             direct_code_lookup=True,
@@ -185,6 +190,7 @@ PROVIDERS: Dict[str, ProviderDefinition] = {
             radar=True,
             qrcode=True,
             course_discovery=True,
+            teacher_rollcall=True,
             manual_qr=True,
             local_scanner=True,
             direct_code_lookup=True,

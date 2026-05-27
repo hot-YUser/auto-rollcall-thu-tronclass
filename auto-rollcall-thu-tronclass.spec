@@ -21,7 +21,8 @@ def safe_collect_submodules(package_name):
 # config.yaml next to itself on first run, and runtime folders such as state/,
 # log/, cookies/, tests/, and external reference projects must never be bundled.
 # Keep HIDDEN_IMPORTS in sync with `python -m troTHU.tron package-check --json`;
-# frozen builds require the diagnostic-capture and connection-probe modules.
+# frozen builds require the diagnostic-capture, connection-probe, and lazy
+# teacher-rollcall CLI/helper modules.
 DATAS = []
 
 HIDDEN_IMPORTS = sorted(
@@ -50,6 +51,7 @@ HIDDEN_IMPORTS = sorted(
             "troTHU.cli_qr",
             "troTHU.cli_research",
             "troTHU.cli_system",
+            "troTHU.cli_teacher",
             "troTHU.clipboard_qr",
             "troTHU.config_runtime",
             "troTHU.config_editor",
@@ -100,6 +102,7 @@ HIDDEN_IMPORTS = sorted(
             "troTHU.group_runtime",
             "troTHU.status_reports",
             "troTHU.telegram_adapter",
+            "troTHU.teacher_rollcall",
             "troTHU.tron_http",
             "troTHU.ux_tools",
             "troTHU.webview_sync",

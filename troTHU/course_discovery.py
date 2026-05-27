@@ -7,6 +7,11 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping, Optional, Tuple
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
+try:  # pragma: no cover - package import path
+    from troTHU.teacher_rollcall import infer_course_role
+except ImportError:  # pragma: no cover - direct script fallback
+    from teacher_rollcall import infer_course_role  # type: ignore
+
 try:  # pragma: no cover - exercised when aiohttp is installed
     import aiohttp
 except ModuleNotFoundError:  # pragma: no cover
@@ -40,8 +45,12 @@ class CourseInfo:
     semester_id: str = ""
     academic_year_id: str = ""
     teacher: str = ""
+    role: str = "unknown"
+    role_alias: str = ""
+    role_source: str = ""
+    teacher_capable: bool = False
 
-    def to_dict(self) -> dict[str, str]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.course_id,
             "name": self.name,
@@ -49,6 +58,10 @@ class CourseInfo:
             "semester_id": self.semester_id,
             "academic_year_id": self.academic_year_id,
             "teacher": self.teacher,
+            "role": self.role,
+            "role_alias": self.role_alias,
+            "role_source": self.role_source,
+            "teacher_capable": self.teacher_capable,
         }
 
 
@@ -200,6 +213,7 @@ def parse_courses(payload: Any) -> Tuple[CourseInfo, ...]:
         name = _string_from_mapping(item, "display_name", "name", "title", "course_name")
         if not name:
             name = "Course {}".format(course_id)
+        role = infer_course_role(item)
         courses.append(
             CourseInfo(
                 course_id=course_id,
@@ -208,6 +222,10 @@ def parse_courses(payload: Any) -> Tuple[CourseInfo, ...]:
                 semester_id=_string_from_mapping(item, "semester_id", "semesterId"),
                 academic_year_id=_string_from_mapping(item, "academic_year_id", "academicYearId"),
                 teacher=_teacher_name(item),
+                role=role.role,
+                role_alias=role.role_alias,
+                role_source=role.source,
+                teacher_capable=role.teacher_capable,
             )
         )
     return tuple(courses)

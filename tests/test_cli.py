@@ -146,6 +146,82 @@ class TronCliSmokeTest(unittest.TestCase):
         self.assertEqual(result, 0)
         asyncio_run.assert_called_once()
 
+    def test_teacher_status_command_dispatches_without_running_monitor(self) -> None:
+        def fake_run(coro):
+            coro.close()
+            return 0
+
+        with (
+            patch.object(tron, "bootstrap_config"),
+            patch.object(tron.asyncio, "run", side_effect=fake_run) as asyncio_run,
+        ):
+            result = tron.main(["teacher", "status", "--json"])
+
+        self.assertEqual(result, 0)
+        asyncio_run.assert_called_once()
+
+    def test_teacher_rollcall_create_command_dispatches_without_running_monitor(self) -> None:
+        def fake_run(coro):
+            coro.close()
+            return 0
+
+        with (
+            patch.object(tron, "bootstrap_config"),
+            patch.object(tron.asyncio, "run", side_effect=fake_run) as asyncio_run,
+        ):
+            result = tron.main(
+                [
+                    "teacher",
+                    "rollcall",
+                    "create",
+                    "--course-id",
+                    "123",
+                    "--type",
+                    "number",
+                    "--number-code",
+                    "2468",
+                    "--json",
+                ]
+            )
+
+        self.assertEqual(result, 0)
+        asyncio_run.assert_called_once()
+
+    def test_teacher_rollcall_extra_api_commands_dispatch(self) -> None:
+        def fake_run(coro):
+            coro.close()
+            return 0
+
+        commands = [
+            ["teacher", "rollcall", "module-create", "--course-id", "123", "--module-id", "m1", "--json"],
+            ["teacher", "rollcall", "roster", "--course-id", "123", "--json"],
+            ["teacher", "rollcall", "detail", "--course-id", "123", "456", "--json"],
+            ["teacher", "rollcall", "pagination-students", "456", "--page", "1", "--page-size", "20", "--json"],
+            ["teacher", "rollcall", "student-history", "--course-id", "123", "--student-id", "789", "--json"],
+            [
+                "teacher",
+                "rollcall",
+                "update-student-history",
+                "--course-id",
+                "123",
+                "--student-id",
+                "789",
+                "--student-rollcall-id",
+                "456",
+                "--status",
+                "absent",
+                "--json",
+            ],
+            ["teacher", "rollcall", "qrcode", "--url", "https://example.test", "--json"],
+        ]
+
+        with patch.object(tron, "bootstrap_config"):
+            for command in commands:
+                with patch.object(tron.asyncio, "run", side_effect=fake_run) as asyncio_run:
+                    result = tron.main(command)
+                self.assertEqual(result, 0)
+                asyncio_run.assert_called_once()
+
     def test_package_check_json_command_dispatches(self) -> None:
         outputs = []
         with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):

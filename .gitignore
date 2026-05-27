@@ -91,3 +91,9 @@ desktop.ini
 # but compressed source archives and fresh raw captures must not be committed.
 *.7z
 tests/test_rollcalls.js
+
+# Local teacher/API smoke outputs.
+teacher-rollcall-*.json
+rollcall-api-*.json
+rollcall-qrcode*.png
+rollcall-qrcode*.svg

@@ -167,6 +167,15 @@ def main(argv: ctx.Optional[ctx.List[str]]=None) -> int:
             else:
                 print('Course discovery failed: {}'.format(exc))
             return 1
+    if args.command == 'teacher':
+        try:
+            return ctx.asyncio.run(ctx.teacher_command(args))
+        except Exception as exc:
+            if getattr(args, 'json', False):
+                print(ctx.json_text({'status': 'unexpected_response', 'message': str(exc)}))
+            else:
+                print('Teacher command failed: {}'.format(exc))
+            return 1
     if args.command == 'qr':
         qr_args = list(args.qr_args or [])
         qr_action = qr_args[0].lower() if qr_args else ''
