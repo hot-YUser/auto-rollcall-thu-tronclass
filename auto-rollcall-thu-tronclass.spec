@@ -110,14 +110,24 @@ HIDDEN_IMPORTS = sorted(
             "aiohttp.web",
             "yaml",
         ]
-        + safe_collect_submodules("keyring")
         + safe_collect_submodules("nacl")
     )
 )
 
 EXCLUDES = [
     "aiohttp.pytest_plugin",
+    "cv2",
+    "greenlet",
+    "keyring",
+    "keyrings",
     "mypy",
+    "numpy",
+    "PIL",
+    "Pillow",
+    "playwright",
+    "playwright.async_api",
+    "pyee",
+    "pyzbar",
     "pydantic",
     "pydantic_core",
     "pytest",

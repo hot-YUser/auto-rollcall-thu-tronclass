@@ -59,6 +59,10 @@ class PackageDiagnosticsTest(unittest.TestCase):
         self.assertIn("troTHU.release_builder", report["hidden_imports"])
         self.assertIn("troTHU.release_checklist", report["hidden_imports"])
         self.assertIn("troTHU.webview_sync", report["hidden_imports"])
+        self.assertIn("playwright", report["excludes"])
+        self.assertIn("keyring", report["excludes"])
+        self.assertIn("cv2", report["excludes"])
+        self.assertEqual(report["missing_small_bundle_excludes"], [])
         self.assertEqual(report["hidden_import_gaps"], [])
 
     def test_hidden_import_gap_detection_reports_missing_runtime_module(self) -> None:
@@ -108,12 +112,13 @@ class PackageDiagnosticsTest(unittest.TestCase):
         self.assertIn("fail", {item["status"] for item in report["checks"]})
         self.assertNotIn("config.yaml", encoded)
 
-    def test_package_report_runtime_section_lists_optional_modules(self) -> None:
+    def test_package_report_runtime_section_lists_required_and_optional_modules(self) -> None:
         report = build_package_diagnostic_report(Path("."), config=tron.CONFIG)
 
         self.assertIn("PyInstaller", report["runtime"]["modules"])
-        self.assertIn("keyring", report["runtime"]["modules"])
         self.assertIn("nacl", report["runtime"]["modules"])
+        self.assertIn("keyring", report["runtime"]["optional_capabilities"])
+        self.assertIn("playwright.async_api", report["runtime"]["optional_capabilities"])
         self.assertNotIn("textual", report["runtime"]["modules"])
 
     def test_doctor_and_package_check_json_include_packaging_report(self) -> None:
