@@ -248,6 +248,38 @@ class FakeTronServer:
     async def home(self, _request):
         return web.Response(text="ok")
 
+    async def audit_page(self, _request):
+        html = """
+        <html>
+          <head>
+            <link rel="stylesheet" href="/audit/style.css">
+            <script type="module" src="/audit/app.js"></script>
+          </head>
+          <body>
+            <img src="/audit/image.png">
+            audit-page-secret
+          </body>
+        </html>
+        """
+        return web.Response(text=html, content_type="text/html", headers={"X-Audit-Page": "yes"})
+
+    async def audit_app_js(self, _request):
+        js = "import './nested.js';\nconsole.log('audit-js-secret');\n"
+        return web.Response(text=js, content_type="application/javascript")
+
+    async def audit_nested_js(self, _request):
+        return web.Response(text="console.log('audit-nested-secret');\n", content_type="application/javascript")
+
+    async def audit_style_css(self, _request):
+        css = "@import '/audit/more.css';\n.hero { background: url('/audit/image.png'); }\n"
+        return web.Response(text=css, content_type="text/css")
+
+    async def audit_more_css(self, _request):
+        return web.Response(text=".more { color: #123456; }\n", content_type="text/css")
+
+    async def audit_image(self, _request):
+        return web.Response(body=b"\x89PNG\r\n\x1a\naudit-image-secret", content_type="image/png")
+
     async def rollcalls_api(self, request):
         unauthorized = self._unauthorized_if_needed(request)
         if unauthorized is not None:
@@ -1288,6 +1320,12 @@ class FakeTronServer:
         app.router.add_post("/submit", self.submit_login)
         app.router.add_get("/", self.home)
         app.router.add_get("/home", self.home)
+        app.router.add_get("/audit/page", self.audit_page)
+        app.router.add_get("/audit/app.js", self.audit_app_js)
+        app.router.add_get("/audit/nested.js", self.audit_nested_js)
+        app.router.add_get("/audit/style.css", self.audit_style_css)
+        app.router.add_get("/audit/more.css", self.audit_more_css)
+        app.router.add_get("/audit/image.png", self.audit_image)
         app.router.add_get("/api/radar/rollcalls", self.rollcalls_api)
         app.router.add_get("/api/current-semester-info", self.current_semester_api)
         app.router.add_get("/api/my-courses", self.courses_api)
@@ -1345,6 +1383,7 @@ class FakeTronServer:
         app.router.add_route("*", "/api/qrcode/login", self.qrcode_login_api)
         app.router.add_post("/api/qr-code/scan", self.qr_code_scan_api)
         app.router.add_post("/realms/{realm}/broker/tronclass-qrcode/endpoint", self.identity_broker_api)
+        app.router.add_post("/auth/realms/{realm}/broker/tronclass-qrcode/endpoint", self.identity_broker_api)
         app.router.add_get("/ntf/users/{user_id}/notifications/unread-count", self.ntf_unread_count_api)
         app.router.add_put("/api/rollcall/{rollcall_id}/answer_number_rollcall", self.answer_number)
         app.router.add_get("/api/rollcall/{rollcall_id}/lite", self.radar_lite)

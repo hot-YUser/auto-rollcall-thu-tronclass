@@ -97,6 +97,100 @@ _QR_INFO_CAPTURED_ROLLCALLS: set = set()
 _QR_INFO_CAPTURE_TASKS: dict = {}
 _QR_DATA_PROBED_ROLLCALLS: set = set()
 _LAST_CLIPBOARD_QR_HASH: str = ''
+_API_STATE_AUDIT_SIGNATURES: dict = {}
+_API_STATE_AUDIT_TASKS: dict = {}
+
+
+async def _run_api_state_audit_task(
+    session: ctx.aiohttp.ClientSession,
+    client: ctx.Any,
+    selected_status: str,
+    selected_rollcall: ctx.Any,
+    selected_rollcall_type: str,
+    rollcalls: ctx.Any,
+    source_payload: ctx.Any,
+    cnt: int,
+) -> None:
+    try:
+        user_id = ''
+        try:
+            fetched_user_id = await client.fetch_user_id()
+            user_id = ctx.normalize_text(fetched_user_id)
+        except Exception as exc:
+            ctx.log(event='api_state_audit_user_id', counter=cnt, status='failed', rollcall_id=selected_rollcall.get('rollcall_id') if isinstance(selected_rollcall, dict) else '', rollcall_type=selected_rollcall_type, message='API state audit 無法取得 APPRuntime user id。', error=exc)
+        summary = await ctx.run_api_state_audit(
+            session,
+            endpoints=client.endpoints,
+            base_dir=ctx.BASE_DIR,
+            config=ctx.CONFIG,
+            request_ssl=ctx.get_ssl_request_setting(),
+            profile=ctx.get_active_profile(ctx.CONFIG).name,
+            provider=ctx.get_active_provider_key(),
+            selected_status=selected_status,
+            selected_rollcall=selected_rollcall,
+            selected_rollcall_type=selected_rollcall_type,
+            rollcalls=rollcalls,
+            source_payload=source_payload,
+            user_id=user_id,
+            session_id=ctx.get_session_id_header(session),
+            capture_realtime_func=ctx.capture_realtime,
+        )
+        ctx.log(event='api_state_audit', counter=cnt, status=summary.get('status', 'unknown'), rollcall_id=summary.get('rollcall_id'), rollcall_type=selected_rollcall_type, message='狀態變更 API 全量原始擷取完成。', extra=summary)
+        if summary.get('status') == 'ok':
+            ctx.log_print('已完成狀態變更 API 全量擷取：{}（operations={}, assets={}）'.format(summary.get('output_dir', ''), summary.get('operation_count'), summary.get('asset_count')))
+    except Exception as exc:
+        ctx.log(event='api_state_audit', counter=cnt, status='error', rollcall_id=selected_rollcall.get('rollcall_id') if isinstance(selected_rollcall, dict) else '', rollcall_type=selected_rollcall_type, message='狀態變更 API 全量原始擷取失敗。', error=exc)
+
+
+def schedule_api_state_audit_on_change(
+    session: ctx.aiohttp.ClientSession,
+    client: ctx.Any,
+    selected_status: str,
+    selected_rollcall: ctx.Any,
+    selected_rollcall_type: str,
+    rollcalls: ctx.Any,
+    source_payload: ctx.Any,
+    cnt: int,
+) -> ctx.Dict[str, ctx.Any]:
+    signature = ctx.build_rollcall_state_signature(
+        selected_status,
+        selected_rollcall=selected_rollcall,
+        selected_rollcall_type=selected_rollcall_type,
+        rollcalls=rollcalls,
+    )
+    try:
+        profile = ctx.get_active_profile(ctx.CONFIG).name
+    except Exception:
+        profile = ''
+    key = '{}:{}'.format(ctx.get_active_provider_key(), profile)
+    previous = _API_STATE_AUDIT_SIGNATURES.get(key)
+    _API_STATE_AUDIT_SIGNATURES[key] = signature
+    if not ctx.api_state_audit_enabled(ctx.CONFIG):
+        return {'scheduled': False, 'reason': 'disabled', 'signature': signature}
+    if previous == signature:
+        return {'scheduled': False, 'reason': 'unchanged', 'signature': signature}
+    if previous is None and not ctx.rollcall_state_has_activity(signature):
+        return {'scheduled': False, 'reason': 'initial_idle', 'signature': signature}
+    digest = ctx.hashlib.sha1(signature.encode('utf-8')).hexdigest()[:16]
+    task_key = '{}:{}'.format(key, digest)
+    task = _API_STATE_AUDIT_TASKS.get(task_key)
+    if task is not None and not task.done():
+        return {'scheduled': False, 'reason': 'already_running', 'signature': signature}
+    task = ctx.asyncio.create_task(
+        _run_api_state_audit_task(
+            session,
+            client,
+            selected_status,
+            selected_rollcall,
+            selected_rollcall_type,
+            rollcalls,
+            source_payload,
+            cnt,
+        )
+    )
+    _API_STATE_AUDIT_TASKS[task_key] = task
+    task.add_done_callback(lambda _task, _key=task_key: _API_STATE_AUDIT_TASKS.pop(_key, None))
+    return {'scheduled': True, 'signature': signature, 'previous_signature': previous, 'task_key': task_key}
 
 
 async def run_qr_data_probe_for_rollcall(session: ctx.aiohttp.ClientSession, client: ctx.Any, rollcall: ctx.Dict[str, ctx.Any], status: str, cnt: int) -> bool:
@@ -308,6 +402,9 @@ async def check_rollcall(session: ctx.aiohttp.ClientSession, cnt: int=-1) -> str
     selected_message = decision.message
     ctx.log(event='rollcall_poll', counter=cnt, status='ok', url=result.url, http_status=result.status_code, rollcall_id=selected_rollcall.get('rollcall_id') if selected_rollcall else None, rollcall_type=selected_rollcall_type, message='完成一次點名輪詢。', payload_excerpt=result.payload, extra={'rollcall_count': len(rollcalls), 'selected_status': selected_status})
     ctx.record_check_runtime(selected_status, rollcall_id=selected_rollcall.get('rollcall_id') if selected_rollcall else '', rollcall_type=selected_rollcall_type)
+    audit_schedule = ctx.schedule_api_state_audit_on_change(session, client, selected_status, selected_rollcall, selected_rollcall_type, rollcalls, result.payload, cnt)
+    if audit_schedule.get('scheduled'):
+        ctx.log(event='api_state_audit', counter=cnt, status='scheduled', rollcall_id=selected_rollcall.get('rollcall_id') if selected_rollcall else '', rollcall_type=selected_rollcall_type, message='偵測到 rollcall 狀態簽名改變，已啟動 API 全量原始擷取。', extra={'task_key': audit_schedule.get('task_key')})
     # Capture EVERY open rollcall on EVERY poll, regardless of status — including
     # after the student has checked in (the entry flips to on_call_fine) — until
     # the rollcall id is closed (gone from /api/radar/rollcalls -> not_call).
