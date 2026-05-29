@@ -11,6 +11,8 @@ import troTHU.rollcall_runtime as rollcall_runtime
 from tests.fake_tron_server import FakeTronServer
 from troTHU.api_state_audit import (
     ApiStateAuditOptions,
+    api_list_path,
+    api_state_audit_options,
     build_audit_context,
     build_rollcall_state_signature,
     load_api_operation_rows,
@@ -39,6 +41,12 @@ def _row(method, endpoint, host="same-origin", label="test"):
 
 
 class ApiStateAuditUnitTest(unittest.TestCase):
+    def test_default_options_enable_audit_and_api_list_path(self) -> None:
+        options = api_state_audit_options({})
+
+        self.assertTrue(options.enabled)
+        self.assertEqual(options.api_list_path, "抓取測試API端口列表.json")
+
     def test_api_list_parser_and_method_normalization(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / "api-operation-list.json"
@@ -64,6 +72,22 @@ class ApiStateAuditUnitTest(unittest.TestCase):
         self.assertEqual(normalize_audit_method("OBSERVED_GET"), ("OBSERVED_GET", "GET"))
         self.assertEqual(normalize_audit_method("UNKNOWN"), ("UNKNOWN", "GET"))
         self.assertEqual(normalize_audit_method("SOCKET.IO"), ("SOCKET.IO", "SOCKET.IO"))
+
+    def test_api_list_parser_uses_internal_bundle_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            internal = Path(tmp) / "_internal"
+            internal.mkdir()
+            source = internal / "抓取測試API端口列表.json"
+            source.write_text(
+                json.dumps({"lists": {"operationRows": [{"method": "GET", "endpoint": "/audit"}]}}, ensure_ascii=False),
+                encoding="utf-8",
+            )
+
+            options = api_state_audit_options({})
+            rows = load_api_operation_rows(Path(tmp), {})
+
+            self.assertEqual(api_list_path(Path(tmp), options), source)
+            self.assertEqual(rows, [{"method": "GET", "endpoint": "/audit"}])
 
     def test_placeholder_resolution_and_external_hosts(self) -> None:
         options = ApiStateAuditOptions(

@@ -12,6 +12,7 @@ import hashlib
 import html
 import json
 import re
+import sys
 from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
@@ -21,9 +22,9 @@ from urllib.parse import quote, unquote, urljoin, urlparse
 from yarl import URL
 
 
-DEFAULT_API_LIST_PATH = ""
+DEFAULT_API_LIST_PATH = "抓取測試API端口列表.json"
 DEFAULT_AUDIT_CONFIG: Dict[str, Any] = {
-    "enabled": False,
+    "enabled": True,
     "api_list_path": DEFAULT_API_LIST_PATH,
     "request_all_methods": True,
     "asset_follow": "all",
@@ -50,7 +51,7 @@ PLACEHOLDER_PATTERN = re.compile(r"\{(?:expr|id)\}")
 
 @dataclass(frozen=True)
 class ApiStateAuditOptions:
-    enabled: bool = False
+    enabled: bool = True
     api_list_path: str = DEFAULT_API_LIST_PATH
     request_all_methods: bool = True
     asset_follow: str = "all"
@@ -223,7 +224,7 @@ def api_state_audit_options(config: Any = None) -> ApiStateAuditOptions:
     merged = dict(DEFAULT_AUDIT_CONFIG)
     merged.update(dict(section))
     return ApiStateAuditOptions(
-        enabled=_coerce_bool(merged.get("enabled"), False),
+        enabled=_coerce_bool(merged.get("enabled"), True),
         api_list_path=_coerce_text(merged.get("api_list_path")) or DEFAULT_API_LIST_PATH,
         request_all_methods=_coerce_bool(merged.get("request_all_methods"), True),
         asset_follow=(_coerce_text(merged.get("asset_follow")) or "all").lower(),
@@ -249,11 +250,37 @@ def normalize_audit_method(method: Any) -> Tuple[str, str]:
     return original, original
 
 
+def _candidate_api_list_paths(base_dir: Any, options: ApiStateAuditOptions) -> List[Path]:
+    configured = Path(options.api_list_path or DEFAULT_API_LIST_PATH)
+    if configured.is_absolute():
+        return [configured]
+    base = Path(base_dir)
+    candidates = [
+        base / configured,
+        base / "_internal" / configured,
+    ]
+    frozen_root = _coerce_text(getattr(sys, "_MEIPASS", ""))
+    if frozen_root:
+        candidates.append(Path(frozen_root) / configured)
+    candidates.append(Path(__file__).resolve().parent.parent / configured)
+
+    unique: List[Path] = []
+    seen = set()
+    for candidate in candidates:
+        key = str(candidate)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(candidate)
+    return unique
+
+
 def api_list_path(base_dir: Any, options: ApiStateAuditOptions) -> Path:
-    path = Path(options.api_list_path)
-    if not path.is_absolute():
-        path = Path(base_dir) / path
-    return path
+    candidates = _candidate_api_list_paths(base_dir, options)
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return candidates[0] if candidates else Path(base_dir) / DEFAULT_API_LIST_PATH
 
 
 def load_api_operation_rows(base_dir: Any, config: Any = None, path: Any = None) -> List[Dict[str, Any]]:
@@ -272,7 +299,12 @@ def _load_api_list_payload(base_dir: Any, config: Any = None, path: Any = None) 
     options = api_state_audit_options(config)
     source = Path(path) if path is not None else api_list_path(base_dir, options)
     if not source.is_file():
-        return {"lists": {"operationRows": []}, "source": "no_api_list_configured"}
+        return {
+            "lists": {"operationRows": []},
+            "source": "api_list_not_found",
+            "requested_path": str(source),
+            "candidate_paths": [str(candidate) for candidate in _candidate_api_list_paths(base_dir, options)],
+        }
     payload = json.loads(source.read_text(encoding="utf-8"))
     return dict(payload) if isinstance(payload, Mapping) else {}
 

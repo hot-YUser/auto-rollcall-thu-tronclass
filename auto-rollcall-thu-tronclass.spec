@@ -8,6 +8,7 @@ from PyInstaller.utils.hooks import collect_submodules
 APP_NAME = "auto-rollcall-thu-tronclass"
 ROOT = Path(globals().get("SPECPATH", ".")).resolve()
 ENTRYPOINT = ROOT / "troTHU" / "tron.py"
+API_STATE_AUDIT_LIST = ROOT / "抓取測試API端口列表.json"
 
 
 def safe_collect_submodules(package_name):
@@ -24,6 +25,8 @@ def safe_collect_submodules(package_name):
 # frozen builds require the diagnostic-capture, connection-probe, and lazy
 # teacher-rollcall CLI/helper modules.
 DATAS = []
+if API_STATE_AUDIT_LIST.exists():
+    DATAS.append((str(API_STATE_AUDIT_LIST), "."))
 
 HIDDEN_IMPORTS = sorted(
     set(
