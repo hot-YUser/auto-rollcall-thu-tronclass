@@ -140,6 +140,12 @@ class TeacherRollcallHttpIntegrationTest(unittest.IsolatedAsyncioTestCase):
 
                 created = await client.create_teacher_rollcall(301, payload)
                 rollcall_id = created["id"]
+                root_list = await client.request_rollcall_root("GET", params={"page": 1})
+                root_created = await client.request_rollcall_root(
+                    "POST",
+                    payload={"course_id": 301, "title": "Root Created"},
+                )
+                status_list = await client.fetch_rollcall_status_list({"page": 1})
                 module_created = await client.create_module_rollcall(
                     301,
                     build_module_rollcall_payload(
@@ -154,6 +160,10 @@ class TeacherRollcallHttpIntegrationTest(unittest.IsolatedAsyncioTestCase):
                 score_read = await client.fetch_course_rollcall_score(301)
                 scores_read = await client.fetch_course_rollcall_scores(301)
                 timetable = await client.fetch_timetable_rollcalls(301)
+                module_list = await client.fetch_module_rollcalls(301, params={"page": 1})
+                alert_log = await client.fetch_alert_log_rollcalls("alert-1", page=1, page_size=5)
+                timetable_stat = await client.fetch_timetable_rollcall_statistics("tt-1")
+                notification_count = await client.fetch_rollcall_alert_unread_count("238730")
                 course_paged = await client.fetch_course_pagination_students_rollcalls(
                     301,
                     page=1,
@@ -217,6 +227,12 @@ class TeacherRollcallHttpIntegrationTest(unittest.IsolatedAsyncioTestCase):
                     rollcall_id,
                     {"latitude": 24.1786, "longitude": 120.6473, "altitude": 100.0, "deviceId": "dev-1"},
                 )
+                self_registration_answer = await client.answer_self_registration_rollcall(
+                    rollcall_id,
+                    {"deviceId": "dev-1"},
+                )
+                published = await client.publish_rollcall(rollcall_id, {"visible": True})
+                publish_must = await client.publish_rollcall(rollcall_id, {"visible": True}, must=True)
                 result = await client.fetch_rollcall_status_result(rollcall_id)
                 merged = await client.create_merged_rollcall(
                     {"course_id": 301, "title": "Merged", "student_rollcalls": []}
@@ -235,16 +251,64 @@ class TeacherRollcallHttpIntegrationTest(unittest.IsolatedAsyncioTestCase):
                     "rollcall-by-class",
                     {"course_id": 301},
                 )
+                export_get = await client.download_rollcall_stat_report_export(
+                    "rollcall",
+                    {"course_id": 301},
+                    method="GET",
+                )
+                attendance_export = await client.download_attendance_export(
+                    "xlsx",
+                    {"course_id": 301},
+                )
+                lesson_stat = await client.fetch_rollcall_stat("lesson", {"course_id": 301})
+                department_list = await client.fetch_department_attendance(
+                    {"conditions": {}},
+                    page=1,
+                    page_size=5,
+                )
+                department_export = await client.download_department_attendance_export(
+                    "xlsx",
+                    {"conditions": {}},
+                )
+                user_department_list = await client.fetch_department_user_attendance(
+                    {"page": 1, "page_size": 5, "conditions": "{}"}
+                )
+                user_department_export = await client.download_department_user_attendance_export(
+                    "xlsx",
+                    {"conditions": "{}"},
+                )
+                face_created = await client.create_face_check_record({"course_id": 301})
+                face_checked = await client.check_face_check_record({"record_id": face_created["id"]})
+                face_verified = await client.verify_face_check_record({"record_id": face_created["id"]})
+                qrcode_login = await client.request_qrcode_login("GET", params={"scene": "login"})
+                qr_scan = await client.scan_qr_code({"code": "abc"})
+                wechat_url = client.build_wechat_qrconnect_url(
+                    appid="wx123",
+                    redirect_uri="https://example.test/callback",
+                    state="s1",
+                )
+                broker = await client.post_identity_broker_qrcode(
+                    "thu",
+                    {"ticket": "abc"},
+                    params={"client_id": "tron"},
+                )
                 qrcode = await client.fetch_qrcode_image("https://example.test/rollcall")
                 stopped = await client.stop_teacher_rollcall(rollcall_id, rollcall=created)
                 deleted = await client.delete_teacher_rollcall(rollcall_id)
 
+        self.assertEqual(root_list["query"]["page"], "1")
+        self.assertEqual(root_created["title"], "Root Created")
+        self.assertEqual(status_list["query"]["page"], "1")
         self.assertEqual(module_created["module_id"], "mod-1")
         self.assertEqual(listed["rollcalls"][0]["number_code"], "2468")
         self.assertTrue(setting_read["enabled"])
         self.assertEqual(score_read["rollcall_score"], 100)
         self.assertIn("scores", scores_read)
         self.assertEqual(timetable["query"]["course_ids"], "301")
+        self.assertEqual(module_list["query"]["page"], "1")
+        self.assertEqual(alert_log["query"]["page_size"], "5")
+        self.assertEqual(timetable_stat["timetable_id"], "tt-1")
+        self.assertEqual(notification_count["unread_count"], 1)
         self.assertEqual(course_paged["student_rollcalls"][0]["rollcall_status"], "on_call")
         self.assertEqual(roster["students"][0]["name"], "Ada")
         self.assertEqual(detail["id"], rollcall_id)
@@ -267,6 +331,9 @@ class TeacherRollcallHttpIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(qr_answer["ok"])
         self.assertTrue(number_answer["success"])
         self.assertTrue(radar_answer["success"])
+        self.assertTrue(self_registration_answer["ok"])
+        self.assertTrue(published["published"])
+        self.assertEqual(publish_must["endpoint"], "publish-must")
         self.assertEqual(result["attended"], 1)
         self.assertEqual(merged["source"], "merged")
         self.assertTrue(merged_updated["updated"])
@@ -276,6 +343,20 @@ class TeacherRollcallHttpIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(graded["count"], 2)
         self.assertEqual(export.content_type, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         self.assertTrue(export.body.startswith(b"rollcall"))
+        self.assertTrue(export_get.body.startswith(b"rollcall"))
+        self.assertTrue(attendance_export.body.startswith(b"attendance"))
+        self.assertEqual(lesson_stat["kind"], "lesson")
+        self.assertEqual(department_list["query"]["page_size"], "5")
+        self.assertTrue(department_export.body.startswith(b"department"))
+        self.assertEqual(user_department_list["query"]["conditions"], "{}")
+        self.assertTrue(user_department_export.body.startswith(b"user"))
+        self.assertEqual(face_created["course_id"], 301)
+        self.assertTrue(face_checked["ok"])
+        self.assertTrue(face_verified["ok"])
+        self.assertTrue(qrcode_login["login"])
+        self.assertTrue(qr_scan["scanned"])
+        self.assertIn("connect/qrconnect", wechat_url)
+        self.assertTrue(broker["brokered"])
         self.assertEqual(qrcode.content_type, "image/png")
         self.assertTrue(qrcode.body.startswith(b"\x89PNG"))
         self.assertEqual(stopped["status"], "finished")
@@ -380,7 +461,24 @@ class TeacherCommandIntegrationTest(unittest.IsolatedAsyncioTestCase):
         )
         self.server.radar_success = True
         export_path = Path(self.temp_dir.name) / "rollcall.xlsx"
+        attendance_path = Path(self.temp_dir.name) / "attendance.xlsx"
+        department_path = Path(self.temp_dir.name) / "department.xlsx"
+        user_department_path = Path(self.temp_dir.name) / "user_department.xlsx"
         commands = [
+            SimpleNamespace(
+                teacher_command="rollcall",
+                teacher_rollcall_command="root",
+                method="GET",
+                params_json='{"page":1}',
+                payload_json="",
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="rollcall",
+                teacher_rollcall_command="status-list",
+                params_json='{"page":1}',
+                json=True,
+            ),
             SimpleNamespace(
                 teacher_command="rollcall",
                 teacher_rollcall_command="summary",
@@ -439,6 +537,27 @@ class TeacherCommandIntegrationTest(unittest.IsolatedAsyncioTestCase):
             ),
             SimpleNamespace(
                 teacher_command="rollcall",
+                teacher_rollcall_command="answer-self-registration",
+                rollcall_id="9901",
+                payload_json='{"deviceId":"dev-1"}',
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="rollcall",
+                teacher_rollcall_command="publish",
+                rollcall_id="9901",
+                payload_json='{"visible":true}',
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="rollcall",
+                teacher_rollcall_command="publish-must",
+                rollcall_id="9901",
+                payload_json='{"visible":true}',
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="rollcall",
                 teacher_rollcall_command="create-merged",
                 payload_json='{"course_id":"401","title":"Merged","student_rollcalls":[]}',
                 json=True,
@@ -482,9 +601,148 @@ class TeacherCommandIntegrationTest(unittest.IsolatedAsyncioTestCase):
                 teacher_command="rollcall",
                 teacher_rollcall_command="export-stat-report",
                 kind="rollcall",
+                method="GET",
                 payload_json='{"course_id":"401"}',
                 output=str(export_path),
                 overwrite=False,
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="rollcall",
+                teacher_rollcall_command="module-list",
+                course_id="401",
+                params_json='{"page":1}',
+                force=False,
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="rollcall",
+                teacher_rollcall_command="alert-log",
+                alert_log_id="alert-1",
+                page=1,
+                page_size=5,
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="rollcall",
+                teacher_rollcall_command="timetable-stat",
+                timetable_id="tt-1",
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="rollcall",
+                teacher_rollcall_command="notification-count",
+                user_id="238730",
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="attendance",
+                teacher_attendance_command="export",
+                file_type="xlsx",
+                payload_json='{"course_id":"401"}',
+                output=str(attendance_path),
+                overwrite=False,
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="attendance",
+                teacher_attendance_command="stat",
+                kind="teacher",
+                params_json='{"course_id":"401"}',
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="attendance",
+                teacher_attendance_command="departments",
+                payload_json='{"conditions":{}}',
+                page=1,
+                page_size=5,
+                file_type="xlsx",
+                output="",
+                overwrite=False,
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="attendance",
+                teacher_attendance_command="departments",
+                payload_json='{"conditions":{}}',
+                page=1,
+                page_size=5,
+                file_type="xlsx",
+                output=str(department_path),
+                overwrite=False,
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="attendance",
+                teacher_attendance_command="user-departments",
+                params_json='{"conditions":"{}"}',
+                page=1,
+                page_size=5,
+                file_type="xlsx",
+                output="",
+                overwrite=False,
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="attendance",
+                teacher_attendance_command="user-departments",
+                params_json='{"conditions":"{}"}',
+                page=1,
+                page_size=5,
+                file_type="xlsx",
+                output=str(user_department_path),
+                overwrite=False,
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="face-check",
+                teacher_face_check_command="create",
+                payload_json='{"course_id":"401"}',
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="face-check",
+                teacher_face_check_command="check",
+                params_json='{"record_id":1}',
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="face-check",
+                teacher_face_check_command="verify",
+                params_json='{"record_id":1}',
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="qr-auth",
+                teacher_qr_auth_command="qrcode-login",
+                method="GET",
+                params_json='{"scene":"login"}',
+                payload_json="",
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="qr-auth",
+                teacher_qr_auth_command="scan",
+                payload_json='{"code":"abc"}',
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="qr-auth",
+                teacher_qr_auth_command="wechat-url",
+                appid="wx123",
+                redirect_uri="https://example.test/callback",
+                scope="snsapi_login",
+                state="s1",
+                base_url="https://open.weixin.qq.com",
+                json=True,
+            ),
+            SimpleNamespace(
+                teacher_command="qr-auth",
+                teacher_qr_auth_command="identity-broker",
+                realm="thu",
+                params_json='{"client_id":"tron"}',
+                payload_json='{"ticket":"abc"}',
                 json=True,
             ),
         ]
@@ -493,11 +751,20 @@ class TeacherCommandIntegrationTest(unittest.IsolatedAsyncioTestCase):
             output = []
             with patch("builtins.print", side_effect=output.append):
                 result = await tron.teacher_command(args)
-            self.assertEqual(result, 0, args.teacher_rollcall_command)
+            command_name = (
+                getattr(args, "teacher_rollcall_command", "")
+                or getattr(args, "teacher_attendance_command", "")
+                or getattr(args, "teacher_face_check_command", "")
+                or getattr(args, "teacher_qr_auth_command", "")
+            )
+            self.assertEqual(result, 0, command_name)
             payload = json.loads(output[0])
             self.assertIn(payload["status"], {"ok", "ok_action", "created"})
 
         self.assertTrue(export_path.exists())
+        self.assertTrue(attendance_path.exists())
+        self.assertTrue(department_path.exists())
+        self.assertTrue(user_department_path.exists())
         self.assertEqual(self.server.radar_position_updates[0]["body"]["latitude"], 24.1786)
         self.assertEqual(self.server.stat_exports[0]["kind"], "rollcall")
 

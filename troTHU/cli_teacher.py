@@ -177,6 +177,18 @@ def _payload_from_args(args: ctx.Any, *, required: bool = True) -> ctx.Optional[
     return dict(payload)
 
 
+def _params_from_args(args: ctx.Any, *, required: bool = False) -> ctx.Optional[ctx.Dict[str, ctx.Any]]:
+    value = ctx.normalize_text(getattr(args, "params_json", ""))
+    if not value:
+        if required:
+            raise TeacherRollcallError("--params-json is required.")
+        return None
+    payload = _json_or_file(value)
+    if not isinstance(payload, Mapping):
+        raise TeacherRollcallError("--params-json must be a JSON object or a path to one.")
+    return dict(payload)
+
+
 def _rollcall_ids_from_args(args: ctx.Any) -> list[str]:
     value = ctx.normalize_text(getattr(args, "rollcall_ids", ""))
     if not value:
@@ -321,6 +333,40 @@ async def _teacher_rollcall_list_command(args: ctx.Any) -> ctx.Dict[str, ctx.Any
             "course": course,
             "rollcall_count": len(rollcalls),
             "rollcalls": rollcalls,
+        }
+
+    return await _with_teacher_client(action)
+
+
+async def _teacher_rollcall_root_command(args: ctx.Any) -> ctx.Dict[str, ctx.Any]:
+    method = ctx.normalize_text(getattr(args, "method", "GET")) or "GET"
+    payload = _payload_from_args(args, required=False)
+    params = _params_from_args(args)
+
+    async def action(client, active):
+        response = await client.request_rollcall_root(method, payload=payload, params=params)
+        return {
+            "status": "ok" if method.upper() == "GET" else "ok_action",
+            "profile": active.name,
+            "method": method.upper(),
+            "params": params or {},
+            "payload": payload,
+            "response": response,
+        }
+
+    return await _with_teacher_client(action)
+
+
+async def _teacher_rollcall_status_list_command(args: ctx.Any) -> ctx.Dict[str, ctx.Any]:
+    params = _params_from_args(args)
+
+    async def action(client, active):
+        response = await client.fetch_rollcall_status_list(params=params)
+        return {
+            "status": "ok",
+            "profile": active.name,
+            "params": params or {},
+            "response": response,
         }
 
     return await _with_teacher_client(action)
@@ -874,6 +920,8 @@ async def _teacher_rollcall_answer_command(args: ctx.Any, kind: str) -> ctx.Dict
             response = await client.answer_number_rollcall(rollcall_id, payload)
         elif kind == "radar":
             response = await client.answer_radar_rollcall(rollcall_id, payload)
+        elif kind == "self_registration":
+            response = await client.answer_self_registration_rollcall(rollcall_id, payload)
         else:
             raise RuntimeError("unsupported rollcall answer kind")
         return {
@@ -881,6 +929,24 @@ async def _teacher_rollcall_answer_command(args: ctx.Any, kind: str) -> ctx.Dict
             "profile": active.name,
             "rollcall_id": rollcall_id,
             "answer_kind": kind,
+            "payload": payload,
+            "response": response,
+        }
+
+    return await _with_teacher_client(action)
+
+
+async def _teacher_rollcall_publish_command(args: ctx.Any, *, must: bool = False) -> ctx.Dict[str, ctx.Any]:
+    rollcall_id = ctx.normalize_text(getattr(args, "rollcall_id", ""))
+    payload = _payload_from_args(args)
+
+    async def action(client, active):
+        response = await client.publish_rollcall(rollcall_id, payload, must=must)
+        return {
+            "status": "ok_action",
+            "profile": active.name,
+            "rollcall_id": rollcall_id,
+            "action": "publish-must" if must else "publish",
             "payload": payload,
             "response": response,
         }
@@ -1014,6 +1080,7 @@ async def _teacher_rollcall_export_stat_report_command(args: ctx.Any) -> ctx.Dic
         result = await client.download_rollcall_stat_report_export(
             kind=ctx.normalize_text(getattr(args, "kind", "rollcall")),
             payload=payload,
+            method=ctx.normalize_text(getattr(args, "method", "POST")) or "POST",
         )
         saved = _write_binary_result(
             result,
@@ -1025,10 +1092,296 @@ async def _teacher_rollcall_export_stat_report_command(args: ctx.Any) -> ctx.Dic
                 "status": "ok_action",
                 "profile": active.name,
                 "kind": ctx.normalize_text(getattr(args, "kind", "rollcall")),
+                "method": ctx.normalize_text(getattr(args, "method", "POST")) or "POST",
                 "payload": payload,
             }
         )
         return saved
+
+    return await _with_teacher_client(action)
+
+
+async def _teacher_rollcall_module_list_command(args: ctx.Any) -> ctx.Dict[str, ctx.Any]:
+    course_id = ctx.normalize_text(getattr(args, "course_id", ""))
+    params = _params_from_args(args)
+
+    async def action(client, active):
+        course, error = await _resolve_teacher_course(
+            client,
+            active,
+            course_id,
+            force=bool(getattr(args, "force", False)),
+        )
+        if course is None:
+            return error
+        response = await client.fetch_module_rollcalls(course_id, params=params)
+        return {
+            "status": "ok",
+            "profile": active.name,
+            "course": course,
+            "params": params or {},
+            "response": response,
+        }
+
+    return await _with_teacher_client(action)
+
+
+async def _teacher_rollcall_alert_log_command(args: ctx.Any) -> ctx.Dict[str, ctx.Any]:
+    alert_log_id = ctx.normalize_text(getattr(args, "alert_log_id", ""))
+
+    async def action(client, active):
+        response = await client.fetch_alert_log_rollcalls(
+            alert_log_id,
+            page=getattr(args, "page", 1),
+            page_size=getattr(args, "page_size", 20),
+        )
+        return {
+            "status": "ok",
+            "profile": active.name,
+            "alert_log_id": alert_log_id,
+            "response": response,
+        }
+
+    return await _with_teacher_client(action)
+
+
+async def _teacher_rollcall_timetable_stat_command(args: ctx.Any) -> ctx.Dict[str, ctx.Any]:
+    timetable_id = ctx.normalize_text(getattr(args, "timetable_id", ""))
+
+    async def action(client, active):
+        response = await client.fetch_timetable_rollcall_statistics(timetable_id)
+        return {
+            "status": "ok",
+            "profile": active.name,
+            "timetable_id": timetable_id,
+            "response": response,
+        }
+
+    return await _with_teacher_client(action)
+
+
+async def _teacher_rollcall_notification_count_command(args: ctx.Any) -> ctx.Dict[str, ctx.Any]:
+    user_id = ctx.normalize_text(getattr(args, "user_id", ""))
+
+    async def action(client, active):
+        response = await client.fetch_rollcall_alert_unread_count(user_id)
+        return {
+            "status": "ok",
+            "profile": active.name,
+            "user_id": user_id,
+            "response": response,
+        }
+
+    return await _with_teacher_client(action)
+
+
+async def _teacher_attendance_export_command(args: ctx.Any) -> ctx.Dict[str, ctx.Any]:
+    payload = _payload_from_args(args)
+    output = ctx.normalize_text(getattr(args, "output", ""))
+
+    async def action(client, active):
+        result = await client.download_attendance_export(
+            file_type=ctx.normalize_text(getattr(args, "file_type", "xlsx")) or "xlsx",
+            payload=payload,
+        )
+        saved = _write_binary_result(
+            result,
+            output,
+            overwrite=bool(getattr(args, "overwrite", False)),
+        )
+        saved.update(
+            {
+                "status": "ok_action",
+                "profile": active.name,
+                "file_type": ctx.normalize_text(getattr(args, "file_type", "xlsx")) or "xlsx",
+                "payload": payload,
+            }
+        )
+        return saved
+
+    return await _with_teacher_client(action)
+
+
+async def _teacher_attendance_stat_command(args: ctx.Any) -> ctx.Dict[str, ctx.Any]:
+    params = _params_from_args(args)
+    kind = ctx.normalize_text(getattr(args, "kind", ""))
+
+    async def action(client, active):
+        response = await client.fetch_rollcall_stat(kind, params=params)
+        return {
+            "status": "ok",
+            "profile": active.name,
+            "kind": kind,
+            "params": params or {},
+            "response": response,
+        }
+
+    return await _with_teacher_client(action)
+
+
+async def _teacher_attendance_departments_command(args: ctx.Any) -> ctx.Dict[str, ctx.Any]:
+    payload = _payload_from_args(args)
+    output = ctx.normalize_text(getattr(args, "output", ""))
+
+    async def action(client, active):
+        if output:
+            result = await client.download_department_attendance_export(
+                file_type=ctx.normalize_text(getattr(args, "file_type", "xlsx")) or "xlsx",
+                payload=payload,
+            )
+            saved = _write_binary_result(
+                result,
+                output,
+                overwrite=bool(getattr(args, "overwrite", False)),
+            )
+            saved.update(
+                {
+                    "status": "ok_action",
+                    "profile": active.name,
+                    "file_type": ctx.normalize_text(getattr(args, "file_type", "xlsx")) or "xlsx",
+                    "payload": payload,
+                }
+            )
+            return saved
+        response = await client.fetch_department_attendance(
+            payload,
+            page=getattr(args, "page", 1),
+            page_size=getattr(args, "page_size", 20),
+        )
+        return {
+            "status": "ok",
+            "profile": active.name,
+            "page": getattr(args, "page", 1),
+            "page_size": getattr(args, "page_size", 20),
+            "payload": payload,
+            "response": response,
+        }
+
+    return await _with_teacher_client(action)
+
+
+async def _teacher_attendance_user_departments_command(args: ctx.Any) -> ctx.Dict[str, ctx.Any]:
+    params = _params_from_args(args) or {}
+    params.setdefault("page", getattr(args, "page", 1))
+    params.setdefault("page_size", getattr(args, "page_size", 20))
+    output = ctx.normalize_text(getattr(args, "output", ""))
+
+    async def action(client, active):
+        if output:
+            result = await client.download_department_user_attendance_export(
+                file_type=ctx.normalize_text(getattr(args, "file_type", "xlsx")) or "xlsx",
+                params=params,
+            )
+            saved = _write_binary_result(
+                result,
+                output,
+                overwrite=bool(getattr(args, "overwrite", False)),
+            )
+            saved.update(
+                {
+                    "status": "ok_action",
+                    "profile": active.name,
+                    "file_type": ctx.normalize_text(getattr(args, "file_type", "xlsx")) or "xlsx",
+                    "params": params,
+                }
+            )
+            return saved
+        response = await client.fetch_department_user_attendance(params=params)
+        return {
+            "status": "ok",
+            "profile": active.name,
+            "params": params,
+            "response": response,
+        }
+
+    return await _with_teacher_client(action)
+
+
+async def _teacher_face_check_command(args: ctx.Any) -> ctx.Dict[str, ctx.Any]:
+    command = getattr(args, "teacher_face_check_command", None) or "check"
+    payload = _payload_from_args(args) if command == "create" else None
+    params = _params_from_args(args) if command in {"check", "verify"} else None
+
+    async def action(client, active):
+        if command == "create":
+            response = await client.create_face_check_record(payload or {})
+            status = "created"
+        elif command == "check":
+            response = await client.check_face_check_record(params=params)
+            status = "ok"
+        elif command == "verify":
+            response = await client.verify_face_check_record(params=params)
+            status = "ok"
+        else:
+            return {"status": "unknown_command", "command": command}
+        return {
+            "status": status,
+            "profile": active.name,
+            "command": command,
+            "payload": payload,
+            "params": params or {},
+            "response": response,
+        }
+
+    return await _with_teacher_client(action)
+
+
+async def _teacher_qr_auth_command(args: ctx.Any) -> ctx.Dict[str, ctx.Any]:
+    command = getattr(args, "teacher_qr_auth_command", None) or "qrcode-login"
+
+    async def action(client, active):
+        if command == "qrcode-login":
+            payload = _payload_from_args(args, required=False)
+            params = _params_from_args(args)
+            method = ctx.normalize_text(getattr(args, "method", "GET")) or "GET"
+            response = await client.request_qrcode_login(method, payload=payload, params=params)
+            return {
+                "status": "ok" if method.upper() == "GET" else "ok_action",
+                "profile": active.name,
+                "method": method.upper(),
+                "payload": payload,
+                "params": params or {},
+                "response": response,
+            }
+        if command == "scan":
+            payload = _payload_from_args(args)
+            response = await client.scan_qr_code(payload)
+            return {
+                "status": "ok_action",
+                "profile": active.name,
+                "payload": payload,
+                "response": response,
+            }
+        if command == "wechat-url":
+            url = client.build_wechat_qrconnect_url(
+                appid=getattr(args, "appid", ""),
+                redirect_uri=getattr(args, "redirect_uri", ""),
+                scope=getattr(args, "scope", "snsapi_login"),
+                state=getattr(args, "state", ""),
+                base_url=getattr(args, "base_url", "https://open.weixin.qq.com"),
+            )
+            return {
+                "status": "ok",
+                "profile": active.name,
+                "url": url,
+            }
+        if command == "identity-broker":
+            payload = _payload_from_args(args)
+            params = _params_from_args(args)
+            response = await client.post_identity_broker_qrcode(
+                getattr(args, "realm", ""),
+                payload,
+                params=params,
+            )
+            return {
+                "status": "ok_action",
+                "profile": active.name,
+                "realm": ctx.normalize_text(getattr(args, "realm", "")),
+                "payload": payload,
+                "params": params or {},
+                "response": response,
+            }
+        return {"status": "unknown_command", "command": command}
 
     return await _with_teacher_client(action)
 
@@ -1092,6 +1445,10 @@ async def teacher_command(args: ctx.Any) -> int:
             rollcall_command = getattr(args, "teacher_rollcall_command", None) or "list"
             if rollcall_command == "list":
                 report = await _teacher_rollcall_list_command(args)
+            elif rollcall_command == "root":
+                report = await _teacher_rollcall_root_command(args)
+            elif rollcall_command == "status-list":
+                report = await _teacher_rollcall_status_list_command(args)
             elif rollcall_command == "summary":
                 report = await _teacher_rollcall_summary_command(args)
             elif rollcall_command == "create":
@@ -1136,6 +1493,12 @@ async def teacher_command(args: ctx.Any) -> int:
                 report = await _teacher_rollcall_answer_command(args, "number")
             elif rollcall_command == "answer-radar":
                 report = await _teacher_rollcall_answer_command(args, "radar")
+            elif rollcall_command == "answer-self-registration":
+                report = await _teacher_rollcall_answer_command(args, "self_registration")
+            elif rollcall_command == "publish":
+                report = await _teacher_rollcall_publish_command(args, must=False)
+            elif rollcall_command == "publish-must":
+                report = await _teacher_rollcall_publish_command(args, must=True)
             elif rollcall_command == "create-merged":
                 report = await _teacher_rollcall_create_merged_command(args)
             elif rollcall_command == "update-merged-students":
@@ -1150,12 +1513,36 @@ async def teacher_command(args: ctx.Any) -> int:
                 report = await _teacher_rollcall_grade_command(args)
             elif rollcall_command == "export-stat-report":
                 report = await _teacher_rollcall_export_stat_report_command(args)
+            elif rollcall_command == "module-list":
+                report = await _teacher_rollcall_module_list_command(args)
+            elif rollcall_command == "alert-log":
+                report = await _teacher_rollcall_alert_log_command(args)
+            elif rollcall_command == "timetable-stat":
+                report = await _teacher_rollcall_timetable_stat_command(args)
+            elif rollcall_command == "notification-count":
+                report = await _teacher_rollcall_notification_count_command(args)
             elif rollcall_command == "qrcode":
                 report = await _teacher_rollcall_qrcode_command(args)
             elif rollcall_command == "delete":
                 report = await _teacher_rollcall_delete_command(args)
             else:
                 report = {"status": "unknown_command", "command": rollcall_command}
+        elif command == "attendance":
+            attendance_command = getattr(args, "teacher_attendance_command", None) or "stat"
+            if attendance_command == "export":
+                report = await _teacher_attendance_export_command(args)
+            elif attendance_command == "stat":
+                report = await _teacher_attendance_stat_command(args)
+            elif attendance_command == "departments":
+                report = await _teacher_attendance_departments_command(args)
+            elif attendance_command == "user-departments":
+                report = await _teacher_attendance_user_departments_command(args)
+            else:
+                report = {"status": "unknown_command", "command": attendance_command}
+        elif command == "face-check":
+            report = await _teacher_face_check_command(args)
+        elif command == "qr-auth":
+            report = await _teacher_qr_auth_command(args)
         else:
             report = {"status": "unknown_command", "command": command}
     except (TeacherRollcallError, ValueError) as exc:

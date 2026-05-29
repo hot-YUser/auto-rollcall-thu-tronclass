@@ -50,7 +50,10 @@ class FakeTronServer:
         self.module_rollcalls: List[Dict[str, Any]] = []
         self.teacher_course_enrollments: Dict[str, Dict[str, Any]] = {}
         self.teacher_rollcall_updates: List[Dict[str, Any]] = []
+        self.rollcall_root_requests: List[Dict[str, Any]] = []
         self.teacher_rollcall_starts: List[Dict[str, Any]] = []
+        self.self_registration_answers: List[Dict[str, Any]] = []
+        self.teacher_rollcall_publishes: List[Dict[str, Any]] = []
         self.radar_position_updates: List[Dict[str, Any]] = []
         self.merged_rollcalls: List[Dict[str, Any]] = []
         self.merged_rollcall_updates: List[Dict[str, Any]] = []
@@ -60,6 +63,11 @@ class FakeTronServer:
         self.imported_rollcalls: List[Dict[str, Any]] = []
         self.graded_rollcalls: List[Dict[str, Any]] = []
         self.stat_exports: List[Dict[str, Any]] = []
+        self.attendance_exports: List[Dict[str, Any]] = []
+        self.department_attendance_requests: List[Dict[str, Any]] = []
+        self.department_user_attendance_requests: List[Dict[str, Any]] = []
+        self.face_check_records: List[Dict[str, Any]] = []
+        self.qr_auth_requests: List[Dict[str, Any]] = []
         self.student_history_updates: List[Dict[str, Any]] = []
         self.teacher_rollcall_stops: List[Dict[str, Any]] = []
         self.teacher_rollcall_deletes: List[str] = []
@@ -372,6 +380,19 @@ class FakeTronServer:
             return scripted
         return web.json_response({"ok": True})
 
+    async def answer_self_registration(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        body = await request.json()
+        self.self_registration_answers.append(
+            {"rollcall_id": request.match_info["rollcall_id"], "body": body}
+        )
+        scripted = self._script_response("self_registration")
+        if scripted is not None:
+            return scripted
+        return web.json_response({"ok": True, "status": "on_call_fine"})
+
     async def student_rollcalls_api(self, request):
         unauthorized = self._unauthorized_if_needed(request)
         if unauthorized is not None:
@@ -504,6 +525,47 @@ class FakeTronServer:
         ]
         return web.json_response({"rollcalls": rollcalls})
 
+    async def rollcall_root_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("rollcall_root")
+        if scripted is not None:
+            return scripted
+        body: Dict[str, Any] = {}
+        if request.can_read_body:
+            body = await request.json()
+        self.rollcall_root_requests.append(
+            {"method": request.method, "body": body, "query": dict(request.query)}
+        )
+        if request.method == "GET":
+            return web.json_response({"rollcalls": self.teacher_rollcalls, "query": dict(request.query)})
+        if request.method == "POST":
+            self.next_teacher_rollcall_id += 1
+            rollcall = dict(body)
+            rollcall.setdefault("course_id", body.get("course_id", "root"))
+            rollcall["id"] = self.next_teacher_rollcall_id
+            self.teacher_rollcalls.append(rollcall)
+            return web.json_response(rollcall, status=201)
+        return web.json_response({"ok": True, "method": request.method, "payload": body})
+
+    async def rollcall_status_list_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("rollcall_status_list")
+        if scripted is not None:
+            return scripted
+        return web.json_response(
+            {
+                "rollcalls": [
+                    {"id": rollcall.get("id"), "status": rollcall.get("status", "in_progress")}
+                    for rollcall in self.teacher_rollcalls
+                ],
+                "query": dict(request.query),
+            }
+        )
+
     async def rollcall_detail_api(self, request):
         unauthorized = self._unauthorized_if_needed(request)
         if unauthorized is not None:
@@ -583,6 +645,53 @@ class FakeTronServer:
             if not course_ids or str(rollcall.get("course_id")) in course_ids
         ]
         return web.json_response({"rollcalls": rollcalls, "query": dict(request.query)})
+
+    async def module_rollcalls_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("module_rollcalls")
+        if scripted is not None:
+            return scripted
+        course_id = request.match_info["course_id"]
+        rollcalls = [
+            rollcall
+            for rollcall in self.module_rollcalls
+            if str(rollcall.get("course_id")) == str(course_id)
+        ]
+        return web.json_response(
+            {"course_id": course_id, "rollcalls": rollcalls, "query": dict(request.query)}
+        )
+
+    async def alert_log_rollcalls_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("alert_log_rollcalls")
+        if scripted is not None:
+            return scripted
+        return web.json_response(
+            {
+                "alert_log_id": request.match_info["alert_log_id"],
+                "rollcalls": self.teacher_rollcalls,
+                "query": dict(request.query),
+            }
+        )
+
+    async def timetable_rollcall_statistics_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("timetable_rollcall_statistics")
+        if scripted is not None:
+            return scripted
+        return web.json_response(
+            {
+                "timetable_id": request.match_info["timetable_id"],
+                "total": len(self.teacher_rollcalls),
+                "attended": 1,
+            }
+        )
 
     async def course_students_api(self, request):
         unauthorized = self._unauthorized_if_needed(request)
@@ -867,6 +976,21 @@ class FakeTronServer:
             return scripted
         return web.json_response({"active": True, "rollcall_id": request.match_info["rollcall_id"]})
 
+    async def publish_rollcall_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        endpoint = request.match_info.get("publish_endpoint", "publish")
+        scripted = self._script_response(endpoint)
+        if scripted is not None:
+            return scripted
+        body = await request.json()
+        rollcall_id = request.match_info["rollcall_id"]
+        self.teacher_rollcall_publishes.append(
+            {"rollcall_id": rollcall_id, "endpoint": endpoint, "body": body}
+        )
+        return web.json_response({"published": True, "rollcall_id": rollcall_id, "endpoint": endpoint})
+
     async def stop_rollcall_api(self, request):
         unauthorized = self._unauthorized_if_needed(request)
         if unauthorized is not None:
@@ -979,12 +1103,139 @@ class FakeTronServer:
         unauthorized = self._unauthorized_if_needed(request)
         if unauthorized is not None:
             return unauthorized
-        body = await request.json()
+        body: Dict[str, Any] = {}
+        if request.can_read_body:
+            body = await request.json()
         kind = "rollcall-by-class" if request.path.endswith("export-by-class") else "rollcall"
-        self.stat_exports.append({"kind": kind, "body": body})
+        self.stat_exports.append({"kind": kind, "body": body, "method": request.method, "query": dict(request.query)})
         return web.Response(
             body=b"rollcall,stat\n",
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+    async def attendance_export_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        body = await request.json()
+        file_type = request.match_info.get("file_type", "")
+        self.attendance_exports.append({"kind": "attendance", "file_type": file_type, "body": body})
+        return web.Response(
+            body=b"attendance,stat\n",
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+    async def rollcall_stat_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        kind = request.match_info["stat_kind"]
+        return web.json_response({"kind": kind, "query": dict(request.query), "total": 1})
+
+    async def department_attendance_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        body = await request.json()
+        self.department_attendance_requests.append(
+            {"kind": "list", "body": body, "query": dict(request.query)}
+        )
+        return web.json_response({"records": [{"department_id": 1, "attendance": 1}], "query": dict(request.query)})
+
+    async def department_attendance_export_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        body = await request.json()
+        file_type = request.match_info.get("file_type", "")
+        self.department_attendance_requests.append(
+            {"kind": "export", "file_type": file_type, "body": body}
+        )
+        return web.Response(
+            body=b"department,attendance\n",
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+    async def department_user_attendance_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        self.department_user_attendance_requests.append(
+            {"kind": "list", "query": dict(request.query)}
+        )
+        return web.json_response({"records": [{"user_id": 1, "attendance": 1}], "query": dict(request.query)})
+
+    async def department_user_attendance_export_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        file_type = request.match_info.get("file_type", "")
+        self.department_user_attendance_requests.append(
+            {"kind": "export", "file_type": file_type, "query": dict(request.query)}
+        )
+        return web.Response(
+            body=b"user,attendance\n",
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+    async def face_check_records_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        body = await request.json()
+        record = dict(body)
+        record.setdefault("id", len(self.face_check_records) + 1)
+        self.face_check_records.append(record)
+        return web.json_response(record, status=201)
+
+    async def face_check_action_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        action = request.match_info["face_action"]
+        return web.json_response({"action": action, "query": dict(request.query), "ok": True})
+
+    async def qrcode_login_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        body: Dict[str, Any] = {}
+        if request.can_read_body:
+            body = await request.json()
+        self.qr_auth_requests.append(
+            {"kind": "qrcode-login", "method": request.method, "body": body, "query": dict(request.query)}
+        )
+        return web.json_response({"login": True, "method": request.method, "query": dict(request.query)})
+
+    async def qr_code_scan_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        body = await request.json()
+        self.qr_auth_requests.append({"kind": "scan", "body": body})
+        return web.json_response({"scanned": True, "payload": body})
+
+    async def identity_broker_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        body = await request.json()
+        self.qr_auth_requests.append(
+            {
+                "kind": "identity-broker",
+                "realm": request.match_info["realm"],
+                "body": body,
+                "query": dict(request.query),
+            }
+        )
+        return web.json_response({"brokered": True, "realm": request.match_info["realm"]})
+
+    async def ntf_unread_count_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        return web.json_response(
+            {"user_id": request.match_info["user_id"], "unread_count": 1, "query": dict(request.query)}
         )
 
     async def qrcode_api(self, request):
@@ -1048,6 +1299,9 @@ class FakeTronServer:
         app.router.add_get("/api/course/{course_id}/rollcall-score", self.course_rollcall_score_api)
         app.router.add_get("/api/course/{course_id}/rollcall/scores", self.course_rollcall_scores_api)
         app.router.add_get("/api/timetable_rollcalls", self.timetable_rollcalls_api)
+        app.router.add_get("/api/courses/{course_id}/modules/rollcalls", self.module_rollcalls_api)
+        app.router.add_get("/api/alert-logs/{alert_log_id}/rollcalls", self.alert_log_rollcalls_api)
+        app.router.add_get("/api/timetables/{timetable_id}/rollcall-statistics", self.timetable_rollcall_statistics_api)
         app.router.add_get("/api/course/{course_id}/rollcall/{rollcall_id}", self.course_rollcall_detail_api)
         app.router.add_get("/api/course/{course_id}/student-onprogress-rollcalls", self.student_onprogress_rollcalls_api)
         app.router.add_get("/api/course/{course_id}/leave-record", self.leave_record_api)
@@ -1059,24 +1313,45 @@ class FakeTronServer:
         app.router.add_post("/api/module/{course_id}/rollcall", self.create_module_rollcall_api)
         app.router.add_post("/api/rollcall/merged-rollcall", self.create_merged_rollcall_api)
         app.router.add_put("/api/rollcall/merged-rollcall/student-rollcalls", self.update_merged_rollcall_students_api)
+        app.router.add_route("*", "/api/rollcall/", self.rollcall_root_api)
         app.router.add_get("/api/rollcall/{rollcall_id}", self.rollcall_detail_api)
         app.router.add_put("/api/rollcall/{rollcall_id}", self.update_rollcall_api)
         app.router.add_delete("/api/rollcall/{rollcall_id}", self.delete_rollcall_api)
         app.router.add_put("/api/rollcall/{rollcall_id}/position", self.update_radar_position_api)
         app.router.add_post("/api/rollcall/{rollcall_id}/start-rollcall", self.start_rollcall_api)
         app.router.add_put("/api/rollcall/{rollcall_id}/activate", self.activate_rollcall_api)
+        app.router.add_post("/api/rollcall/{rollcall_id}/{publish_endpoint:publish|publish-must}", self.publish_rollcall_api)
         app.router.add_put("/api/rollcall/{rollcall_id}/{stop_endpoint:stop_number_rollcall|stop_radar|stop_qr_rollcall|stop_time_table_rollcall}", self.stop_rollcall_api)
+        app.router.add_get("/api/courses/rollcall_status/", self.rollcall_status_list_api)
         app.router.add_get("/api/courses/rollcall_status/{rollcall_id}/result", self.rollcall_status_result_api)
         app.router.add_put("/api/enrollment/{enrollment_id}/rollcall-score", self.update_rollcall_score_api)
         app.router.add_post("/api/data-import/course/{course_id}/rollcall", self.import_rollcalls_api)
         app.router.add_post("/api/course/rollcalls/count/grade", self.grade_rollcalls_api)
         app.router.add_post("/api/stat/courses/rollcall/export", self.rollcall_stat_export_api)
+        app.router.add_get("/api/stat/courses/rollcall/export", self.rollcall_stat_export_api)
         app.router.add_post("/api/stat/courses/rollcall/export-by-class", self.rollcall_stat_export_api)
+        app.router.add_get("/api/stat/courses/rollcall/export-by-class", self.rollcall_stat_export_api)
+        app.router.add_post("/api/stat/attendance/export/to", self.attendance_export_api)
+        app.router.add_post("/api/stat/attendance/export/to/{file_type}", self.attendance_export_api)
+        app.router.add_get("/api/stat/{stat_kind:lesson|student|teacher}/rollcall", self.rollcall_stat_api)
+        app.router.add_post("/api/stat/departments/attendance", self.department_attendance_api)
+        app.router.add_post("/api/stat/departments/attendance/export", self.department_attendance_export_api)
+        app.router.add_post("/api/stat/departments/attendance/export/{file_type}", self.department_attendance_export_api)
+        app.router.add_get("/api/stat/departments/user-attendance", self.department_user_attendance_api)
+        app.router.add_get("/api/stat/departments/user-attendance/export", self.department_user_attendance_export_api)
+        app.router.add_get("/api/stat/departments/user-attendance/export/{file_type}", self.department_user_attendance_export_api)
+        app.router.add_post("/api/v1/face-check-records", self.face_check_records_api)
+        app.router.add_get("/api/v1/face-check-records/{face_action:check|verify}", self.face_check_action_api)
+        app.router.add_route("*", "/api/qrcode/login", self.qrcode_login_api)
+        app.router.add_post("/api/qr-code/scan", self.qr_code_scan_api)
+        app.router.add_post("/realms/{realm}/broker/tronclass-qrcode/endpoint", self.identity_broker_api)
+        app.router.add_get("/ntf/users/{user_id}/notifications/unread-count", self.ntf_unread_count_api)
         app.router.add_put("/api/rollcall/{rollcall_id}/answer_number_rollcall", self.answer_number)
         app.router.add_get("/api/rollcall/{rollcall_id}/lite", self.radar_lite)
         app.router.add_put("/api/rollcall/{rollcall_id}/answer", self.answer_radar)
         app.router.add_put("/api/rollcall/{rollcall_id}/answer_radar_rollcall", self.answer_radar)
         app.router.add_put("/api/rollcall/{rollcall_id}/answer_qr_rollcall", self.answer_qr)
+        app.router.add_put("/api/rollcall/{rollcall_id}/answer_self_registration_rollcall", self.answer_self_registration)
         app.router.add_get("/api/rollcall/{rollcall_id}/student_rollcalls", self.student_rollcalls_api)
         app.router.add_get("/api/rollcall/{rollcall_id}/pagination_students_rollcalls", self.pagination_student_rollcalls_api)
         app.router.add_get("/api/rollcall/{rollcall_id}/student_rollcall_count", self.student_rollcall_count_api)

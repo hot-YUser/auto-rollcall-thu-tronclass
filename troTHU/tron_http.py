@@ -936,6 +936,299 @@ class TronHttpClient:
             expected_status=(200, 201, 204),
         )
 
+    async def request_rollcall_root(
+        self,
+        method: Any = "GET",
+        *,
+        payload: Optional[Dict[str, Any]] = None,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        method_text = str(method or "GET").strip().upper()
+        if method_text not in {"GET", "POST", "PUT", "DELETE"}:
+            raise UnexpectedResponseError("Unsupported rollcall root method: {}".format(method))
+        return await self.request_json(
+            method_text,
+            self.api_url("/api/rollcall/"),
+            json_payload=payload,
+            params=params,
+            expected_status=(200, 201, 204),
+        )
+
+    async def fetch_rollcall_status_list(self, params: Optional[Dict[str, Any]] = None) -> Any:
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/courses/rollcall_status/"),
+            params=params,
+        )
+
+    async def answer_self_registration_rollcall(
+        self,
+        rollcall_id: Any,
+        payload: Dict[str, Any],
+    ) -> Any:
+        rollcall_id_text = str(rollcall_id).strip()
+        return await self.request_json(
+            "PUT",
+            self.api_url(
+                "/api/rollcall/{}/answer_self_registration_rollcall".format(rollcall_id_text)
+            ),
+            json_payload=payload,
+            expected_status=(200, 204),
+        )
+
+    async def publish_rollcall(
+        self,
+        rollcall_id: Any,
+        payload: Dict[str, Any],
+        *,
+        must: bool = False,
+    ) -> Any:
+        rollcall_id_text = str(rollcall_id).strip()
+        suffix = "publish-must" if must else "publish"
+        return await self.request_json(
+            "POST",
+            self.api_url("/api/rollcall/{}/{}".format(rollcall_id_text, suffix)),
+            json_payload=payload,
+            expected_status=(200, 201, 204),
+        )
+
+    async def fetch_module_rollcalls(
+        self,
+        course_id: Any,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        course_id_text = str(course_id).strip()
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/courses/{}/modules/rollcalls".format(course_id_text)),
+            params=params,
+        )
+
+    async def fetch_alert_log_rollcalls(
+        self,
+        alert_log_id: Any,
+        *,
+        page: Any = 1,
+        page_size: Any = 20,
+    ) -> Any:
+        alert_log_id_text = str(alert_log_id).strip()
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/alert-logs/{}/rollcalls".format(alert_log_id_text)),
+            params={"page": page, "page_size": page_size},
+        )
+
+    async def fetch_timetable_rollcall_statistics(self, timetable_id: Any) -> Any:
+        timetable_id_text = str(timetable_id).strip()
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/timetables/{}/rollcall-statistics".format(timetable_id_text)),
+        )
+
+    async def fetch_rollcall_alert_unread_count(self, user_id: Any) -> Any:
+        user_id_text = str(user_id).strip()
+        return await self.request_json(
+            "GET",
+            self.api_url("/ntf/users/{}/notifications/unread-count".format(user_id_text)),
+            params={
+                "types": [
+                    "rollcall_alert",
+                    "course_attendance_rate_alert",
+                    "learning_activity_alert",
+                ]
+            },
+        )
+
+    async def download_attendance_export(
+        self,
+        file_type: Any = "xlsx",
+        payload: Optional[Dict[str, Any]] = None,
+    ) -> BinaryResult:
+        file_type_text = str(file_type or "").strip().strip("/")
+        path = "/api/stat/attendance/export/to"
+        if file_type_text:
+            path = "{}/{}".format(path, file_type_text)
+        return await self.request_bytes(
+            "POST",
+            self.api_url(path),
+            json_payload=payload if payload is not None else {},
+            expected_status=(200, 201),
+        )
+
+    async def fetch_rollcall_stat(
+        self,
+        kind: Any,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        kind_text = str(kind or "").strip().lower().replace("_", "-")
+        paths = {
+            "lesson": "/api/stat/lesson/rollcall",
+            "student": "/api/stat/student/rollcall",
+            "teacher": "/api/stat/teacher/rollcall",
+        }
+        if kind_text not in paths:
+            raise UnexpectedResponseError("Unsupported rollcall stat kind: {}".format(kind))
+        return await self.request_json("GET", self.api_url(paths[kind_text]), params=params)
+
+    async def fetch_department_attendance(
+        self,
+        payload: Dict[str, Any],
+        *,
+        page: Any = 1,
+        page_size: Any = 20,
+    ) -> Any:
+        return await self.request_json(
+            "POST",
+            self.api_url("/api/stat/departments/attendance"),
+            params={"page": page, "page_size": page_size},
+            json_payload=payload,
+            expected_status=(200, 201, 204),
+        )
+
+    async def download_department_attendance_export(
+        self,
+        file_type: Any = "xlsx",
+        payload: Optional[Dict[str, Any]] = None,
+    ) -> BinaryResult:
+        file_type_text = str(file_type or "").strip().strip("/")
+        path = "/api/stat/departments/attendance/export"
+        if file_type_text:
+            path = "{}/{}".format(path, file_type_text)
+        return await self.request_bytes(
+            "POST",
+            self.api_url(path),
+            json_payload=payload if payload is not None else {},
+            expected_status=(200, 201),
+        )
+
+    async def fetch_department_user_attendance(
+        self,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/stat/departments/user-attendance"),
+            params=params,
+        )
+
+    async def download_department_user_attendance_export(
+        self,
+        file_type: Any = "xlsx",
+        params: Optional[Dict[str, Any]] = None,
+    ) -> BinaryResult:
+        file_type_text = str(file_type or "").strip().strip("/")
+        path = "/api/stat/departments/user-attendance/export"
+        if file_type_text:
+            path = "{}/{}".format(path, file_type_text)
+        return await self.request_bytes(
+            "GET",
+            self.api_url(path),
+            params=params,
+            expected_status=(200,),
+        )
+
+    async def create_face_check_record(self, payload: Dict[str, Any]) -> Any:
+        return await self.request_json(
+            "POST",
+            self.api_url("/api/v1/face-check-records"),
+            json_payload=payload,
+            expected_status=(200, 201, 204),
+        )
+
+    async def check_face_check_record(self, params: Optional[Dict[str, Any]] = None) -> Any:
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/v1/face-check-records/check"),
+            params=params,
+        )
+
+    async def verify_face_check_record(self, params: Optional[Dict[str, Any]] = None) -> Any:
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/v1/face-check-records/verify"),
+            params=params,
+        )
+
+    async def request_qrcode_login(
+        self,
+        method: Any = "GET",
+        *,
+        payload: Optional[Dict[str, Any]] = None,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        method_text = str(method or "GET").strip().upper()
+        if method_text not in {"GET", "POST"}:
+            raise UnexpectedResponseError("Unsupported qrcode-login method: {}".format(method))
+        kwargs = self.request_kwargs()
+        if payload is not None:
+            kwargs["json"] = payload
+        if params is not None:
+            kwargs["params"] = params
+        request = getattr(self.session, method_text.lower())
+        async with request(self.api_url("/api/qrcode/login"), **kwargs) as resp:
+            status_code = resp.status
+            if status_code == 401:
+                raise UnauthorizedError("Cookie 已過期或導向登入頁。")
+            if status_code not in (200, 201, 204):
+                body = await resp.text()
+                raise UnexpectedResponseError("HTTP {}: {}".format(status_code, body[:200]))
+            if status_code == 204:
+                return {}
+            try:
+                return await resp.json(encoding="utf-8")
+            except (aiohttp.ContentTypeError, ValueError):
+                body = await resp.text()
+                if not body.strip():
+                    return {}
+                raise UnexpectedResponseError(
+                    "Unexpected response body: {}".format(body[:200])
+                )
+
+    async def scan_qr_code(self, payload: Dict[str, Any]) -> Any:
+        return await self.request_json(
+            "POST",
+            self.api_url("/api/qr-code/scan"),
+            json_payload=payload,
+            expected_status=(200, 201, 204),
+        )
+
+    def build_wechat_qrconnect_url(
+        self,
+        *,
+        appid: Any,
+        redirect_uri: Any = "",
+        scope: Any = "snsapi_login",
+        state: Any = "",
+        base_url: Any = "https://open.weixin.qq.com",
+    ) -> str:
+        query = {
+            "appid": str(appid or "").strip(),
+            "scope": str(scope or "").strip() or "snsapi_login",
+        }
+        redirect_text = str(redirect_uri or "").strip()
+        state_text = str(state or "").strip()
+        if redirect_text:
+            query["redirect_uri"] = redirect_text
+        if state_text:
+            query["state"] = state_text
+        return urljoin(str(base_url or "https://open.weixin.qq.com").rstrip("/") + "/", "connect/qrconnect?{}".format(urlencode(query)))
+
+    async def post_identity_broker_qrcode(
+        self,
+        realm: Any,
+        payload: Dict[str, Any],
+        *,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        realm_text = str(realm or "").strip().strip("/")
+        return await self.request_json(
+            "POST",
+            self.api_url("/realms/{}/broker/tronclass-qrcode/endpoint".format(realm_text)),
+            json_payload=payload,
+            params=params,
+            expected_status=(200, 201, 204),
+        )
+
     async def fetch_rollcalls(self) -> RollcallsResult:
         async with self.session.get(self.endpoints.rollcalls_url, **self.request_kwargs()) as resp:
             url = str(resp.url)
@@ -1058,18 +1351,29 @@ class TronHttpClient:
         self,
         kind: Any = "rollcall",
         payload: Optional[Dict[str, Any]] = None,
+        *,
+        method: Any = "POST",
     ) -> BinaryResult:
         kind_text = str(kind or "").strip().lower().replace("_", "-")
+        method_text = str(method or "POST").strip().upper()
         paths = {
             "rollcall": "/api/stat/courses/rollcall/export",
             "rollcall-by-class": "/api/stat/courses/rollcall/export-by-class",
         }
         if kind_text not in paths:
             raise UnexpectedResponseError("Unsupported rollcall stat export kind: {}".format(kind))
+        if method_text not in {"GET", "POST"}:
+            raise UnexpectedResponseError("Unsupported rollcall stat export method: {}".format(method))
+        kwargs: Dict[str, Any] = {}
+        if method_text == "GET":
+            kwargs["params"] = payload if payload is not None else None
+        else:
+            kwargs["json_payload"] = payload if payload is not None else {}
         return await self.request_bytes(
-            "POST",
+            method_text,
             self.api_url(paths[kind_text]),
-            json_payload=payload if payload is not None else {},
+            expected_status=(200, 201),
+            **kwargs,
         )
 
     async def fetch_current_semester(self) -> Dict[str, Any]:

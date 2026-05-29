@@ -193,6 +193,8 @@ class TronCliSmokeTest(unittest.TestCase):
             return 0
 
         commands = [
+            ["teacher", "rollcall", "root", "--method", "GET", "--params-json", '{"page":1}', "--json"],
+            ["teacher", "rollcall", "status-list", "--params-json", '{"page":1}', "--json"],
             ["teacher", "rollcall", "module-create", "--course-id", "123", "--module-id", "m1", "--json"],
             ["teacher", "rollcall", "summary", "--course-id", "123", "--json"],
             ["teacher", "rollcall", "roster", "--course-id", "123", "--json"],
@@ -242,6 +244,9 @@ class TronCliSmokeTest(unittest.TestCase):
             ["teacher", "rollcall", "answer-qr", "456", "--payload-json", '{"data":"abc"}', "--json"],
             ["teacher", "rollcall", "answer-number", "456", "--payload-json", '{"numberCode":"1234"}', "--json"],
             ["teacher", "rollcall", "answer-radar", "456", "--payload-json", '{"latitude":24.1,"longitude":120.1}', "--json"],
+            ["teacher", "rollcall", "answer-self-registration", "456", "--payload-json", '{"deviceId":"dev"}', "--json"],
+            ["teacher", "rollcall", "publish", "456", "--payload-json", '{"visible":true}', "--json"],
+            ["teacher", "rollcall", "publish-must", "456", "--payload-json", '{"visible":true}', "--json"],
             ["teacher", "rollcall", "create-merged", "--payload-json", '{"course_id":123}', "--json"],
             ["teacher", "rollcall", "update-merged-students", "--payload-json", '{"student_rollcalls":[]}', "--json"],
             ["teacher", "rollcall", "setting", "--course-id", "123", "--payload-json", '{"enabled":true}', "--json"],
@@ -260,7 +265,31 @@ class TronCliSmokeTest(unittest.TestCase):
                 "out.xlsx",
                 "--json",
             ],
+            ["teacher", "rollcall", "module-list", "--course-id", "123", "--params-json", '{"page":1}', "--json"],
+            ["teacher", "rollcall", "alert-log", "alert-1", "--page", "1", "--page-size", "5", "--json"],
+            ["teacher", "rollcall", "timetable-stat", "tt-1", "--json"],
+            ["teacher", "rollcall", "notification-count", "--user-id", "238730", "--json"],
             ["teacher", "rollcall", "qrcode", "--url", "https://example.test", "--json"],
+            ["teacher", "attendance", "export", "--payload-json", '{"course_id":123}', "--output", "attendance.xlsx", "--json"],
+            ["teacher", "attendance", "stat", "--kind", "teacher", "--params-json", '{"course_id":123}', "--json"],
+            ["teacher", "attendance", "departments", "--payload-json", '{"conditions":{}}', "--page", "1", "--page-size", "5", "--json"],
+            [
+                "teacher",
+                "attendance",
+                "user-departments",
+                "--params-json",
+                '{"conditions":"{}"}',
+                "--output",
+                "user_department.xlsx",
+                "--json",
+            ],
+            ["teacher", "face-check", "create", "--payload-json", '{"course_id":123}', "--json"],
+            ["teacher", "face-check", "check", "--params-json", '{"record_id":1}', "--json"],
+            ["teacher", "face-check", "verify", "--params-json", '{"record_id":1}', "--json"],
+            ["teacher", "qr-auth", "qrcode-login", "--method", "GET", "--params-json", '{"scene":"login"}', "--json"],
+            ["teacher", "qr-auth", "scan", "--payload-json", '{"code":"abc"}', "--json"],
+            ["teacher", "qr-auth", "wechat-url", "--appid", "wx123", "--redirect-uri", "https://example.test/callback", "--json"],
+            ["teacher", "qr-auth", "identity-broker", "--realm", "thu", "--params-json", '{"client_id":"tron"}', "--payload-json", '{"ticket":"abc"}', "--json"],
         ]
 
         with patch.object(tron, "bootstrap_config"):

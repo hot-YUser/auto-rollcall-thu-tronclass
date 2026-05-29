@@ -196,22 +196,36 @@ python -m troTHU.tron teacher rollcall count 29943 --json
 python -m troTHU.tron teacher rollcall student-history --course-id 55379 --student-id 12345 --rollcall-ids 29943 --json
 python -m troTHU.tron teacher rollcall update 29943 --payload-json '{"status":"finished"}' --json
 python -m troTHU.tron teacher rollcall update-radar-position 29943 --latitude 24.1786 --longitude 120.6473 --json
+python -m troTHU.tron teacher rollcall answer-self-registration 29943 --payload-json self_registration.json --json
+python -m troTHU.tron teacher rollcall publish 29943 --payload-json publish.json --json
+python -m troTHU.tron teacher rollcall module-list --course-id 55379 --json
+python -m troTHU.tron teacher rollcall status-list --params-json '{"page":1}' --json
 python -m troTHU.tron teacher rollcall setting --course-id 55379 --payload-json setting.json --json
 python -m troTHU.tron teacher rollcall grade --rollcall-ids 29943,29944 --json
-python -m troTHU.tron teacher rollcall export-stat-report --kind rollcall --payload-json export.json --output rollcall.xlsx --json
+python -m troTHU.tron teacher rollcall export-stat-report --kind rollcall --method GET --payload-json export.json --output rollcall.xlsx --json
+python -m troTHU.tron teacher attendance export --payload-json attendance.json --output attendance.xlsx --json
+python -m troTHU.tron teacher attendance stat --kind teacher --params-json '{"course_id":55379}' --json
+python -m troTHU.tron teacher attendance departments --payload-json department_conditions.json --json
+python -m troTHU.tron teacher face-check check --params-json '{"record_id":123}' --json
+python -m troTHU.tron teacher qr-auth scan --payload-json qr_scan.json --json
+python -m troTHU.tron teacher qr-auth wechat-url --appid wx123 --redirect-uri https://example.test/callback --json
 python -m troTHU.tron teacher rollcall stop 29943 --type number --json
 python -m troTHU.tron teacher rollcall delete 29943 --yes --json
 ```
 
-支援 `manual`、`number`、`radar`、`qr`、`self_registration`；radar 建立需提供 `--latitude` 與 `--longitude`。TronClass 教師端建立點名的標題需符合前端格式 `YYYY.MM.DD HH:mm`，CLI 未指定 `--title` 時會自動使用該格式。教師端封裝也涵蓋 roster、單次點名詳情、學生進行中點名、請假紀錄、分頁明細、出席統計、跨點名學生狀態更新、raw payload 建立/更新、merged rollcall、點名設定/分數/匯入/計分與統計匯出，以及 `/api/qrcode` 圖片產生。
+支援 `manual`、`number`、`radar`、`qr`、`self_registration`；radar 建立需提供 `--latitude` 與 `--longitude`。TronClass 教師端建立點名的標題需符合前端格式 `YYYY.MM.DD HH:mm`，CLI 未指定 `--title` 時會自動使用該格式。教師端封裝也涵蓋 roster、單次點名詳情、學生進行中點名、請假紀錄、分頁明細、出席統計、跨點名學生狀態更新、raw payload 建立/更新、merged rollcall、publish、module/alert/timetable 統計、點名設定/分數/匯入/計分與統計匯出，以及 `/api/qrcode` 圖片產生。Attendance、face-check 與 QR/auth adjacent 以分組 CLI 提供 raw/diagnostic wrapper，不新增完整 SSO/OAuth 流程。
 
 已封裝的教師/點名 API 包含：
 
-- 建立與控制：`POST /api/course/{courseId}/rollcall`、`POST /api/module/{courseId}/rollcall`、`POST /api/rollcall/{rollcallId}/start-rollcall`、`PUT /api/rollcall/{rollcallId}/activate`、`PUT /api/rollcall/{rollcallId}/stop_qr_rollcall`、`DELETE /api/rollcall/{rollcallId}`、`POST /api/rollcall/merged-rollcall`。
-- 學生簽到：`PUT /api/rollcall/{rollcallId}/answer_qr_rollcall`、`PUT /api/rollcall/{rollcallId}/answer_number_rollcall`、`PUT /api/rollcall/{rollcallId}/answer?api_version=1.76`。
+- 建立與控制：`/api/rollcall/` raw root request、`POST /api/course/{courseId}/rollcall`、`POST /api/module/{courseId}/rollcall`、`POST /api/rollcall/{rollcallId}/start-rollcall`、`PUT /api/rollcall/{rollcallId}/activate`、`POST /api/rollcall/{rollcallId}/publish`、`POST /api/rollcall/{rollcallId}/publish-must`、`PUT /api/rollcall/{rollcallId}/stop_qr_rollcall`、`DELETE /api/rollcall/{rollcallId}`、`POST /api/rollcall/merged-rollcall`。
+- 學生簽到：`PUT /api/rollcall/{rollcallId}/answer_qr_rollcall`、`PUT /api/rollcall/{rollcallId}/answer_number_rollcall`、`PUT /api/rollcall/{rollcallId}/answer_self_registration_rollcall`、`PUT /api/rollcall/{rollcallId}/answer?api_version=1.76`。
 - 教師手動修改：`PUT /api/rollcall/{rollcallId}?api_version=1.1.0`、`PUT /api/rollcall/{rollcallId}/position`、`PUT /api/rollcall/merged-rollcall/student-rollcalls`、`PUT /api/course/{courseId}/student/{studentId}/rollcalls`、`PUT /api/course/{courseId}/rollcall/setting`、`PUT /api/enrollment/{enrollmentId}/rollcall-score`，學生狀態值包含 `no_status`。
-- 匯入、計分與匯出：`POST /api/data-import/course/{courseId}/rollcall`、`POST /api/course/rollcalls/count/grade`、`POST /api/stat/courses/rollcall/export`、`POST /api/stat/courses/rollcall/export-by-class`。
-- 查詢與工具：`GET /api/course/{courseId}/students`、`GET /api/course/{courseId}/rollcalls`、`GET /api/course/{courseId}/rollcall/{rollcallId}`、`GET /api/course/{courseId}/student-onprogress-rollcalls`、`GET /api/course/{courseId}/leave-record`、`GET /api/course/{courseId}/rollcall/setting`、`GET /api/course/{courseId}/rollcall-score`、`GET /api/course/{courseId}/rollcall/scores`、`GET /api/course/{courseId}/students_rollcalls`、`GET /api/course/{courseId}/pagination_students_rollcalls`、`GET /api/timetable_rollcalls`、`GET /api/rollcall/{rollcallId}`、`GET /api/rollcall/{rollcallId}/lite`、`GET /api/rollcall/{rollcallId}/student_rollcalls`、`GET /api/rollcall/{rollcallId}/pagination_students_rollcalls`、`GET /api/rollcall/{rollcallId}/student_rollcall_count`、`GET /api/rollcall/{rollcallId}/answers`、`GET /api/course/{courseId}/student/{studentId}/rollcalls`、`GET /api/courses/rollcall_status/{rollcallId}/result`、`GET /api/qrcode`。
+- 匯入、計分與匯出：`POST /api/data-import/course/{courseId}/rollcall`、`POST /api/course/rollcalls/count/grade`、`GET/POST /api/stat/courses/rollcall/export`、`GET/POST /api/stat/courses/rollcall/export-by-class`、`POST /api/stat/attendance/export/to/{fileType}`。
+- Attendance/統計：`GET /api/stat/lesson/rollcall`、`GET /api/stat/student/rollcall`、`GET /api/stat/teacher/rollcall`、`POST /api/stat/departments/attendance`、`POST /api/stat/departments/attendance/export/{fileType}`、`GET /api/stat/departments/user-attendance`、`GET /api/stat/departments/user-attendance/export/{fileType}`。
+- Face-check 與 QR/auth adjacent：`POST /api/v1/face-check-records`、`GET /api/v1/face-check-records/check`、`GET /api/v1/face-check-records/verify`、`GET/POST /api/qrcode/login`、`POST /api/qr-code/scan`、WeChat `/connect/qrconnect` URL builder、`POST /realms/{realm}/broker/tronclass-qrcode/endpoint`。
+- 查詢與工具：`GET /api/course/{courseId}/students`、`GET /api/course/{courseId}/rollcalls`、`GET /api/course/{courseId}/rollcall/{rollcallId}`、`GET /api/course/{courseId}/student-onprogress-rollcalls`、`GET /api/course/{courseId}/leave-record`、`GET /api/course/{courseId}/rollcall/setting`、`GET /api/course/{courseId}/rollcall-score`、`GET /api/course/{courseId}/rollcall/scores`、`GET /api/course/{courseId}/students_rollcalls`、`GET /api/course/{courseId}/pagination_students_rollcalls`、`GET /api/timetable_rollcalls`、`GET /api/courses/{courseId}/modules/rollcalls`、`GET /api/alert-logs/{alertLogId}/rollcalls`、`GET /api/timetables/{timetableId}/rollcall-statistics`、`GET /api/rollcall/{rollcallId}`、`GET /api/rollcall/{rollcallId}/lite`、`GET /api/rollcall/{rollcallId}/student_rollcalls`、`GET /api/rollcall/{rollcallId}/pagination_students_rollcalls`、`GET /api/rollcall/{rollcallId}/student_rollcall_count`、`GET /api/rollcall/{rollcallId}/answers`、`GET /api/course/{courseId}/student/{studentId}/rollcalls`、`GET /api/courses/rollcall_status/`、`GET /api/courses/rollcall_status/{rollcallId}/result`、`GET /api/qrcode`、`GET /ntf/users/{userId}/notifications/unread-count`。
+
+`rollcall_attendance_ai_payload.json` 內的 `/api/course/{course}/rollcall/{id}/qr_code` 已在授權教師情境觀察為 404，列為 resolved-disproved candidate；CLI 不提供有效請求 wrapper。`SOCKET.IO /schoolTimeTable` 僅列為 realtime/timetable 診斷 coverage，不新增長駐 socket.io runtime。
 
 ### radar
 
