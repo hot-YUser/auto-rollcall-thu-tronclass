@@ -41,7 +41,7 @@ def _row(method, endpoint, host="same-origin", label="test"):
 class ApiStateAuditUnitTest(unittest.TestCase):
     def test_api_list_parser_and_method_normalization(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            source = Path(tmp) / "抓取測試API端口列表.json"
+            source = Path(tmp) / "api-operation-list.json"
             source.write_text(
                 json.dumps(
                     {

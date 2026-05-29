@@ -5,9 +5,9 @@
 
 > 請只在你有權限、且符合學校與課程規範的情境下使用。不要分享帳密、token、cookie、`state/`、`log/`、真實 QR payload 或未遮蔽的 API 回應。不要把填好帳密的 `config.yaml` 傳給別人。
 
-## 版本狀態：v1.2-alpha.4
+## 版本狀態：v1.2-alpha.5
 
-`v1.2-alpha.4` 延續 number 點名越權直接讀碼（讀 `student_rollcalls` 的 `number_code` 單發提交，讀不到再退回暴力猜碼），並強化點名診斷擷取：數字／雷達／QR 全程、**未脫敏**完整記錄到 gitignored `log/rollcall_capture/`，且**每輪輪詢、直到點名關閉前都持續擷取**（含已簽到後）；另含雷達探測／數字猜碼／QR 送出的逐筆交握、即時通知／WebSocket 通道擷取、QR 剪貼簿自動送出與簽到進度顯示。本版新增 **QR `data` 雜湊驗證自動探測**：偵測到 QR 點名時自動測試伺服器是否只認時間戳、忽略雜湊（送出「不含 data」與「正確時間戳＋隨機雜湊」並完整記錄回應；若伺服器接受即等於自動完成簽到）。主要能力仍屬 alpha，**尚未經實際課堂環境完整驗收**；請把這版視為未完整測試的預發布版本，務必自行確認符合校規後再使用。
+`v1.2-alpha.5` 延續 number 點名越權直接讀碼（讀 `student_rollcalls` 的 `number_code` 單發提交，讀不到再退回暴力猜碼），並強化點名診斷擷取：數字／雷達／QR 全程、**未脫敏**完整記錄到 gitignored `log/rollcall_capture/`，且**每輪輪詢、直到點名關閉前都持續擷取**（含已簽到後）；另含雷達探測／數字猜碼／QR 送出的逐筆交握、即時通知／WebSocket 通道擷取、QR 剪貼簿自動送出、QR `data` 雜湊驗證自動探測與簽到進度顯示。本版新增 **狀態變更 API audit capture**：偵測到點名狀態改變時，可依使用者自行提供的 API 清單擷取授權環境中的完整 API 回應與前端資源。主要能力仍屬 alpha，**尚未經實際課堂環境完整驗收**；請把這版視為未完整測試的預發布版本，務必自行確認符合校規後再使用。
 
 目前重點：
 
@@ -22,6 +22,7 @@
 - 點名診斷擷取（預設開）：偵測到點名後，對每一筆仍開啟的點名於每輪輪詢擷取學生可讀端點的**完整未脫敏**伺服器回應，直到點名 id 關閉才停（含已簽到後）；雷達探測／數字猜碼／QR 送出另有逐筆交握記錄。輸出寫入 gitignored `log/rollcall_capture/`，**可能含敏感值，請勿分享或提交版控**
 - QR 剪貼簿自動送出（預設開）：偵測到 QR 點名時監看剪貼簿，截圖（需 `.[qr-image]` 的 Pillow/OpenCV）或文字 payload 解出後，**僅在 rollcallId 與當前點名相符時**自動送出
 - QR `data` 雜湊驗證自動探測（預設開，`qr.data_probe_autorun`）：偵測到 QR 點名時**每場一次**送出「不含 data」與「伺服器 rollcall_time + 伺服器 Date 推得的 QR 時間戳＋隨機 32 位雜湊」測試伺服器驗證行為，完整記錄回應；若任一筆被接受（2xx）即視為自動簽到並跳過後備。亦可用 `python -m troTHU.tron qr data-probe --rollcall-id <id>` 手動控制測試
+- 狀態變更 API audit capture（預設關）：啟用後會在點名狀態改變時讀取你自行設定的 API 清單並擷取完整回應；專案不再內建測試 API 端口列表，避免把大型授權測試資料隨 release 發布
 - Windows zip release build runner 會跑 unittest、PyInstaller、artifact validation 與 temp-extract smoke
 
 ## 5 分鐘快速開始
@@ -70,7 +71,7 @@ python -m troTHU.tron validation local-smoke --json
 Release zip 名稱格式：
 
 ```text
-THU_Auto_Rollcall-v1.2.0a4-windows-x64.zip
+THU_Auto_Rollcall-v1.2-alpha.5-windows-x64.zip
 ```
 
 下載後請完整解壓縮，再在資料夾內執行 `auto-rollcall-thu-tronclass.exe`。不要直接在 zip 裡雙擊執行。第一次啟動會在 exe 同層建立或使用 `config.yaml`、`state/`、`log/`。

@@ -16,9 +16,9 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping
 
 try:  # pragma: no cover - script execution fallback
-    from troTHU.package_diagnostics import PROJECT_NAME, PROJECT_VERSION, SPEC_NAME, build_package_diagnostic_report
+    from troTHU.package_diagnostics import PROJECT_NAME, PROJECT_RELEASE_LABEL, PROJECT_VERSION, SPEC_NAME, build_package_diagnostic_report
 except ImportError:  # pragma: no cover
-    from package_diagnostics import PROJECT_NAME, PROJECT_VERSION, SPEC_NAME, build_package_diagnostic_report
+    from package_diagnostics import PROJECT_NAME, PROJECT_RELEASE_LABEL, PROJECT_VERSION, SPEC_NAME, build_package_diagnostic_report
 
 
 FORBIDDEN_ARTIFACT_NAMES = (
@@ -32,7 +32,7 @@ FORBIDDEN_ARTIFACT_NAMES = (
     "tests",
 )
 ARTIFACT_NAME_RE = re.compile(r"^(auto-rollcall-thu-tronclass|THU_Auto_Rollcall)-v?[\w.\-]+", re.IGNORECASE)
-EXPECTED_WINDOWS_ZIP = "THU_Auto_Rollcall-v{}-windows-x64.zip".format(PROJECT_VERSION)
+EXPECTED_WINDOWS_ZIP = "THU_Auto_Rollcall-v{}-windows-x64.zip".format(PROJECT_RELEASE_LABEL)
 LATEST_BUILD_REPORT = Path("state") / "release" / "latest_release_build.json"
 
 

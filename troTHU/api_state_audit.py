@@ -21,7 +21,7 @@ from urllib.parse import quote, unquote, urljoin, urlparse
 from yarl import URL
 
 
-DEFAULT_API_LIST_PATH = "抓取測試API端口列表.json"
+DEFAULT_API_LIST_PATH = ""
 DEFAULT_AUDIT_CONFIG: Dict[str, Any] = {
     "enabled": False,
     "api_list_path": DEFAULT_API_LIST_PATH,
@@ -259,6 +259,8 @@ def api_list_path(base_dir: Any, options: ApiStateAuditOptions) -> Path:
 def load_api_operation_rows(base_dir: Any, config: Any = None, path: Any = None) -> List[Dict[str, Any]]:
     options = api_state_audit_options(config)
     source = Path(path) if path is not None else api_list_path(base_dir, options)
+    if not source.is_file():
+        return []
     payload = json.loads(source.read_text(encoding="utf-8"))
     rows = payload.get("lists", {}).get("operationRows") if isinstance(payload, Mapping) else None
     if not isinstance(rows, list):
@@ -269,6 +271,8 @@ def load_api_operation_rows(base_dir: Any, config: Any = None, path: Any = None)
 def _load_api_list_payload(base_dir: Any, config: Any = None, path: Any = None) -> Dict[str, Any]:
     options = api_state_audit_options(config)
     source = Path(path) if path is not None else api_list_path(base_dir, options)
+    if not source.is_file():
+        return {"lists": {"operationRows": []}, "source": "no_api_list_configured"}
     payload = json.loads(source.read_text(encoding="utf-8"))
     return dict(payload) if isinstance(payload, Mapping) else {}
 

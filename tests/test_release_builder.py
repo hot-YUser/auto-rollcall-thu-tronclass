@@ -4,7 +4,8 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from troTHU.package_diagnostics import PROJECT_NAME, PROJECT_VERSION
+from troTHU.package_diagnostics import PROJECT_NAME
+from troTHU.release_checklist import EXPECTED_WINDOWS_ZIP
 from troTHU.release_builder import (
     ReleaseBuildError,
     build_release_build_preflight,
@@ -50,7 +51,7 @@ class ReleaseBuilderTest(unittest.TestCase):
 
         encoded = json.dumps(preflight, ensure_ascii=False).lower()
         self.assertEqual(preflight["version"], "release-build-v1")
-        self.assertEqual(preflight["artifact"]["name"], "THU_Auto_Rollcall-v{}-windows-x64.zip".format(PROJECT_VERSION))
+        self.assertEqual(preflight["artifact"]["name"], EXPECTED_WINDOWS_ZIP)
         self.assertIn("python -m unittest discover -v", "\n".join(preflight["commands"]))
         self.assertTrue(preflight["policy"]["smoke_uses_temp_extract"])
         self.assertIn("config.yaml", preflight["forbidden_outputs"])
@@ -62,7 +63,7 @@ class ReleaseBuilderTest(unittest.TestCase):
             self._prepare_base(base)
             runner = self._fake_runner(base)
             report = run_release_build_pipeline(base, execute=True, command_runner=runner)
-            artifact = base / "dist" / "THU_Auto_Rollcall-v{}-windows-x64.zip".format(PROJECT_VERSION)
+            artifact = base / "dist" / EXPECTED_WINDOWS_ZIP
 
             self.assertEqual(report["status"], "ok")
             self.assertTrue(artifact.exists())
@@ -100,7 +101,7 @@ class ReleaseBuilderTest(unittest.TestCase):
             with self.assertRaises(ReleaseBuildError):
                 package_release_artifact(
                     collect,
-                    root / "dist" / "THU_Auto_Rollcall-v{}-windows-x64.zip".format(PROJECT_VERSION),
+                    root / "dist" / EXPECTED_WINDOWS_ZIP,
                     readme_path=readme,
                     notes_text="notes",
                 )
