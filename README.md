@@ -23,7 +23,7 @@
 - QR 剪貼簿自動送出（預設開）：偵測到 QR 點名時監看剪貼簿，截圖（需 `.[qr-image]` 的 Pillow/OpenCV）或文字 payload 解出後，**僅在 rollcallId 與當前點名相符時**自動送出
 - QR `data` 雜湊驗證自動探測（預設開，`qr.data_probe_autorun`）：偵測到 QR 點名時**每場一次**送出「不含 data」與「伺服器 rollcall_time + 伺服器 Date 推得的 QR 時間戳＋隨機 32 位雜湊」測試伺服器驗證行為，完整記錄回應；若任一筆被接受（2xx）即視為自動簽到並跳過後備。亦可用 `python -m troTHU.tron qr data-probe --rollcall-id <id>` 手動控制測試
 - 狀態變更 API audit capture（預設關）：啟用後會在點名狀態改變時讀取你自行設定的 API 清單並擷取完整回應；專案不再內建測試 API 端口列表，避免把大型授權測試資料隨 release 發布
-- Windows zip release build runner 會跑 unittest、PyInstaller、artifact validation 與 temp-extract smoke
+- Windows zip release build runner 會跑 unittest、PyInstaller、artifact validation 與 temp-extract smoke；預設 zip 是小包，不內建 Playwright、keyring 或 QR 圖片解碼 optional extras
 
 ## 5 分鐘快速開始
 
@@ -76,6 +76,8 @@ THU_Auto_Rollcall-v1.2-alpha.5-windows-x64.zip
 
 下載後請完整解壓縮，再在資料夾內執行 `auto-rollcall-thu-tronclass.exe`。不要直接在 zip 裡雙擊執行。第一次啟動會在 exe 同層建立或使用 `config.yaml`、`state/`、`log/`。
 
+預設 Windows zip 是小包：browser-assisted login / research browser capture 的 Playwright、OS keyring、以及 QR 圖片解碼用的 Pillow/OpenCV 不會被打包。文字 QR payload、HTTP fast login、number/radar/QR 日常 runtime 與 bot adapters 仍內建；若需要 optional 能力，請改用原始碼安裝對應 extras。
+
 ### 原始碼 / 開發者
 
 ```bash
@@ -83,6 +85,7 @@ python -m pip install -r requirements.txt
 python -m pip install -e .[packaging]
 python -m pip install -e .[qr-image]   # 選用：靜態圖片 QR 解碼
 python -m pip install -e .[browser]    # 選用：Playwright browser-assisted login
+python -m pip install -e .[keyring]    # 選用：OS keyring 帳密儲存
 python -m troTHU.tron package-check --json
 ```
 
@@ -168,7 +171,7 @@ research:
   allow_risky_probe: false
 ```
 
-若不想把密碼放在 `config.yaml`，可改用環境變數、keyring 或互動輸入。
+預設初始化會把密碼存到本機 `config.yaml`。若不想把密碼放在 `config.yaml`，可改用環境變數、明確安裝 `.[keyring]` 後使用 keyring，或選擇互動輸入。
 
 ## 點名能力
 
@@ -297,7 +300,7 @@ python -m troTHU.tron provider fixture review-template tku --json
 python -m troTHU.tron provider ready-gate tku --fixture fixture.json --json
 ```
 
-THU、TKU、TronClass public cloud 在預設使用者入口中是可見 ready provider；三者都可啟動完整日常流程，不需要 `provider.allow_experimental`。這個舊欄位會保留作為相容 no-op。TKU 會優先使用 HTTP fast SSO 路徑模擬 iClass/SSO 表單、ImageValidate 與 redirect，並在登入後用 iClass API 驗證 session；若 fast path 失敗或 API 驗證失敗，才自動回退到 Playwright browser-assisted login。TronClass public cloud 使用 `/login?login=email` 的 email/password HTTP 登入，取得 session 後共用 TronClass API runtime。fixture review / ready-gate 只處理 sanitized fixture 與人工 acceptance，不會保存密碼、cookie、raw response、完整 QR payload 或 number code。NFU/GUET/XMU 不在 provider ready 目標內。
+THU、TKU、TronClass public cloud 在預設使用者入口中是可見 ready provider；三者都可啟動完整日常流程，不需要 `provider.allow_experimental`。這個舊欄位會保留作為相容 no-op。TKU 會優先使用 HTTP fast SSO 路徑模擬 iClass/SSO 表單、ImageValidate 與 redirect，並在登入後用 iClass API 驗證 session；若 fast path 失敗或 API 驗證失敗，只有安裝 Playwright optional extra 的原始碼環境才會自動回退到 browser-assisted login，預設 Windows 小包會回報 browser assist unavailable。TronClass public cloud 使用 `/login?login=email` 的 email/password HTTP 登入，取得 session 後共用 TronClass API runtime。fixture review / ready-gate 只處理 sanitized fixture 與人工 acceptance，不會保存密碼、cookie、raw response、完整 QR payload 或 number code。NFU/GUET/XMU 不在 provider ready 目標內。
 
 ## App shell / WebView / Research
 
@@ -307,7 +310,7 @@ THU、TKU、TronClass public cloud 在預設使用者入口中是可見 ready pr
 - `research status/api/browser-check/browser-capture`：明確 opt-in 的 read-only metadata capture；不查答案、不保存 raw body/header/cookie/token/QR。
 - `research probe <target> --rollcall-id <id>`：獨立的 shape-only **取證**探測（與日常直接讀碼分開），只記 HTTP 狀態與欄位形狀；目標支援 `student_rollcalls`、`lite`、`ongoing_rollcalls`（後者免 `--rollcall-id`）；需要 `research.enabled=true`、`allow_api_exploration=true`、`allow_risky_probe=true`，且不會把答案值寫入輸出。
 - **點名診斷擷取（diagnostic capture，預設開）**：裸跑 `python -m troTHU.tron` 時，偵測到點名後對**每一筆仍開啟的點名於每輪輪詢**擷取相關端點的**完整、未脫敏**伺服器回應到本機 `log/rollcall_capture/`（已被 `.gitignore` 完全排除），**直到點名 id 關閉才停（含已簽到之後）**，用於個人排查與找出隱藏資訊（例如 QR 的 `data`）；雷達探測點／數字猜碼／QR 送出另以逐筆交握寫入 `exchanges_<id>.jsonl`（每場上限 `capture.max_exchanges_per_rollcall`，預設 600）。QR／未支援點名另會自動擷取通知通道、atmosphere WebSocket frame，以及 QR 專用的 session/匿名只讀 GET 對照與老師 QR 頁 HTML；偵測到 QR 時也會監看剪貼簿自動送出（`qr.clipboard_autosubmit`），送出後顯示簽到進度。此輸出**可能含敏感值，請勿分享 `log/`、勿提交版控**。可於 `config.advanced.yaml` 以 `capture.rollcall_full_capture` / `capture.realtime_capture` / `capture.qr_info_capture` 關閉、`capture.org_id` 覆寫；若要延長 QR 線索擷取視窗，可設 `capture.qr_info_duration_seconds` 與 `capture.qr_info_interval_seconds`，其中 `capture.qr_info_duration_seconds: always` 會在該場 QR 點名期間持續背景紀錄，直到點名狀態消失或程式關閉。
-- `auth.browser_assisted_login.enabled=true`：一般 provider 遇到 CAS/登入頁改版時，可手動啟用 Playwright 後備登入；TKU 預設先跑 HTTP fast SSO，必要時自動使用 Playwright 作為保底；TronClass public cloud 預設走 email HTTP fast login。這些流程都不保存 header/body/密碼。
+- `auth.browser_assisted_login.enabled=true`：一般 provider 遇到 CAS/登入頁改版時，可手動啟用 Playwright 後備登入；TKU 預設先跑 HTTP fast SSO，必要時自動使用 Playwright 作為保底；TronClass public cloud 預設走 email HTTP fast login。Playwright 不隨預設 Windows 小包內建，需原始碼安裝 `.[browser]`。這些流程都不保存 header/body/密碼。
 
 ## R1/R2/R3 驗收
 
@@ -323,7 +326,7 @@ python -m troTHU.tron validation summary --json
 
 `local-smoke --record` 只會寫入本機可證明的非 live case：preflight、time schedule、Bot fake sandbox、package/release static、安全 gate。`auth_restore`、number/radar/QR live、靜態 QR live、fan-out live 仍需要真實 THU 情境，不會被自動假造。
 
-R1 checklist 也會列出本輪新增的非 UI 驗收面：`time_schedule_local`、`qr_static_image_live`、`doctor_probe_opt_in`、`browser_assisted_login_provider_auto`、`research_student_rollcalls_probe`。其中 doctor probe / research probe 不會在日常流程自動執行；browser-assisted login 對一般 provider 仍是 opt-in，對 TKU 則作為 fast SSO 失敗時的自動保底。若沒有真實課堂 QR 截圖或研究授權，就記錄為 blocked/skip，不要用假資料宣稱完成。
+R1 checklist 也會列出本輪新增的非 UI 驗收面：`time_schedule_local`、`qr_static_image_live`、`doctor_probe_opt_in`、`browser_assisted_login_provider_auto`、`research_student_rollcalls_probe`。其中 doctor probe / research probe 不會在日常流程自動執行；browser-assisted login 對一般 provider 仍是 opt-in，對 TKU 則作為 fast SSO 失敗時的自動保底，但預設 Windows 小包不內建 Playwright。若沒有真實課堂 QR 截圖或研究授權，就記錄為 blocked/skip，不要用假資料宣稱完成。
 
 R2 是 release build：
 

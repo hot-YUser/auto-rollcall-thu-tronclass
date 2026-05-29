@@ -42,6 +42,38 @@ REQUIRED_RUNTIME_MODULES = (
     "yaml",
     "nacl",
 )
+SMALL_BUNDLE_SPEC_EXCLUDES = (
+    "playwright",
+    "playwright.async_api",
+    "greenlet",
+    "pyee",
+    "keyring",
+    "keyrings",
+    "cv2",
+    "numpy",
+    "PIL",
+    "Pillow",
+    "pyzbar",
+)
+SMALL_BUNDLE_ARTIFACT_PARTS = (
+    "playwright",
+    "greenlet",
+    "pyee",
+    "keyring",
+    "keyrings",
+    "cv2",
+    "numpy",
+    "PIL",
+    "Pillow",
+    "pyzbar",
+    "opencv_python_headless",
+)
+OPTIONAL_RUNTIME_MODULES = (
+    "keyring",
+    "playwright.async_api",
+    "cv2",
+    "PIL",
+)
 
 
 def _safe_text(value: Any, *, limit: int = 160) -> str:
@@ -172,10 +204,19 @@ def validate_pyinstaller_spec(spec_path: Path, *, package_dir: Path | None = Non
     ]
     package_path = Path(package_dir) if package_dir is not None else spec.parent / "troTHU"
     hidden_import_gaps = discover_hidden_import_gaps(package_path, hidden_imports)
+    missing_small_bundle_excludes = [
+        item for item in SMALL_BUNDLE_SPEC_EXCLUDES if item not in excludes
+    ]
     checks = [
         _check("spec exists", spec.exists(), SPEC_NAME, severity="fail"),
         _check("datas excludes local secrets", not forbidden_datas, "DATAS has no local config/state/log entries", severity="fail"),
         _check("tests excluded", "tests" in excludes, "tests excluded from PyInstaller bundle", severity="warn"),
+        _check(
+            "small bundle optional excludes",
+            not missing_small_bundle_excludes,
+            "browser/keyring/QR image optional packages excluded from default zip",
+            severity="fail",
+        ),
         _check("hidden imports current", not hidden_import_gaps, "all runtime modules listed in hidden imports", severity="warn"),
     ]
     return {
@@ -186,6 +227,8 @@ def validate_pyinstaller_spec(spec_path: Path, *, package_dir: Path | None = Non
         "hidden_imports": hidden_imports,
         "hidden_import_gaps": hidden_import_gaps,
         "excludes": excludes,
+        "small_bundle_required_excludes": list(SMALL_BUNDLE_SPEC_EXCLUDES),
+        "missing_small_bundle_excludes": missing_small_bundle_excludes,
         "checks": checks,
     }
 
@@ -243,12 +286,18 @@ def _requirements_report(path: Path) -> Dict[str, Any]:
 def _runtime_report() -> Dict[str, Any]:
     modules = {name: _module_available(name) for name in REQUIRED_RUNTIME_MODULES}
     modules["PyInstaller"] = _module_available("PyInstaller")
-    modules["keyring"] = _module_available("keyring")
+    optional_capabilities = {
+        name: _module_available(name) for name in OPTIONAL_RUNTIME_MODULES
+    }
     checks = [
         _check("module {}".format(name), available, "{} importable".format(name), severity="warn")
         for name, available in modules.items()
     ]
-    return {"modules": modules, "checks": checks}
+    return {
+        "modules": modules,
+        "optional_capabilities": optional_capabilities,
+        "checks": checks,
+    }
 
 
 def _line_set(path: Path) -> set[str]:

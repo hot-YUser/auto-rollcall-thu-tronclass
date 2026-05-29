@@ -16,9 +16,23 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping
 
 try:  # pragma: no cover - script execution fallback
-    from troTHU.package_diagnostics import PROJECT_NAME, PROJECT_RELEASE_LABEL, PROJECT_VERSION, SPEC_NAME, build_package_diagnostic_report
+    from troTHU.package_diagnostics import (
+        PROJECT_NAME,
+        PROJECT_RELEASE_LABEL,
+        PROJECT_VERSION,
+        SMALL_BUNDLE_ARTIFACT_PARTS,
+        SPEC_NAME,
+        build_package_diagnostic_report,
+    )
 except ImportError:  # pragma: no cover
-    from package_diagnostics import PROJECT_NAME, PROJECT_RELEASE_LABEL, PROJECT_VERSION, SPEC_NAME, build_package_diagnostic_report
+    from package_diagnostics import (
+        PROJECT_NAME,
+        PROJECT_RELEASE_LABEL,
+        PROJECT_VERSION,
+        SMALL_BUNDLE_ARTIFACT_PARTS,
+        SPEC_NAME,
+        build_package_diagnostic_report,
+    )
 
 
 FORBIDDEN_ARTIFACT_NAMES = (
@@ -113,6 +127,23 @@ def _forbidden_name_match(name: str) -> str:
     return ""
 
 
+def _optional_bundle_name_match(name: str) -> str:
+    normalized = str(name or "").replace("\\", "/").strip("/")
+    if not normalized:
+        return ""
+    parts = [part for item in normalized.split("/") for part in Path(item).parts if part]
+    candidates = parts or [normalized]
+    for part in candidates:
+        lowered = part.lower()
+        for optional_name in SMALL_BUNDLE_ARTIFACT_PARTS:
+            forbidden = optional_name.lower()
+            if lowered == forbidden:
+                return part
+            if lowered.startswith(forbidden + "-") or lowered.startswith(forbidden + ".") or lowered.startswith(forbidden + "_"):
+                return part
+    return ""
+
+
 def _sha256_short(path: Path) -> str:
     if not path.is_file():
         return ""
@@ -162,7 +193,17 @@ def build_release_artifact_manifest(path: Path) -> Dict[str, Any]:
     }
 
 
-def validate_release_artifact(path: Path) -> Dict[str, Any]:
+def _optional_scan_names(artifact: Path, names: List[str], zip_names: List[str]) -> List[str]:
+    if artifact.is_file():
+        return names + zip_names
+    if artifact.is_dir():
+        expected_zip = artifact / EXPECTED_WINDOWS_ZIP
+        if expected_zip.is_file():
+            return [expected_zip.name] + _zip_member_names(expected_zip)
+    return zip_names
+
+
+def validate_release_artifact(path: Path, *, strict_optional: bool = True) -> Dict[str, Any]:
     """Validate an existing release artifact or dist directory by names only."""
     artifact = Path(path)
     names = _iter_artifact_names(artifact)
@@ -176,10 +217,16 @@ def validate_release_artifact(path: Path) -> Dict[str, Any]:
         except OSError:
             zip_names = []
     all_names = names + zip_names
+    optional_names = _optional_scan_names(artifact, names, zip_names)
     forbidden = [
         _forbidden_name_match(name)
         for name in all_names
         if _forbidden_name_match(name)
+    ]
+    optional_bundles = [
+        _optional_bundle_name_match(name)
+        for name in optional_names
+        if _optional_bundle_name_match(name)
     ]
     candidate_names = [name for name in names if name.lower().endswith((".zip", ".exe", ".tar.gz", ".whl"))]
     name_ok = any(ARTIFACT_NAME_RE.search(name) for name in candidate_names or names)
@@ -187,6 +234,12 @@ def validate_release_artifact(path: Path) -> Dict[str, Any]:
         _check("artifact exists", artifact.exists(), artifact.name or str(artifact), severity="warn"),
         _check("artifact naming", name_ok or not artifact.exists(), "expected release artifact naming", severity="warn"),
         _check("artifact excludes local state", not forbidden, "no config/state/log/tests/cookies names", severity="fail"),
+        _check(
+            "artifact excludes optional extras",
+            not optional_bundles,
+            "no browser/keyring/QR image optional packages",
+            severity="fail" if strict_optional else "warn",
+        ),
     ]
     return {
         "path": artifact.name or str(artifact),
@@ -195,6 +248,8 @@ def validate_release_artifact(path: Path) -> Dict[str, Any]:
         "candidate_names": sorted(candidate_names)[:20],
         "manifest": build_release_artifact_manifest(artifact),
         "forbidden_names": sorted(set(forbidden))[:20],
+        "optional_bundle_names": sorted(set(optional_bundles))[:20],
+        "strict_optional": bool(strict_optional),
         "checks": checks,
         "status": _overall_status(checks),
     }
@@ -244,7 +299,7 @@ def build_release_build_plan(base_dir: Path, *, dist_dir: Path | None = None) ->
             "name": EXPECTED_WINDOWS_ZIP,
             "kind": "zip",
             "contains": ["PyInstaller collect output", "README.md", "RELEASE_NOTES.txt"],
-            "forbidden": list(FORBIDDEN_ARTIFACT_NAMES),
+            "forbidden": list(FORBIDDEN_ARTIFACT_NAMES) + list(SMALL_BUNDLE_ARTIFACT_PARTS),
         }
     ]
     return {
@@ -268,6 +323,7 @@ def build_release_build_plan(base_dir: Path, *, dist_dir: Path | None = None) ->
             "cookies",
             "tests",
             "local_runtime_state",
+            "browser_keyring_qr_optional_packages",
         ],
     }
 
@@ -309,7 +365,7 @@ def build_release_checklist(base_dir: Path, *, config: Mapping[str, Any] | None 
     ci = _ci_report(base / ".github" / "workflows" / "ci.yml")
     readme = _readme_report(base / "README.md")
     dist_path = Path(dist_dir) if dist_dir is not None else base / "dist"
-    artifact = validate_release_artifact(dist_path)
+    artifact = validate_release_artifact(dist_path, strict_optional=dist_dir is not None)
     build_plan = build_release_build_plan(base, dist_dir=dist_path)
     latest_build = _latest_build_report(base, dist_dir=dist_path)
     release_builder_available = importlib.util.find_spec("troTHU.release_builder") is not None or importlib.util.find_spec("release_builder") is not None
