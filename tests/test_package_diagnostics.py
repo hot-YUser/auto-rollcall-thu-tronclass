@@ -45,6 +45,7 @@ class PackageDiagnosticsTest(unittest.TestCase):
         self.assertIn("troTHU.app_shell", report["hidden_imports"])
         self.assertIn("troTHU.app_shell_dashboard", report["hidden_imports"])
         self.assertIn("troTHU.app_shell_polish", report["hidden_imports"])
+        self.assertIn("troTHU.api_state_audit_builtin", report["hidden_imports"])
         self.assertIn("troTHU.discord_gateway", report["hidden_imports"])
         self.assertIn("troTHU.radar_map_assist", report["hidden_imports"])
         self.assertIn("troTHU.telegram_adapter", report["hidden_imports"])

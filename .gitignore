@@ -64,6 +64,7 @@ PLAN.md
 # Local reverse-engineering reference (decompiled app + web frontend dumps).
 # Kept locally for analysis only; never publish or commit.
 APP和網頁前端/
+抓取測試API端口列表.json
 
 # Local/private live school verification helpers.
 # These call real-school flows through TRON_USER / TRON_PASS and are not

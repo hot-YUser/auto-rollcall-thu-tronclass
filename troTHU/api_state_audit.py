@@ -21,6 +21,19 @@ from urllib.parse import quote, unquote, urljoin, urlparse
 
 from yarl import URL
 
+try:  # pragma: no cover - package import path
+    from .api_state_audit_builtin import (
+        BUILTIN_API_LIST_SHA256,
+        BUILTIN_API_LIST_SOURCE,
+        load_builtin_api_list_payload,
+    )
+except ImportError:  # pragma: no cover - direct script fallback
+    from api_state_audit_builtin import (  # type: ignore
+        BUILTIN_API_LIST_SHA256,
+        BUILTIN_API_LIST_SOURCE,
+        load_builtin_api_list_payload,
+    )
+
 
 DEFAULT_API_LIST_PATH = "抓取測試API端口列表.json"
 DEFAULT_AUDIT_CONFIG: Dict[str, Any] = {
@@ -284,29 +297,58 @@ def api_list_path(base_dir: Any, options: ApiStateAuditOptions) -> Path:
 
 
 def load_api_operation_rows(base_dir: Any, config: Any = None, path: Any = None) -> List[Dict[str, Any]]:
-    options = api_state_audit_options(config)
-    source = Path(path) if path is not None else api_list_path(base_dir, options)
-    if not source.is_file():
-        return []
-    payload = json.loads(source.read_text(encoding="utf-8"))
+    payload = _load_api_list_payload(base_dir, config, path)
     rows = payload.get("lists", {}).get("operationRows") if isinstance(payload, Mapping) else None
     if not isinstance(rows, list):
         return []
     return [dict(row) for row in rows if isinstance(row, Mapping)]
 
 
+def _payload_with_source_metadata(payload: Mapping[str, Any], source: Mapping[str, Any]) -> Dict[str, Any]:
+    document = dict(payload)
+    document["api_state_audit_source"] = dict(source)
+    return document
+
+
+def _builtin_api_list_payload(base_dir: Any, options: ApiStateAuditOptions, requested_path: Path) -> Dict[str, Any]:
+    candidates = _candidate_api_list_paths(base_dir, options)
+    try:
+        payload = load_builtin_api_list_payload()
+    except Exception as exc:
+        return {
+            "lists": {"operationRows": []},
+            "source": "api_list_not_found",
+            "requested_path": str(requested_path),
+            "candidate_paths": [str(candidate) for candidate in candidates],
+            "embedded_error": "{}: {}".format(type(exc).__name__, exc),
+        }
+    return _payload_with_source_metadata(
+        payload,
+        {
+            "kind": "embedded",
+            "source": BUILTIN_API_LIST_SOURCE,
+            "sha256": BUILTIN_API_LIST_SHA256,
+            "requested_path": str(requested_path),
+            "candidate_paths": [str(candidate) for candidate in candidates],
+        },
+    )
+
+
 def _load_api_list_payload(base_dir: Any, config: Any = None, path: Any = None) -> Dict[str, Any]:
     options = api_state_audit_options(config)
     source = Path(path) if path is not None else api_list_path(base_dir, options)
     if not source.is_file():
-        return {
-            "lists": {"operationRows": []},
-            "source": "api_list_not_found",
-            "requested_path": str(source),
-            "candidate_paths": [str(candidate) for candidate in _candidate_api_list_paths(base_dir, options)],
-        }
+        return _builtin_api_list_payload(base_dir, options, source)
     payload = json.loads(source.read_text(encoding="utf-8"))
-    return dict(payload) if isinstance(payload, Mapping) else {}
+    if not isinstance(payload, Mapping):
+        return {}
+    return _payload_with_source_metadata(
+        payload,
+        {
+            "kind": "file",
+            "path": str(source),
+        },
+    )
 
 
 def _identity_config_from_login_url(login_url: Any) -> Tuple[str, str]:

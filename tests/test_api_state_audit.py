@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import tempfile
 import unittest
@@ -21,6 +22,7 @@ from troTHU.api_state_audit import (
     rollcall_state_has_activity,
     run_api_state_audit,
 )
+from troTHU.api_state_audit_builtin import BUILTIN_API_LIST_SHA256, builtin_api_list_bytes
 
 
 def _audit_config(**overrides):
@@ -88,6 +90,15 @@ class ApiStateAuditUnitTest(unittest.TestCase):
 
             self.assertEqual(api_list_path(Path(tmp), options), source)
             self.assertEqual(rows, [{"method": "GET", "endpoint": "/audit"}])
+
+    def test_builtin_api_list_is_used_without_external_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            rows = load_api_operation_rows(Path(tmp), {})
+
+        self.assertEqual(len(rows), 91)
+        self.assertEqual(rows[0]["endpoint"], "/api/qrcode/login")
+        self.assertEqual(rows[-1]["endpoint"], "/api/course/{expr}/rollcall/{expr}/qr_code")
+        self.assertEqual(hashlib.sha256(builtin_api_list_bytes()).hexdigest(), BUILTIN_API_LIST_SHA256)
 
     def test_placeholder_resolution_and_external_hosts(self) -> None:
         options = ApiStateAuditOptions(
