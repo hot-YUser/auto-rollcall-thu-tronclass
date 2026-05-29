@@ -66,6 +66,20 @@ class ReleaseChecklistTest(unittest.TestCase):
         self.assertIn("cookies", report["forbidden_names"])
         self.assertIn("default.json", report["manifest"]["items"][0]["zip_member_names"])
 
+    def test_validate_release_artifact_flags_optional_bundle_members(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            artifact = root / EXPECTED_WINDOWS_ZIP
+            with zipfile.ZipFile(artifact, "w") as archive:
+                archive.writestr("THU_Auto_Rollcall.exe", "placeholder")
+                archive.writestr("_internal/playwright/driver/node.exe", "do-not-ship")
+                archive.writestr("_internal/keyring/__init__.py", "do-not-ship")
+            report = validate_release_artifact(artifact)
+
+        self.assertEqual(report["status"], "fail")
+        self.assertIn("playwright", report["optional_bundle_names"])
+        self.assertIn("keyring", report["optional_bundle_names"])
+
     def test_build_release_artifact_manifest_lists_names_hashes_and_sizes(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             artifact = Path(temp_dir) / EXPECTED_WINDOWS_ZIP
