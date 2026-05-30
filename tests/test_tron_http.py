@@ -1917,6 +1917,23 @@ class TronRadarDispatchTest(unittest.IsolatedAsyncioTestCase):
         global_mock.assert_awaited_once()
         legacy_mock.assert_awaited_once_with(main_session, rollcall)
 
+    async def test_radar_does_not_fallback_after_global_final_grid_stops(self) -> None:
+        tron.CONFIG["radar"] = tron.normalize_config(
+            {"radar": {"strategy": "global_wgs84", "legacy_fallback_enabled": True}}
+        )["radar"]
+        main_session = MagicMock()
+        rollcall = {"is_radar": True, "rollcall_id": 101}
+
+        with (
+            patch.object(radar_runtime, "global_radar", AsyncMock(side_effect=radar_runtime._RadarNoFallback("closed"))) as global_mock,
+            patch.object(radar_runtime, "legacy_radar", AsyncMock(return_value=True)) as legacy_mock,
+        ):
+            result = await radar_runtime.radar(main_session, rollcall)
+
+        self.assertFalse(result)
+        global_mock.assert_awaited_once()
+        legacy_mock.assert_not_awaited()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -47,6 +47,125 @@ class RadarCoordinateResult:
         return self.error_code == "radar_out_of_rollcall_scope" and self.has_distance
 
 
+@dataclass(frozen=True)
+class TransientCooldownPolicy:
+    cooldown_seconds: float
+    max_cooldowns: int
+    transient_failure_threshold: int
+    transient_failure_ratio: float
+
+    @classmethod
+    def from_mapping(
+        cls,
+        config: Any,
+        *,
+        default_cooldown_seconds: float,
+        default_max_cooldowns: int,
+        default_transient_failure_threshold: int,
+        default_transient_failure_ratio: float,
+    ) -> "TransientCooldownPolicy":
+        mapping = config if isinstance(config, dict) else {}
+        threshold = coerce_positive_int(
+            mapping.get("transient_failure_threshold", default_transient_failure_threshold),
+            default_transient_failure_threshold,
+            minimum=1,
+        )
+        max_cooldowns = coerce_positive_int(
+            mapping.get("max_cooldowns", default_max_cooldowns),
+            default_max_cooldowns,
+            minimum=0,
+        )
+        ratio_value = mapping.get("transient_failure_ratio", default_transient_failure_ratio)
+        try:
+            ratio = float(ratio_value)
+        except (TypeError, ValueError):
+            ratio = default_transient_failure_ratio
+        return cls(
+            cooldown_seconds=coerce_positive_float(
+                mapping.get("cooldown_seconds", default_cooldown_seconds),
+                default_cooldown_seconds,
+                minimum=0.1,
+            ),
+            max_cooldowns=max_cooldowns,
+            transient_failure_threshold=threshold,
+            transient_failure_ratio=max(0.0, min(1.0, ratio)),
+        )
+
+
+@dataclass(frozen=True)
+class TransientCooldownDecision:
+    should_cooldown: bool
+    exhausted: bool
+    transient_count: int
+    sample_size: int
+    transient_ratio: float
+    cooldowns_used: int
+
+
+class TransientCooldownTracker:
+    """Shared burst-cooldown state for rollcall answer submission loops."""
+
+    def __init__(self, policy: TransientCooldownPolicy):
+        self.policy = policy
+        self.cooldowns_used = 0
+        self._window: List[bool] = []
+
+    def reset(self) -> None:
+        self._window = []
+
+    def record_attempt(self, transient: bool) -> TransientCooldownDecision:
+        if not transient:
+            self.reset()
+            return self._decision(False, 0, 0, 0.0)
+        self._window.append(True)
+        threshold = self.policy.transient_failure_threshold
+        if len(self._window) > threshold:
+            self._window = self._window[-threshold:]
+        transient_count = sum(1 for item in self._window if item)
+        sample_size = len(self._window)
+        transient_ratio = transient_count / max(sample_size, 1)
+        should_cooldown = self._should_cooldown(transient_count, sample_size, transient_ratio)
+        return self._decision(should_cooldown, transient_count, sample_size, transient_ratio)
+
+    def record_batch(self, transient_count: int, sample_size: int) -> TransientCooldownDecision:
+        transient_count = max(0, int(transient_count))
+        sample_size = max(0, int(sample_size))
+        if sample_size <= 0 or transient_count <= 0:
+            self.reset()
+            return self._decision(False, 0, sample_size, 0.0)
+        transient_count = min(transient_count, sample_size)
+        transient_ratio = transient_count / max(sample_size, 1)
+        should_cooldown = self._should_cooldown(transient_count, sample_size, transient_ratio)
+        return self._decision(should_cooldown, transient_count, sample_size, transient_ratio)
+
+    def _should_cooldown(self, transient_count: int, sample_size: int, transient_ratio: float) -> bool:
+        threshold = self.policy.transient_failure_threshold
+        return transient_count >= threshold or (
+            sample_size >= threshold and transient_ratio >= self.policy.transient_failure_ratio
+        )
+
+    def _decision(
+        self,
+        should_cooldown: bool,
+        transient_count: int,
+        sample_size: int,
+        transient_ratio: float,
+    ) -> TransientCooldownDecision:
+        exhausted = False
+        if should_cooldown:
+            self.cooldowns_used += 1
+            exhausted = self.cooldowns_used > self.policy.max_cooldowns
+            self.reset()
+        return TransientCooldownDecision(
+            should_cooldown=should_cooldown,
+            exhausted=exhausted,
+            transient_count=transient_count,
+            sample_size=sample_size,
+            transient_ratio=transient_ratio,
+            cooldowns_used=self.cooldowns_used,
+        )
+
+
 def normalize_text(value: Any) -> str:
     return str(value or "").strip()
 

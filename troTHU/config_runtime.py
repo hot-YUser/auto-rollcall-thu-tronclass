@@ -327,7 +327,7 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
         min_precision, max_precision = (max_precision, min_precision)
     radar_config['final_precision_min'] = min_precision
     radar_config['final_precision_max'] = max_precision
-    radar_config['final_grid_step_meters'] = min(50.0, ctx.coerce_positive_float(radar_config.get('final_grid_step_meters', ctx.DEFAULT_CONFIG['radar']['final_grid_step_meters']), ctx.DEFAULT_CONFIG['radar']['final_grid_step_meters'], minimum=0.5))
+    radar_config['final_grid_step_meters'] = ctx.coerce_positive_float(radar_config.get('final_grid_step_meters', ctx.DEFAULT_CONFIG['radar']['final_grid_step_meters']), ctx.DEFAULT_CONFIG['radar']['final_grid_step_meters'], minimum=100.0)
     radar_config['final_grid_radius_meters'] = min(100.0, ctx.coerce_positive_float(radar_config.get('final_grid_radius_meters', ctx.DEFAULT_CONFIG['radar']['final_grid_radius_meters']), ctx.DEFAULT_CONFIG['radar']['final_grid_radius_meters'], minimum=0.0))
     default_global_radar = ctx.DEFAULT_CONFIG['radar']['global']
     global_radar = radar_config.get('global', {})

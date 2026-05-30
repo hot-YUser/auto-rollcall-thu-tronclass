@@ -57,6 +57,52 @@ class RuntimeHelpersTest(unittest.TestCase):
         self.assertEqual(runtime_helpers.coerce_positive_float("0", 1.5, minimum=0.25), 0.25)
         self.assertEqual(runtime_helpers.coerce_positive_float("bad", 1.5, minimum=0.25), 1.5)
 
+    def test_transient_cooldown_tracker_matches_number_batch_logic(self) -> None:
+        policy = runtime_helpers.TransientCooldownPolicy.from_mapping(
+            {
+                "cooldown_seconds": 0.1,
+                "max_cooldowns": 1,
+                "transient_failure_threshold": 2,
+                "transient_failure_ratio": 0.5,
+            },
+            default_cooldown_seconds=5.0,
+            default_max_cooldowns=3,
+            default_transient_failure_threshold=20,
+            default_transient_failure_ratio=0.35,
+        )
+        tracker = runtime_helpers.TransientCooldownTracker(policy)
+
+        quiet = tracker.record_batch(1, 3)
+        first = tracker.record_batch(2, 4)
+        exhausted = tracker.record_batch(2, 4)
+
+        self.assertFalse(quiet.should_cooldown)
+        self.assertTrue(first.should_cooldown)
+        self.assertFalse(first.exhausted)
+        self.assertEqual(first.cooldowns_used, 1)
+        self.assertTrue(exhausted.should_cooldown)
+        self.assertTrue(exhausted.exhausted)
+
+    def test_transient_cooldown_tracker_accumulates_sequential_attempts(self) -> None:
+        policy = runtime_helpers.TransientCooldownPolicy.from_mapping(
+            {"max_cooldowns": 2, "transient_failure_threshold": 3, "transient_failure_ratio": 0.5},
+            default_cooldown_seconds=5.0,
+            default_max_cooldowns=3,
+            default_transient_failure_threshold=20,
+            default_transient_failure_ratio=0.35,
+        )
+        tracker = runtime_helpers.TransientCooldownTracker(policy)
+
+        self.assertFalse(tracker.record_attempt(True).should_cooldown)
+        self.assertFalse(tracker.record_attempt(True).should_cooldown)
+        cooldown = tracker.record_attempt(True)
+        tracker.record_attempt(False)
+
+        self.assertTrue(cooldown.should_cooldown)
+        self.assertFalse(cooldown.exhausted)
+        self.assertEqual(cooldown.transient_count, 3)
+        self.assertFalse(tracker.record_attempt(True).should_cooldown)
+
     def test_payload_excerpt_truncates_and_serializes(self) -> None:
         self.assertIsNone(runtime_helpers.make_payload_excerpt(None))
         self.assertEqual(runtime_helpers.make_payload_excerpt({"a": 1}), json.dumps({"a": 1}, ensure_ascii=False))

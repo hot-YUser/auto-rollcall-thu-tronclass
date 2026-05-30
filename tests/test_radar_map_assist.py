@@ -36,9 +36,12 @@ class RadarMapAssistTest(unittest.TestCase):
         self.assertEqual(len(model["boundary"]), 4)
         self.assertAlmostEqual(model["center"]["lat"], 24.1815)
         self.assertAlmostEqual(model["center"]["lon"], 120.6005)
-        self.assertEqual(model["candidate_grid"]["step_meters"], 4.0)
-        self.assertEqual(model["candidate_grid"]["radius_meters"], 12.0)
-        self.assertGreater(model["candidate_grid"]["estimated_points"], 1)
+        self.assertEqual(model["candidate_grid"]["step_meters"], 100.0)
+        self.assertIsNone(model["candidate_grid"]["radius_meters"])
+        self.assertEqual(model["candidate_grid"]["legacy_radius_meters"], 12.0)
+        self.assertIsNone(model["candidate_grid"]["estimated_points"])
+        self.assertTrue(model["candidate_grid"]["unbounded"])
+        self.assertEqual(model["candidate_grid"]["strategy"], "unbounded_final_grid")
         self.assertEqual(model["feature_collection"]["type"], "FeatureCollection")
 
     def test_validate_point_inside_outside_and_invalid(self) -> None:

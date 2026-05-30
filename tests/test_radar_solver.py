@@ -1,3 +1,4 @@
+import itertools
 import math
 import unittest
 
@@ -14,6 +15,7 @@ from troTHU.radar_solver import (
     point_in_polygon,
     polygon_area,
     solve_position,
+    unbounded_grid_offsets,
 )
 
 
@@ -124,6 +126,31 @@ class RadarSolverTest(unittest.TestCase):
             for north in range(-10, 11, 5)
         }
         self.assertEqual(offsets, expected_offsets)
+
+    def test_unbounded_grid_offsets_start_at_center_then_nearest_100m_ring(self) -> None:
+        offsets = list(itertools.islice(unbounded_grid_offsets(100.0), 9))
+
+        self.assertEqual(
+            offsets,
+            [
+                (0.0, 0.0, 0),
+                (100.0, 0.0, 1),
+                (0.0, 100.0, 1),
+                (-100.0, 0.0, 1),
+                (0.0, -100.0, 1),
+                (100.0, 100.0, 2),
+                (-100.0, 100.0, 2),
+                (-100.0, -100.0, 2),
+                (100.0, -100.0, 2),
+            ],
+        )
+
+    def test_unbounded_grid_offsets_continue_beyond_any_fixed_radius(self) -> None:
+        offsets = list(itertools.islice(unbounded_grid_offsets(100.0), 80))
+        distances = [east * east + north * north for east, north, _ring in offsets]
+
+        self.assertEqual(distances, sorted(distances))
+        self.assertGreaterEqual(max(abs(east) for east, _north, _ring in offsets), 400.0)
 
 
 if __name__ == "__main__":

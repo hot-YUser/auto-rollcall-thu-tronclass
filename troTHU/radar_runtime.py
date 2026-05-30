@@ -69,6 +69,195 @@ def _read_radar_config() -> ctx.Dict[str, ctx.Any]:
         return ctx.normalize_config(ctx.copy.deepcopy(ctx.CONFIG)).get("radar", ctx.DEFAULT_CONFIG["radar"])
 
 
+def _radar_grid_step_meters(radar_config: ctx.Mapping[str, ctx.Any]) -> float:
+    try:
+        return max(100.0, float(radar_config.get("final_grid_step_meters", 100.0)))
+    except (TypeError, ValueError):
+        return 100.0
+
+
+def _radar_cooldown_policy(radar_config: ctx.Mapping[str, ctx.Any]) -> ctx.TransientCooldownPolicy:
+    cooldown_config: ctx.Dict[str, ctx.Any] = {}
+    global_config = radar_config.get("global", {})
+    if isinstance(global_config, dict):
+        cooldown_config.update(global_config)
+    for key in (
+        "cooldown_seconds",
+        "max_cooldowns",
+        "transient_failure_threshold",
+        "transient_failure_ratio",
+    ):
+        if key in radar_config:
+            cooldown_config[key] = radar_config[key]
+    return ctx.TransientCooldownPolicy.from_mapping(
+        cooldown_config,
+        default_cooldown_seconds=ctx.NUMBER_COOLDOWN_SECONDS,
+        default_max_cooldowns=ctx.NUMBER_MAX_COOLDOWNS,
+        default_transient_failure_threshold=ctx.NUMBER_TRANSIENT_FAILURE_THRESHOLD,
+        default_transient_failure_ratio=ctx.NUMBER_TRANSIENT_FAILURE_RATIO,
+    )
+
+
+def _rollcall_id_matches(rollcall: ctx.Any, rollcall_id: ctx.Any) -> bool:
+    if not isinstance(rollcall, dict):
+        return False
+    expected = ctx.normalize_text(rollcall_id)
+    if not expected:
+        return False
+    for key in ("rollcall_id", "rollcallId", "id"):
+        if ctx.normalize_text(rollcall.get(key)) == expected:
+            return True
+    return False
+
+
+async def _rollcall_still_open(client: ctx.Any, rollcall_id: ctx.Any) -> bool:
+    result = await client.fetch_rollcalls()
+    rollcalls = result.payload.get("rollcalls") if isinstance(result.payload, dict) else []
+    if not isinstance(rollcalls, list):
+        return False
+    return any(_rollcall_id_matches(item, rollcall_id) for item in rollcalls)
+
+
+async def _run_unbounded_grid_retry(
+    *,
+    client: ctx.Any,
+    rollcall_id: ctx.Any,
+    center: ctx.GeoPoint,
+    radar_config: ctx.Mapping[str, ctx.Any],
+    submit_candidate: ctx.Any,
+    poll_every_attempts: int = 25,
+) -> bool:
+    step_meters = _radar_grid_step_meters(radar_config)
+    attempts = 0
+    current_ring = 0
+    cooldown_policy = _radar_cooldown_policy(radar_config)
+    cooldown_seconds = cooldown_policy.cooldown_seconds
+    cooldowns_used = 0
+    try:
+        poll_interval = max(1, int(poll_every_attempts))
+    except (TypeError, ValueError):
+        poll_interval = 25
+
+    async def check_open(reason: str) -> bool:
+        try:
+            still_open = await _rollcall_still_open(client, rollcall_id)
+        except ctx.UnauthorizedError:
+            raise
+        except (ctx.UnexpectedResponseError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError) as exc:
+            ctx.log(
+                event="radar_final_grid_poll_retry",
+                status="cooldown",
+                rollcall_id=rollcall_id,
+                rollcall_type="radar",
+                message="雷達最終棋盤格確認點名狀態時遇到暫時性錯誤，暫停後繼續。",
+                extra={
+                    "attempts": attempts,
+                    "ring": current_ring,
+                    "reason": reason,
+                    "error": str(exc)[:200],
+                    "cooldown_seconds": cooldown_seconds,
+                },
+            )
+            ctx.status_print("雷達最終棋盤格暫時無法確認點名狀態，休息 {:.1f}s 後繼續".format(cooldown_seconds))
+            await ctx.asyncio.sleep(cooldown_seconds)
+            return True
+        if still_open:
+            return True
+        ctx.log(
+            event="radar_final_grid_stopped",
+            status="rollcall_closed",
+            rollcall_id=rollcall_id,
+            rollcall_type="radar",
+            message="雷達最終棋盤格重試停止：點名已關閉。",
+            extra={"attempts": attempts, "ring": current_ring, "reason": reason},
+        )
+        ctx.log_print("雷達點名 #{} 已關閉，停止最終棋盤格重試。".format(rollcall_id))
+        return False
+
+    ctx.log(
+        event="radar_final_grid_started",
+        status="started",
+        rollcall_id=rollcall_id,
+        rollcall_type="radar",
+        message="啟動雷達最終無限棋盤格重試。",
+        extra={
+            "center_lat": round(float(center.lat), 10),
+            "center_lon": round(float(center.lon), 10),
+            "grid_step_meters": step_meters,
+            "poll_every_attempts": poll_interval,
+        },
+    )
+    ctx.log_print(
+        "啟動最終棋盤格重試：以 {:.8f}, {:.8f} 為中心，每格 {:.0f}m，直到命中或點名關閉。".format(
+            center.lat,
+            center.lon,
+            step_meters,
+        )
+    )
+
+    for candidate in ctx.unbounded_grid_candidates(center, step_meters=step_meters):
+        if candidate.ring != current_ring:
+            if not await check_open("ring_completed"):
+                return False
+            current_ring = candidate.ring
+        if attempts and attempts % poll_interval == 0:
+            if not await check_open("attempt_interval"):
+                return False
+
+        label = "final-grid-r{}-{}".format(candidate.ring, attempts + 1)
+        kind, result = await submit_candidate(candidate.point, label)
+        attempts += 1
+
+        if kind == "success":
+            text = "雷達點名 #{} 成功！(最終棋盤格 {}，east={:.0f}m north={:.0f}m)".format(
+                rollcall_id,
+                label,
+                candidate.east_offset,
+                candidate.north_offset,
+            )
+            ctx.log_print(text)
+            await ctx.mes(text)
+            return True
+        if kind == "scope_distance" and result is not None:
+            ctx.log_print(
+                "最終棋盤格 {} 未命中，距離 {:.2f} 公尺。".format(
+                    label,
+                    result.distance,
+                )
+            )
+            continue
+        if kind == "transient":
+            cooldowns_used += 1
+            ctx.log(
+                event="radar_final_grid_cooldown",
+                status="cooldown",
+                rollcall_id=rollcall_id,
+                rollcall_type="radar",
+                message="雷達最終棋盤格遇到暫時性錯誤，暫停後繼續。",
+                extra={
+                    "attempts": attempts,
+                    "ring": candidate.ring,
+                    "cooldowns_used": cooldowns_used,
+                    "cooldown_seconds": cooldown_seconds,
+                    "max_cooldowns": cooldown_policy.max_cooldowns,
+                    "max_cooldowns_enforced": False,
+                },
+            )
+            ctx.status_print("雷達最終棋盤格遇到限流或伺服器錯誤，休息 {:.1f}s 後繼續".format(cooldown_seconds))
+            await ctx.asyncio.sleep(cooldown_seconds)
+            continue
+        ctx.log(
+            event="radar_final_grid_stopped",
+            status=kind or "failed",
+            rollcall_id=rollcall_id,
+            rollcall_type="radar",
+            message="雷達最終棋盤格重試停止：座標送出遇到不可恢復錯誤。",
+            extra={"attempts": attempts, "ring": candidate.ring},
+        )
+        return False
+    return False
+
+
 async def radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str, ctx.Any]) -> bool:
     radar_config = _read_radar_config()
     strategy = ctx.normalize_text(radar_config.get("strategy", "global_wgs84")).lower().replace("-", "_")
@@ -112,16 +301,13 @@ async def global_radar(
     solver_config = ctx.global_radar_solver_config_from_mapping(global_config)
     max_queries = int(global_config.get("max_queries", ctx.DEFAULT_CONFIG["radar"]["global"]["max_queries"]))
     request_retries = int(global_config.get("request_retries", ctx.NUMBER_REQUEST_RETRIES))
-    cooldown_seconds = float(global_config.get("cooldown_seconds", ctx.NUMBER_COOLDOWN_SECONDS))
-    max_cooldowns = int(global_config.get("max_cooldowns", ctx.NUMBER_MAX_COOLDOWNS))
-    transient_threshold = int(global_config.get("transient_failure_threshold", ctx.NUMBER_TRANSIENT_FAILURE_THRESHOLD))
-    transient_ratio = float(global_config.get("transient_failure_ratio", ctx.NUMBER_TRANSIENT_FAILURE_RATIO))
+    cooldown_policy = _radar_cooldown_policy({"global": global_config})
+    cooldown_tracker = ctx.TransientCooldownTracker(cooldown_policy)
+    cooldown_seconds = cooldown_policy.cooldown_seconds
 
     request_count = 0
-    cooldowns_used = 0
     latest_label = "----"
     observations: ctx.List[ctx.GlobalDistanceObservation] = []
-    transient_window: ctx.List[str] = []
     stop_event = ctx.asyncio.Event()
     progress_done = ctx.asyncio.Event()
     started_at = ctx.time.perf_counter()
@@ -160,22 +346,11 @@ async def global_radar(
                 continue
 
     async def register_attempt_status(status: str) -> None:
-        nonlocal cooldowns_used, fatal_error, transient_window
-        if status != "transient":
-            transient_window = []
+        nonlocal fatal_error
+        cooldown_decision = cooldown_tracker.record_attempt(status == "transient")
+        if not cooldown_decision.should_cooldown:
             return
-        transient_window.append(status)
-        if len(transient_window) > transient_threshold:
-            transient_window = transient_window[-transient_threshold:]
-        transient_count = sum(1 for item in transient_window if item == "transient")
-        window_ratio = transient_count / max(len(transient_window), 1)
-        should_cooldown = transient_count >= transient_threshold or (
-            len(transient_window) >= transient_threshold and window_ratio >= transient_ratio
-        )
-        if not should_cooldown:
-            return
-        cooldowns_used += 1
-        if cooldowns_used > max_cooldowns:
+        if cooldown_decision.exhausted:
             fatal_error = last_transient_error or ctx.UnexpectedResponseError("雷達點名暫時性錯誤過多，已停止嘗試。")
             stop_event.set()
             return
@@ -186,16 +361,16 @@ async def global_radar(
             rollcall_type="radar",
             message="雷達點名暫時性錯誤過多，暫停後重試。",
             extra={
-                "transient_count": transient_count,
-                "window_size": len(transient_window),
-                "cooldowns_used": cooldowns_used,
+                "transient_count": cooldown_decision.transient_count,
+                "window_size": cooldown_decision.sample_size,
+                "transient_ratio": round(cooldown_decision.transient_ratio, 3),
+                "cooldowns_used": cooldown_decision.cooldowns_used,
                 "cooldown_seconds": cooldown_seconds,
                 "max_queries": max_queries,
             },
         )
         ctx.status_print("雷達點名遇到限流或伺服器錯誤，休息 {:.1f}s 後繼續".format(cooldown_seconds))
         await ctx.asyncio.sleep(cooldown_seconds)
-        transient_window = []
 
     async with ctx.aiohttp.ClientSession(**session_kwargs) as session:
         ctx.clone_session_cookies(main_session, session)
@@ -247,12 +422,16 @@ async def global_radar(
         beacon_nonce = lite_info.beacon_nonce
         request_url = f"{base_url}/api/rollcall/{rollcall_id}/answer?api_version=1.76"
 
-        async def try_coord(point: ctx.GeoPoint, label: str = "") -> ctx.Tuple[str, ctx.Optional[ctx.RadarCoordinateResult]]:
+        async def try_coord(
+            point: ctx.GeoPoint,
+            label: str = "",
+            *,
+            enforce_max_queries: bool = True,
+        ) -> ctx.Tuple[str, ctx.Optional[ctx.RadarCoordinateResult]]:
             nonlocal request_count, latest_label, fatal_error, last_transient_error, found
             if stop_event.is_set():
                 return ("stopped", None)
-            if request_count >= max_queries:
-                stop_event.set()
+            if enforce_max_queries and request_count >= max_queries:
                 return ("max_queries", None)
             payload = ctx.build_radar_answer_payload(
                 point,
@@ -373,7 +552,7 @@ async def global_radar(
                 ctx.log_print("雷達點名 #{} 成功！({})".format(rollcall_id, label))
             elif kind == "transient":
                 await register_attempt_status("transient")
-            elif kind in {"fatal", "max_queries"}:
+            elif kind == "fatal":
                 stop_event.set()
             if kind != "transient":
                 await register_attempt_status(kind)
@@ -443,7 +622,7 @@ async def global_radar(
                     if kind == "success":
                         final_status = "success"
                         return True
-                    if kind in {"fatal", "max_queries"}:
+                    if kind == "fatal":
                         stop_event.set()
             needs_supplement = (
                 fatal_error is None
@@ -481,6 +660,28 @@ async def global_radar(
                         if kind == "success":
                             final_status = "success"
                             return True
+            if (
+                fatal_error is None
+                and final_estimate is not None
+                and found is False
+                and not stop_event.is_set()
+            ):
+                success = await _run_unbounded_grid_retry(
+                    client=client,
+                    rollcall_id=rollcall_id,
+                    center=final_estimate.point,
+                    radar_config=radar_config,
+                    submit_candidate=lambda point, label: try_coord(
+                        point,
+                        label,
+                        enforce_max_queries=False,
+                    ),
+                )
+                if success:
+                    final_status = "success"
+                    return True
+                final_status = "failed"
+                raise _RadarNoFallback("雷達最終棋盤格重試已停止。")
             if fatal_error is not None:
                 final_status = "failed"
                 raise fatal_error
@@ -508,7 +709,7 @@ async def global_radar(
                 "request_count": request_count,
                 "max_queries": max_queries,
                 "observation_count": len(observations),
-                "cooldowns_used": cooldowns_used,
+                "cooldowns_used": cooldown_tracker.cooldowns_used,
                 "fatal_error": ctx.normalize_text(fatal_error) or None,
                 "standard_query_count": global_config.get("standard_query_count"),
                 "supplement_query_count": global_config.get("supplement_query_count"),
@@ -583,14 +784,19 @@ async def legacy_radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Di
                 return result
             ctx.log(event='radar_coordinate_attempt', status='failed', rollcall_id=rollcall_id, rollcall_type='radar', message='雷達點名座標送出被拒絕。', extra=diagnostic)
             return result
+
+        async def try_coord_kind(point: ctx.GeoPoint, label: str='') -> ctx.Tuple[str, ctx.Optional[ctx.RadarCoordinateResult]]:
+            result = await try_coord(point, label)
+            if result.success:
+                return ('success', result)
+            if result.is_scope_distance:
+                return ('scope_distance', result)
+            if _is_transient_radar_result(result):
+                return ('transient', result)
+            return ('fatal', result)
+
         radar_config = _read_radar_config()
         max_distance_probes = int(radar_config.get('max_distance_probes', 4))
-        max_final_attempts = int(radar_config.get('max_final_attempts', 100))
-        final_precision_min = int(radar_config.get('final_precision_min', 3))
-        final_precision_max = int(radar_config.get('final_precision_max', 14))
-        final_precisions = tuple(range(final_precision_max, final_precision_min - 1, -1))
-        final_grid_step_meters = float(radar_config.get('final_grid_step_meters', 5.0))
-        final_grid_radius_meters = float(radar_config.get('final_grid_radius_meters', 20.0))
         try:
             probe_plan = ctx.build_probe_plan(radar_config.get('boundary_points', ctx.DEFAULT_CONFIG['radar']['boundary_points']), allow_outside=bool(radar_config.get('allow_outside_probe', True)), outside_scale=float(radar_config.get('outside_scale', 1.6)))
         except (ctx.RadarGeometryError, ValueError) as exc:
@@ -645,23 +851,18 @@ async def legacy_radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Di
                 await ctx.mes(text)
                 return False
             ctx.log_print(f'THU fallback 第四探測點距離 {result.distance:.2f} 公尺；定位殘差約 {solution.residual_rmse:.2f} 公尺。')
-        candidates = ctx.final_candidate_points(probe_plan.frame, solution.point, max_candidates=max_final_attempts, precisions=final_precisions, grid_step_meters=final_grid_step_meters, grid_radius_meters=final_grid_radius_meters)
         estimated = probe_plan.frame.to_geo(solution.point)
-        ctx.log_print(f'THU fallback 定位完成：估計座標 {estimated.lat:.8f}, {estimated.lon:.8f}，開始小數位與 {final_grid_step_meters:g}m 方格候選重試...')
-        for index, candidate in enumerate(candidates, start=1):
-            result = await try_coord(candidate, f'legacy-candidate-{index}')
-            if result.success:
-                text = f'雷達點名 #{rollcall_id} 成功！(THU fallback 候選座標 {index}/{len(candidates)})'
-                ctx.log_print(text)
-                await ctx.mes(text)
-                return True
-            if not result.is_scope_distance:
-                text = f'雷達點名 #{rollcall_id} 失敗：THU fallback 候選座標被拒絕 ({result.error_code})。'
-                ctx.log_print(text)
-                await ctx.mes(text)
-                return False
-            ctx.log_print(f'THU fallback 候選 {index}/{len(candidates)} 未命中，剩餘距離 {result.distance:.2f} 公尺。')
-        text = f'雷達點名 #{rollcall_id} 最終失敗：全球模型與 THU fallback 都未命中。'
+        ctx.log_print(f'THU fallback 定位完成：估計座標 {estimated.lat:.8f}, {estimated.lon:.8f}，改用共用最終棋盤格重試...')
+        success = await _run_unbounded_grid_retry(
+            client=client,
+            rollcall_id=rollcall_id,
+            center=estimated,
+            radar_config=radar_config,
+            submit_candidate=try_coord_kind,
+        )
+        if success:
+            return True
+        text = f'雷達點名 #{rollcall_id} 最終失敗：THU fallback 最終棋盤格未命中或點名已關閉。'
         ctx.log_print(text)
         await ctx.mes(text)
         return False

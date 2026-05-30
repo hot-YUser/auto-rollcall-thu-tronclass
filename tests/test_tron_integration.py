@@ -1,4 +1,5 @@
 import copy
+import itertools
 import json
 import shutil
 import unittest
@@ -14,7 +15,7 @@ except (ImportError, ModuleNotFoundError):
     aiohttp = None
     web = None
 
-from troTHU import tron, tron_http
+from troTHU import radar_runtime, tron, tron_http
 from tests.fake_tron_server import FakeTronServer
 
 TEST_WORKSPACE_DIR = Path(__file__).resolve().parents[1]
@@ -73,6 +74,25 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
     def current_daily_log_path(self, root: Path) -> Path:
         today = datetime.now()
         return root / str(today.year) / str(today.month) / "{}.jsonl".format(today.day)
+
+    async def submit_grid_candidate(self, session, rollcall_id, point, label):
+        payload = tron.build_radar_answer_payload(point, device_id="test-device", user_id=1)
+        url = "{}/api/rollcall/{}/answer?api_version=1.76".format(
+            self.fake_server.base_url,
+            rollcall_id,
+        )
+        async with session.put(url, json=payload) as resp:
+            body_text = await resp.text()
+            if resp.status in (401, 403):
+                raise tron_http.UnauthorizedError("unauthorized")
+            result = tron.parse_radar_answer_result(resp.status, body_text)
+        if result.success:
+            return "success", result
+        if result.is_scope_distance:
+            return "scope_distance", result
+        if result.error_code in {"radar_rate_limited", "radar_server_error"}:
+            return "transient", result
+        return "fatal", result
 
     async def test_http_client_can_login_and_fetch_rollcalls_against_local_server(self) -> None:
         self.fake_server.rollcalls = [{"status": "on_call_fine", "rollcall_id": 11}]
@@ -238,6 +258,124 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(summary["status"], "success")
         self.assertEqual(summary["strategy"], "global_wgs84")
         self.assertLessEqual(summary["request_count"], 120)
+
+    async def test_final_grid_retry_hits_nearest_100m_candidate(self) -> None:
+        rollcall_id = 777
+        center = tron.GeoPoint(24.1795, 120.604)
+        target = list(itertools.islice(tron.unbounded_grid_candidates(center, step_meters=100.0), 2))[1].point
+        self.fake_server.rollcalls = [{"is_radar": True, "rollcall_id": rollcall_id}]
+        self.fake_server.set_radar_target(target.lat, target.lon, success_radius_meters=1.0)
+
+        temp_dir = make_workspace_temp_dir()
+        try:
+            tron.PATH = temp_dir
+            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                await self.login_session(session)
+                client = tron_http.TronHttpClient(session)
+                with (
+                    patch.object(tron, "mes", AsyncMock()),
+                    patch.object(tron, "log_print"),
+                ):
+                    success = await radar_runtime._run_unbounded_grid_retry(
+                        client=client,
+                        rollcall_id=rollcall_id,
+                        center=center,
+                        radar_config={"final_grid_step_meters": 100.0, "cooldown_seconds": 0.01},
+                        submit_candidate=lambda point, label: self.submit_grid_candidate(
+                            session,
+                            rollcall_id,
+                            point,
+                            label,
+                        ),
+                    )
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+        self.assertTrue(success)
+        self.assertEqual(len(self.fake_server.radar_answers), 2)
+        final_payload = self.fake_server.radar_answers[-1]["body"]
+        final_point = tron.GeoPoint(final_payload["latitude"], final_payload["longitude"])
+        self.assertLess(tron.wgs84_distance_meters(target, final_point), 1.0)
+
+    async def test_final_grid_retry_stops_when_rollcall_closes(self) -> None:
+        rollcall_id = 778
+        center = tron.GeoPoint(24.1795, 120.604)
+        self.fake_server.rollcalls = []
+        self.fake_server.set_radar_target(25.0, 121.0, success_radius_meters=1.0)
+
+        temp_dir = make_workspace_temp_dir()
+        try:
+            tron.PATH = temp_dir
+            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                await self.login_session(session)
+                client = tron_http.TronHttpClient(session)
+                with (
+                    patch.object(tron, "mes", AsyncMock()),
+                    patch.object(tron, "log_print"),
+                ):
+                    success = await radar_runtime._run_unbounded_grid_retry(
+                        client=client,
+                        rollcall_id=rollcall_id,
+                        center=center,
+                        radar_config={"final_grid_step_meters": 100.0, "cooldown_seconds": 0.01},
+                        submit_candidate=lambda point, label: self.submit_grid_candidate(
+                            session,
+                            rollcall_id,
+                            point,
+                            label,
+                        ),
+                    )
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+        self.assertFalse(success)
+        self.assertEqual(len(self.fake_server.radar_answers), 1)
+
+    async def test_final_grid_retry_cools_down_after_transient_and_continues(self) -> None:
+        rollcall_id = 779
+        center = tron.GeoPoint(24.1795, 120.604)
+        target = list(itertools.islice(tron.unbounded_grid_candidates(center, step_meters=100.0), 2))[1].point
+        self.fake_server.rollcalls = [{"is_radar": True, "rollcall_id": rollcall_id}]
+        self.fake_server.set_radar_target(target.lat, target.lon, success_radius_meters=1.0)
+        self.fake_server.queue_response("radar", status=429, text="limited")
+
+        temp_dir = make_workspace_temp_dir()
+        try:
+            tron.PATH = temp_dir
+            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                await self.login_session(session)
+                client = tron_http.TronHttpClient(session)
+                with (
+                    patch.object(tron, "mes", AsyncMock()),
+                    patch.object(tron, "log_print"),
+                    patch.object(tron, "status_print") as status_print,
+                ):
+                    success = await radar_runtime._run_unbounded_grid_retry(
+                        client=client,
+                        rollcall_id=rollcall_id,
+                        center=center,
+                        radar_config={
+                            "final_grid_step_meters": 100.0,
+                            "cooldown_seconds": 0.01,
+                            "max_cooldowns": 0,
+                            "transient_failure_threshold": 1,
+                            "transient_failure_ratio": 1.0,
+                        },
+                        submit_candidate=lambda point, label: self.submit_grid_candidate(
+                            session,
+                            rollcall_id,
+                            point,
+                            label,
+                        ),
+                    )
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+        self.assertTrue(success)
+        self.assertEqual(len(self.fake_server.radar_answers), 2)
+        self.assertTrue(
+            any("休息" in str(call.args[0]) for call in status_print.call_args_list)
+        )
 
     async def test_radar_lite_rate_limit_returns_safe_failure_without_submit(self) -> None:
         self.fake_server.queue_response("radar_lite", status=429, text="limited")

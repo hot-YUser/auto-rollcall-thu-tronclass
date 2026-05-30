@@ -7,6 +7,7 @@ least-squares behavior can be tested offline.
 
 from __future__ import annotations
 
+import heapq
 import itertools
 import math
 from dataclasses import dataclass
@@ -60,6 +61,14 @@ class SolveResult:
     point: LocalPoint
     residual_rmse: float
     iterations: int
+
+
+@dataclass(frozen=True)
+class GridCandidate:
+    point: GeoPoint
+    ring: int
+    east_offset: float
+    north_offset: float
 
 
 class RadarGeometryError(ValueError):
@@ -529,6 +538,54 @@ def grid_offsets(step_meters: float, radius_meters: float) -> Iterator[Tuple[flo
         )
         for east_step, north_step in ring_offsets:
             yield east_step * step, north_step * step
+
+
+def unbounded_grid_offsets(step_meters: float = 100.0) -> Iterator[Tuple[float, float, int]]:
+    step = abs(float(step_meters))
+    if step <= 0.0:
+        raise RadarGeometryError("grid step must be positive")
+    yield 0.0, 0.0, 0
+
+    queued = {(0, 0)}
+    heap: List[Tuple[int, float, int, int]] = []
+
+    def queue(east_step: int, north_step: int) -> None:
+        key = (east_step, north_step)
+        if key in queued:
+            return
+        queued.add(key)
+        distance2 = east_step * east_step + north_step * north_step
+        angle = (math.atan2(north_step, east_step) + 2.0 * math.pi) % (2.0 * math.pi)
+        heapq.heappush(heap, (distance2, angle, east_step, north_step))
+
+    queue(1, 0)
+    queue(0, 1)
+    queue(-1, 0)
+    queue(0, -1)
+    while True:
+        distance2, _angle, east_step, north_step = heapq.heappop(heap)
+        ring = int(math.ceil(math.sqrt(distance2)))
+        yield east_step * step, north_step * step, ring
+        queue(east_step + 1, north_step)
+        queue(east_step - 1, north_step)
+        queue(east_step, north_step + 1)
+        queue(east_step, north_step - 1)
+
+
+def unbounded_grid_candidates(
+    center: GeoPoint,
+    *,
+    step_meters: float = 100.0,
+) -> Iterator[GridCandidate]:
+    frame = LocalFrame.from_points([center])
+    for east_offset, north_offset, ring in unbounded_grid_offsets(step_meters):
+        local = LocalPoint(east_offset, north_offset)
+        yield GridCandidate(
+            point=frame.to_geo(local),
+            ring=ring,
+            east_offset=east_offset,
+            north_offset=north_offset,
+        )
 
 
 def final_candidate_points(
