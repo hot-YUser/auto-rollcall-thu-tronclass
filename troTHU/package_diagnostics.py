@@ -322,7 +322,7 @@ def _git_hygiene_report(base_dir: Path) -> Dict[str, Any]:
     checks = [
         _check(".gitignore exists", gitignore.exists(), ".gitignore", severity="warn"),
         _check(".gitignore ignores runtime artifacts", not missing_ignore, "build/dist/state/log/reference projects ignored", severity="warn"),
-        _check("config placeholder remains tracked", not config_ignored, "config.yaml is not ignored", severity="warn"),
+        _check("local config ignored", config_ignored, "config.yaml is ignored", severity="fail"),
         _check(".gitattributes exists", gitattributes.exists(), ".gitattributes", severity="warn"),
         _check(".gitattributes normalizes text", not missing_attributes, "common text file types use LF", severity="warn"),
     ]
@@ -332,7 +332,7 @@ def _git_hygiene_report(base_dir: Path) -> Dict[str, Any]:
         "required_ignored": list(REQUIRED_GITIGNORE_PATTERNS),
         "missing_ignored": missing_ignore,
         "missing_attributes": missing_attributes,
-        "config_placeholder_tracked": not config_ignored,
+        "config_local_file_ignored": config_ignored,
         "checks": checks,
     }
 

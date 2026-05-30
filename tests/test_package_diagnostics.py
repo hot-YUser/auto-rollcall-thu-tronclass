@@ -98,7 +98,7 @@ class PackageDiagnosticsTest(unittest.TestCase):
         self.assertIn("git_hygiene", report)
         self.assertEqual(report["git_hygiene"]["missing_ignored"], [])
         self.assertEqual(report["git_hygiene"]["missing_attributes"], [])
-        self.assertTrue(report["git_hygiene"]["config_placeholder_tracked"])
+        self.assertTrue(report["git_hygiene"]["config_local_file_ignored"])
         self.assertNotIn("YOUR_PASSWORD", encoded)
         self.assertNotIn("state/cookies", encoded)
         self.assertNotIn(".codex-worklog.md", encoded)
@@ -173,6 +173,6 @@ class PackageDiagnosticsTest(unittest.TestCase):
 
         for pattern in ("build/", "dist/", "state/", "log/", ".tmp-tests/", "__pycache__/", "其他專案參考/"):
             self.assertIn(pattern, gitignore)
-        self.assertNotIn("\nconfig.yaml\n", "\n" + gitignore + "\n")
+        self.assertIn("\n/config.yaml\n", "\n" + gitignore + "\n")
         for pattern in ("*.py text eol=lf", "*.md text eol=lf", "*.yaml text eol=lf", "*.spec text eol=lf"):
             self.assertIn(pattern, gitattributes)
