@@ -305,6 +305,17 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
     if not isinstance(radar_config, dict):
         radar_config = {}
         config['radar'] = radar_config
+    strategy = ctx.normalize_text(radar_config.get('strategy', ctx.DEFAULT_CONFIG['radar']['strategy'])).lower().replace('-', '_')
+    strategy_aliases = {
+        'global': 'global_wgs84',
+        'wgs84': 'global_wgs84',
+        'global_wgs84': 'global_wgs84',
+        'legacy': 'legacy_thu',
+        'legacy_thu': 'legacy_thu',
+        'thu': 'legacy_thu',
+    }
+    radar_config['strategy'] = strategy_aliases.get(strategy, ctx.DEFAULT_CONFIG['radar']['strategy'])
+    radar_config['legacy_fallback_enabled'] = ctx.coerce_bool(radar_config.get('legacy_fallback_enabled', ctx.DEFAULT_CONFIG['radar']['legacy_fallback_enabled']), ctx.DEFAULT_CONFIG['radar']['legacy_fallback_enabled'])
     radar_config['boundary_points'] = ctx.normalize_radar_boundary_points(radar_config.get('boundary_points', ctx.DEFAULT_CONFIG['radar']['boundary_points']))
     radar_config['allow_outside_probe'] = ctx.coerce_bool(radar_config.get('allow_outside_probe', ctx.DEFAULT_CONFIG['radar']['allow_outside_probe']), ctx.DEFAULT_CONFIG['radar']['allow_outside_probe'])
     radar_config['outside_scale'] = ctx.coerce_positive_float(radar_config.get('outside_scale', ctx.DEFAULT_CONFIG['radar']['outside_scale']), ctx.DEFAULT_CONFIG['radar']['outside_scale'], minimum=1.0)
@@ -318,6 +329,51 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
     radar_config['final_precision_max'] = max_precision
     radar_config['final_grid_step_meters'] = min(50.0, ctx.coerce_positive_float(radar_config.get('final_grid_step_meters', ctx.DEFAULT_CONFIG['radar']['final_grid_step_meters']), ctx.DEFAULT_CONFIG['radar']['final_grid_step_meters'], minimum=0.5))
     radar_config['final_grid_radius_meters'] = min(100.0, ctx.coerce_positive_float(radar_config.get('final_grid_radius_meters', ctx.DEFAULT_CONFIG['radar']['final_grid_radius_meters']), ctx.DEFAULT_CONFIG['radar']['final_grid_radius_meters'], minimum=0.0))
+    default_global_radar = ctx.DEFAULT_CONFIG['radar']['global']
+    global_radar = radar_config.get('global', {})
+    if not isinstance(global_radar, dict):
+        global_radar = {}
+    global_radar['max_queries'] = min(500, ctx.coerce_positive_int(global_radar.get('max_queries', default_global_radar['max_queries']), default_global_radar['max_queries'], minimum=3))
+    global_radar['request_retries'] = min(10, ctx.coerce_positive_int(global_radar.get('request_retries', default_global_radar['request_retries']), default_global_radar['request_retries'], minimum=1))
+    global_radar['cooldown_seconds'] = min(300.0, ctx.coerce_positive_float(global_radar.get('cooldown_seconds', default_global_radar['cooldown_seconds']), default_global_radar['cooldown_seconds'], minimum=0.1))
+    global_radar['max_cooldowns'] = min(20, ctx.coerce_positive_int(global_radar.get('max_cooldowns', default_global_radar['max_cooldowns']), default_global_radar['max_cooldowns'], minimum=0))
+    global_radar['transient_failure_threshold'] = ctx.coerce_positive_int(global_radar.get('transient_failure_threshold', default_global_radar['transient_failure_threshold']), default_global_radar['transient_failure_threshold'], minimum=1)
+    global_ratio_value = global_radar.get('transient_failure_ratio', default_global_radar['transient_failure_ratio'])
+    try:
+        global_ratio = float(global_ratio_value)
+    except (TypeError, ValueError):
+        global_ratio = default_global_radar['transient_failure_ratio']
+    global_radar['transient_failure_ratio'] = max(0.0, min(1.0, global_ratio))
+    global_radar['anchor_count'] = min(120, ctx.coerce_positive_int(global_radar.get('anchor_count', default_global_radar['anchor_count']), default_global_radar['anchor_count'], minimum=3))
+    global_radar['bearing_count'] = min(72, ctx.coerce_positive_int(global_radar.get('bearing_count', default_global_radar['bearing_count']), default_global_radar['bearing_count'], minimum=3))
+
+    def normalize_radii(value: ctx.Any, default_value: ctx.Any) -> ctx.List[float]:
+        if isinstance(value, str):
+            raw_items = [item.strip() for item in value.split(',')]
+        elif isinstance(value, (list, tuple, set)):
+            raw_items = list(value)
+        else:
+            raw_items = list(default_value)
+        radii: ctx.List[float] = []
+        for item in raw_items:
+            try:
+                radius = abs(float(item))
+            except (TypeError, ValueError):
+                return [float(default_radius) for default_radius in default_value]
+            if radius > 0.0:
+                radii.append(radius)
+        return radii or [float(default_radius) for default_radius in default_value]
+
+    global_radar['standard_radii_meters'] = normalize_radii(global_radar.get('standard_radii_meters', global_radar.get('standard_radii', default_global_radar['standard_radii_meters'])), default_global_radar['standard_radii_meters'])
+    global_radar['supplement_radii_meters'] = normalize_radii(global_radar.get('supplement_radii_meters', global_radar.get('supplement_radii', default_global_radar['supplement_radii_meters'])), default_global_radar['supplement_radii_meters'])
+    global_radar['standard_query_count'] = global_radar['anchor_count'] + len(global_radar['standard_radii_meters']) * global_radar['bearing_count']
+    global_radar['supplement_query_count'] = len(global_radar['supplement_radii_meters']) * global_radar['bearing_count']
+    global_radar['target_uncertainty_95_meters'] = min(1000.0, ctx.coerce_positive_float(global_radar.get('target_uncertainty_95_meters', default_global_radar['target_uncertainty_95_meters']), default_global_radar['target_uncertainty_95_meters'], minimum=1.0))
+    global_radar['robust_f_scale_meters'] = min(10000.0, ctx.coerce_positive_float(global_radar.get('robust_f_scale_meters', default_global_radar['robust_f_scale_meters']), default_global_radar['robust_f_scale_meters'], minimum=1.0))
+    global_radar['measurement_sigma_meters'] = min(1000.0, ctx.coerce_positive_float(global_radar.get('measurement_sigma_meters', default_global_radar['measurement_sigma_meters']), default_global_radar['measurement_sigma_meters'], minimum=0.01))
+    global_radar['max_pattern_iterations'] = min(2000, ctx.coerce_positive_int(global_radar.get('max_pattern_iterations', default_global_radar['max_pattern_iterations']), default_global_radar['max_pattern_iterations'], minimum=20))
+    global_radar['max_lm_iterations'] = min(200, ctx.coerce_positive_int(global_radar.get('max_lm_iterations', default_global_radar['max_lm_iterations']), default_global_radar['max_lm_iterations'], minimum=5))
+    radar_config['global'] = global_radar
     config['research'] = ctx.normalize_research_mode_config(config.get('research', ctx.DEFAULT_CONFIG['research']))
     operating = config.setdefault('operating', {})
     if not isinstance(operating, dict):
@@ -474,3 +530,7 @@ def get_retry_limit() -> int:
 
 def get_number_config() -> ctx.Dict[str, ctx.Any]:
     return ctx.normalize_config(ctx.copy.deepcopy(ctx.CONFIG)).get('number', ctx.DEFAULT_CONFIG['number'])
+
+
+def get_radar_config() -> ctx.Dict[str, ctx.Any]:
+    return ctx.normalize_config(ctx.copy.deepcopy(ctx.CONFIG)).get('radar', ctx.DEFAULT_CONFIG['radar'])

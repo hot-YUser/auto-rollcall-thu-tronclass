@@ -69,7 +69,7 @@ except ModuleNotFoundError:
     fake_yaml.safe_dump = safe_dump
     sys.modules["yaml"] = fake_yaml
 
-from troTHU import tron, tron_http
+from troTHU import radar_runtime, tron, tron_http
 from tests.fake_tron_server import FakeTronServer
 
 TEST_WORKSPACE_DIR = Path(__file__).resolve().parents[1]
@@ -622,6 +622,7 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         session = MagicMock()
         session.cookie_jar = MagicMock()
         session.cookie_jar.clear = MagicMock()
+        tron.CONFIG["provider"]["current"] = "thu"
         tron.CONFIG["account"]["user"] = "user1"
         tron.CONFIG["account"]["passwd"] = "pass1"
         client = MagicMock()
@@ -649,6 +650,99 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         client.submit_login.assert_awaited_once()
         self.assertTrue(
             any("登入成功！綁定帳號：user1" in call.args[0] for call in log_print.call_args_list)
+        )
+
+    def _configure_public_cloud_provider(self, *, browser_assist_enabled: bool=False) -> None:
+        tron.CONFIG.clear()
+        tron.CONFIG.update(
+            tron.normalize_config(
+                {
+                    "account": {"user": "student@example.com", "passwd": "pass1"},
+                    "accounts": {
+                        "current": "default",
+                        "profiles": {
+                            "default": {
+                                "user": "student@example.com",
+                                "passwd": "pass1",
+                                "label": "",
+                            }
+                        },
+                    },
+                    "provider": {"current": "tronclass"},
+                    "auth": {
+                        "browser_assisted_login": {
+                            "enabled": browser_assist_enabled,
+                            "headless": True,
+                            "timeout_ms": 5000,
+                        }
+                    },
+                }
+            )
+        )
+
+    def _mock_successful_public_cloud_login_client(self) -> MagicMock:
+        client = MagicMock()
+        client.fetch_login_form = AsyncMock(
+            return_value=tron_http.LoginForm("https://www.tronclass.com.tw/login", {})
+        )
+        client.submit_login = AsyncMock(
+            return_value=tron_http.LoginOutcome(
+                final_url="https://www.tronclass.com.tw/user/index",
+                has_session=True,
+            )
+        )
+        return client
+
+    async def test_public_cloud_login_validates_api_session_before_success(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = MagicMock()
+        session.cookie_jar.clear = MagicMock()
+        self._configure_public_cloud_provider()
+        client = self._mock_successful_public_cloud_login_client()
+        client.fetch_current_semester = AsyncMock(return_value={"semester": "113-2"})
+
+        with (
+            patch.object(tron, "TronHttpClient", return_value=client),
+            patch.object(tron, "has_session_cookie", return_value=True),
+            patch.object(tron, "log_print") as log_print,
+        ):
+            result = await tron.login(session)
+
+        self.assertTrue(result.ok)
+        client.fetch_current_semester.assert_awaited_once()
+        self.assertTrue(
+            any("登入成功！綁定帳號：student@example.com" in call.args[0] for call in log_print.call_args_list)
+        )
+
+    async def test_public_cloud_login_rejects_cookie_when_api_validation_fails(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = MagicMock()
+        session.cookie_jar.clear = MagicMock()
+        self._configure_public_cloud_provider()
+        client = self._mock_successful_public_cloud_login_client()
+        client.fetch_current_semester = AsyncMock(
+            side_effect=tron_http.UnauthorizedError("login redirect")
+        )
+
+        with (
+            patch.object(tron, "TronHttpClient", return_value=client),
+            patch.object(tron, "has_session_cookie", return_value=True),
+            patch.object(tron, "browser_assisted_login", AsyncMock()) as browser_login,
+            patch.object(tron, "log_print") as log_print,
+        ):
+            result = await tron.login(session)
+
+        self.assertFalse(result.ok)
+        self.assertEqual(result.status, "missing_session")
+        self.assertIn("login redirect", result.error)
+        self.assertEqual(session.cookie_jar.clear.call_count, 2)
+        client.fetch_current_semester.assert_awaited_once()
+        browser_login.assert_not_awaited()
+        self.assertFalse(
+            any("登入成功！" in call.args[0] for call in log_print.call_args_list)
+        )
+        self.assertTrue(
+            any("API session 驗證失敗" in call.args[0] for call in log_print.call_args_list)
         )
 
     def _configure_local_tku_provider(self, server: FakeTkuSsoServer) -> None:
@@ -1777,6 +1871,51 @@ class TronNumberRollcallTest(unittest.IsolatedAsyncioTestCase):
             "Code: 0001",
             mes_mock.await_args_list[0].kwargs["highlight_block"],
         )
+
+
+class TronRadarDispatchTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self) -> None:
+        self.original_config = copy.deepcopy(tron.CONFIG)
+
+    def tearDown(self) -> None:
+        tron.CONFIG.clear()
+        tron.CONFIG.update(copy.deepcopy(self.original_config))
+
+    async def test_radar_uses_legacy_strategy_when_configured(self) -> None:
+        tron.CONFIG["radar"] = tron.normalize_config(
+            {"radar": {"strategy": "legacy_thu"}}
+        )["radar"]
+        main_session = MagicMock()
+        rollcall = {"is_radar": True, "rollcall_id": 99}
+
+        with (
+            patch.object(radar_runtime, "global_radar", AsyncMock(return_value=False)) as global_mock,
+            patch.object(radar_runtime, "legacy_radar", AsyncMock(return_value=True)) as legacy_mock,
+        ):
+            result = await radar_runtime.radar(main_session, rollcall)
+
+        self.assertTrue(result)
+        global_mock.assert_not_awaited()
+        legacy_mock.assert_awaited_once_with(main_session, rollcall)
+
+    async def test_radar_falls_back_to_legacy_after_global_miss(self) -> None:
+        tron.CONFIG["radar"] = tron.normalize_config(
+            {"radar": {"strategy": "global_wgs84", "legacy_fallback_enabled": True}}
+        )["radar"]
+        main_session = MagicMock()
+        rollcall = {"is_radar": True, "rollcall_id": 100}
+
+        with (
+            patch.object(radar_runtime, "global_radar", AsyncMock(return_value=False)) as global_mock,
+            patch.object(radar_runtime, "legacy_radar", AsyncMock(return_value=True)) as legacy_mock,
+            patch.object(tron, "log", return_value=True),
+            patch.object(tron, "log_print"),
+        ):
+            result = await radar_runtime.radar(main_session, rollcall)
+
+        self.assertTrue(result)
+        global_mock.assert_awaited_once()
+        legacy_mock.assert_awaited_once_with(main_session, rollcall)
 
 
 if __name__ == "__main__":

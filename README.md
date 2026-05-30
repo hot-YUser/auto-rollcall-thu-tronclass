@@ -233,7 +233,7 @@ python -m troTHU.tron teacher rollcall delete 29943 --yes --json
 
 ### radar
 
-radar 使用 THU 幾何求解器，支援 lite/beacon payload、`radarSignal`、距離回應 fixture compatibility、安全診斷與 Radar Assist map contract。真實課堂環境仍建議用 R1 validation 記錄結果。
+radar 預設使用全球 WGS84 定位流程：先送出 12 個全球錨點取得粗定位，再以 60 個局部 WGS84 環狀採樣點精修；若估計未命中或品質不足，最多再追加 36 點，整體由 `radar.global.max_queries` 控制，並沿用 number 點名的重試、cooldown、取消與完整 exchange log 風格。舊 THU 校地幾何求解器仍保留為 `legacy_thu` fallback，方便在真實伺服器公式尚未完全確認前保底。流程支援 lite/beacon payload、`radarSignal`、距離回應 fixture compatibility、安全診斷與 Radar Assist map contract。真實課堂環境仍建議用 R1 validation 記錄結果。
 
 ### QR
 
@@ -367,7 +367,7 @@ python -m troTHU.tron release-build --execute --json
 | 登入失敗 | 帳密來源、SSO 表單、TLS/SSL、cookie 是否過期 | `doctor --json`、`refresh`、`validation local-smoke --json` |
 | cookie 過期 | cookie cache、last login、是否需要 reauth | `status --json`、`account state --json`、`refresh` |
 | QR no match | pending QR provider + rollcall id 是否一致、fan-out 是否過期、圖片解碼是否安裝 optional extra | `qr pending --json`、`qr paste --json "..."`、`qr paste --image screenshot.png --json` |
-| radar 失敗 | 邊界設定、lite/beacon payload、距離回應、session expired 或 429/5xx | `doctor --json`、`app serve --open`、`logs summarize --limit 20` |
+| radar 失敗 | 全球 WGS84 summary、lite/beacon payload、距離回應、session expired、429/5xx、是否觸發 THU fallback | `doctor --json`、`app serve --open`、`logs summarize --limit 20` |
 | 監控 console 沒有反應 | 主視窗只輸出事件；按任意鍵會開啟 `config.yaml`；若用了 `--no-input` 則不監聽按鍵 | 檢查 `config.yaml` 的 `now`，必要時重啟 `python -m troTHU.tron run` |
 | 尚未登入訊息停住 | 程式會避免反覆刷屏；看到提示後請按任意鍵開啟 `config.yaml`，填好帳號密碼並關閉記事本 | 關閉記事本後會重新讀取設定並嘗試重新登入 |
 | 帳密或學校切換問題 | 直接按任意鍵，用 `C:\Windows\System32\notepad.exe` 修改 `config.yaml`；關閉後程式會重新載入 | `python -m troTHU.tron config show`、`python -m troTHU.tron config doctor` |

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 try:  # pragma: no cover - package import path
     import troTHU.runtime_context as ctx
 except ImportError:  # pragma: no cover - direct script fallback
@@ -10,8 +12,519 @@ def __getattr__(name: str):
     return getattr(ctx, name)
 
 
+_TRANSIENT_RADAR_ERROR_CODES = {"radar_rate_limited", "radar_server_error"}
+
+
+class _RadarNoFallback(Exception):
+    pass
+
+
+def _is_transient_radar_result(result: ctx.RadarCoordinateResult) -> bool:
+    return result.error_code in _TRANSIENT_RADAR_ERROR_CODES
+
+
+def _global_radar_progress_message(
+    rollcall_id: ctx.Any,
+    request_count: int,
+    max_queries: int,
+    observation_count: int,
+    latest_label: str,
+    started_at: float,
+) -> str:
+    elapsed = ctx.time.perf_counter() - started_at
+    return (
+        "雷達點名 #{} 全球定位中：request {}/{}，距離觀測 {}，最新 {}，耗時 {:.1f}s".format(
+            rollcall_id,
+            request_count,
+            max_queries,
+            observation_count,
+            latest_label or "----",
+            elapsed,
+        )
+    )
+
+
+def _estimate_log_extra(estimate: ctx.Any) -> ctx.Dict[str, ctx.Any]:
+    if estimate is None:
+        return {}
+    return {
+        "estimated_lat": round(float(estimate.point.lat), 10),
+        "estimated_lon": round(float(estimate.point.lon), 10),
+        "residual_rmse_meters": round(float(estimate.residual_rmse), 3),
+        "uncertainty_95_meters": (
+            round(float(estimate.uncertainty_95_meters), 3)
+            if math.isfinite(float(estimate.uncertainty_95_meters))
+            else "inf"
+        ),
+        "robust_cost": round(float(estimate.robust_cost), 3),
+        "observation_count": estimate.observation_count,
+        "solver_iterations": estimate.iterations,
+    }
+
+
+def _read_radar_config() -> ctx.Dict[str, ctx.Any]:
+    try:
+        return ctx.get_radar_config()
+    except AttributeError:
+        return ctx.normalize_config(ctx.copy.deepcopy(ctx.CONFIG)).get("radar", ctx.DEFAULT_CONFIG["radar"])
+
 
 async def radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str, ctx.Any]) -> bool:
+    radar_config = _read_radar_config()
+    strategy = ctx.normalize_text(radar_config.get("strategy", "global_wgs84")).lower().replace("-", "_")
+    if strategy == "legacy_thu":
+        return await legacy_radar(main_session, rollcall)
+
+    try:
+        success = await global_radar(main_session, rollcall, radar_config=radar_config)
+    except _RadarNoFallback:
+        return False
+    if success:
+        return True
+    if ctx.coerce_bool(
+        radar_config.get("legacy_fallback_enabled", ctx.DEFAULT_CONFIG["radar"].get("legacy_fallback_enabled", True)),
+        True,
+    ):
+        rollcall_id = rollcall.get("rollcall_id")
+        ctx.log(
+            event="global_radar_fallback_started",
+            status="fallback",
+            rollcall_id=rollcall_id,
+            rollcall_type="radar",
+            message="全球雷達定位未完成，改用舊 THU 定位流程作為幕後 fallback。",
+        )
+        ctx.log_print("全球雷達定位未命中，改用舊 THU 定位流程作為 fallback...")
+        return await legacy_radar(main_session, rollcall)
+    return False
+
+
+async def global_radar(
+    main_session: ctx.aiohttp.ClientSession,
+    rollcall: ctx.Dict[str, ctx.Any],
+    *,
+    radar_config: ctx.Optional[ctx.Dict[str, ctx.Any]] = None,
+) -> bool:
+    rollcall_id = rollcall.get("rollcall_id")
+    radar_config = radar_config or _read_radar_config()
+    global_config = radar_config.get("global", ctx.DEFAULT_CONFIG["radar"]["global"])
+    if not isinstance(global_config, dict):
+        global_config = ctx.DEFAULT_CONFIG["radar"]["global"]
+    solver_config = ctx.global_radar_solver_config_from_mapping(global_config)
+    max_queries = int(global_config.get("max_queries", ctx.DEFAULT_CONFIG["radar"]["global"]["max_queries"]))
+    request_retries = int(global_config.get("request_retries", ctx.NUMBER_REQUEST_RETRIES))
+    cooldown_seconds = float(global_config.get("cooldown_seconds", ctx.NUMBER_COOLDOWN_SECONDS))
+    max_cooldowns = int(global_config.get("max_cooldowns", ctx.NUMBER_MAX_COOLDOWNS))
+    transient_threshold = int(global_config.get("transient_failure_threshold", ctx.NUMBER_TRANSIENT_FAILURE_THRESHOLD))
+    transient_ratio = float(global_config.get("transient_failure_ratio", ctx.NUMBER_TRANSIENT_FAILURE_RATIO))
+
+    request_count = 0
+    cooldowns_used = 0
+    latest_label = "----"
+    observations: ctx.List[ctx.GlobalDistanceObservation] = []
+    transient_window: ctx.List[str] = []
+    stop_event = ctx.asyncio.Event()
+    progress_done = ctx.asyncio.Event()
+    started_at = ctx.time.perf_counter()
+    fatal_error: ctx.Optional[BaseException] = None
+    last_transient_error: ctx.Optional[BaseException] = None
+    found = False
+    final_estimate: ctx.Any = None
+    final_status = "failed"
+
+    device_id = ctx.random_id()
+    headers = {"User-Agent": ctx.random_ua()}
+    session_kwargs: ctx.Dict[str, ctx.Any] = {
+        "connector": ctx.create_http_connector(),
+        "headers": headers,
+        "cookie_jar": ctx.aiohttp.CookieJar(unsafe=True),
+    }
+    timeout = ctx.create_http_client_timeout()
+    if timeout is not None:
+        session_kwargs["timeout"] = timeout
+
+    async def progress_reporter() -> None:
+        while not progress_done.is_set():
+            ctx.status_print(
+                _global_radar_progress_message(
+                    rollcall_id,
+                    request_count,
+                    max_queries,
+                    len(observations),
+                    latest_label,
+                    started_at,
+                )
+            )
+            try:
+                await ctx.asyncio.wait_for(progress_done.wait(), timeout=ctx.NUMBER_PROGRESS_INTERVAL)
+            except ctx.asyncio.TimeoutError:
+                continue
+
+    async def register_attempt_status(status: str) -> None:
+        nonlocal cooldowns_used, fatal_error, transient_window
+        if status != "transient":
+            transient_window = []
+            return
+        transient_window.append(status)
+        if len(transient_window) > transient_threshold:
+            transient_window = transient_window[-transient_threshold:]
+        transient_count = sum(1 for item in transient_window if item == "transient")
+        window_ratio = transient_count / max(len(transient_window), 1)
+        should_cooldown = transient_count >= transient_threshold or (
+            len(transient_window) >= transient_threshold and window_ratio >= transient_ratio
+        )
+        if not should_cooldown:
+            return
+        cooldowns_used += 1
+        if cooldowns_used > max_cooldowns:
+            fatal_error = last_transient_error or ctx.UnexpectedResponseError("雷達點名暫時性錯誤過多，已停止嘗試。")
+            stop_event.set()
+            return
+        ctx.log(
+            event="radar_rollcall_cooldown",
+            status="cooldown",
+            rollcall_id=rollcall_id,
+            rollcall_type="radar",
+            message="雷達點名暫時性錯誤過多，暫停後重試。",
+            extra={
+                "transient_count": transient_count,
+                "window_size": len(transient_window),
+                "cooldowns_used": cooldowns_used,
+                "cooldown_seconds": cooldown_seconds,
+                "max_queries": max_queries,
+            },
+        )
+        ctx.status_print("雷達點名遇到限流或伺服器錯誤，休息 {:.1f}s 後繼續".format(cooldown_seconds))
+        await ctx.asyncio.sleep(cooldown_seconds)
+        transient_window = []
+
+    async with ctx.aiohttp.ClientSession(**session_kwargs) as session:
+        ctx.clone_session_cookies(main_session, session)
+        request_ssl = ctx.get_ssl_request_setting()
+        client = ctx.create_tron_http_client(session, request_ssl=request_ssl)
+        endpoints = ctx.get_active_http_endpoints()
+        base_url = endpoints.base_url.rstrip("/")
+        user_id = await client.fetch_user_id()
+        lite_url = f"{base_url}/api/rollcall/{rollcall_id}/lite"
+        async with session.get(lite_url, ssl=request_ssl) as resp:
+            lite_status = resp.status
+            lite_response_url = str(resp.url)
+            if lite_status in (401, 403) or "login" in lite_response_url.lower():
+                raise ctx.UnauthorizedError("雷達點名 lite 資訊請求未授權，Cookie 可能已過期。")
+            if lite_status == 200:
+                try:
+                    lite_data = await resp.json()
+                except (ctx.aiohttp.ContentTypeError, ValueError):
+                    lite_data = rollcall
+                    ctx.log(
+                        event="radar_lite_fetch",
+                        status="invalid_json",
+                        url=lite_response_url,
+                        http_status=lite_status,
+                        rollcall_id=rollcall_id,
+                        rollcall_type="radar",
+                        message="雷達 lite 回應無法解析，改用 rollcall 摘要。",
+                    )
+            else:
+                body_text = await resp.text()
+                ctx.log(
+                    event="radar_lite_fetch",
+                    status="failed",
+                    url=lite_response_url,
+                    http_status=lite_status,
+                    rollcall_id=rollcall_id,
+                    rollcall_type="radar",
+                    message="雷達 lite 資訊請求失敗。",
+                    error=body_text[:120],
+                )
+                if lite_status == 429 or 500 <= lite_status <= 599:
+                    text = f"雷達點名 #{rollcall_id} 失敗：lite 資訊請求暫時不可用 (HTTP {lite_status})。"
+                    ctx.log_print(text)
+                    await ctx.mes(text)
+                    raise _RadarNoFallback(text)
+                lite_data = rollcall
+        lite_info = ctx.parse_radar_lite_payload(lite_data, fallback_rollcall=rollcall)
+        use_beacon = lite_info.use_beacon
+        beacon_nonce = lite_info.beacon_nonce
+        request_url = f"{base_url}/api/rollcall/{rollcall_id}/answer?api_version=1.76"
+
+        async def try_coord(point: ctx.GeoPoint, label: str = "") -> ctx.Tuple[str, ctx.Optional[ctx.RadarCoordinateResult]]:
+            nonlocal request_count, latest_label, fatal_error, last_transient_error, found
+            if stop_event.is_set():
+                return ("stopped", None)
+            if request_count >= max_queries:
+                stop_event.set()
+                return ("max_queries", None)
+            payload = ctx.build_radar_answer_payload(
+                point,
+                device_id=device_id,
+                user_id=user_id,
+                use_beacon=use_beacon,
+                beacon_nonce=beacon_nonce,
+                accuracy=ctx.random.randint(40, 80),
+            )
+            for attempt in range(request_retries):
+                if stop_event.is_set():
+                    return ("stopped", None)
+                try:
+                    latest_label = label
+                    async with session.put(request_url, json=payload, ssl=request_ssl) as resp:
+                        request_count += 1
+                        body_text = await resp.text()
+                        ctx.append_rollcall_exchange(
+                            ctx.BASE_DIR,
+                            rollcall_id=rollcall_id,
+                            rollcall_type="radar",
+                            label=label,
+                            method="PUT",
+                            url=request_url,
+                            request_body=payload,
+                            status=resp.status,
+                            response_headers=dict(resp.headers),
+                            response_text=body_text,
+                            config=ctx.CONFIG,
+                        )
+                        if resp.status in (401, 403) or "login" in str(resp.url).lower():
+                            raise ctx.UnauthorizedError("雷達點名座標送出未授權，Cookie 可能已過期。")
+                        result = ctx.parse_radar_answer_result(resp.status, body_text)
+                    diagnostic = ctx.build_radar_attempt_diagnostic(
+                        label=label,
+                        point=point,
+                        result=result,
+                        payload=payload,
+                    )
+                    diagnostic.update({"strategy": "global_wgs84", "request_count": request_count, "max_queries": max_queries})
+                    if result.success:
+                        found = True
+                        stop_event.set()
+                        ctx.log(
+                            event="radar_coordinate_attempt",
+                            status="success",
+                            rollcall_id=rollcall_id,
+                            rollcall_type="radar",
+                            message="雷達點名座標送出成功。",
+                            extra=diagnostic,
+                        )
+                        return ("success", result)
+                    if result.is_scope_distance:
+                        ctx.log(
+                            event="radar_coordinate_attempt",
+                            status="scope_distance",
+                            rollcall_id=rollcall_id,
+                            rollcall_type="radar",
+                            message="雷達點名座標未命中，已取得距離。",
+                            extra=diagnostic,
+                        )
+                        return ("scope_distance", result)
+                    if _is_transient_radar_result(result):
+                        last_transient_error = ctx.UnexpectedResponseError(
+                            "HTTP radar transient response: {}".format(result.message or result.error_code)
+                        )
+                        ctx.log(
+                            event="network_error",
+                            status="radar_transient_response",
+                            url=request_url,
+                            http_status=resp.status,
+                            rollcall_id=rollcall_id,
+                            rollcall_type="radar",
+                            message="雷達點名遇到暫時性 HTTP 錯誤。",
+                            payload_excerpt=body_text[:300],
+                        )
+                        ctx.log(
+                            event="radar_coordinate_attempt",
+                            status="transient",
+                            rollcall_id=rollcall_id,
+                            rollcall_type="radar",
+                            message="雷達點名座標送出暫時失敗。",
+                            extra=diagnostic,
+                        )
+                        return ("transient", result)
+                    ctx.log(
+                        event="radar_coordinate_attempt",
+                        status="failed",
+                        rollcall_id=rollcall_id,
+                        rollcall_type="radar",
+                        message="雷達點名座標送出被拒絕。",
+                        extra=diagnostic,
+                    )
+                    return ("fatal", result)
+                except (ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError) as exc:
+                    if attempt == request_retries - 1:
+                        last_transient_error = exc
+                        ctx.log(
+                            event="network_error",
+                            status="radar_request_error",
+                            url=request_url,
+                            rollcall_id=rollcall_id,
+                            rollcall_type="radar",
+                            message="雷達點名請求失敗。",
+                            error=exc,
+                            extra={"label": label, "strategy": "global_wgs84"},
+                        )
+                        return ("transient", None)
+                    await ctx.asyncio.sleep(1)
+            return ("transient", None)
+
+        async def submit_point(point: ctx.GeoPoint, label: str) -> str:
+            kind, result = await try_coord(point, label)
+            if kind == "scope_distance" and result is not None:
+                observations.append(ctx.GlobalDistanceObservation(point, result.distance, label))
+                ctx.log_print("{} 距離 {:.2f} 公尺。".format(label, result.distance))
+            elif kind == "success":
+                ctx.log_print("雷達點名 #{} 成功！({})".format(rollcall_id, label))
+            elif kind == "transient":
+                await register_attempt_status("transient")
+            elif kind in {"fatal", "max_queries"}:
+                stop_event.set()
+            if kind != "transient":
+                await register_attempt_status(kind)
+            return kind
+
+        async def submit_stage(points: ctx.Sequence[ctx.GeoPoint], prefix: str) -> bool:
+            for index, point in enumerate(points, start=1):
+                if stop_event.is_set() or request_count >= max_queries:
+                    break
+                kind = await submit_point(point, "{}-{}".format(prefix, index))
+                if kind == "success":
+                    return True
+                if fatal_error is not None or kind in {"fatal", "max_queries"}:
+                    break
+            return False
+
+        progress_task = ctx.asyncio.create_task(progress_reporter())
+        try:
+            ctx.log_print("啟動全球雷達定位：送出 12 個 WGS84 全球錨點...")
+            if await submit_stage(ctx.global_anchor_points(solver_config.anchor_count), "global-anchor"):
+                final_status = "success"
+                return True
+            if fatal_error is None and len(observations) < 3 and not stop_event.is_set():
+                fatal_error = ctx.RadarGeometryError("全球雷達定位距離觀測不足，無法求解。")
+                stop_event.set()
+            if fatal_error is None and len(observations) >= 3:
+                final_estimate = ctx.solve_global_radar(observations, config=solver_config)
+                ctx.log(
+                    event="global_radar_estimate",
+                    status="anchor_estimate",
+                    rollcall_id=rollcall_id,
+                    rollcall_type="radar",
+                    message="全球錨點粗定位完成。",
+                    extra=_estimate_log_extra(final_estimate),
+                )
+                ctx.log_print(
+                    "全球錨點粗定位：{:.8f}, {:.8f}；開始 60 點局部採樣...".format(
+                        final_estimate.point.lat,
+                        final_estimate.point.lon,
+                    )
+                )
+                if await submit_stage(ctx.standard_sample_points(final_estimate.point, solver_config), "local-standard"):
+                    final_status = "success"
+                    return True
+            if fatal_error is None and len(observations) >= 3 and not stop_event.is_set():
+                final_estimate = ctx.solve_global_radar(observations, config=solver_config, initial=final_estimate.point if final_estimate else None)
+                ctx.log(
+                    event="global_radar_estimate",
+                    status="standard_estimate",
+                    rollcall_id=rollcall_id,
+                    rollcall_type="radar",
+                    message="全球雷達標準 72 點定位完成。",
+                    extra=_estimate_log_extra(final_estimate),
+                )
+                ctx.log_print(
+                    "全球 72 點估計：{:.8f}, {:.8f}；RMSE {:.2f}m，95% 不確定度 {}m。".format(
+                        final_estimate.point.lat,
+                        final_estimate.point.lon,
+                        final_estimate.residual_rmse,
+                        "{:.2f}".format(final_estimate.uncertainty_95_meters)
+                        if math.isfinite(final_estimate.uncertainty_95_meters)
+                        else "inf",
+                    )
+                )
+                if request_count < max_queries:
+                    kind = await submit_point(final_estimate.point, "estimate-standard")
+                    if kind == "success":
+                        final_status = "success"
+                        return True
+                    if kind in {"fatal", "max_queries"}:
+                        stop_event.set()
+            needs_supplement = (
+                fatal_error is None
+                and final_estimate is not None
+                and (not stop_event.is_set())
+                and request_count < max_queries
+                and (found is False)
+                and ctx.should_request_supplement(final_estimate, solver_config)
+            )
+            if (
+                fatal_error is None
+                and final_estimate is not None
+                and (not stop_event.is_set())
+                and request_count < max_queries
+                and found is False
+            ):
+                needs_supplement = True
+            if needs_supplement:
+                ctx.log_print("標準估計仍未命中，追加 36 點精修採樣...")
+                if await submit_stage(ctx.supplement_sample_points(final_estimate.point, solver_config), "local-supplement"):
+                    final_status = "success"
+                    return True
+                if fatal_error is None and len(observations) >= 3 and not stop_event.is_set():
+                    final_estimate = ctx.solve_global_radar(observations, config=solver_config, initial=final_estimate.point)
+                    ctx.log(
+                        event="global_radar_estimate",
+                        status="supplement_estimate",
+                        rollcall_id=rollcall_id,
+                        rollcall_type="radar",
+                        message="全球雷達 108 點補充定位完成。",
+                        extra=_estimate_log_extra(final_estimate),
+                    )
+                    if request_count < max_queries:
+                        kind = await submit_point(final_estimate.point, "estimate-supplement")
+                        if kind == "success":
+                            final_status = "success"
+                            return True
+            if fatal_error is not None:
+                final_status = "failed"
+                raise fatal_error
+            text = "雷達點名 #{} 全球定位未命中：已送出 {} 次，距離觀測 {} 筆。".format(
+                rollcall_id,
+                request_count,
+                len(observations),
+            )
+            ctx.log_print(text)
+            await ctx.mes(text)
+            return False
+        except ctx.RadarGeometryError as exc:
+            fatal_error = exc
+            text = "雷達點名 #{} 失敗：全球定位模型無法求解 ({})。".format(rollcall_id, exc)
+            ctx.log_print(text)
+            await ctx.mes(text)
+            return False
+        finally:
+            progress_done.set()
+            await progress_task
+            elapsed = ctx.time.perf_counter() - started_at
+            summary_extra = {
+                "strategy": "global_wgs84",
+                "spend_time_seconds": round(elapsed, 2),
+                "request_count": request_count,
+                "max_queries": max_queries,
+                "observation_count": len(observations),
+                "cooldowns_used": cooldowns_used,
+                "fatal_error": ctx.normalize_text(fatal_error) or None,
+                "standard_query_count": global_config.get("standard_query_count"),
+                "supplement_query_count": global_config.get("supplement_query_count"),
+            }
+            summary_extra.update(_estimate_log_extra(final_estimate))
+            ctx.log(
+                event="global_radar_summary",
+                status=final_status if found else "failed",
+                rollcall_id=rollcall_id,
+                rollcall_type="radar",
+                message="全球雷達定位流程結束。",
+                extra=summary_extra,
+            )
+
+
+async def legacy_radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str, ctx.Any]) -> bool:
     rollcall_id = rollcall.get('rollcall_id')
     device_id = ctx.random_id()
     headers = {'User-Agent': ctx.random_ua()}
@@ -61,6 +574,7 @@ async def radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str,
                     raise ctx.UnauthorizedError('雷達點名座標送出未授權，Cookie 可能已過期。')
                 result = ctx.parse_radar_answer_result(resp.status, body_text)
             diagnostic = ctx.build_radar_attempt_diagnostic(label=label, point=point, result=result, payload=payload)
+            diagnostic["strategy"] = "legacy_thu"
             if result.success:
                 ctx.log(event='radar_coordinate_attempt', status='success', rollcall_id=rollcall_id, rollcall_type='radar', message='雷達點名座標送出成功。', extra=diagnostic)
                 return result
@@ -69,7 +583,7 @@ async def radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str,
                 return result
             ctx.log(event='radar_coordinate_attempt', status='failed', rollcall_id=rollcall_id, rollcall_type='radar', message='雷達點名座標送出被拒絕。', extra=diagnostic)
             return result
-        radar_config = ctx.normalize_config(ctx.copy.deepcopy(ctx.CONFIG)).get('radar', ctx.DEFAULT_CONFIG['radar'])
+        radar_config = _read_radar_config()
         max_distance_probes = int(radar_config.get('max_distance_probes', 4))
         max_final_attempts = int(radar_config.get('max_final_attempts', 100))
         final_precision_min = int(radar_config.get('final_precision_min', 3))
@@ -85,40 +599,40 @@ async def radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str,
             await ctx.mes(text)
             return False
         observations: ctx.List[ctx.DistanceObservation] = []
-        ctx.log_print('啟動雷達定位：以外擴三點探測場域距離...')
+        ctx.log_print('啟動 THU fallback 雷達定位：以外擴三點探測場域距離...')
         for index, local_probe in enumerate(probe_plan.probes, start=1):
             geo_probe = probe_plan.frame.to_geo(local_probe)
-            result = await try_coord(geo_probe, f'probe-{index}')
+            result = await try_coord(geo_probe, f'legacy-probe-{index}')
             if result.success:
-                text = f'雷達點名 #{rollcall_id} 成功！(探測點 {index} 命中)'
+                text = f'雷達點名 #{rollcall_id} 成功！(THU fallback 探測點 {index} 命中)'
                 ctx.log_print(text)
                 await ctx.mes(text)
                 return True
             if not result.is_scope_distance:
-                text = f'雷達點名 #{rollcall_id} 失敗：伺服器拒絕探測點 {index} ({result.error_code})。'
+                text = f'雷達點名 #{rollcall_id} 失敗：伺服器拒絕 THU fallback 探測點 {index} ({result.error_code})。'
                 ctx.log_print(text)
                 await ctx.mes(text)
                 return False
             observations.append(ctx.DistanceObservation(local_probe, result.distance))
-            ctx.log_print(f'探測點 {index} 距離 {result.distance:.2f} 公尺。')
+            ctx.log_print(f'THU fallback 探測點 {index} 距離 {result.distance:.2f} 公尺。')
         try:
             solution = ctx.solve_position(observations)
         except ctx.RadarGeometryError as exc:
-            text = f'雷達點名 #{rollcall_id} 失敗：前三點定位無法求解 ({exc})。'
+            text = f'雷達點名 #{rollcall_id} 失敗：THU fallback 前三點定位無法求解 ({exc})。'
             ctx.log_print(text)
             await ctx.mes(text)
             return False
         if max_distance_probes >= 4:
             fourth_probe = ctx.choose_fourth_probe(solution.point, tuple((observation.point for observation in observations)), probe_plan.hull, allow_outside=bool(radar_config.get('allow_outside_probe', True)))
             fourth_geo = probe_plan.frame.to_geo(fourth_probe)
-            result = await try_coord(fourth_geo, 'probe-4')
+            result = await try_coord(fourth_geo, 'legacy-probe-4')
             if result.success:
-                text = f'雷達點名 #{rollcall_id} 成功！(第四探測點命中)'
+                text = f'雷達點名 #{rollcall_id} 成功！(THU fallback 第四探測點命中)'
                 ctx.log_print(text)
                 await ctx.mes(text)
                 return True
             if not result.is_scope_distance:
-                text = f'雷達點名 #{rollcall_id} 失敗：伺服器拒絕第四探測點 ({result.error_code})。'
+                text = f'雷達點名 #{rollcall_id} 失敗：伺服器拒絕 THU fallback 第四探測點 ({result.error_code})。'
                 ctx.log_print(text)
                 await ctx.mes(text)
                 return False
@@ -126,28 +640,28 @@ async def radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str,
             try:
                 solution = ctx.solve_position(observations, initial=solution.point)
             except ctx.RadarGeometryError as exc:
-                text = f'雷達點名 #{rollcall_id} 失敗：四點定位無法求解 ({exc})。'
+                text = f'雷達點名 #{rollcall_id} 失敗：THU fallback 四點定位無法求解 ({exc})。'
                 ctx.log_print(text)
                 await ctx.mes(text)
                 return False
-            ctx.log_print(f'第四探測點距離 {result.distance:.2f} 公尺；定位殘差約 {solution.residual_rmse:.2f} 公尺。')
+            ctx.log_print(f'THU fallback 第四探測點距離 {result.distance:.2f} 公尺；定位殘差約 {solution.residual_rmse:.2f} 公尺。')
         candidates = ctx.final_candidate_points(probe_plan.frame, solution.point, max_candidates=max_final_attempts, precisions=final_precisions, grid_step_meters=final_grid_step_meters, grid_radius_meters=final_grid_radius_meters)
         estimated = probe_plan.frame.to_geo(solution.point)
-        ctx.log_print(f'定位完成：估計座標 {estimated.lat:.8f}, {estimated.lon:.8f}，開始小數位與 {final_grid_step_meters:g}m 方格候選重試...')
+        ctx.log_print(f'THU fallback 定位完成：估計座標 {estimated.lat:.8f}, {estimated.lon:.8f}，開始小數位與 {final_grid_step_meters:g}m 方格候選重試...')
         for index, candidate in enumerate(candidates, start=1):
-            result = await try_coord(candidate, f'candidate-{index}')
+            result = await try_coord(candidate, f'legacy-candidate-{index}')
             if result.success:
-                text = f'雷達點名 #{rollcall_id} 成功！(候選座標 {index}/{len(candidates)})'
+                text = f'雷達點名 #{rollcall_id} 成功！(THU fallback 候選座標 {index}/{len(candidates)})'
                 ctx.log_print(text)
                 await ctx.mes(text)
                 return True
             if not result.is_scope_distance:
-                text = f'雷達點名 #{rollcall_id} 失敗：候選座標被拒絕 ({result.error_code})。'
+                text = f'雷達點名 #{rollcall_id} 失敗：THU fallback 候選座標被拒絕 ({result.error_code})。'
                 ctx.log_print(text)
                 await ctx.mes(text)
                 return False
-            ctx.log_print(f'候選 {index}/{len(candidates)} 未命中，剩餘距離 {result.distance:.2f} 公尺。')
-        text = f'雷達點名 #{rollcall_id} 最終失敗：已用完 {len(candidates)} 個候選座標。'
+            ctx.log_print(f'THU fallback 候選 {index}/{len(candidates)} 未命中，剩餘距離 {result.distance:.2f} 公尺。')
+        text = f'雷達點名 #{rollcall_id} 最終失敗：全球模型與 THU fallback 都未命中。'
         ctx.log_print(text)
         await ctx.mes(text)
         return False
