@@ -31,6 +31,7 @@ tmp*/
 *.pem
 *.p12
 *.pfx
+/config.yaml
 
 # Local runtime state. These may contain cookies, logs, validation records,
 # user-specific QR/session metadata, or other private diagnostics.
