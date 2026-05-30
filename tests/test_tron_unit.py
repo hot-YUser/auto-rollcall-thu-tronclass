@@ -223,14 +223,30 @@ class TronHelpersTest(unittest.TestCase):
             tron.DEFAULT_CONFIG["radar"]["boundary_points"],
         )
         self.assertEqual(normalized["radar"]["max_distance_probes"], 4)
-        self.assertEqual(normalized["radar"]["final_precision_min"], 3)
-        self.assertEqual(normalized["radar"]["final_precision_max"], 14)
+        self.assertNotIn("final_precision_min", normalized["radar"])
+        self.assertNotIn("final_precision_max", normalized["radar"])
         self.assertEqual(normalized["radar"]["strategy"], "global_wgs84")
         self.assertTrue(normalized["radar"]["legacy_fallback_enabled"])
         self.assertEqual(normalized["radar"]["global"]["max_queries"], 120)
         self.assertEqual(normalized["radar"]["global"]["request_retries"], tron.NUMBER_REQUEST_RETRIES)
         self.assertEqual(normalized["radar"]["global"]["standard_query_count"], 72)
         self.assertEqual(normalized["radar"]["global"]["supplement_query_count"], 36)
+
+    def test_normalize_config_drops_removed_radar_precision_settings(self) -> None:
+        normalized = tron.normalize_config(
+            {
+                "config": {},
+                "radar": {
+                    "final_precision_min": 1,
+                    "final_precision_max": 12,
+                    "final_grid_step_meters": 100,
+                },
+            }
+        )
+
+        self.assertNotIn("final_precision_min", normalized["radar"])
+        self.assertNotIn("final_precision_max", normalized["radar"])
+        self.assertEqual(normalized["radar"]["final_grid_step_meters"], 100.0)
 
     def test_normalize_config_accepts_legacy_radar_strategy_alias_and_clamps_global_config(self) -> None:
         normalized = tron.normalize_config(

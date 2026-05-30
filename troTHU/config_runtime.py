@@ -321,12 +321,8 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
     radar_config['outside_scale'] = ctx.coerce_positive_float(radar_config.get('outside_scale', ctx.DEFAULT_CONFIG['radar']['outside_scale']), ctx.DEFAULT_CONFIG['radar']['outside_scale'], minimum=1.0)
     radar_config['max_distance_probes'] = min(8, ctx.coerce_positive_int(radar_config.get('max_distance_probes', ctx.DEFAULT_CONFIG['radar']['max_distance_probes']), ctx.DEFAULT_CONFIG['radar']['max_distance_probes'], minimum=3))
     radar_config['max_final_attempts'] = min(200, ctx.coerce_positive_int(radar_config.get('max_final_attempts', ctx.DEFAULT_CONFIG['radar']['max_final_attempts']), ctx.DEFAULT_CONFIG['radar']['max_final_attempts'], minimum=1))
-    min_precision = min(14, ctx.coerce_positive_int(radar_config.get('final_precision_min', ctx.DEFAULT_CONFIG['radar']['final_precision_min']), ctx.DEFAULT_CONFIG['radar']['final_precision_min'], minimum=0))
-    max_precision = min(14, ctx.coerce_positive_int(radar_config.get('final_precision_max', ctx.DEFAULT_CONFIG['radar']['final_precision_max']), ctx.DEFAULT_CONFIG['radar']['final_precision_max'], minimum=0))
-    if min_precision > max_precision:
-        min_precision, max_precision = (max_precision, min_precision)
-    radar_config['final_precision_min'] = min_precision
-    radar_config['final_precision_max'] = max_precision
+    radar_config.pop('final_precision_min', None)
+    radar_config.pop('final_precision_max', None)
     radar_config['final_grid_step_meters'] = ctx.coerce_positive_float(radar_config.get('final_grid_step_meters', ctx.DEFAULT_CONFIG['radar']['final_grid_step_meters']), ctx.DEFAULT_CONFIG['radar']['final_grid_step_meters'], minimum=100.0)
     radar_config['final_grid_radius_meters'] = min(100.0, ctx.coerce_positive_float(radar_config.get('final_grid_radius_meters', ctx.DEFAULT_CONFIG['radar']['final_grid_radius_meters']), ctx.DEFAULT_CONFIG['radar']['final_grid_radius_meters'], minimum=0.0))
     default_global_radar = ctx.DEFAULT_CONFIG['radar']['global']

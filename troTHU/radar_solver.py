@@ -509,10 +509,6 @@ def choose_fourth_probe(
     return best_point
 
 
-def rounded_geo(point: GeoPoint, precision: int) -> GeoPoint:
-    return GeoPoint(round(point.lat, precision), round(point.lon, precision))
-
-
 def grid_offsets(step_meters: float, radius_meters: float) -> Iterator[Tuple[float, float]]:
     try:
         step = abs(float(step_meters))
@@ -593,7 +589,6 @@ def final_candidate_points(
     estimate: LocalPoint,
     *,
     max_candidates: int = 100,
-    precisions: Sequence[int] = tuple(range(14, 2, -1)),
     grid_step_meters: float = 5.0,
     grid_radius_meters: float = 20.0,
 ) -> Tuple[GeoPoint, ...]:
@@ -610,8 +605,6 @@ def final_candidate_points(
 
     base_geo = frame.to_geo(estimate)
     add(base_geo)
-    for precision in precisions:
-        add(rounded_geo(base_geo, precision))
 
     for east_offset, north_offset in grid_offsets(grid_step_meters, grid_radius_meters):
         local = LocalPoint(estimate.x + east_offset, estimate.y + north_offset)

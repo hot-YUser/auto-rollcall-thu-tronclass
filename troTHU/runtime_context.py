@@ -741,8 +741,6 @@ DEFAULT_CONFIG = {
         "outside_scale": 1.6,
         "max_distance_probes": 4,
         "max_final_attempts": 100,
-        "final_precision_min": 3,
-        "final_precision_max": 14,
         "final_grid_step_meters": 100.0,
         "final_grid_radius_meters": 20.0,
         "global": {
