@@ -43,10 +43,10 @@ def _row(method, endpoint, host="same-origin", label="test"):
 
 
 class ApiStateAuditUnitTest(unittest.TestCase):
-    def test_default_options_enable_audit_and_api_list_path(self) -> None:
+    def test_default_options_disable_audit_and_keep_api_list_path(self) -> None:
         options = api_state_audit_options({})
 
-        self.assertTrue(options.enabled)
+        self.assertFalse(options.enabled)
         self.assertEqual(options.api_list_path, "抓取測試API端口列表.json")
 
     def test_api_list_parser_and_method_normalization(self) -> None:

@@ -37,7 +37,7 @@ except ImportError:  # pragma: no cover - direct script fallback
 
 DEFAULT_API_LIST_PATH = "抓取測試API端口列表.json"
 DEFAULT_AUDIT_CONFIG: Dict[str, Any] = {
-    "enabled": True,
+    "enabled": False,
     "api_list_path": DEFAULT_API_LIST_PATH,
     "request_all_methods": True,
     "asset_follow": "all",
@@ -64,7 +64,7 @@ PLACEHOLDER_PATTERN = re.compile(r"\{(?:expr|id)\}")
 
 @dataclass(frozen=True)
 class ApiStateAuditOptions:
-    enabled: bool = True
+    enabled: bool = False
     api_list_path: str = DEFAULT_API_LIST_PATH
     request_all_methods: bool = True
     asset_follow: str = "all"
@@ -237,7 +237,7 @@ def api_state_audit_options(config: Any = None) -> ApiStateAuditOptions:
     merged = dict(DEFAULT_AUDIT_CONFIG)
     merged.update(dict(section))
     return ApiStateAuditOptions(
-        enabled=_coerce_bool(merged.get("enabled"), True),
+        enabled=_coerce_bool(merged.get("enabled"), False),
         api_list_path=_coerce_text(merged.get("api_list_path")) or DEFAULT_API_LIST_PATH,
         request_all_methods=_coerce_bool(merged.get("request_all_methods"), True),
         asset_follow=(_coerce_text(merged.get("asset_follow")) or "all").lower(),

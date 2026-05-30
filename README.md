@@ -5,9 +5,9 @@
 
 > 請只在你有權限、且符合學校與課程規範的情境下使用。不要分享帳密、token、cookie、`state/`、`log/`、真實 QR payload 或未遮蔽的 API 回應。不要把填好帳密的 `config.yaml` 傳給別人。
 
-## 版本狀態：v1.2-alpha.5
+## 版本狀態：v1.2.1-alpha.1
 
-`v1.2-alpha.5` 延續 number 點名越權直接讀碼（讀 `student_rollcalls` 的 `number_code` 單發提交，讀不到再退回暴力猜碼），並強化點名診斷擷取：數字／雷達／QR 全程、**未脫敏**完整記錄到 gitignored `log/rollcall_capture/`，且**每輪輪詢、直到點名關閉前都持續擷取**（含已簽到後）；另含雷達探測／數字猜碼／QR 送出的逐筆交握、即時通知／WebSocket 通道擷取、QR 剪貼簿自動送出、QR `data` 雜湊驗證自動探測與簽到進度顯示。本版新增 **狀態變更 API audit capture**：偵測到點名狀態改變時，可依使用者自行提供的 API 清單擷取授權環境中的完整 API 回應與前端資源。主要能力仍屬 alpha，**尚未經實際課堂環境完整驗收**；請把這版視為未完整測試的預發布版本，務必自行確認符合校規後再使用。
+`v1.2.1-alpha.1` 延續 number 點名越權直接讀碼（讀 `student_rollcalls` 的 `number_code` 單發提交，讀不到再退回暴力猜碼），並強化點名診斷擷取：數字／雷達／QR 全程、**未脫敏**完整記錄到 gitignored `log/rollcall_capture/`，且**每輪輪詢、直到點名關閉前都持續擷取**（含已簽到後）；本版加入全域 WGS84 雷達定位與無上限最終格線重試，並移除雷達精度 fallback，避免用低精度座標誤判可簽到位置。狀態變更 API audit capture 維持明確 opt-in，預設關閉；主要能力仍屬 alpha，**尚未經實際課堂環境完整驗收**；請把這版視為未完整測試的預發布版本，務必自行確認符合校規後再使用。
 
 目前重點：
 
@@ -71,7 +71,7 @@ python -m troTHU.tron validation local-smoke --json
 Release zip 名稱格式：
 
 ```text
-THU_Auto_Rollcall-v1.2-alpha.5-windows-x64.zip
+THU_Auto_Rollcall-v1.2.1-alpha.1-windows-x64.zip
 ```
 
 下載後請完整解壓縮，再在資料夾內執行 `auto-rollcall-thu-tronclass.exe`。不要直接在 zip 裡雙擊執行。第一次啟動會在 exe 同層建立或使用 `config.yaml`、`state/`、`log/`。

@@ -1,9 +1,1 @@
-capture:
-  api_state_audit:
-    enabled: true
-    api_list_path: "抓取測試API端口列表.json"
-    request_all_methods: true
-    asset_follow: all
-    timeout_seconds: 20
-    max_asset_depth: 2
-    max_asset_count: 500
+{}

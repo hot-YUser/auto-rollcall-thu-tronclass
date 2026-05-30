@@ -653,8 +653,7 @@ DEFAULT_CONFIG = {
     },
     "capture": {
         "api_state_audit": {
-            "enabled": True,
-            "api_list_path": "抓取測試API端口列表.json",
+            "enabled": False,
             "request_all_methods": True,
             "asset_follow": "all",
             "timeout_seconds": 20,
