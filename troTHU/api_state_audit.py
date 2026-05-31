@@ -37,7 +37,7 @@ except ImportError:  # pragma: no cover - direct script fallback
 
 DEFAULT_API_LIST_PATH = "抓取測試API端口列表.json"
 DEFAULT_AUDIT_CONFIG: Dict[str, Any] = {
-    "enabled": False,
+    "enabled": True,
     "api_list_path": DEFAULT_API_LIST_PATH,
     "request_all_methods": True,
     "asset_follow": "all",
@@ -60,6 +60,12 @@ JS_IMPORT_PATTERN = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 PLACEHOLDER_PATTERN = re.compile(r"\{(?:expr|id)\}")
+# Bare rollcall attendance answer endpoint (`/answer`, optional query). Submitting
+# an empty `{}` here can mark a student present, so the audit records the operation
+# but never actually sends it — radar sign-in is owned by empty_answer_radar. Does
+# NOT match `/answers` (read, plural) or `/answer_number_rollcall` /
+# `/answer_qr_rollcall` / `/answer_self_registration_rollcall`.
+ANSWER_SIDE_EFFECT_RE = re.compile(r"/api/rollcall/[^/?]+/answer(?:\?|$)")
 
 
 @dataclass(frozen=True)
@@ -718,6 +724,15 @@ def _request_json_payload(method: str, options: ApiStateAuditOptions) -> Any:
     return None
 
 
+def _is_answer_side_effect(operation: ResolvedOperation) -> bool:
+    """The bare rollcall `/answer` write — submitting `{}` can mark attendance,
+    so the audit records the operation (would_request) but must not send it."""
+    if operation.method not in MUTATING_METHODS:
+        return False
+    target = operation.endpoint or operation.url or ""
+    return bool(ANSWER_SIDE_EFFECT_RE.search(target))
+
+
 async def _capture_http(
     session: Any,
     writer: ApiStateAuditWriter,
@@ -748,6 +763,20 @@ async def _capture_http(
     if not options.request_all_methods and operation.method not in {"GET", "HEAD", "OPTIONS"}:
         record["status"] = "skipped"
         record["reason"] = "request_all_methods_disabled"
+        record["operation_file"] = writer.write_operation(operation.index, label, record)
+        writer.write_event("operation_skipped", record)
+        return record
+
+    if _is_answer_side_effect(operation):
+        record["status"] = "skipped"
+        record["reason"] = "side_effect_blocklist"
+        record["would_request"] = {
+            "method": operation.method,
+            "url": operation.url,
+            "json": _request_json_payload(operation.method, options),
+            "cookie_header": _request_cookie_header(session, operation.url),
+            "sent": False,
+        }
         record["operation_file"] = writer.write_operation(operation.index, label, record)
         writer.write_event("operation_skipped", record)
         return record
@@ -809,10 +838,14 @@ async def _capture_http(
                     },
                 }
             )
+            if operation.method in MUTATING_METHODS and 200 <= int(response.status) < 300:
+                record["mutating_2xx_warning"] = True
     except Exception as exc:
         record.update({"status": "error", "error": "{}: {}".format(type(exc).__name__, exc)})
     record["operation_file"] = writer.write_operation(operation.index, label, record)
     writer.write_event("operation_response", record)
+    if record.get("mutating_2xx_warning"):
+        writer.write_event("operation_mutating_success", record)
     return record
 
 

@@ -497,6 +497,7 @@ class TronHttpClientTest(unittest.IsolatedAsyncioTestCase):
 class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.original_config = copy.deepcopy(tron.CONFIG)
+        tron.CONFIG.setdefault("capture", {}).setdefault("api_state_audit", {})["enabled"] = False
         self.original_cnt = tron.cnt
         self.original_is_logging_in = tron.IS_LOGGING_IN
         self.original_runtime_credentials = copy.deepcopy(tron.RUNTIME_CREDENTIALS)

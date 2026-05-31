@@ -653,7 +653,7 @@ DEFAULT_CONFIG = {
     },
     "capture": {
         "api_state_audit": {
-            "enabled": False,
+            "enabled": True,
             "request_all_methods": True,
             "asset_follow": "all",
             "timeout_seconds": 20,
@@ -733,7 +733,8 @@ DEFAULT_CONFIG = {
         },
     },
     "radar": {
-        "strategy": "global_wgs84",
+        "strategy": "empty_answer",
+        "empty_answer_fallback_enabled": True,
         "legacy_fallback_enabled": True,
         "boundary_points": [[lat, lon] for lat, lon in DEFAULT_BOUNDARY_POINTS],
         "allow_outside_probe": True,

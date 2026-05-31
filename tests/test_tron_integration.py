@@ -41,6 +41,7 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         tron.CONFIG["config"]["enable_log"] = True
         tron.CONFIG["notifications"]["tg"]["enable"] = False
         tron.CONFIG["notifications"]["dc"]["enable"] = False
+        tron.CONFIG.setdefault("capture", {}).setdefault("api_state_audit", {})["enabled"] = False
         tron.reset_unsupported_rollcall_state()
 
         self.fake_server = await FakeTronServer().start()
@@ -185,6 +186,7 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(Path(qr_capture_entry["events_path"]).exists())
 
     async def test_radar_flow_uses_lite_beacon_payload_and_safe_diagnostics(self) -> None:
+        tron.CONFIG["radar"]["strategy"] = "global_wgs84"
         first_probe = tron.global_anchor_points()[0]
         self.fake_server.set_radar_target(first_probe.lat, first_probe.lon, success_radius_meters=3.0)
         self.fake_server.radar_lite_payload = {
@@ -226,6 +228,7 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn(payload["radarSignal"], json.dumps(attempt_entry, ensure_ascii=False))
 
     async def test_global_radar_flow_solves_target_and_logs_summary(self) -> None:
+        tron.CONFIG["radar"]["strategy"] = "global_wgs84"
         target = tron.GeoPoint(24.1795, 120.604)
         self.fake_server.set_radar_target(target.lat, target.lon, success_radius_meters=70.0)
 
@@ -378,6 +381,7 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_radar_lite_rate_limit_returns_safe_failure_without_submit(self) -> None:
+        tron.CONFIG["radar"]["strategy"] = "global_wgs84"
         self.fake_server.queue_response("radar_lite", status=429, text="limited")
 
         async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
@@ -392,6 +396,7 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.fake_server.radar_answers, [])
 
     async def test_global_radar_cools_down_on_transient_answer_burst(self) -> None:
+        tron.CONFIG["radar"]["strategy"] = "global_wgs84"
         anchors = tron.global_anchor_points()
         self.fake_server.set_radar_target(anchors[2].lat, anchors[2].lon, success_radius_meters=3.0)
         self.fake_server.queue_response("radar", status=429, text="limited")
@@ -432,6 +437,7 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("radar_rollcall_cooldown", events)
 
     async def test_radar_answer_session_expired_raises_unauthorized(self) -> None:
+        tron.CONFIG["radar"]["strategy"] = "global_wgs84"
         self.fake_server.queue_response("radar", status=401, text="unauthorized")
 
         async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
@@ -442,6 +448,112 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
             ):
                 with self.assertRaises(tron_http.UnauthorizedError):
                     await tron.radar(session, {"is_radar": True, "rollcall_id": 503})
+
+    async def test_empty_answer_radar_marks_present_and_skips_solver(self) -> None:
+        tron.CONFIG["radar"]["strategy"] = "empty_answer"
+        self.fake_server.rollcalls = [{"is_radar": True, "rollcall_id": 601}]
+        self.fake_server.radar_empty_answer_accepted = True
+        self.fake_server.radar_empty_answer_marks_present = True
+
+        temp_dir = make_workspace_temp_dir()
+        try:
+            tron.PATH = temp_dir
+            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                await self.login_session(session)
+                with (
+                    patch.object(tron, "mes", AsyncMock()),
+                    patch.object(tron, "log_print"),
+                ):
+                    success = await tron.radar(session, {"is_radar": True, "rollcall_id": 601})
+
+            log_path = self.current_daily_log_path(temp_dir)
+            entries = [
+                json.loads(line)
+                for line in log_path.read_text(encoding="utf-8").splitlines()
+            ]
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+        self.assertTrue(success)
+        # Exactly one submission, and it carried no coordinates (empty `{}`).
+        self.assertEqual(len(self.fake_server.radar_answers), 1)
+        self.assertEqual(self.fake_server.radar_answers[0]["field_names"], [])
+        attempt = next(e for e in entries if e["event"] == "radar_empty_answer_attempt")
+        self.assertEqual(attempt["status"], "success")
+        self.assertTrue(attempt["verified_present"])
+
+    async def test_empty_answer_2xx_without_attendance_falls_back_to_global(self) -> None:
+        tron.CONFIG["radar"]["strategy"] = "empty_answer"
+        target = tron.GeoPoint(24.1795, 120.604)
+        self.fake_server.rollcalls = [{"is_radar": True, "rollcall_id": 602}]
+        # Empty answer is accepted with 2xx but does NOT mark attendance.
+        self.fake_server.radar_empty_answer_accepted = True
+        self.fake_server.radar_empty_answer_marks_present = False
+        self.fake_server.set_radar_target(target.lat, target.lon, success_radius_meters=70.0)
+
+        temp_dir = make_workspace_temp_dir()
+        try:
+            tron.PATH = temp_dir
+            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                await self.login_session(session)
+                with (
+                    patch.object(tron, "mes", AsyncMock()),
+                    patch.object(tron, "log_print"),
+                    patch.object(tron, "status_print"),
+                ):
+                    success = await tron.radar(session, {"is_radar": True, "rollcall_id": 602})
+
+            log_path = self.current_daily_log_path(temp_dir)
+            entries = [
+                json.loads(line)
+                for line in log_path.read_text(encoding="utf-8").splitlines()
+            ]
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+        self.assertTrue(success)
+        # First submission is the empty answer; later ones carry coordinates.
+        self.assertEqual(self.fake_server.radar_answers[0]["field_names"], [])
+        self.assertGreater(len(self.fake_server.radar_answers), 1)
+        self.assertIn("latitude", self.fake_server.radar_answers[-1]["body"])
+        event_names = [e["event"] for e in entries]
+        self.assertIn("empty_answer_radar_fallback_started", event_names)
+        self.assertIn("global_radar_summary", event_names)
+        attempt = next(e for e in entries if e["event"] == "radar_empty_answer_attempt")
+        self.assertEqual(attempt["status"], "api_accepted_no_attendance")
+
+    async def test_empty_answer_non_2xx_falls_back_to_global(self) -> None:
+        tron.CONFIG["radar"]["strategy"] = "empty_answer"
+        target = tron.GeoPoint(24.1795, 120.604)
+        self.fake_server.rollcalls = [{"is_radar": True, "rollcall_id": 603}]
+        # Default: empty answer is NOT accepted -> 400 out_of_scope.
+        self.fake_server.set_radar_target(target.lat, target.lon, success_radius_meters=70.0)
+
+        temp_dir = make_workspace_temp_dir()
+        try:
+            tron.PATH = temp_dir
+            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                await self.login_session(session)
+                with (
+                    patch.object(tron, "mes", AsyncMock()),
+                    patch.object(tron, "log_print"),
+                    patch.object(tron, "status_print"),
+                ):
+                    success = await tron.radar(session, {"is_radar": True, "rollcall_id": 603})
+
+            log_path = self.current_daily_log_path(temp_dir)
+            entries = [
+                json.loads(line)
+                for line in log_path.read_text(encoding="utf-8").splitlines()
+            ]
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+        self.assertTrue(success)
+        self.assertEqual(self.fake_server.radar_answers[0]["field_names"], [])
+        self.assertIn("latitude", self.fake_server.radar_answers[-1]["body"])
+        attempt = next(e for e in entries if e["event"] == "radar_empty_answer_attempt")
+        self.assertEqual(attempt["status"], "failed")
 
 
 if __name__ == "__main__":

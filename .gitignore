@@ -59,6 +59,10 @@ PLAN.md
 新文件*.txt
 競品分析與上位替代規劃.md
 
+# Local investigation / research reports (sanitized API audits + progress notes).
+# These describe internal API behaviour and are kept local, not part of the public tree.
+docs/
+
 # External reference projects are kept locally for Codex analysis only.
 其他專案參考/
 

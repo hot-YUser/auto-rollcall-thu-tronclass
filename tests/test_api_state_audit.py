@@ -43,10 +43,11 @@ def _row(method, endpoint, host="same-origin", label="test"):
 
 
 class ApiStateAuditUnitTest(unittest.TestCase):
-    def test_default_options_disable_audit_and_keep_api_list_path(self) -> None:
+    def test_default_options_enable_audit_and_keep_api_list_path(self) -> None:
         options = api_state_audit_options({})
 
-        self.assertFalse(options.enabled)
+        self.assertTrue(options.enabled)
+        self.assertTrue(options.request_all_methods)
         self.assertEqual(options.api_list_path, "抓取測試API端口列表.json")
 
     def test_api_list_parser_and_method_normalization(self) -> None:
@@ -227,6 +228,49 @@ class ApiStateAuditIntegrationTest(unittest.IsolatedAsyncioTestCase):
                 self.assertIn('"method": "DELETE"', operations_text)
                 self.assertIn('"json": {}', operations_text)
                 self.assertIn('"api_source_file"', Path(summary["summary_path"]).read_text(encoding="utf-8"))
+
+    async def test_answer_side_effect_is_probed_but_not_sent(self) -> None:
+        rows = [
+            _row("PUT", "/api/rollcall/{expr}/answer", label="answer-side-effect"),
+            _row("PUT", "/api/rollcall/{expr}/activate", label="activate-rollcall"),
+        ]
+        async with FakeTronServer() as server:
+            with tempfile.TemporaryDirectory() as tmp:
+                async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                    await server.login_session(session)
+                    summary = await run_api_state_audit(
+                        session,
+                        endpoints=server.endpoints(),
+                        base_dir=Path(tmp),
+                        config=_audit_config(asset_follow="off"),
+                        profile="student-test",
+                        provider="fake",
+                        selected_status="is_number",
+                        selected_rollcall={"rollcall_id": "42", "course_id": "166800", "is_number": True},
+                        selected_rollcall_type="number",
+                        rollcalls=[{"rollcall_id": "42", "course_id": "166800", "is_number": True}],
+                        source_payload={"rollcalls": [{"rollcall_id": "42", "course_id": "166800"}]},
+                        user_id="238730",
+                        operation_rows=rows,
+                    )
+
+                # The bare /answer write must never be sent (no attendance side-effect).
+                self.assertEqual(server.radar_answers, [])
+
+                operations = {}
+                for path in sorted(Path(summary["operations_dir"]).glob("*.json")):
+                    data = json.loads(path.read_text(encoding="utf-8"))
+                    operations[data["row"]["label"]] = data
+
+                answer_op = operations["answer-side-effect"]
+                self.assertEqual(answer_op["status"], "skipped")
+                self.assertEqual(answer_op["reason"], "side_effect_blocklist")
+                self.assertFalse(answer_op["would_request"]["sent"])
+                self.assertEqual(answer_op["would_request"]["json"], {})
+
+                # Every other mutating endpoint is still fully probed.
+                activate_op = operations["activate-rollcall"]
+                self.assertEqual(activate_op["status"], "ok")
 
     async def test_audit_keeps_raw_headers_and_body_unredacted(self) -> None:
         secret = "plain-sensitive-token-keep-me"

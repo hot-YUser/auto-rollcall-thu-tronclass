@@ -273,6 +273,7 @@ class ResearchModeConfigTest(unittest.TestCase):
             try:
                 tron.COMPLETED_NUMBER_ROLLCALLS.clear()
                 self._configure_provider_for_fake_server(provider_key, server)
+                tron.CONFIG.setdefault("capture", {}).setdefault("api_state_audit", {})["enabled"] = False
                 async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
                     self._seed_cookie_for_manual_provider(provider_key, server, session)
                     login_result = await tron.login(session)

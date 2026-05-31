@@ -118,6 +118,25 @@ async def _rollcall_still_open(client: ctx.Any, rollcall_id: ctx.Any) -> bool:
     return any(_rollcall_id_matches(item, rollcall_id) for item in rollcalls)
 
 
+async def _radar_marked_present(client: ctx.Any, rollcall_id: ctx.Any) -> bool:
+    """Re-fetch rollcalls and confirm the target rollcall now reads as signed in.
+
+    ``on_call_fine`` is the canonical "already present" status used by
+    ``rollcall_engine.decide_rollcall``. A bare 2xx from the answer endpoint is
+    not trusted on its own; this verifies the attendance actually changed.
+    """
+    result = await client.fetch_rollcalls()
+    rollcalls = result.payload.get("rollcalls") if isinstance(result.payload, dict) else []
+    if not isinstance(rollcalls, list):
+        return False
+    for item in rollcalls:
+        if not _rollcall_id_matches(item, rollcall_id):
+            continue
+        if ctx.normalize_text(item.get("status")).lower() == "on_call_fine":
+            return True
+    return False
+
+
 async def _run_unbounded_grid_retry(
     *,
     client: ctx.Any,
@@ -260,10 +279,43 @@ async def _run_unbounded_grid_retry(
 
 async def radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str, ctx.Any]) -> bool:
     radar_config = _read_radar_config()
-    strategy = ctx.normalize_text(radar_config.get("strategy", "global_wgs84")).lower().replace("-", "_")
+    strategy = ctx.normalize_text(
+        radar_config.get("strategy", ctx.DEFAULT_CONFIG["radar"]["strategy"])
+    ).lower().replace("-", "_")
     if strategy == "legacy_thu":
         return await legacy_radar(main_session, rollcall)
+    if strategy == "global_wgs84":
+        return await _global_then_legacy(main_session, rollcall, radar_config)
 
+    # Default strategy: empty_answer — submit a coordinate-free `{}` answer first
+    # and only trust it once attendance is verified, then fall back to global_wgs84.
+    if await empty_answer_radar(main_session, rollcall):
+        return True
+    if not ctx.coerce_bool(
+        radar_config.get(
+            "empty_answer_fallback_enabled",
+            ctx.DEFAULT_CONFIG["radar"].get("empty_answer_fallback_enabled", True),
+        ),
+        True,
+    ):
+        return False
+    rollcall_id = rollcall.get("rollcall_id")
+    ctx.log(
+        event="empty_answer_radar_fallback_started",
+        status="fallback",
+        rollcall_id=rollcall_id,
+        rollcall_type="radar",
+        message="空答案雷達簽到未確認，改用 global_wgs84 全球定位作為 fallback。",
+    )
+    ctx.log_print("空答案雷達簽到未確認，改用 global_wgs84 全球定位作為 fallback...")
+    return await _global_then_legacy(main_session, rollcall, radar_config)
+
+
+async def _global_then_legacy(
+    main_session: ctx.aiohttp.ClientSession,
+    rollcall: ctx.Dict[str, ctx.Any],
+    radar_config: ctx.Dict[str, ctx.Any],
+) -> bool:
     try:
         success = await global_radar(main_session, rollcall, radar_config=radar_config)
     except _RadarNoFallback:
@@ -285,6 +337,131 @@ async def radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str,
         ctx.log_print("全球雷達定位未命中，改用舊 THU 定位流程作為 fallback...")
         return await legacy_radar(main_session, rollcall)
     return False
+
+
+async def empty_answer_radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str, ctx.Any]) -> bool:
+    """Submit a single coordinate-free ``{}`` radar answer and verify sign-in.
+
+    Mirrors the standalone repro: one ``PUT /api/rollcall/{id}/answer`` with an
+    empty JSON body, no coordinates, no beacon/radarSignal, no ``api_version``.
+    A 2xx is verified against the rollcall's ``on_call_fine`` status before it is
+    treated as success; any other outcome returns ``False`` so the caller can
+    fall back to the global_wgs84 solver.
+    """
+    rollcall_id = rollcall.get("rollcall_id")
+    headers = {"User-Agent": ctx.random_ua()}
+    session_kwargs: ctx.Dict[str, ctx.Any] = {
+        "connector": ctx.create_http_connector(),
+        "headers": headers,
+        "cookie_jar": ctx.aiohttp.CookieJar(unsafe=True),
+    }
+    timeout = ctx.create_http_client_timeout()
+    if timeout is not None:
+        session_kwargs["timeout"] = timeout
+    async with ctx.aiohttp.ClientSession(**session_kwargs) as session:
+        ctx.clone_session_cookies(main_session, session)
+        request_ssl = ctx.get_ssl_request_setting()
+        client = ctx.create_tron_http_client(session, request_ssl=request_ssl)
+        endpoints = ctx.get_active_http_endpoints()
+        base_url = endpoints.base_url.rstrip("/")
+        request_url = f"{base_url}/api/rollcall/{rollcall_id}/answer"
+        payload: ctx.Dict[str, ctx.Any] = {}
+        ctx.log_print("嘗試雷達空答案簽到（不送座標）...")
+        try:
+            async with session.put(request_url, json=payload, ssl=request_ssl) as resp:
+                status = resp.status
+                body_text = await resp.text()
+                ctx.append_rollcall_exchange(
+                    ctx.BASE_DIR,
+                    rollcall_id=rollcall_id,
+                    rollcall_type="radar",
+                    label="empty-answer",
+                    method="PUT",
+                    url=request_url,
+                    request_body=payload,
+                    status=status,
+                    response_headers=dict(resp.headers),
+                    response_text=body_text,
+                    config=ctx.CONFIG,
+                )
+                if status in (401, 403) or "login" in str(resp.url).lower():
+                    raise ctx.UnauthorizedError("雷達空答案送出未授權，Cookie 可能已過期。")
+                result = ctx.parse_radar_answer_result(status, body_text)
+        except (ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError) as exc:
+            ctx.log(
+                event="radar_empty_answer_attempt",
+                status="transient",
+                rollcall_id=rollcall_id,
+                rollcall_type="radar",
+                message="雷達空答案送出遇到網路錯誤，改用 fallback。",
+                error=exc,
+                extra={"strategy": "empty_answer"},
+            )
+            return False
+
+        diagnostic: ctx.Dict[str, ctx.Any] = {
+            "strategy": "empty_answer",
+            "http_status": status,
+            "success_http": bool(result.success),
+        }
+        if result.error_code:
+            diagnostic["error_code"] = ctx.normalize_text(result.error_code)
+        if result.message:
+            diagnostic["result_message"] = ctx.normalize_text(result.message)[:120]
+
+        if result.success:
+            try:
+                marked_present = await _radar_marked_present(client, rollcall_id)
+            except ctx.UnauthorizedError:
+                raise
+            except (ctx.UnexpectedResponseError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError) as exc:
+                diagnostic["verify_error"] = str(exc)[:200]
+                marked_present = False
+            diagnostic["verified_present"] = bool(marked_present)
+            if marked_present:
+                text = f"雷達點名 #{rollcall_id} 成功！(空答案簽到，已確認 on_call_fine)"
+                ctx.log(
+                    event="radar_empty_answer_attempt",
+                    status="success",
+                    rollcall_id=rollcall_id,
+                    rollcall_type="radar",
+                    message="雷達空答案簽到成功並已確認。",
+                    extra=diagnostic,
+                )
+                ctx.log_print(text)
+                await ctx.mes(text)
+                return True
+            ctx.log(
+                event="radar_empty_answer_attempt",
+                status="api_accepted_no_attendance",
+                rollcall_id=rollcall_id,
+                rollcall_type="radar",
+                message="雷達空答案回 2xx 但未確認簽到，改用 fallback。",
+                extra=diagnostic,
+            )
+            ctx.log_print("雷達空答案回 2xx 但未確認已簽到，改用 fallback...")
+            return False
+
+        if _is_transient_radar_result(result):
+            ctx.log(
+                event="radar_empty_answer_attempt",
+                status="transient",
+                rollcall_id=rollcall_id,
+                rollcall_type="radar",
+                message="雷達空答案送出暫時失敗，改用 fallback。",
+                extra=diagnostic,
+            )
+            return False
+
+        ctx.log(
+            event="radar_empty_answer_attempt",
+            status="failed",
+            rollcall_id=rollcall_id,
+            rollcall_type="radar",
+            message="雷達空答案送出被拒絕，改用 fallback。",
+            extra=diagnostic,
+        )
+        return False
 
 
 async def global_radar(

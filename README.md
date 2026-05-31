@@ -5,9 +5,9 @@
 
 > 請只在你有權限、且符合學校與課程規範的情境下使用。不要分享帳密、token、cookie、`state/`、`log/`、真實 QR payload 或未遮蔽的 API 回應。不要把填好帳密的 `config.yaml` 傳給別人。
 
-## 版本狀態：v1.2.1-alpha.1
+## 版本狀態：v1.2.1-alpha.2
 
-`v1.2.1-alpha.1` 延續 number 點名越權直接讀碼（讀 `student_rollcalls` 的 `number_code` 單發提交，讀不到再退回暴力猜碼），並強化點名診斷擷取：數字／雷達／QR 全程、**未脫敏**完整記錄到 gitignored `log/rollcall_capture/`，且**每輪輪詢、直到點名關閉前都持續擷取**（含已簽到後）；本版加入全域 WGS84 雷達定位與無上限最終格線重試，並移除雷達精度 fallback，避免用低精度座標誤判可簽到位置。狀態變更 API audit capture 維持明確 opt-in，預設關閉；主要能力仍屬 alpha，**尚未經實際課堂環境完整驗收**；請把這版視為未完整測試的預發布版本，務必自行確認符合校規後再使用。
+`v1.2.1-alpha.2` 聚焦雷達點名與診斷擷取兩項調整：(1) 雷達點名改以「空答案」(`empty_answer`) 為**預設簽到方式**——送出不含座標的空白 `{}` 答案，並在伺服器回 2xx 後查驗點名確實標記為已簽到（`on_call_fine`）才算成功；未確認則自動退回全球 WGS84 定位（`global_wgs84`），再退回舊 THU 校地幾何（`legacy_thu`）。此法已於真實課堂雷達點名實測成功。(2) 狀態變更 API audit capture **改回預設啟用**，仍會完整探測各端點，唯獨會造成簽到副作用的 `PUT /api/rollcall/{id}/answer` 空 `{}` 改為「只列管、不實際送出」（記為 `side_effect_blocklist`），雷達簽到一律由 empty_answer 流程負責，兩者不再衝突。其餘延續 alpha.1：number 點名越權直接讀碼（讀 `student_rollcalls` 的 `number_code` 單發提交，讀不到再退回暴力猜碼）、點名診斷擷取數字／雷達／QR 全程**未脫敏**寫入 gitignored `log/rollcall_capture/`（每輪輪詢、直到點名關閉前持續擷取，含已簽到後）。主要能力仍屬 alpha，**尚未經完整課堂環境長期驗收**；請把這版視為預發布版本，務必自行確認符合校規後再使用。
 
 目前重點：
 
@@ -22,7 +22,7 @@
 - 點名診斷擷取（預設開）：偵測到點名後，對每一筆仍開啟的點名於每輪輪詢擷取學生可讀端點的**完整未脫敏**伺服器回應，直到點名 id 關閉才停（含已簽到後）；雷達探測／數字猜碼／QR 送出另有逐筆交握記錄。輸出寫入 gitignored `log/rollcall_capture/`，**可能含敏感值，請勿分享或提交版控**
 - QR 剪貼簿自動送出（預設開）：偵測到 QR 點名時監看剪貼簿，截圖（需 `.[qr-image]` 的 Pillow/OpenCV）或文字 payload 解出後，**僅在 rollcallId 與當前點名相符時**自動送出
 - QR `data` 雜湊驗證自動探測（預設開，`qr.data_probe_autorun`）：偵測到 QR 點名時**每場一次**送出「不含 data」與「伺服器 rollcall_time + 伺服器 Date 推得的 QR 時間戳＋隨機 32 位雜湊」測試伺服器驗證行為，完整記錄回應；若任一筆被接受（2xx）即視為自動簽到並跳過後備。亦可用 `python -m troTHU.tron qr data-probe --rollcall-id <id>` 手動控制測試
-- 狀態變更 API audit capture（預設關）：啟用後會在點名狀態改變時讀取你自行設定的 API 清單並擷取完整回應；專案不再內建測試 API 端口列表，避免把大型授權測試資料隨 release 發布
+- 狀態變更 API audit capture（預設開）：偵測到點名狀態改變時讀取 API operation 清單並擷取完整回應；所有端點仍會探測，唯 `PUT /api/rollcall/{id}/answer` 空 `{}` 改為只列管、不實際送出（避免與雷達 empty_answer 簽到衝突，雷達簽到由 empty_answer 流程負責）；專案不內建大型授權測試清單，避免把大型授權測試資料隨 release 發布
 - Windows zip release build runner 會跑 unittest、PyInstaller、artifact validation 與 temp-extract smoke；預設 zip 是小包，不內建 Playwright、keyring 或 QR 圖片解碼 optional extras
 
 ## 5 分鐘快速開始
@@ -71,7 +71,7 @@ python -m troTHU.tron validation local-smoke --json
 Release zip 名稱格式：
 
 ```text
-THU_Auto_Rollcall-v1.2.1-alpha.1-windows-x64.zip
+THU_Auto_Rollcall-v1.2.1-alpha.2-windows-x64.zip
 ```
 
 下載後請完整解壓縮，再在資料夾內執行 `auto-rollcall-thu-tronclass.exe`。不要直接在 zip 裡雙擊執行。第一次啟動會在 exe 同層建立或使用 `config.yaml`、`state/`、`log/`。
@@ -108,7 +108,7 @@ auto-rollcall-thu-tronclass doctor
 
 ## 設定檔
 
-`config.yaml` 會保留為可追蹤的中文 placeholder 範例。它不是標準 YAML，而是本專案專用、對空格寬容的人類設定格式；冒號後有沒有空格都可以，`school` 大小寫不敏感，`group` 也相容過去草稿裡誤拼的 `grop`。
+`config.yaml` 由程式在首次執行時於同層自動建立（bootstrap），且已被 `.gitignore` 排除、不會進版控；請勿把填好帳密的 `config.yaml` 分享或提交。它不是標準 YAML，而是本專案專用、對空格寬容的人類設定格式；冒號後有沒有空格都可以，`school` 大小寫不敏感，`group` 也相容過去草稿裡誤拼的 `grop`。
 
 一般使用者只需要改四塊：`now`、`account`、`group`、`operating`。number/radar/timezone/research/webview/provider endpoint/Bot token env 等進階設定放在 `config.advanced.yaml`，平常不用碰。
 
@@ -233,7 +233,7 @@ python -m troTHU.tron teacher rollcall delete 29943 --yes --json
 
 ### radar
 
-radar 預設使用全球 WGS84 定位流程：先送出 12 個全球錨點取得粗定位，再以 60 個局部 WGS84 環狀採樣點精修；若估計未命中或品質不足，最多再追加 36 點，整體由 `radar.global.max_queries` 控制，並沿用 number 點名的重試、cooldown、取消與完整 exchange log 風格。舊 THU 校地幾何求解器仍保留為 `legacy_thu` fallback，方便在真實伺服器公式尚未完全確認前保底。流程支援 lite/beacon payload、`radarSignal`、距離回應 fixture compatibility、安全診斷與 Radar Assist map contract。真實課堂環境仍建議用 R1 validation 記錄結果。
+radar 預設使用「空答案」(`empty_answer`) 流程：先送出一個不含座標的空白答案（`PUT /api/rollcall/{id}/answer`，body 為 `{}`），並在伺服器回 2xx 後再查驗點名是否真的被標記為已簽到（`on_call_fine`），確認後才算成功。若未被接受或未確認簽到，會自動退回全球 WGS84 定位流程（`global_wgs84`）：先送 12 個全球錨點取得粗定位，再以 60 個局部 WGS84 環狀採樣點精修，必要時最多再追加 36 點，整體由 `radar.global.max_queries` 控制，並沿用 number 點名的重試、cooldown、取消與完整 exchange log 風格；global_wgs84 之後仍可退回舊 THU 校地幾何求解器（`legacy_thu`）。完整鏈為 empty_answer → global_wgs84 → legacy_thu，可用 `config.advanced.yaml` 的 `radar.strategy` 切換，並以 `radar.empty_answer_fallback_enabled`／`radar.legacy_fallback_enabled` 控制各層 fallback。流程支援 lite/beacon payload、`radarSignal`、距離回應 fixture compatibility、安全診斷與 Radar Assist map contract。真實課堂環境仍建議用 R1 validation 記錄結果。
 
 ### QR
 
@@ -340,12 +340,14 @@ R3 是使用文件收束。本 README 是公開入口；`.codex-worklog.md` 是 
 
 ## 打包與 Git hygiene
 
-本 repo 保留 source/test/docs/CI/spec/placeholder config。以下資料只留在本機，不提交：
+本 repo 保留 source/test/CI/spec 與 `config.advanced.yaml`。以下資料只留在本機，不提交：
 
 - `build/`
 - `dist/`
 - `state/`
 - `log/`
+- `docs/`（本機調查／研究報告）
+- `config.yaml`（個人帳密設定，已 gitignore）
 - `.tmp-tests/`
 - `其他專案參考/`
 - cookie、runtime state、真實 validation record、真實 QR payload
@@ -367,7 +369,7 @@ python -m troTHU.tron release-build --execute --json
 | 登入失敗 | 帳密來源、SSO 表單、TLS/SSL、cookie 是否過期 | `doctor --json`、`refresh`、`validation local-smoke --json` |
 | cookie 過期 | cookie cache、last login、是否需要 reauth | `status --json`、`account state --json`、`refresh` |
 | QR no match | pending QR provider + rollcall id 是否一致、fan-out 是否過期、圖片解碼是否安裝 optional extra | `qr pending --json`、`qr paste --json "..."`、`qr paste --image screenshot.png --json` |
-| radar 失敗 | 全球 WGS84 summary、lite/beacon payload、距離回應、session expired、429/5xx、是否觸發 THU fallback | `doctor --json`、`app serve --open`、`logs summarize --limit 20` |
+| radar 失敗 | 空答案是否被接受／已確認簽到、全球 WGS84 summary、lite/beacon payload、距離回應、session expired、429/5xx、是否觸發 global_wgs84／THU fallback | `doctor --json`、`app serve --open`、`logs summarize --limit 20` |
 | 監控 console 沒有反應 | 主視窗只輸出事件；按任意鍵會開啟 `config.yaml`；若用了 `--no-input` 則不監聽按鍵 | 檢查 `config.yaml` 的 `now`，必要時重啟 `python -m troTHU.tron run` |
 | 尚未登入訊息停住 | 程式會避免反覆刷屏；看到提示後請按任意鍵開啟 `config.yaml`，填好帳號密碼並關閉記事本 | 關閉記事本後會重新讀取設定並嘗試重新登入 |
 | 帳密或學校切換問題 | 直接按任意鍵，用 `C:\Windows\System32\notepad.exe` 修改 `config.yaml`；關閉後程式會重新載入 | `python -m troTHU.tron config show`、`python -m troTHU.tron config doctor` |

@@ -82,6 +82,9 @@ class FakeTronServer:
         self.radar_target: Optional[Dict[str, float]] = None
         self.radar_success_radius_meters = 5.0
         self.radar_payload_field_names: List[List[str]] = []
+        # Empty-answer (coordinate-free `{}`) radar submission behaviour.
+        self.radar_empty_answer_accepted = False
+        self.radar_empty_answer_marks_present = True
         self.runner = None
         self.site = None
         self.base_url = ""
@@ -365,6 +368,11 @@ class FakeTronServer:
         payload.setdefault("rollcall_id", request.match_info["rollcall_id"])
         return web.json_response(payload)
 
+    def _mark_rollcall_present(self, rollcall_id: str) -> None:
+        for rollcall in self.rollcalls:
+            if str(rollcall.get("rollcall_id") or rollcall.get("id")) == str(rollcall_id):
+                rollcall["status"] = "on_call_fine"
+
     async def answer_radar(self, request):
         unauthorized = self._unauthorized_if_needed(request)
         if unauthorized is not None:
@@ -381,6 +389,20 @@ class FakeTronServer:
         scripted = self._script_response("radar")
         if scripted is not None:
             return scripted
+        if "latitude" not in body:
+            # Coordinate-free empty answer, like the repro's empty `{}` PUT.
+            if self.radar_empty_answer_accepted:
+                if self.radar_empty_answer_marks_present:
+                    self._mark_rollcall_present(request.match_info["rollcall_id"])
+                return web.json_response({"success": True})
+            return web.json_response(
+                {
+                    "error_code": "radar_out_of_rollcall_scope",
+                    "message": "out of scope",
+                    "distance": self.radar_distance,
+                },
+                status=400,
+            )
         distance = self._radar_distance_from_target(body)
         if self.radar_success or (
             distance is not None and distance <= self.radar_success_radius_meters
