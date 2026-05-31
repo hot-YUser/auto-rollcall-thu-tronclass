@@ -518,6 +518,26 @@ def format_found_code_banner(code: str) -> str:
     return "\n".join(lines)
 
 
+def format_radar_success_banner(rollcall_id: Any, method: Any = "", detail: Any = "") -> str:
+    rollcall_text = normalize_text(rollcall_id) or "unknown"
+    method_text = normalize_text(method) or "radar"
+    detail_text = normalize_text(detail) or "success"
+    rows = [
+        "雷達點名成功！",
+        "Rollcall: {}".format(rollcall_text),
+        "Method: {}".format(method_text),
+        "Hit: {}".format(detail_text),
+    ]
+    width = max(len(row) for row in rows)
+    border = "+" + "=" * (width + 2) + "+"
+    lines = [border]
+    for index, row in enumerate(rows):
+        content = row.center(width) if index == 0 else row.ljust(width)
+        lines.append("| {} |".format(content))
+    lines.append(border)
+    return "\n".join(lines)
+
+
 def build_number_progress_message(
     rollcall_id: int,
     request_count: int,

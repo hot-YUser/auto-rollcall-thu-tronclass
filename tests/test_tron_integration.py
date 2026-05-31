@@ -76,6 +76,35 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         today = datetime.now()
         return root / str(today.year) / str(today.month) / "{}.jsonl".format(today.day)
 
+    def assert_radar_success_banner(
+        self,
+        log_print_mock,
+        mes_mock,
+        *,
+        method: str,
+        detail: str,
+    ) -> None:
+        banners = [
+            str(call.args[0])
+            for call in log_print_mock.call_args_list
+            if call.args and "雷達點名成功！" in str(call.args[0])
+        ]
+        self.assertTrue(banners)
+        banner = banners[-1]
+        self.assertIn("Method: {}".format(method), banner)
+        self.assertIn(detail, banner)
+
+        success_notifications = [
+            call
+            for call in mes_mock.await_args_list
+            if call.args and call.args[0] == "雷達點名成功！"
+        ]
+        self.assertTrue(success_notifications)
+        highlight = success_notifications[-1].kwargs.get("highlight_block", "")
+        self.assertIn("雷達點名成功！", highlight)
+        self.assertIn("Method: {}".format(method), highlight)
+        self.assertIn(detail, highlight)
+
     async def submit_grid_candidate(self, session, rollcall_id, point, label):
         payload = tron.build_radar_answer_payload(point, device_id="test-device", user_id=1)
         url = "{}/api/rollcall/{}/answer?api_version=1.76".format(
@@ -200,11 +229,12 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         temp_dir = make_workspace_temp_dir()
         try:
             tron.PATH = temp_dir
+            mes_mock = AsyncMock()
             async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
                 await self.login_session(session)
                 with (
-                    patch.object(tron, "mes", AsyncMock()),
-                    patch.object(tron, "log_print"),
+                    patch.object(tron, "mes", mes_mock),
+                    patch.object(tron, "log_print") as log_print,
                 ):
                     success = await tron.radar(session, {"is_radar": True, "rollcall_id": 501})
 
@@ -226,6 +256,12 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("radarSignal", attempt_entry["payload_fields"])
         self.assertNotIn("fixture-nonce", json.dumps(attempt_entry, ensure_ascii=False))
         self.assertNotIn(payload["radarSignal"], json.dumps(attempt_entry, ensure_ascii=False))
+        self.assert_radar_success_banner(
+            log_print,
+            mes_mock,
+            method="global_wgs84",
+            detail="global-anchor-1",
+        )
 
     async def test_global_radar_flow_solves_target_and_logs_summary(self) -> None:
         tron.CONFIG["radar"]["strategy"] = "global_wgs84"
@@ -281,11 +317,12 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         temp_dir = make_workspace_temp_dir()
         try:
             tron.PATH = temp_dir
+            mes_mock = AsyncMock()
             async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
                 await self.login_session(session)
                 with (
-                    patch.object(tron, "mes", AsyncMock()),
-                    patch.object(tron, "log_print"),
+                    patch.object(tron, "mes", mes_mock),
+                    patch.object(tron, "log_print") as log_print,
                 ):
                     success = await tron.radar(session, {"is_radar": True, "rollcall_id": rollcall_id})
 
@@ -311,6 +348,12 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         summary = next(entry for entry in entries if entry["event"] == "global_radar_summary")
         self.assertEqual(summary["status"], "success")
         self.assertEqual(summary["request_count"], 1)
+        self.assert_radar_success_banner(
+            log_print,
+            mes_mock,
+            method="global_wgs84",
+            detail="verified-present",
+        )
 
     async def test_global_radar_adaptive_ring_estimate_can_hit_before_full_standard_scan(self) -> None:
         tron.CONFIG["radar"]["strategy"] = "global_wgs84"
@@ -320,11 +363,12 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         temp_dir = make_workspace_temp_dir()
         try:
             tron.PATH = temp_dir
+            mes_mock = AsyncMock()
             async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
                 await self.login_session(session)
                 with (
-                    patch.object(tron, "mes", AsyncMock()),
-                    patch.object(tron, "log_print"),
+                    patch.object(tron, "mes", mes_mock),
+                    patch.object(tron, "log_print") as log_print,
                 ):
                     success = await tron.radar(session, {"is_radar": True, "rollcall_id": 612})
 
@@ -356,6 +400,12 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         summary = next(entry for entry in entries if entry["event"] == "global_radar_summary")
         self.assertEqual(summary["status"], "success")
         self.assertLess(summary["request_count"], 73)
+        self.assert_radar_success_banner(
+            log_print,
+            mes_mock,
+            method="global_wgs84",
+            detail="estimate-standard-ring-1",
+        )
 
     async def test_final_grid_retry_hits_nearest_100m_candidate(self) -> None:
         rollcall_id = 777
@@ -367,12 +417,13 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         temp_dir = make_workspace_temp_dir()
         try:
             tron.PATH = temp_dir
+            mes_mock = AsyncMock()
             async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
                 await self.login_session(session)
                 client = tron_http.TronHttpClient(session)
                 with (
-                    patch.object(tron, "mes", AsyncMock()),
-                    patch.object(tron, "log_print"),
+                    patch.object(tron, "mes", mes_mock),
+                    patch.object(tron, "log_print") as log_print,
                 ):
                     success = await radar_runtime._run_unbounded_grid_retry(
                         client=client,
@@ -385,6 +436,7 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
                             point,
                             label,
                         ),
+                        success_method="global_wgs84",
                     )
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
@@ -394,6 +446,12 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         final_payload = self.fake_server.radar_answers[-1]["body"]
         final_point = tron.GeoPoint(final_payload["latitude"], final_payload["longitude"])
         self.assertLess(tron.wgs84_distance_meters(target, final_point), 1.0)
+        self.assert_radar_success_banner(
+            log_print,
+            mes_mock,
+            method="global_wgs84",
+            detail="final-grid-r1-2",
+        )
 
     async def test_final_grid_retry_stops_when_rollcall_closes(self) -> None:
         rollcall_id = 778
@@ -440,12 +498,13 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         temp_dir = make_workspace_temp_dir()
         try:
             tron.PATH = temp_dir
+            mes_mock = AsyncMock()
             async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
                 await self.login_session(session)
                 client = tron_http.TronHttpClient(session)
                 with (
-                    patch.object(tron, "mes", AsyncMock()),
-                    patch.object(tron, "log_print"),
+                    patch.object(tron, "mes", mes_mock),
+                    patch.object(tron, "log_print") as log_print,
                     patch.object(tron, "status_print") as status_print,
                 ):
                     success = await radar_runtime._run_unbounded_grid_retry(
@@ -465,6 +524,7 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
                             point,
                             label,
                         ),
+                        success_method="legacy_thu",
                     )
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
@@ -473,6 +533,12 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.fake_server.radar_answers), 2)
         self.assertTrue(
             any("休息" in str(call.args[0]) for call in status_print.call_args_list)
+        )
+        self.assert_radar_success_banner(
+            log_print,
+            mes_mock,
+            method="legacy_thu",
+            detail="final-grid-r1-2",
         )
 
     async def test_radar_lite_rate_limit_returns_safe_failure_without_submit(self) -> None:
@@ -544,6 +610,39 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaises(tron_http.UnauthorizedError):
                     await tron.radar(session, {"is_radar": True, "rollcall_id": 503})
 
+    async def test_legacy_radar_probe_success_uses_success_banner(self) -> None:
+        tron.CONFIG["radar"]["strategy"] = "legacy_thu"
+        probe_plan = tron.build_probe_plan(
+            tron.CONFIG["radar"]["boundary_points"],
+            allow_outside=bool(tron.CONFIG["radar"]["allow_outside_probe"]),
+            outside_scale=float(tron.CONFIG["radar"]["outside_scale"]),
+        )
+        first_probe = probe_plan.frame.to_geo(probe_plan.probes[0])
+        self.fake_server.set_radar_target(first_probe.lat, first_probe.lon, success_radius_meters=3.0)
+
+        temp_dir = make_workspace_temp_dir()
+        try:
+            tron.PATH = temp_dir
+            mes_mock = AsyncMock()
+            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                await self.login_session(session)
+                with (
+                    patch.object(tron, "mes", mes_mock),
+                    patch.object(tron, "log_print") as log_print,
+                ):
+                    success = await tron.radar(session, {"is_radar": True, "rollcall_id": 604})
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+        self.assertTrue(success)
+        self.assertEqual(len(self.fake_server.radar_answers), 1)
+        self.assert_radar_success_banner(
+            log_print,
+            mes_mock,
+            method="legacy_thu",
+            detail="legacy-probe-1",
+        )
+
     async def test_empty_answer_radar_marks_present_and_skips_solver(self) -> None:
         tron.CONFIG["radar"]["strategy"] = "empty_answer"
         self.fake_server.rollcalls = [{"is_radar": True, "rollcall_id": 601}]
@@ -553,11 +652,12 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         temp_dir = make_workspace_temp_dir()
         try:
             tron.PATH = temp_dir
+            mes_mock = AsyncMock()
             async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
                 await self.login_session(session)
                 with (
-                    patch.object(tron, "mes", AsyncMock()),
-                    patch.object(tron, "log_print"),
+                    patch.object(tron, "mes", mes_mock),
+                    patch.object(tron, "log_print") as log_print,
                 ):
                     success = await tron.radar(session, {"is_radar": True, "rollcall_id": 601})
 
@@ -576,6 +676,12 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         attempt = next(e for e in entries if e["event"] == "radar_empty_answer_attempt")
         self.assertEqual(attempt["status"], "success")
         self.assertTrue(attempt["verified_present"])
+        self.assert_radar_success_banner(
+            log_print,
+            mes_mock,
+            method="empty_answer",
+            detail="on_call_fine",
+        )
 
     async def test_empty_answer_2xx_without_attendance_falls_back_to_global(self) -> None:
         tron.CONFIG["radar"]["strategy"] = "empty_answer"

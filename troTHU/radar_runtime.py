@@ -103,6 +103,17 @@ def _global_radar_bool(global_config: ctx.Mapping[str, ctx.Any], key: str) -> bo
     return ctx.coerce_bool(global_config.get(key, default), bool(default))
 
 
+async def _announce_radar_success(
+    rollcall_id: ctx.Any,
+    *,
+    method: ctx.Any,
+    detail: ctx.Any = "",
+) -> None:
+    banner = ctx.format_radar_success_banner(rollcall_id, method, detail)
+    ctx.log_print(banner)
+    await ctx.mes("雷達點名成功！", highlight_block=banner)
+
+
 def _rollcall_id_matches(rollcall: ctx.Any, rollcall_id: ctx.Any) -> bool:
     if not isinstance(rollcall, dict):
         return False
@@ -150,6 +161,7 @@ async def _run_unbounded_grid_retry(
     radar_config: ctx.Mapping[str, ctx.Any],
     submit_candidate: ctx.Any,
     poll_every_attempts: int = 25,
+    success_method: str = "final_grid",
 ) -> bool:
     step_meters = _radar_grid_step_meters(radar_config)
     attempts = 0
@@ -233,14 +245,15 @@ async def _run_unbounded_grid_retry(
         attempts += 1
 
         if kind == "success":
-            text = "雷達點名 #{} 成功！(最終棋盤格 {}，east={:.0f}m north={:.0f}m)".format(
+            await _announce_radar_success(
                 rollcall_id,
-                label,
-                candidate.east_offset,
-                candidate.north_offset,
+                method=success_method,
+                detail="{} east={:.0f}m north={:.0f}m".format(
+                    label,
+                    candidate.east_offset,
+                    candidate.north_offset,
+                ),
             )
-            ctx.log_print(text)
-            await ctx.mes(text)
             return True
         if kind == "scope_distance" and result is not None:
             ctx.log_print(
@@ -424,7 +437,6 @@ async def empty_answer_radar(main_session: ctx.aiohttp.ClientSession, rollcall: 
                 marked_present = False
             diagnostic["verified_present"] = bool(marked_present)
             if marked_present:
-                text = f"雷達點名 #{rollcall_id} 成功！(空答案簽到，已確認 on_call_fine)"
                 ctx.log(
                     event="radar_empty_answer_attempt",
                     status="success",
@@ -433,8 +445,11 @@ async def empty_answer_radar(main_session: ctx.aiohttp.ClientSession, rollcall: 
                     message="雷達空答案簽到成功並已確認。",
                     extra=diagnostic,
                 )
-                ctx.log_print(text)
-                await ctx.mes(text)
+                await _announce_radar_success(
+                    rollcall_id,
+                    method="empty_answer",
+                    detail="已確認 on_call_fine",
+                )
                 return True
             ctx.log(
                 event="radar_empty_answer_attempt",
@@ -754,7 +769,14 @@ async def global_radar(
                 observations.append(ctx.GlobalDistanceObservation(point, result.distance, label))
                 ctx.log_print("{} 距離 {:.2f} 公尺。".format(label, result.distance))
             elif kind == "success":
-                ctx.log_print("雷達點名 #{} 成功！({})".format(rollcall_id, label))
+                detail = label
+                if result is not None and result.present_hint and not result.success:
+                    detail = "{} verified-present".format(label)
+                await _announce_radar_success(
+                    rollcall_id,
+                    method="global_wgs84",
+                    detail=detail,
+                )
             elif kind == "transient":
                 await register_attempt_status("transient")
             elif kind == "fatal":
@@ -961,6 +983,7 @@ async def global_radar(
                         label,
                         enforce_max_queries=False,
                     ),
+                    success_method="global_wgs84",
                 )
                 if success:
                     final_status = "success"
@@ -1095,9 +1118,11 @@ async def legacy_radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Di
             geo_probe = probe_plan.frame.to_geo(local_probe)
             result = await try_coord(geo_probe, f'legacy-probe-{index}')
             if result.success:
-                text = f'雷達點名 #{rollcall_id} 成功！(THU fallback 探測點 {index} 命中)'
-                ctx.log_print(text)
-                await ctx.mes(text)
+                await _announce_radar_success(
+                    rollcall_id,
+                    method="legacy_thu",
+                    detail=f"legacy-probe-{index}",
+                )
                 return True
             if not result.is_scope_distance:
                 text = f'雷達點名 #{rollcall_id} 失敗：伺服器拒絕 THU fallback 探測點 {index} ({result.error_code})。'
@@ -1118,9 +1143,11 @@ async def legacy_radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Di
             fourth_geo = probe_plan.frame.to_geo(fourth_probe)
             result = await try_coord(fourth_geo, 'legacy-probe-4')
             if result.success:
-                text = f'雷達點名 #{rollcall_id} 成功！(THU fallback 第四探測點命中)'
-                ctx.log_print(text)
-                await ctx.mes(text)
+                await _announce_radar_success(
+                    rollcall_id,
+                    method="legacy_thu",
+                    detail="legacy-probe-4",
+                )
                 return True
             if not result.is_scope_distance:
                 text = f'雷達點名 #{rollcall_id} 失敗：伺服器拒絕 THU fallback 第四探測點 ({result.error_code})。'
@@ -1144,6 +1171,7 @@ async def legacy_radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Di
             center=estimated,
             radar_config=radar_config,
             submit_candidate=try_coord_kind,
+            success_method="legacy_thu",
         )
         if success:
             return True
