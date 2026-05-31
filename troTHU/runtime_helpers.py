@@ -37,6 +37,8 @@ class RadarCoordinateResult:
     distance: float = -1.0
     error_code: str = ""
     message: str = ""
+    present_hint: bool = False
+    present_status: str = ""
 
     @property
     def has_distance(self) -> bool:
@@ -45,6 +47,125 @@ class RadarCoordinateResult:
     @property
     def is_scope_distance(self) -> bool:
         return self.error_code == "radar_out_of_rollcall_scope" and self.has_distance
+
+
+@dataclass(frozen=True)
+class TransientCooldownPolicy:
+    cooldown_seconds: float
+    max_cooldowns: int
+    transient_failure_threshold: int
+    transient_failure_ratio: float
+
+    @classmethod
+    def from_mapping(
+        cls,
+        config: Any,
+        *,
+        default_cooldown_seconds: float,
+        default_max_cooldowns: int,
+        default_transient_failure_threshold: int,
+        default_transient_failure_ratio: float,
+    ) -> "TransientCooldownPolicy":
+        mapping = config if isinstance(config, dict) else {}
+        threshold = coerce_positive_int(
+            mapping.get("transient_failure_threshold", default_transient_failure_threshold),
+            default_transient_failure_threshold,
+            minimum=1,
+        )
+        max_cooldowns = coerce_positive_int(
+            mapping.get("max_cooldowns", default_max_cooldowns),
+            default_max_cooldowns,
+            minimum=0,
+        )
+        ratio_value = mapping.get("transient_failure_ratio", default_transient_failure_ratio)
+        try:
+            ratio = float(ratio_value)
+        except (TypeError, ValueError):
+            ratio = default_transient_failure_ratio
+        return cls(
+            cooldown_seconds=coerce_positive_float(
+                mapping.get("cooldown_seconds", default_cooldown_seconds),
+                default_cooldown_seconds,
+                minimum=0.1,
+            ),
+            max_cooldowns=max_cooldowns,
+            transient_failure_threshold=threshold,
+            transient_failure_ratio=max(0.0, min(1.0, ratio)),
+        )
+
+
+@dataclass(frozen=True)
+class TransientCooldownDecision:
+    should_cooldown: bool
+    exhausted: bool
+    transient_count: int
+    sample_size: int
+    transient_ratio: float
+    cooldowns_used: int
+
+
+class TransientCooldownTracker:
+    """Shared burst-cooldown state for rollcall answer submission loops."""
+
+    def __init__(self, policy: TransientCooldownPolicy):
+        self.policy = policy
+        self.cooldowns_used = 0
+        self._window: List[bool] = []
+
+    def reset(self) -> None:
+        self._window = []
+
+    def record_attempt(self, transient: bool) -> TransientCooldownDecision:
+        if not transient:
+            self.reset()
+            return self._decision(False, 0, 0, 0.0)
+        self._window.append(True)
+        threshold = self.policy.transient_failure_threshold
+        if len(self._window) > threshold:
+            self._window = self._window[-threshold:]
+        transient_count = sum(1 for item in self._window if item)
+        sample_size = len(self._window)
+        transient_ratio = transient_count / max(sample_size, 1)
+        should_cooldown = self._should_cooldown(transient_count, sample_size, transient_ratio)
+        return self._decision(should_cooldown, transient_count, sample_size, transient_ratio)
+
+    def record_batch(self, transient_count: int, sample_size: int) -> TransientCooldownDecision:
+        transient_count = max(0, int(transient_count))
+        sample_size = max(0, int(sample_size))
+        if sample_size <= 0 or transient_count <= 0:
+            self.reset()
+            return self._decision(False, 0, sample_size, 0.0)
+        transient_count = min(transient_count, sample_size)
+        transient_ratio = transient_count / max(sample_size, 1)
+        should_cooldown = self._should_cooldown(transient_count, sample_size, transient_ratio)
+        return self._decision(should_cooldown, transient_count, sample_size, transient_ratio)
+
+    def _should_cooldown(self, transient_count: int, sample_size: int, transient_ratio: float) -> bool:
+        threshold = self.policy.transient_failure_threshold
+        return transient_count >= threshold or (
+            sample_size >= threshold and transient_ratio >= self.policy.transient_failure_ratio
+        )
+
+    def _decision(
+        self,
+        should_cooldown: bool,
+        transient_count: int,
+        sample_size: int,
+        transient_ratio: float,
+    ) -> TransientCooldownDecision:
+        exhausted = False
+        if should_cooldown:
+            self.cooldowns_used += 1
+            exhausted = self.cooldowns_used > self.policy.max_cooldowns
+            self.reset()
+        return TransientCooldownDecision(
+            should_cooldown=should_cooldown,
+            exhausted=exhausted,
+            transient_count=transient_count,
+            sample_size=sample_size,
+            transient_ratio=transient_ratio,
+            cooldowns_used=self.cooldowns_used,
+        )
 
 
 def normalize_text(value: Any) -> str:
@@ -255,10 +376,45 @@ def _extract_radar_text(payload: Any, keys: Tuple[str, ...]) -> str:
     return ""
 
 
-def parse_radar_answer_result(status_code: int, body_text: str = "") -> RadarCoordinateResult:
-    if status_code == 200:
-        return RadarCoordinateResult(success=True, distance=0.0)
+def _iter_radar_status_values(payload: Any) -> List[Any]:
+    values: List[Any] = []
+    pending: List[Any] = [payload]
+    seen: set[int] = set()
+    status_keys = {
+        "status_name",
+        "statusName",
+        "status",
+        "rollcall_status",
+        "rollcallStatus",
+        "student_rollcall_status",
+        "studentRollcallStatus",
+    }
+    while pending:
+        current = pending.pop()
+        identity = id(current)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        if isinstance(current, dict):
+            for key, value in current.items():
+                if key in status_keys and not isinstance(value, (dict, list, tuple)):
+                    values.append(value)
+                elif isinstance(value, (dict, list, tuple)):
+                    pending.append(value)
+        elif isinstance(current, (list, tuple)):
+            pending.extend(current)
+    return values
 
+
+def _extract_radar_present_status(payload: Any) -> str:
+    for value in _iter_radar_status_values(payload):
+        status = normalize_text(value).lower()
+        if status == "on_call_fine":
+            return status
+    return ""
+
+
+def parse_radar_answer_result(status_code: int, body_text: str = "") -> RadarCoordinateResult:
     body = normalize_text(body_text)
     payload: Any = None
     if body:
@@ -268,6 +424,16 @@ def parse_radar_answer_result(status_code: int, body_text: str = "") -> RadarCoo
             payload = body
 
     distance = _extract_radar_distance(payload)
+    present_status = _extract_radar_present_status(payload)
+    present_hint = bool(present_status)
+    if status_code == 200:
+        return RadarCoordinateResult(
+            success=True,
+            distance=0.0,
+            present_hint=present_hint,
+            present_status=present_status,
+        )
+
     error_code = _extract_radar_text(
         payload,
         ("error_code", "errorCode", "code", "status", "message"),
@@ -298,6 +464,8 @@ def parse_radar_answer_result(status_code: int, body_text: str = "") -> RadarCoo
             distance=distance,
             error_code=error_code,
             message=message or error_code,
+            present_hint=present_hint,
+            present_status=present_status,
         )
 
     return RadarCoordinateResult(
@@ -305,6 +473,8 @@ def parse_radar_answer_result(status_code: int, body_text: str = "") -> RadarCoo
         distance=distance,
         error_code=error_code,
         message=message,
+        present_hint=present_hint,
+        present_status=present_status,
     )
 
 
@@ -344,6 +514,26 @@ def format_found_code_banner(code: str) -> str:
     for line in big_lines:
         lines.append("| {} |".format(line.ljust(width)))
     lines.append("| {} |".format("Code: {}".format(code_text).center(width)))
+    lines.append(border)
+    return "\n".join(lines)
+
+
+def format_radar_success_banner(rollcall_id: Any, method: Any = "", detail: Any = "") -> str:
+    rollcall_text = normalize_text(rollcall_id) or "unknown"
+    method_text = normalize_text(method) or "radar"
+    detail_text = normalize_text(detail) or "success"
+    rows = [
+        "雷達點名成功！",
+        "Rollcall: {}".format(rollcall_text),
+        "Method: {}".format(method_text),
+        "Hit: {}".format(detail_text),
+    ]
+    width = max(len(row) for row in rows)
+    border = "+" + "=" * (width + 2) + "+"
+    lines = [border]
+    for index, row in enumerate(rows):
+        content = row.center(width) if index == 0 else row.ljust(width)
+        lines.append("| {} |".format(content))
     lines.append(border)
     return "\n".join(lines)
 

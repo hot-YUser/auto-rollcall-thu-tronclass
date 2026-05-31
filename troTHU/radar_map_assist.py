@@ -19,7 +19,7 @@ except ImportError:  # pragma: no cover
     from runtime_helpers import normalize_radar_boundary_points
 
 
-DEFAULT_STEP_METERS = 5.0
+DEFAULT_STEP_METERS = 100.0
 DEFAULT_RADIUS_METERS = 20.0
 
 
@@ -78,18 +78,26 @@ def _center(points: Sequence[Sequence[float]]) -> Dict[str, float]:
 
 def _candidate_grid_summary(config: Mapping[str, Any]) -> Dict[str, Any]:
     radar = _radar_config(config)
-    step = float(radar.get("final_grid_step_meters") or DEFAULT_STEP_METERS)
-    radius = float(radar.get("final_grid_radius_meters") or DEFAULT_RADIUS_METERS)
-    if step <= 0:
+    try:
+        step = float(radar.get("final_grid_step_meters") or DEFAULT_STEP_METERS)
+    except (TypeError, ValueError):
+        step = DEFAULT_STEP_METERS
+    try:
+        radius = float(radar.get("final_grid_radius_meters") or DEFAULT_RADIUS_METERS)
+    except (TypeError, ValueError):
+        radius = DEFAULT_RADIUS_METERS
+    if step < DEFAULT_STEP_METERS:
         step = DEFAULT_STEP_METERS
     if radius < 0:
         radius = DEFAULT_RADIUS_METERS
-    side_count = int((radius * 2) // step) + 1
     return {
         "step_meters": round(step, 2),
-        "radius_meters": round(radius, 2),
-        "estimated_points": max(1, side_count * side_count),
-        "strategy": "local_candidate_grid",
+        "radius_meters": None,
+        "legacy_radius_meters": round(radius, 2),
+        "estimated_points": None,
+        "unbounded": True,
+        "strategy": "unbounded_final_grid",
+        "deprecated_settings": ["final_grid_radius_meters", "max_final_attempts"],
     }
 
 
@@ -220,10 +228,17 @@ def format_radar_map_assist_summary(model: Mapping[str, Any]) -> List[str]:
         "Provider: {} ({})".format(model.get("provider", "-"), model.get("support_level", "unknown")),
         "Center: {}, {}".format(center.get("lat", "-"), center.get("lon", "-")),
         "Boundary points: {}".format(len(model.get("boundary") or [])),
-        "Candidate grid: radius={}m step={}m points~{}".format(
-            grid.get("radius_meters", "-"),
-            grid.get("step_meters", "-"),
-            grid.get("estimated_points", "-"),
+        (
+            "Candidate grid: unbounded step={}m legacy_radius={}m".format(
+                grid.get("step_meters", "-"),
+                grid.get("legacy_radius_meters", "-"),
+            )
+            if grid.get("unbounded")
+            else "Candidate grid: radius={}m step={}m points~{}".format(
+                grid.get("radius_meters", "-"),
+                grid.get("step_meters", "-"),
+                grid.get("estimated_points", "-"),
+            )
         ),
         "Warnings: {}".format(", ".join(warnings) if warnings else "none"),
     ]

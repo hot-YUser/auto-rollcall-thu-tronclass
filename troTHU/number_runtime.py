@@ -34,13 +34,17 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
     request_retries = int(number_config.get('request_retries', ctx.NUMBER_REQUEST_RETRIES))
     if request_retries == default_number_config['request_retries']:
         request_retries = ctx.NUMBER_REQUEST_RETRIES
-    cooldown_seconds = float(number_config.get('cooldown_seconds', ctx.NUMBER_COOLDOWN_SECONDS))
-    max_cooldowns = int(number_config.get('max_cooldowns', ctx.NUMBER_MAX_COOLDOWNS))
-    transient_threshold = int(number_config.get('transient_failure_threshold', ctx.NUMBER_TRANSIENT_FAILURE_THRESHOLD))
-    transient_ratio = float(number_config.get('transient_failure_ratio', ctx.NUMBER_TRANSIENT_FAILURE_RATIO))
+    cooldown_policy = ctx.TransientCooldownPolicy.from_mapping(
+        number_config,
+        default_cooldown_seconds=ctx.NUMBER_COOLDOWN_SECONDS,
+        default_max_cooldowns=ctx.NUMBER_MAX_COOLDOWNS,
+        default_transient_failure_threshold=ctx.NUMBER_TRANSIENT_FAILURE_THRESHOLD,
+        default_transient_failure_ratio=ctx.NUMBER_TRANSIENT_FAILURE_RATIO,
+    )
+    cooldown_tracker = ctx.TransientCooldownTracker(cooldown_policy)
+    cooldown_seconds = cooldown_policy.cooldown_seconds
     current_concurrency = max(1, min(configured_concurrency, ctx.NUMBER_CODE_LIMIT))
     min_concurrency = max(1, min(configured_min_concurrency, current_concurrency))
-    cooldowns_used = 0
     direct_config = number_config.get('direct_code_lookup', {})
     if not isinstance(direct_config, dict):
         direct_config = {}
@@ -63,7 +67,6 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
                     if stop_event.is_set() and found_code != 'NA':
                         return
                     body = await resp.text()
-                    ctx.append_rollcall_exchange(ctx.BASE_DIR, rollcall_id=rcid, rollcall_type='number', label=payload['numberCode'], method='PUT', url=request_url, request_body=payload, status=resp.status, response_headers=dict(resp.headers), response_text=body, config=ctx.CONFIG)
                     classification = ctx.classify_number_response(resp.status, body)
                     if classification.status == ctx.NumberAttemptStatus.SUCCESS:
                         found_code = payload['numberCode']
@@ -151,17 +154,15 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
                     break
                 if transient_count == 0:
                     continue
-                batch_ratio = transient_count / max(len(batch), 1)
-                should_cooldown = transient_count >= transient_threshold or (len(batch) >= transient_threshold and batch_ratio >= transient_ratio)
-                if not should_cooldown:
+                cooldown_decision = cooldown_tracker.record_batch(transient_count, len(batch))
+                if not cooldown_decision.should_cooldown:
                     continue
-                cooldowns_used += 1
-                if cooldowns_used > max_cooldowns:
+                if cooldown_decision.exhausted:
                     fatal_error = last_transient_error or ctx.UnexpectedResponseError('數字點名暫時性錯誤過多，已停止嘗試。')
                     stop_event.set()
                     break
                 current_concurrency = max(min_concurrency, current_concurrency // 2)
-                ctx.log(event='number_rollcall_cooldown', path=ctx.number_log_path(rcid), status='cooldown', rollcall_id=rcid, rollcall_type='number', message='暫時性錯誤過多，降低併發並暫停後重試。', extra={'transient_count': transient_count, 'batch_size': len(batch), 'cooldowns_used': cooldowns_used, 'next_concurrency': current_concurrency, 'cooldown_seconds': cooldown_seconds})
+                ctx.log(event='number_rollcall_cooldown', path=ctx.number_log_path(rcid), status='cooldown', rollcall_id=rcid, rollcall_type='number', message='暫時性錯誤過多，降低併發並暫停後重試。', extra={'transient_count': cooldown_decision.transient_count, 'batch_size': cooldown_decision.sample_size, 'transient_ratio': round(cooldown_decision.transient_ratio, 3), 'cooldowns_used': cooldown_decision.cooldowns_used, 'next_concurrency': current_concurrency, 'cooldown_seconds': cooldown_seconds})
                 ctx.status_print('數字點名遇到限流或伺服器錯誤，休息 {:.1f}s 後以 {} 併發重試'.format(cooldown_seconds, current_concurrency))
                 await ctx.asyncio.sleep(cooldown_seconds)
         finally:
@@ -177,7 +178,7 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
         summary_status = 'completed'
         summary_message = '數字點名流程結束。'
     resolution_method = 'direct_read' if direct_read_status == 'success' else ('brute_force' if found_code != 'NA' else 'none')
-    ctx.log(event='number_rollcall_summary', path=ctx.number_log_path(rcid), status=summary_status, rollcall_id=rcid, rollcall_type='number', message=summary_message, extra={'spend_time_seconds': round(elapsed, 2), 'request_count': request_count, 'found_code': found_code, 'stopped_early': found_code != 'NA', 'fatal_error': ctx.normalize_text(fatal_error) or None, 'cooldowns_used': cooldowns_used, 'final_concurrency': current_concurrency, 'method': resolution_method, 'direct_read_attempted': direct_read_attempted, 'direct_read_status': direct_read_status})
+    ctx.log(event='number_rollcall_summary', path=ctx.number_log_path(rcid), status=summary_status, rollcall_id=rcid, rollcall_type='number', message=summary_message, extra={'spend_time_seconds': round(elapsed, 2), 'request_count': request_count, 'found_code': found_code, 'stopped_early': found_code != 'NA', 'fatal_error': ctx.normalize_text(fatal_error) or None, 'cooldowns_used': cooldown_tracker.cooldowns_used, 'final_concurrency': current_concurrency, 'method': resolution_method, 'direct_read_attempted': direct_read_attempted, 'direct_read_status': direct_read_status})
     if fatal_error is not None:
         raise fatal_error
     text = 'Total time: {:.2f}s\nTotal request: {}/{}{}\nCode: {}\n'.format(elapsed, request_count, ctx.NUMBER_CODE_LIMIT, ' (Stopped early)' if found_code != 'NA' else '', found_code)

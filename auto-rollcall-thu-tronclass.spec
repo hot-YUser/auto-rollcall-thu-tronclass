@@ -21,7 +21,7 @@ def safe_collect_submodules(package_name):
 # config.yaml next to itself on first run, and runtime folders such as state/,
 # log/, cookies/, tests/, and external reference projects must never be bundled.
 # Keep HIDDEN_IMPORTS in sync with `python -m troTHU.tron package-check --json`;
-# frozen builds require the diagnostic-capture and connection-probe modules.
+# frozen builds require lazy connection-probe, radar, and teacher helper modules.
 DATAS = []
 
 HIDDEN_IMPORTS = sorted(
@@ -50,6 +50,7 @@ HIDDEN_IMPORTS = sorted(
             "troTHU.cli_qr",
             "troTHU.cli_research",
             "troTHU.cli_system",
+            "troTHU.cli_teacher",
             "troTHU.clipboard_qr",
             "troTHU.config_runtime",
             "troTHU.config_editor",
@@ -59,6 +60,7 @@ HIDDEN_IMPORTS = sorted(
             "troTHU.debug_capture",
             "troTHU.discord_adapter",
             "troTHU.discord_gateway",
+            "troTHU.global_radar_solver",
             "troTHU.local_scanner",
             "troTHU.line_adapter",
             "troTHU.input_safety",
@@ -75,8 +77,6 @@ HIDDEN_IMPORTS = sorted(
             "troTHU.provider_fixture_review",
             "troTHU.provider_verification",
             "troTHU.providers",
-            "troTHU.qr_data_probe",
-            "troTHU.qr_info_capture",
             "troTHU.qr_rollcall",
             "troTHU.qr_runtime",
             "troTHU.radar_rollcall",
@@ -88,8 +88,6 @@ HIDDEN_IMPORTS = sorted(
             "troTHU.research_mode",
             "troTHU.research_sandbox",
             "troTHU.release_checklist",
-            "troTHU.realtime_capture",
-            "troTHU.rollcall_capture",
             "troTHU.rollcall_progress",
             "troTHU.rollcall_engine",
             "troTHU.rollcall_models",
@@ -100,6 +98,7 @@ HIDDEN_IMPORTS = sorted(
             "troTHU.group_runtime",
             "troTHU.status_reports",
             "troTHU.telegram_adapter",
+            "troTHU.teacher_rollcall",
             "troTHU.tron_http",
             "troTHU.ux_tools",
             "troTHU.webview_sync",

@@ -130,7 +130,6 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
                 with (
                     patch.object(tron, "mes", mes_mock),
                     patch.object(tron, "log_print"),
-                    patch.object(tron, "run_qr_data_probe_for_rollcall", AsyncMock(return_value=False)),
                     patch.object(tron, "try_clipboard_qr_autosubmit", AsyncMock(return_value=False)),
                 ):
                     first = await tron.check_rollcall(session, 1)
@@ -155,16 +154,9 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
             [entry["event"] for entry in entries].count("rollcall_poll"),
             2,
         )
-        self.assertEqual(
-            [entry["event"] for entry in entries].count("qr_info_capture"),
-            1,
-        )
-        qr_capture_entry = next(entry for entry in entries if entry["event"] == "qr_info_capture")
-        self.assertEqual(qr_capture_entry["status"], "ok")
-        self.assertIn("rollcall_capture", qr_capture_entry["output_dir"])
-        self.assertTrue(Path(qr_capture_entry["events_path"]).exists())
 
     async def test_radar_flow_uses_lite_beacon_payload_and_safe_diagnostics(self) -> None:
+        tron.CONFIG["radar"]["strategy"] = "legacy_thu"
         probe_plan = tron.build_probe_plan(tron.DEFAULT_CONFIG["radar"]["boundary_points"])
         first_probe = probe_plan.frame.to_geo(probe_plan.probes[0])
         self.fake_server.set_radar_target(first_probe.lat, first_probe.lon, success_radius_meters=3.0)
@@ -207,6 +199,7 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn(payload["radarSignal"], json.dumps(attempt_entry, ensure_ascii=False))
 
     async def test_radar_lite_rate_limit_returns_safe_failure_without_submit(self) -> None:
+        tron.CONFIG["radar"]["strategy"] = "legacy_thu"
         self.fake_server.queue_response("radar_lite", status=429, text="limited")
 
         async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
@@ -221,6 +214,7 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.fake_server.radar_answers, [])
 
     async def test_radar_answer_session_expired_raises_unauthorized(self) -> None:
+        tron.CONFIG["radar"]["strategy"] = "legacy_thu"
         self.fake_server.queue_response("radar", status=401, text="unauthorized")
 
         async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:

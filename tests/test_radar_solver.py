@@ -1,3 +1,4 @@
+import itertools
 import math
 import unittest
 
@@ -14,6 +15,7 @@ from troTHU.radar_solver import (
     point_in_polygon,
     polygon_area,
     solve_position,
+    unbounded_grid_offsets,
 )
 
 
@@ -68,7 +70,7 @@ class RadarSolverTest(unittest.TestCase):
 
             self.assertLess(distance(target, solution.point), 1.0)
 
-    def test_final_candidates_include_precision_and_grid_offsets(self) -> None:
+    def test_final_candidates_include_grid_offsets(self) -> None:
         plan = build_probe_plan(DEFAULT_BOUNDARY_POINTS, allow_outside=True, outside_scale=1.6)
         estimate = plan.frame.to_local(GeoPoint(24.1795, 120.604))
 
@@ -80,16 +82,7 @@ class RadarSolverTest(unittest.TestCase):
             grid_radius_meters=20.0,
         )
 
-        def has_candidate(lat: float, lon: float) -> bool:
-            return any(
-                abs(candidate.lat - lat) < 1e-10 and abs(candidate.lon - lon) < 1e-10
-                for candidate in candidates
-            )
-
         self.assertGreaterEqual(len(candidates), 81)
-        self.assertTrue(has_candidate(round(candidates[0].lat, 14), round(candidates[0].lon, 14)))
-        self.assertTrue(has_candidate(round(candidates[0].lat, 8), round(candidates[0].lon, 8)))
-        self.assertTrue(has_candidate(round(candidates[0].lat, 3), round(candidates[0].lon, 3)))
         offsets = set()
         for candidate in candidates:
             local = plan.frame.to_local(candidate)
@@ -108,7 +101,6 @@ class RadarSolverTest(unittest.TestCase):
             plan.frame,
             estimate,
             max_candidates=25,
-            precisions=(),
             grid_step_meters=5.0,
             grid_radius_meters=10.0,
         )
@@ -124,6 +116,31 @@ class RadarSolverTest(unittest.TestCase):
             for north in range(-10, 11, 5)
         }
         self.assertEqual(offsets, expected_offsets)
+
+    def test_unbounded_grid_offsets_start_at_center_then_nearest_100m_ring(self) -> None:
+        offsets = list(itertools.islice(unbounded_grid_offsets(100.0), 9))
+
+        self.assertEqual(
+            offsets,
+            [
+                (0.0, 0.0, 0),
+                (100.0, 0.0, 1),
+                (0.0, 100.0, 1),
+                (-100.0, 0.0, 1),
+                (0.0, -100.0, 1),
+                (100.0, 100.0, 2),
+                (-100.0, 100.0, 2),
+                (-100.0, -100.0, 2),
+                (100.0, -100.0, 2),
+            ],
+        )
+
+    def test_unbounded_grid_offsets_continue_beyond_any_fixed_radius(self) -> None:
+        offsets = list(itertools.islice(unbounded_grid_offsets(100.0), 80))
+        distances = [east * east + north * north for east, north, _ring in offsets]
+
+        self.assertEqual(distances, sorted(distances))
+        self.assertGreaterEqual(max(abs(east) for east, _north, _ring in offsets), 400.0)
 
 
 if __name__ == "__main__":

@@ -36,6 +36,10 @@ class FakeTronServer:
         self.student_rollcalls_leaks_code = True
         self.student_rollcalls_status = "in_progress"
         self.student_rollcalls_end_time = "2026-05-24T23:59:00+08:00"
+        self.teacher_rollcalls: List[Dict[str, Any]] = []
+        self.teacher_rollcall_starts: List[Dict[str, Any]] = []
+        self.teacher_rollcall_stops: List[Dict[str, Any]] = []
+        self.next_teacher_rollcall_id = 9000
         self.radar_lite_payload: Dict[str, Any] = {
             "use_beacon": False,
             "beacon_nonce": "",
@@ -45,6 +49,8 @@ class FakeTronServer:
         self.radar_target: Optional[Dict[str, float]] = None
         self.radar_success_radius_meters = 5.0
         self.radar_payload_field_names: List[List[str]] = []
+        self.radar_empty_answer_accepted = False
+        self.radar_empty_answer_marks_present = True
         self.runner = None
         self.site = None
         self.base_url = ""
@@ -182,6 +188,11 @@ class FakeTronServer:
         )
         return 6371000.0 * 2.0 * math.atan2(math.sqrt(haversine), math.sqrt(1.0 - haversine))
 
+    def _mark_rollcall_present(self, rollcall_id: str) -> None:
+        for rollcall in self.rollcalls:
+            if str(rollcall.get("rollcall_id") or rollcall.get("id")) == str(rollcall_id):
+                rollcall["status"] = "on_call_fine"
+
     async def login_page(self, _request):
         scripted = self._script_response("login_page")
         if scripted is not None:
@@ -282,6 +293,19 @@ class FakeTronServer:
         scripted = self._script_response("radar")
         if scripted is not None:
             return scripted
+        if "latitude" not in body:
+            if self.radar_empty_answer_accepted:
+                if self.radar_empty_answer_marks_present:
+                    self._mark_rollcall_present(request.match_info["rollcall_id"])
+                return web.json_response({"success": True})
+            return web.json_response(
+                {
+                    "error_code": "radar_out_of_rollcall_scope",
+                    "message": "out of scope",
+                    "distance": self.radar_distance,
+                },
+                status=400,
+            )
         distance = self._radar_distance_from_target(body)
         if self.radar_success or (
             distance is not None and distance <= self.radar_success_radius_meters
@@ -337,6 +361,79 @@ class FakeTronServer:
             return scripted
         return web.json_response({"answers": [{"student_id": 1, "updated_at": "2026-05-25T02:34:18Z"}], "last_timestamp": 0})
 
+    def _teacher_rollcall(self, rollcall_id: str) -> Optional[Dict[str, Any]]:
+        for rollcall in self.teacher_rollcalls:
+            if str(rollcall.get("id")) == str(rollcall_id):
+                return rollcall
+        return None
+
+    def _rollcall_source(self, payload: Dict[str, Any]) -> str:
+        if payload.get("is_number"):
+            return "number"
+        if payload.get("is_radar"):
+            return "radar"
+        if payload.get("type") == "qr_rollcall":
+            return "qr"
+        if payload.get("type") == "self_registration":
+            return "self_registration"
+        return "manual"
+
+    async def create_course_rollcall_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("create_course_rollcall")
+        if scripted is not None:
+            return scripted
+        body = await request.json()
+        self.next_teacher_rollcall_id += 1
+        rollcall = dict(body)
+        rollcall.setdefault("status", "in_progress")
+        rollcall["id"] = self.next_teacher_rollcall_id
+        rollcall["course_id"] = request.match_info["course_id"]
+        rollcall["source"] = self._rollcall_source(rollcall)
+        self.teacher_rollcalls.append(rollcall)
+        return web.json_response(rollcall, status=201)
+
+    async def start_rollcall_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("start_teacher_rollcall")
+        if scripted is not None:
+            return scripted
+        body: Dict[str, Any] = {}
+        if request.can_read_body:
+            try:
+                body = await request.json()
+            except json.JSONDecodeError:
+                body = {}
+        rollcall_id = request.match_info["rollcall_id"]
+        rollcall = self._teacher_rollcall(rollcall_id)
+        if rollcall is None:
+            return web.Response(status=404, text="not found")
+        self.teacher_rollcall_starts.append({"rollcall_id": rollcall_id, "body": body})
+        rollcall["status"] = "in_progress"
+        if body:
+            rollcall["start_payload"] = body
+        return web.json_response(rollcall)
+
+    async def stop_rollcall_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        endpoint = request.match_info.get("stop_endpoint", "")
+        scripted = self._script_response(endpoint)
+        if scripted is not None:
+            return scripted
+        rollcall_id = request.match_info["rollcall_id"]
+        rollcall = self._teacher_rollcall(rollcall_id)
+        self.teacher_rollcall_stops.append({"rollcall_id": rollcall_id, "endpoint": endpoint})
+        if rollcall is None:
+            return web.Response(status=404, text="not found")
+        rollcall["status"] = "finished"
+        return web.json_response(rollcall)
+
     async def org_settings_api(self, request):
         scripted = self._script_response("org_settings")
         if scripted is not None:
@@ -375,10 +472,13 @@ class FakeTronServer:
         app.router.add_get("/api/radar/rollcalls", self.rollcalls_api)
         app.router.add_get("/api/current-semester-info", self.current_semester_api)
         app.router.add_get("/api/my-courses", self.courses_api)
+        app.router.add_post("/api/course/{course_id}/rollcall", self.create_course_rollcall_api)
         app.router.add_put("/api/rollcall/{rollcall_id}/answer_number_rollcall", self.answer_number)
         app.router.add_get("/api/rollcall/{rollcall_id}/lite", self.radar_lite)
         app.router.add_put("/api/rollcall/{rollcall_id}/answer", self.answer_radar)
         app.router.add_put("/api/rollcall/{rollcall_id}/answer_qr_rollcall", self.answer_qr)
+        app.router.add_post("/api/rollcall/{rollcall_id}/start-rollcall", self.start_rollcall_api)
+        app.router.add_put("/api/rollcall/{rollcall_id}/{stop_endpoint}", self.stop_rollcall_api)
         app.router.add_get("/api/rollcall/{rollcall_id}/student_rollcalls", self.student_rollcalls_api)
         app.router.add_get("/api/rollcall/{rollcall_id}/answers", self.rollcall_answers_api)
         app.router.add_get("/api/orgs/{org_id}/org-settings", self.org_settings_api)

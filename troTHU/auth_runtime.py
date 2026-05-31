@@ -109,6 +109,10 @@ BROWSER_ASSIST_AUTH_FLOWS = {
     'tku_sso_browser',
 }
 
+API_VALIDATED_AUTH_FLOWS = {
+    'public_cloud_email',
+}
+
 
 def provider_requires_manual_cookie_login() -> bool:
     try:
@@ -126,6 +130,15 @@ def provider_prefers_browser_assisted_login() -> bool:
         provider = {}
     auth_flow = ctx.normalize_text(provider.get('auth_flow') if isinstance(provider, dict) else '').lower()
     return auth_flow in BROWSER_ASSIST_AUTH_FLOWS
+
+
+def provider_requires_api_session_validation() -> bool:
+    try:
+        provider = ctx.get_active_provider_config()
+    except Exception:
+        provider = {}
+    auth_flow = ctx.normalize_text(provider.get('auth_flow') if isinstance(provider, dict) else '').lower()
+    return auth_flow in API_VALIDATED_AUTH_FLOWS or ctx.provider_prefers_browser_assisted_login()
 
 
 def get_browser_assisted_login_config() -> ctx.Dict[str, ctx.Any]:
@@ -529,18 +542,40 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
                 ctx.log_print('登入流程已完成，但未取得有效 session。')
                 ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='missing_session', credential_source=credential_source, user=user, final_url=outcome.final_url)
                 return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
-            if ctx.provider_prefers_browser_assisted_login():
+            if ctx.provider_requires_api_session_validation():
                 try:
                     await ctx.validate_login_api_session(client)
                 except (ctx.TronHttpError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError, ctx.ssl.SSLError) as exc:
-                    return await ctx.fallback_to_browser_assisted_login(
-                        session,
-                        user=user,
-                        passwd=passwd,
-                        credential_source=credential_source,
-                        reason='TKU fast SSO session failed API validation; trying browser-assisted login.',
+                    if ctx.should_try_browser_assisted_login():
+                        return await ctx.fallback_to_browser_assisted_login(
+                            session,
+                            user=user,
+                            passwd=passwd,
+                            credential_source=credential_source,
+                            reason='Login session failed API validation; trying browser-assisted login.',
+                            error=exc,
+                        )
+                    try:
+                        session.cookie_jar.clear()
+                    except Exception:
+                        pass
+                    ctx.log(
+                        event='login_failure',
+                        status='missing_session',
+                        url=outcome.final_url,
+                        message='登入流程完成，但 API session 驗證失敗。',
                         error=exc,
+                        extra={'credential_source': credential_source, 'user': user},
                     )
+                    ctx.log_print('登入流程已完成，但 API session 驗證失敗；TronClass 可能需要瀏覽器登入或登入流程已變更。')
+                    ctx.LAST_LOGIN_RESULT = ctx.LoginResult(
+                        status='missing_session',
+                        credential_source=credential_source,
+                        user=user,
+                        final_url=outcome.final_url,
+                        error=ctx.normalize_text(exc),
+                    )
+                    return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
             ctx.CONFIG['account']['user'] = user
             ctx.log(event='login_success', status='success', url=outcome.final_url, message='登入成功。', extra={'credential_source': credential_source, 'user': user})
             ctx.log_print('登入成功！綁定帳號：{}'.format(user))

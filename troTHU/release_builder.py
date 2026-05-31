@@ -22,10 +22,10 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Sequence
 
 try:  # pragma: no cover - script execution fallback
-    from troTHU.package_diagnostics import PROJECT_NAME, PROJECT_VERSION, SPEC_NAME
+    from troTHU.package_diagnostics import PROJECT_NAME, PROJECT_RELEASE_LABEL, PROJECT_VERSION, SPEC_NAME
     from troTHU.release_checklist import EXPECTED_WINDOWS_ZIP, validate_release_artifact
 except ImportError:  # pragma: no cover
-    from package_diagnostics import PROJECT_NAME, PROJECT_VERSION, SPEC_NAME
+    from package_diagnostics import PROJECT_NAME, PROJECT_RELEASE_LABEL, PROJECT_VERSION, SPEC_NAME
     from release_checklist import EXPECTED_WINDOWS_ZIP, validate_release_artifact
 
 
@@ -54,7 +54,7 @@ SENSITIVE_WORDS = (
     "raw response",
     "payload",
 )
-ARTIFACT_ROOT = "THU_Auto_Rollcall-v{}-windows-x64".format(PROJECT_VERSION)
+ARTIFACT_ROOT = "THU_Auto_Rollcall-v{}-windows-x64".format(PROJECT_RELEASE_LABEL)
 LATEST_BUILD_REPORT = Path("state") / "release" / "latest_release_build.json"
 
 
@@ -219,7 +219,7 @@ def _iter_collect_files(collect_dir: Path) -> List[Path]:
 def _release_notes_text() -> str:
     return "\n".join(
         [
-            "THU Auto Rollcall v{} 預發布說明".format(PROJECT_VERSION),
+            "THU Auto Rollcall v{} 預發布說明".format(PROJECT_RELEASE_LABEL),
             "",
             "此 Windows 壓縮檔由 `python -m troTHU.tron release-build --execute` 產生。",
             "內容包含 PyInstaller collect output、README.md 與本預發布說明。",

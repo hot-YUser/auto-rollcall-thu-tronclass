@@ -223,8 +223,69 @@ class TronHelpersTest(unittest.TestCase):
             tron.DEFAULT_CONFIG["radar"]["boundary_points"],
         )
         self.assertEqual(normalized["radar"]["max_distance_probes"], 4)
-        self.assertEqual(normalized["radar"]["final_precision_min"], 3)
-        self.assertEqual(normalized["radar"]["final_precision_max"], 14)
+        self.assertNotIn("final_precision_min", normalized["radar"])
+        self.assertNotIn("final_precision_max", normalized["radar"])
+        self.assertEqual(normalized["radar"]["strategy"], "empty_answer")
+        self.assertTrue(normalized["radar"]["empty_answer_fallback_enabled"])
+        self.assertTrue(normalized["radar"]["legacy_fallback_enabled"])
+        self.assertEqual(normalized["radar"]["global"]["max_queries"], 120)
+        self.assertEqual(normalized["radar"]["global"]["request_retries"], tron.NUMBER_REQUEST_RETRIES)
+        self.assertEqual(normalized["radar"]["global"]["standard_query_count"], 72)
+        self.assertEqual(normalized["radar"]["global"]["supplement_query_count"], 36)
+        self.assertTrue(normalized["radar"]["global"]["present_hint_verify_enabled"])
+        self.assertTrue(normalized["radar"]["global"]["adaptive_estimate_enabled"])
+
+    def test_normalize_config_drops_removed_radar_precision_settings(self) -> None:
+        normalized = tron.normalize_config(
+            {
+                "config": {},
+                "radar": {
+                    "final_precision_min": 1,
+                    "final_precision_max": 12,
+                    "final_grid_step_meters": 100,
+                },
+            }
+        )
+
+        self.assertNotIn("final_precision_min", normalized["radar"])
+        self.assertNotIn("final_precision_max", normalized["radar"])
+        self.assertEqual(normalized["radar"]["final_grid_step_meters"], 100.0)
+
+    def test_normalize_config_accepts_legacy_radar_strategy_alias_and_clamps_global_config(self) -> None:
+        normalized = tron.normalize_config(
+            {
+                "config": {},
+                "radar": {
+                    "strategy": "legacy",
+                    "legacy_fallback_enabled": "false",
+                    "global": {
+                        "max_queries": 9999,
+                        "request_retries": 999,
+                        "cooldown_seconds": 0,
+                        "max_cooldowns": 999,
+                        "transient_failure_ratio": 2,
+                        "anchor_count": 12,
+                        "bearing_count": 12,
+                        "standard_radii_meters": "10000,3000,1000,300,100",
+                        "supplement_radii_meters": "300,100,30",
+                        "present_hint_verify_enabled": "false",
+                        "adaptive_estimate_enabled": "off",
+                    },
+                },
+            }
+        )
+
+        self.assertEqual(normalized["radar"]["strategy"], "legacy_thu")
+        self.assertFalse(normalized["radar"]["legacy_fallback_enabled"])
+        self.assertEqual(normalized["radar"]["global"]["max_queries"], 500)
+        self.assertEqual(normalized["radar"]["global"]["request_retries"], 10)
+        self.assertEqual(normalized["radar"]["global"]["cooldown_seconds"], 0.1)
+        self.assertEqual(normalized["radar"]["global"]["max_cooldowns"], 20)
+        self.assertEqual(normalized["radar"]["global"]["transient_failure_ratio"], 1.0)
+        self.assertEqual(normalized["radar"]["global"]["standard_query_count"], 72)
+        self.assertEqual(normalized["radar"]["global"]["supplement_query_count"], 36)
+        self.assertFalse(normalized["radar"]["global"]["present_hint_verify_enabled"])
+        self.assertFalse(normalized["radar"]["global"]["adaptive_estimate_enabled"])
 
     def test_get_verify_ssl_reads_current_config_value(self) -> None:
         tron.CONFIG["config"]["verify_ssl"] = False

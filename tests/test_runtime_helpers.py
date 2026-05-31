@@ -57,6 +57,52 @@ class RuntimeHelpersTest(unittest.TestCase):
         self.assertEqual(runtime_helpers.coerce_positive_float("0", 1.5, minimum=0.25), 0.25)
         self.assertEqual(runtime_helpers.coerce_positive_float("bad", 1.5, minimum=0.25), 1.5)
 
+    def test_transient_cooldown_tracker_matches_number_batch_logic(self) -> None:
+        policy = runtime_helpers.TransientCooldownPolicy.from_mapping(
+            {
+                "cooldown_seconds": 0.1,
+                "max_cooldowns": 1,
+                "transient_failure_threshold": 2,
+                "transient_failure_ratio": 0.5,
+            },
+            default_cooldown_seconds=5.0,
+            default_max_cooldowns=3,
+            default_transient_failure_threshold=20,
+            default_transient_failure_ratio=0.35,
+        )
+        tracker = runtime_helpers.TransientCooldownTracker(policy)
+
+        quiet = tracker.record_batch(1, 3)
+        first = tracker.record_batch(2, 4)
+        exhausted = tracker.record_batch(2, 4)
+
+        self.assertFalse(quiet.should_cooldown)
+        self.assertTrue(first.should_cooldown)
+        self.assertFalse(first.exhausted)
+        self.assertEqual(first.cooldowns_used, 1)
+        self.assertTrue(exhausted.should_cooldown)
+        self.assertTrue(exhausted.exhausted)
+
+    def test_transient_cooldown_tracker_accumulates_sequential_attempts(self) -> None:
+        policy = runtime_helpers.TransientCooldownPolicy.from_mapping(
+            {"max_cooldowns": 2, "transient_failure_threshold": 3, "transient_failure_ratio": 0.5},
+            default_cooldown_seconds=5.0,
+            default_max_cooldowns=3,
+            default_transient_failure_threshold=20,
+            default_transient_failure_ratio=0.35,
+        )
+        tracker = runtime_helpers.TransientCooldownTracker(policy)
+
+        self.assertFalse(tracker.record_attempt(True).should_cooldown)
+        self.assertFalse(tracker.record_attempt(True).should_cooldown)
+        cooldown = tracker.record_attempt(True)
+        tracker.record_attempt(False)
+
+        self.assertTrue(cooldown.should_cooldown)
+        self.assertFalse(cooldown.exhausted)
+        self.assertEqual(cooldown.transient_count, 3)
+        self.assertFalse(tracker.record_attempt(True).should_cooldown)
+
     def test_payload_excerpt_truncates_and_serializes(self) -> None:
         self.assertIsNone(runtime_helpers.make_payload_excerpt(None))
         self.assertEqual(runtime_helpers.make_payload_excerpt({"a": 1}), json.dumps({"a": 1}, ensure_ascii=False))
@@ -149,6 +195,43 @@ class RuntimeHelpersTest(unittest.TestCase):
         self.assertEqual(errors_list.distance, 18.75)
         self.assertEqual(errors_list.message, "outside from list")
 
+    def test_radar_answer_parser_marks_present_hint_without_success(self) -> None:
+        scoped_present = runtime_helpers.parse_radar_answer_result(
+            400,
+            json.dumps(
+                {
+                    "error_code": "radar_out_of_rollcall_scope",
+                    "distance": 42.5,
+                    "status_name": "on_call_fine",
+                }
+            ),
+        )
+        nested_present = runtime_helpers.parse_radar_answer_result(
+            400,
+            json.dumps(
+                {
+                    "data": {
+                        "distanceMeters": "18.0",
+                        "error": {"code": "radar_out_of_rollcall_scope"},
+                        "student_rollcalls": [
+                            {"rollcall_status": "on_call"},
+                            {"rollcall_status": "on_call_fine"},
+                        ],
+                    }
+                }
+            ),
+        )
+
+        self.assertFalse(scoped_present.success)
+        self.assertTrue(scoped_present.is_scope_distance)
+        self.assertEqual(scoped_present.distance, 42.5)
+        self.assertTrue(scoped_present.present_hint)
+        self.assertEqual(scoped_present.present_status, "on_call_fine")
+        self.assertFalse(nested_present.success)
+        self.assertTrue(nested_present.is_scope_distance)
+        self.assertTrue(nested_present.present_hint)
+        self.assertEqual(nested_present.present_status, "on_call_fine")
+
     def test_number_display_helpers_match_expected_shape(self) -> None:
         banner = runtime_helpers.format_found_code_banner("0427")
         self.assertIn("Code: 0427", banner)
@@ -159,6 +242,22 @@ class RuntimeHelpersTest(unittest.TestCase):
         self.assertIn("數字點名 #77", progress)
         self.assertIn("已送出 123/10000", progress)
         self.assertIn("最近代碼 0123", progress)
+
+    def test_radar_success_banner_matches_expected_shape(self) -> None:
+        banner = runtime_helpers.format_radar_success_banner(
+            30017,
+            "global_wgs84",
+            "estimate-standard-ring-1",
+        )
+        fallback_banner = runtime_helpers.format_radar_success_banner("", "", "")
+
+        self.assertIn("雷達點名成功！", banner)
+        self.assertIn("Rollcall: 30017", banner)
+        self.assertIn("Method: global_wgs84", banner)
+        self.assertIn("Hit: estimate-standard-ring-1", banner)
+        self.assertIn("Rollcall: unknown", fallback_banner)
+        self.assertIn("Method: radar", fallback_banner)
+        self.assertIn("Hit: success", fallback_banner)
 
     def test_radar_boundary_points_normalizes_or_falls_back(self) -> None:
         points = runtime_helpers.normalize_radar_boundary_points(

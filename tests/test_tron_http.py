@@ -958,31 +958,6 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result, "on_call_fine")
 
-    async def test_check_rollcall_keeps_capturing_after_checkin_until_closed(self) -> None:
-        # After check-in the rollcall flips to on_call_fine but is still OPEN;
-        # full capture must keep running until the id leaves the list.
-        session = MagicMock()
-        client = MagicMock()
-        client.fetch_rollcalls = AsyncMock(
-            return_value=tron_http.RollcallsResult(
-                url=tron_http.ROLLCALLS_URL,
-                status_code=200,
-                payload={"rollcalls": [{"status": "on_call_fine", "rollcall_id": 555}]},
-            )
-        )
-        capture = AsyncMock()
-        with (
-            patch.object(tron, "TronHttpClient", return_value=client),
-            patch.object(tron, "log", return_value=True),
-            patch.object(tron, "run_full_rollcall_capture", capture),
-        ):
-            result = await tron.check_rollcall(session, 7)
-
-        self.assertEqual(result, "on_call_fine")
-        capture.assert_awaited_once()
-        captured_rollcall = capture.await_args.args[2]
-        self.assertEqual(captured_rollcall.get("rollcall_id"), 555)
-
     async def test_check_rollcall_invokes_number_for_number_rollcall(self) -> None:
         session = MagicMock()
         client = MagicMock()
@@ -1233,7 +1208,6 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
             patch.object(tron, "log", return_value=True),
             patch.object(tron, "mes", mes_mock),
             patch.object(tron, "log_print") as log_print,
-            patch.object(tron, "run_qr_data_probe_for_rollcall", AsyncMock(return_value=False)),
             patch.object(tron, "try_clipboard_qr_autosubmit", AsyncMock(return_value=False)),
         ):
             first = await tron.check_rollcall(session, 1)

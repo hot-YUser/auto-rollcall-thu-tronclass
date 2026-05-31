@@ -346,6 +346,44 @@ class TronHttpClient:
             return {}
         return {"ssl": self.request_ssl}
 
+    def api_url(self, path: str) -> str:
+        return "{}{}".format(self.endpoints.base_url.rstrip("/"), path)
+
+    async def request_json(
+        self,
+        method: str,
+        url: str,
+        *,
+        json_payload: Any = None,
+        params: Optional[Dict[str, Any]] = None,
+        expected_status: tuple[int, ...] = (200,),
+    ) -> Any:
+        kwargs = self.request_kwargs()
+        if json_payload is not None:
+            kwargs["json"] = json_payload
+        if params is not None:
+            kwargs["params"] = params
+        request = getattr(self.session, method.lower())
+        async with request(url, **kwargs) as resp:
+            response_url = str(resp.url)
+            status_code = resp.status
+            if status_code == 401 or "login" in response_url.lower():
+                raise UnauthorizedError("Cookie 已過期或導向登入頁。")
+            if status_code not in expected_status:
+                body = await resp.text()
+                raise UnexpectedResponseError("HTTP {}: {}".format(status_code, body[:200]))
+            if status_code == 204:
+                return {}
+            try:
+                return await resp.json(encoding="utf-8")
+            except (aiohttp.ContentTypeError, ValueError):
+                body = await resp.text()
+                if not body.strip():
+                    return {}
+                raise UnexpectedResponseError(
+                    "Unexpected response body: {}".format(body[:200])
+                )
+
     def is_tku_fast_sso(self) -> bool:
         host = urlparse(self.endpoints.base_url).hostname or ""
         login_host = urlparse(self.endpoints.login_url).hostname or ""
@@ -541,6 +579,42 @@ class TronHttpClient:
 
         user_id = runtime.get("USER", {}).get("id")
         return user_id if isinstance(user_id, int) else None
+
+    async def create_teacher_rollcall(self, course_id: Any, payload: Dict[str, Any]) -> Any:
+        course_id_text = str(course_id).strip()
+        return await self.request_json(
+            "POST",
+            self.api_url("/api/course/{}/rollcall".format(course_id_text)),
+            json_payload=payload,
+            expected_status=(200, 201),
+        )
+
+    async def start_teacher_rollcall(self, rollcall_id: Any, payload: Optional[Dict[str, Any]] = None) -> Any:
+        rollcall_id_text = str(rollcall_id).strip()
+        return await self.request_json(
+            "POST",
+            self.api_url("/api/rollcall/{}/start-rollcall".format(rollcall_id_text)),
+            json_payload=payload,
+            expected_status=(200, 204),
+        )
+
+    async def stop_teacher_rollcall(
+        self,
+        rollcall_id: Any,
+        *,
+        rollcall: Any = None,
+        rollcall_type: Any = "manual",
+    ) -> Any:
+        try:
+            from troTHU.teacher_rollcall import teacher_stop_path
+        except ImportError:  # pragma: no cover - direct script fallback
+            from teacher_rollcall import teacher_stop_path  # type: ignore
+
+        return await self.request_json(
+            "PUT",
+            self.api_url(teacher_stop_path(rollcall_id, rollcall, rollcall_type)),
+            expected_status=(200, 204),
+        )
 
     async def fetch_rollcalls(self) -> RollcallsResult:
         async with self.session.get(self.endpoints.rollcalls_url, **self.request_kwargs()) as resp:
