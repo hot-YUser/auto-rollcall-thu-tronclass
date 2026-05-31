@@ -5,9 +5,9 @@
 
 > 請只在你有權限、且符合學校與課程規範的情境下使用。不要分享帳密、token、cookie、`state/`、`log/`、真實 QR payload 或未遮蔽的 API 回應。不要把填好帳密的 `config.yaml` 傳給別人。
 
-## 版本狀態：v1.2.1-alpha.2
+## 版本狀態：v1.2.1-alpha.3
 
-`v1.2.1-alpha.2` 聚焦雷達點名與診斷擷取兩項調整：(1) 雷達點名改以「空答案」(`empty_answer`) 為**預設簽到方式**——送出不含座標的空白 `{}` 答案，並在伺服器回 2xx 後查驗點名確實標記為已簽到（`on_call_fine`）才算成功；未確認則自動退回全球 WGS84 定位（`global_wgs84`），再退回舊 THU 校地幾何（`legacy_thu`）。此法已於真實課堂雷達點名實測成功。(2) 狀態變更 API audit capture **改回預設啟用**，仍會完整探測各端點，唯獨會造成簽到副作用的 `PUT /api/rollcall/{id}/answer` 空 `{}` 改為「只列管、不實際送出」（記為 `side_effect_blocklist`），雷達簽到一律由 empty_answer 流程負責，兩者不再衝突。其餘延續 alpha.1：number 點名越權直接讀碼（讀 `student_rollcalls` 的 `number_code` 單發提交，讀不到再退回暴力猜碼）、點名診斷擷取數字／雷達／QR 全程**未脫敏**寫入 gitignored `log/rollcall_capture/`（每輪輪詢、直到點名關閉前持續擷取，含已簽到後）。主要能力仍屬 alpha，**尚未經完整課堂環境長期驗收**；請把這版視為預發布版本，務必自行確認符合校規後再使用。
+`v1.2.1-alpha.3` 聚焦雷達點名成功率與成功提示：(1) 全球 WGS84 定位（`global_wgs84`）在標準／補充採樣每完成一圈時會先嘗試中途估計點，命中即可提前停止，並可用 `radar.global.adaptive_estimate_enabled` 關閉；(2) 若距離錯誤回應同時帶出 `on_call_fine`，會重新查驗 `/api/radar/rollcalls`，確認同一點名已簽到才停止，並可用 `radar.global.present_hint_verify_enabled` 關閉；(3) empty_answer、global_wgs84、legacy_thu 與最終棋盤格命中都會輸出一致的雷達成功醒目通知。其餘延續 alpha.2：雷達點名仍以「空答案」(`empty_answer`) 為預設簽到方式，失敗時再退回 global_wgs84 與 legacy_thu；狀態變更 API audit capture 預設啟用，但 `PUT /api/rollcall/{id}/answer` 空 `{}` 只列管、不實際送出；number 點名仍先讀 `student_rollcalls` 的 `number_code`，讀不到再退回暴力猜碼。點名診斷擷取數字／雷達／QR 全程**未脫敏**寫入 gitignored `log/rollcall_capture/`，可能含敏感值，請勿分享或提交版控。主要能力仍屬 alpha，**尚未經完整課堂環境長期驗收**；請把這版視為預發布版本，務必自行確認符合校規後再使用。
 
 目前重點：
 
@@ -71,7 +71,7 @@ python -m troTHU.tron validation local-smoke --json
 Release zip 名稱格式：
 
 ```text
-THU_Auto_Rollcall-v1.2.1-alpha.2-windows-x64.zip
+THU_Auto_Rollcall-v1.2.1-alpha.3-windows-x64.zip
 ```
 
 下載後請完整解壓縮，再在資料夾內執行 `auto-rollcall-thu-tronclass.exe`。不要直接在 zip 裡雙擊執行。第一次啟動會在 exe 同層建立或使用 `config.yaml`、`state/`、`log/`。
