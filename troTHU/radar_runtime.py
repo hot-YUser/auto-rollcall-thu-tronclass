@@ -98,6 +98,11 @@ def _radar_cooldown_policy(radar_config: ctx.Mapping[str, ctx.Any]) -> ctx.Trans
     )
 
 
+def _global_radar_bool(global_config: ctx.Mapping[str, ctx.Any], key: str) -> bool:
+    default = ctx.DEFAULT_CONFIG["radar"]["global"].get(key, True)
+    return ctx.coerce_bool(global_config.get(key, default), bool(default))
+
+
 def _rollcall_id_matches(rollcall: ctx.Any, rollcall_id: ctx.Any) -> bool:
     if not isinstance(rollcall, dict):
         return False
@@ -478,6 +483,8 @@ async def global_radar(
     solver_config = ctx.global_radar_solver_config_from_mapping(global_config)
     max_queries = int(global_config.get("max_queries", ctx.DEFAULT_CONFIG["radar"]["global"]["max_queries"]))
     request_retries = int(global_config.get("request_retries", ctx.NUMBER_REQUEST_RETRIES))
+    present_hint_verify_enabled = _global_radar_bool(global_config, "present_hint_verify_enabled")
+    adaptive_estimate_enabled = _global_radar_bool(global_config, "adaptive_estimate_enabled")
     cooldown_policy = _radar_cooldown_policy({"global": global_config})
     cooldown_tracker = ctx.TransientCooldownTracker(cooldown_policy)
     cooldown_seconds = cooldown_policy.cooldown_seconds
@@ -661,6 +668,27 @@ async def global_radar(
                             extra=diagnostic,
                         )
                         return ("success", result)
+                    if result.present_hint and present_hint_verify_enabled:
+                        try:
+                            marked_present = await _radar_marked_present(client, rollcall_id)
+                        except ctx.UnauthorizedError:
+                            raise
+                        except (ctx.UnexpectedResponseError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError) as exc:
+                            diagnostic["verify_error"] = str(exc)[:200]
+                            marked_present = False
+                        diagnostic["verified_present"] = bool(marked_present)
+                        if marked_present:
+                            found = True
+                            stop_event.set()
+                            ctx.log(
+                                event="radar_coordinate_attempt",
+                                status="verified_present",
+                                rollcall_id=rollcall_id,
+                                rollcall_type="radar",
+                                message="雷達點名回應顯示已簽到，重新查驗 on_call_fine 後停止。",
+                                extra=diagnostic,
+                            )
+                            return ("success", result)
                     if result.is_scope_distance:
                         ctx.log(
                             event="radar_coordinate_attempt",
@@ -735,7 +763,61 @@ async def global_radar(
                 await register_attempt_status(kind)
             return kind
 
-        async def submit_stage(points: ctx.Sequence[ctx.GeoPoint], prefix: str) -> bool:
+        async def try_estimate_point(label: str, status: str, message: str) -> bool:
+            nonlocal final_estimate
+            if stop_event.is_set() or request_count >= max_queries or len(observations) < 3:
+                return False
+            try:
+                final_estimate = ctx.solve_global_radar(
+                    observations,
+                    config=solver_config,
+                    initial=final_estimate.point if final_estimate else None,
+                )
+            except ctx.RadarGeometryError as exc:
+                ctx.log(
+                    event="global_radar_estimate",
+                    status="estimate_failed",
+                    rollcall_id=rollcall_id,
+                    rollcall_type="radar",
+                    message="全球雷達中途估計暫時無法求解，繼續採樣。",
+                    error=exc,
+                    extra={"estimate_label": label, "request_count": request_count},
+                )
+                return False
+            extra = _estimate_log_extra(final_estimate)
+            extra.update({"estimate_label": label, "request_count": request_count})
+            ctx.log(
+                event="global_radar_estimate",
+                status=status,
+                rollcall_id=rollcall_id,
+                rollcall_type="radar",
+                message=message,
+                extra=extra,
+            )
+            ctx.log_print(
+                "{}：{:.8f}, {:.8f}；RMSE {:.2f}m。".format(
+                    label,
+                    final_estimate.point.lat,
+                    final_estimate.point.lon,
+                    final_estimate.residual_rmse,
+                )
+            )
+            kind = await submit_point(final_estimate.point, label)
+            if kind == "success":
+                return True
+            if kind in {"fatal", "max_queries"}:
+                stop_event.set()
+            return False
+
+        async def submit_stage(
+            points: ctx.Sequence[ctx.GeoPoint],
+            prefix: str,
+            *,
+            adaptive_estimate_label_prefix: str = "",
+            adaptive_estimate_status: str = "",
+            adaptive_estimate_message: str = "",
+        ) -> bool:
+            ring_size = max(1, int(getattr(solver_config, "bearing_count", 12) or 12))
             for index, point in enumerate(points, start=1):
                 if stop_event.is_set() or request_count >= max_queries:
                     break
@@ -744,6 +826,20 @@ async def global_radar(
                     return True
                 if fatal_error is not None or kind in {"fatal", "max_queries"}:
                     break
+                if (
+                    adaptive_estimate_enabled
+                    and adaptive_estimate_label_prefix
+                    and index % ring_size == 0
+                    and not stop_event.is_set()
+                    and request_count < max_queries
+                ):
+                    ring_index = index // ring_size
+                    if await try_estimate_point(
+                        "{}-ring-{}".format(adaptive_estimate_label_prefix, ring_index),
+                        adaptive_estimate_status,
+                        adaptive_estimate_message,
+                    ):
+                        return True
             return False
 
         progress_task = ctx.asyncio.create_task(progress_reporter())
@@ -771,7 +867,13 @@ async def global_radar(
                         final_estimate.point.lon,
                     )
                 )
-                if await submit_stage(ctx.standard_sample_points(final_estimate.point, solver_config), "local-standard"):
+                if await submit_stage(
+                    ctx.standard_sample_points(final_estimate.point, solver_config),
+                    "local-standard",
+                    adaptive_estimate_label_prefix="estimate-standard",
+                    adaptive_estimate_status="standard_ring_estimate",
+                    adaptive_estimate_message="全球雷達標準採樣圈估計完成。",
+                ):
                     final_status = "success"
                     return True
             if fatal_error is None and len(observations) >= 3 and not stop_event.is_set():
@@ -819,7 +921,13 @@ async def global_radar(
                 needs_supplement = True
             if needs_supplement:
                 ctx.log_print("標準估計仍未命中，追加 36 點精修採樣...")
-                if await submit_stage(ctx.supplement_sample_points(final_estimate.point, solver_config), "local-supplement"):
+                if await submit_stage(
+                    ctx.supplement_sample_points(final_estimate.point, solver_config),
+                    "local-supplement",
+                    adaptive_estimate_label_prefix="estimate-supplement",
+                    adaptive_estimate_status="supplement_ring_estimate",
+                    adaptive_estimate_message="全球雷達補充採樣圈估計完成。",
+                ):
                     final_status = "success"
                     return True
                 if fatal_error is None and len(observations) >= 3 and not stop_event.is_set():

@@ -37,6 +37,8 @@ class RadarCoordinateResult:
     distance: float = -1.0
     error_code: str = ""
     message: str = ""
+    present_hint: bool = False
+    present_status: str = ""
 
     @property
     def has_distance(self) -> bool:
@@ -374,10 +376,45 @@ def _extract_radar_text(payload: Any, keys: Tuple[str, ...]) -> str:
     return ""
 
 
-def parse_radar_answer_result(status_code: int, body_text: str = "") -> RadarCoordinateResult:
-    if status_code == 200:
-        return RadarCoordinateResult(success=True, distance=0.0)
+def _iter_radar_status_values(payload: Any) -> List[Any]:
+    values: List[Any] = []
+    pending: List[Any] = [payload]
+    seen: set[int] = set()
+    status_keys = {
+        "status_name",
+        "statusName",
+        "status",
+        "rollcall_status",
+        "rollcallStatus",
+        "student_rollcall_status",
+        "studentRollcallStatus",
+    }
+    while pending:
+        current = pending.pop()
+        identity = id(current)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        if isinstance(current, dict):
+            for key, value in current.items():
+                if key in status_keys and not isinstance(value, (dict, list, tuple)):
+                    values.append(value)
+                elif isinstance(value, (dict, list, tuple)):
+                    pending.append(value)
+        elif isinstance(current, (list, tuple)):
+            pending.extend(current)
+    return values
 
+
+def _extract_radar_present_status(payload: Any) -> str:
+    for value in _iter_radar_status_values(payload):
+        status = normalize_text(value).lower()
+        if status == "on_call_fine":
+            return status
+    return ""
+
+
+def parse_radar_answer_result(status_code: int, body_text: str = "") -> RadarCoordinateResult:
     body = normalize_text(body_text)
     payload: Any = None
     if body:
@@ -387,6 +424,16 @@ def parse_radar_answer_result(status_code: int, body_text: str = "") -> RadarCoo
             payload = body
 
     distance = _extract_radar_distance(payload)
+    present_status = _extract_radar_present_status(payload)
+    present_hint = bool(present_status)
+    if status_code == 200:
+        return RadarCoordinateResult(
+            success=True,
+            distance=0.0,
+            present_hint=present_hint,
+            present_status=present_status,
+        )
+
     error_code = _extract_radar_text(
         payload,
         ("error_code", "errorCode", "code", "status", "message"),
@@ -417,6 +464,8 @@ def parse_radar_answer_result(status_code: int, body_text: str = "") -> RadarCoo
             distance=distance,
             error_code=error_code,
             message=message or error_code,
+            present_hint=present_hint,
+            present_status=present_status,
         )
 
     return RadarCoordinateResult(
@@ -424,6 +473,8 @@ def parse_radar_answer_result(status_code: int, body_text: str = "") -> RadarCoo
         distance=distance,
         error_code=error_code,
         message=message,
+        present_hint=present_hint,
+        present_status=present_status,
     )
 
 

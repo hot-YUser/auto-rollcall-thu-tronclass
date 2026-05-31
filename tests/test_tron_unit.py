@@ -232,6 +232,8 @@ class TronHelpersTest(unittest.TestCase):
         self.assertEqual(normalized["radar"]["global"]["request_retries"], tron.NUMBER_REQUEST_RETRIES)
         self.assertEqual(normalized["radar"]["global"]["standard_query_count"], 72)
         self.assertEqual(normalized["radar"]["global"]["supplement_query_count"], 36)
+        self.assertTrue(normalized["radar"]["global"]["present_hint_verify_enabled"])
+        self.assertTrue(normalized["radar"]["global"]["adaptive_estimate_enabled"])
 
     def test_normalize_config_drops_removed_radar_precision_settings(self) -> None:
         normalized = tron.normalize_config(
@@ -266,6 +268,8 @@ class TronHelpersTest(unittest.TestCase):
                         "bearing_count": 12,
                         "standard_radii_meters": "10000,3000,1000,300,100",
                         "supplement_radii_meters": "300,100,30",
+                        "present_hint_verify_enabled": "false",
+                        "adaptive_estimate_enabled": "off",
                     },
                 },
             }
@@ -280,6 +284,8 @@ class TronHelpersTest(unittest.TestCase):
         self.assertEqual(normalized["radar"]["global"]["transient_failure_ratio"], 1.0)
         self.assertEqual(normalized["radar"]["global"]["standard_query_count"], 72)
         self.assertEqual(normalized["radar"]["global"]["supplement_query_count"], 36)
+        self.assertFalse(normalized["radar"]["global"]["present_hint_verify_enabled"])
+        self.assertFalse(normalized["radar"]["global"]["adaptive_estimate_enabled"])
 
     def test_get_verify_ssl_reads_current_config_value(self) -> None:
         tron.CONFIG["config"]["verify_ssl"] = False

@@ -756,6 +756,8 @@ DEFAULT_CONFIG = {
             "supplement_radii_meters": [300.0, 100.0, 30.0],
             "standard_query_count": 72,
             "supplement_query_count": 36,
+            "present_hint_verify_enabled": True,
+            "adaptive_estimate_enabled": True,
             "target_uncertainty_95_meters": 35.0,
             "robust_f_scale_meters": 50.0,
             "measurement_sigma_meters": 0.289,

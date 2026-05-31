@@ -262,6 +262,101 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(summary["strategy"], "global_wgs84")
         self.assertLessEqual(summary["request_count"], 120)
 
+    async def test_global_radar_stops_after_verified_present_hint(self) -> None:
+        rollcall_id = 611
+        tron.CONFIG["radar"]["strategy"] = "global_wgs84"
+        self.fake_server.rollcalls = [
+            {"is_radar": True, "rollcall_id": rollcall_id, "status": "on_call_fine"}
+        ]
+        self.fake_server.queue_response(
+            "radar",
+            status=400,
+            json_data={
+                "error_code": "radar_out_of_rollcall_scope",
+                "distance": 1200.0,
+                "status_name": "on_call_fine",
+            },
+        )
+
+        temp_dir = make_workspace_temp_dir()
+        try:
+            tron.PATH = temp_dir
+            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                await self.login_session(session)
+                with (
+                    patch.object(tron, "mes", AsyncMock()),
+                    patch.object(tron, "log_print"),
+                ):
+                    success = await tron.radar(session, {"is_radar": True, "rollcall_id": rollcall_id})
+
+            log_path = self.current_daily_log_path(temp_dir)
+            entries = [
+                json.loads(line)
+                for line in log_path.read_text(encoding="utf-8").splitlines()
+            ]
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+        self.assertTrue(success)
+        self.assertEqual(len(self.fake_server.radar_answers), 1)
+        attempt = next(
+            entry
+            for entry in entries
+            if entry["event"] == "radar_coordinate_attempt"
+            and entry["status"] == "verified_present"
+        )
+        self.assertEqual(attempt["label"], "global-anchor-1")
+        self.assertTrue(attempt["present_hint"])
+        self.assertTrue(attempt["verified_present"])
+        summary = next(entry for entry in entries if entry["event"] == "global_radar_summary")
+        self.assertEqual(summary["status"], "success")
+        self.assertEqual(summary["request_count"], 1)
+
+    async def test_global_radar_adaptive_ring_estimate_can_hit_before_full_standard_scan(self) -> None:
+        tron.CONFIG["radar"]["strategy"] = "global_wgs84"
+        target = tron.GeoPoint(24.1795, 120.604)
+        self.fake_server.set_radar_target(target.lat, target.lon, success_radius_meters=70.0)
+
+        temp_dir = make_workspace_temp_dir()
+        try:
+            tron.PATH = temp_dir
+            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                await self.login_session(session)
+                with (
+                    patch.object(tron, "mes", AsyncMock()),
+                    patch.object(tron, "log_print"),
+                ):
+                    success = await tron.radar(session, {"is_radar": True, "rollcall_id": 612})
+
+            log_path = self.current_daily_log_path(temp_dir)
+            entries = [
+                json.loads(line)
+                for line in log_path.read_text(encoding="utf-8").splitlines()
+            ]
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+        self.assertTrue(success)
+        self.assertLess(len(self.fake_server.radar_answers), 73)
+        self.assertTrue(
+            any(
+                entry["event"] == "global_radar_estimate"
+                and entry["status"] == "standard_ring_estimate"
+                and entry["estimate_label"] == "estimate-standard-ring-1"
+                for entry in entries
+            )
+        )
+        attempt = next(
+            entry
+            for entry in entries
+            if entry["event"] == "radar_coordinate_attempt"
+            and entry["status"] == "success"
+        )
+        self.assertEqual(attempt["label"], "estimate-standard-ring-1")
+        summary = next(entry for entry in entries if entry["event"] == "global_radar_summary")
+        self.assertEqual(summary["status"], "success")
+        self.assertLess(summary["request_count"], 73)
+
     async def test_final_grid_retry_hits_nearest_100m_candidate(self) -> None:
         rollcall_id = 777
         center = tron.GeoPoint(24.1795, 120.604)

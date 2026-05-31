@@ -169,6 +169,10 @@ research:
   enabled: false
   allow_api_exploration: false
   allow_risky_probe: false
+radar:
+  global:
+    present_hint_verify_enabled: true
+    adaptive_estimate_enabled: true
 ```
 
 預設初始化會把密碼存到本機 `config.yaml`。若不想把密碼放在 `config.yaml`，可改用環境變數、明確安裝 `.[keyring]` 後使用 keyring，或選擇互動輸入。
@@ -233,7 +237,7 @@ python -m troTHU.tron teacher rollcall delete 29943 --yes --json
 
 ### radar
 
-radar 預設使用「空答案」(`empty_answer`) 流程：先送出一個不含座標的空白答案（`PUT /api/rollcall/{id}/answer`，body 為 `{}`），並在伺服器回 2xx 後再查驗點名是否真的被標記為已簽到（`on_call_fine`），確認後才算成功。若未被接受或未確認簽到，會自動退回全球 WGS84 定位流程（`global_wgs84`）：先送 12 個全球錨點取得粗定位，再以 60 個局部 WGS84 環狀採樣點精修，必要時最多再追加 36 點，整體由 `radar.global.max_queries` 控制，並沿用 number 點名的重試、cooldown、取消與完整 exchange log 風格；global_wgs84 之後仍可退回舊 THU 校地幾何求解器（`legacy_thu`）。完整鏈為 empty_answer → global_wgs84 → legacy_thu，可用 `config.advanced.yaml` 的 `radar.strategy` 切換，並以 `radar.empty_answer_fallback_enabled`／`radar.legacy_fallback_enabled` 控制各層 fallback。流程支援 lite/beacon payload、`radarSignal`、距離回應 fixture compatibility、安全診斷與 Radar Assist map contract。真實課堂環境仍建議用 R1 validation 記錄結果。
+radar 預設使用「空答案」(`empty_answer`) 流程：先送出一個不含座標的空白答案（`PUT /api/rollcall/{id}/answer`，body 為 `{}`），並在伺服器回 2xx 後再查驗點名是否真的被標記為已簽到（`on_call_fine`），確認後才算成功。若未被接受或未確認簽到，會自動退回全球 WGS84 定位流程（`global_wgs84`）：先送 12 個全球錨點取得粗定位，再以 60 個局部 WGS84 環狀採樣點精修；每完成一圈會先嘗試一次中途估計點，若已命中就提前停止，必要時最多再追加 36 點補充採樣，整體由 `radar.global.max_queries` 控制。若伺服器在距離錯誤回應中同時帶出 `on_call_fine` 狀態提示，global_wgs84 會重新查 `/api/radar/rollcalls`，確認同一點名已是 `on_call_fine` 才提前視為成功。這兩項錦上添花行為可分別用 `radar.global.adaptive_estimate_enabled`、`radar.global.present_hint_verify_enabled` 關閉以回退舊路徑；重試、cooldown、取消與完整 exchange log 風格維持不變。global_wgs84 之後仍可退回舊 THU 校地幾何求解器（`legacy_thu`）。完整鏈為 empty_answer → global_wgs84 → legacy_thu，可用 `config.advanced.yaml` 的 `radar.strategy` 切換，並以 `radar.empty_answer_fallback_enabled`／`radar.legacy_fallback_enabled` 控制各層 fallback。流程支援 lite/beacon payload、`radarSignal`、距離回應 fixture compatibility、安全診斷與 Radar Assist map contract。真實課堂環境仍建議用 R1 validation 記錄結果。
 
 ### QR
 

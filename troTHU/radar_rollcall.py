@@ -215,4 +215,8 @@ def build_radar_attempt_diagnostic(
         diagnostic["error_code"] = normalize_text(result.error_code)
     if result.message:
         diagnostic["result_message"] = normalize_text(result.message)[:120]
+    if result.present_hint:
+        diagnostic["present_hint"] = True
+    if result.present_status:
+        diagnostic["present_status"] = normalize_text(result.present_status)
     return diagnostic

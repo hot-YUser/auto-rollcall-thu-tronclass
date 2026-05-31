@@ -195,6 +195,43 @@ class RuntimeHelpersTest(unittest.TestCase):
         self.assertEqual(errors_list.distance, 18.75)
         self.assertEqual(errors_list.message, "outside from list")
 
+    def test_radar_answer_parser_marks_present_hint_without_success(self) -> None:
+        scoped_present = runtime_helpers.parse_radar_answer_result(
+            400,
+            json.dumps(
+                {
+                    "error_code": "radar_out_of_rollcall_scope",
+                    "distance": 42.5,
+                    "status_name": "on_call_fine",
+                }
+            ),
+        )
+        nested_present = runtime_helpers.parse_radar_answer_result(
+            400,
+            json.dumps(
+                {
+                    "data": {
+                        "distanceMeters": "18.0",
+                        "error": {"code": "radar_out_of_rollcall_scope"},
+                        "student_rollcalls": [
+                            {"rollcall_status": "on_call"},
+                            {"rollcall_status": "on_call_fine"},
+                        ],
+                    }
+                }
+            ),
+        )
+
+        self.assertFalse(scoped_present.success)
+        self.assertTrue(scoped_present.is_scope_distance)
+        self.assertEqual(scoped_present.distance, 42.5)
+        self.assertTrue(scoped_present.present_hint)
+        self.assertEqual(scoped_present.present_status, "on_call_fine")
+        self.assertFalse(nested_present.success)
+        self.assertTrue(nested_present.is_scope_distance)
+        self.assertTrue(nested_present.present_hint)
+        self.assertEqual(nested_present.present_status, "on_call_fine")
+
     def test_number_display_helpers_match_expected_shape(self) -> None:
         banner = runtime_helpers.format_found_code_banner("0427")
         self.assertIn("Code: 0427", banner)
