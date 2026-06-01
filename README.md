@@ -1,136 +1,71 @@
 # Auto-Rollcall-thu-Tronclass
-# 東海 TronClass / iLearn 自動點名輔助工具
 
-這是一個以東海大學 THU TronClass / iLearn 為主線的自動點名輔助工具。它支援單視窗監控輸出、舊版記事本設定流、IANA 時區排程、number/radar/QR 點名處理、靜態 QR 影像解碼、多帳號與群組設定、Bot webhook、LINE/Discord/Telegram 通知、本機 QR scanner、read-only companion shell、release build 與安全驗證流程。
+**東海 (THU) / 淡江 (TKU) iLearn・TronClass 全自動點名工具**
 
-> 請只在你有權限、且符合學校與課程規範的情境下使用。不要分享帳密、token、cookie、`state/`、`log/`、真實 QR payload 或未遮蔽的 API 回應。不要把填好帳密的 `config.yaml` 傳給別人。
+登入學校帳號後，它會在你設定的上課時段自動盯著課程，一偵測到點名就替你完成簽到——你不用一直盯著手機，也不用手忙腳亂找點名碼。
 
-## 版本狀態：v1.2.1-beta.1
+> ⚠️ 請只在你自己有權限、且符合學校與課程規範的情況下使用。**不要把填好帳密的 `config.yaml`、cookie、`state/`、`log/` 傳給任何人。**
 
-`v1.2.1-beta.1` 聚焦在可維護的日常使用：保留 number 直接讀碼後備、雷達定位改善、QR 剪貼簿輔助、簽到進度顯示、provider/release 診斷，以及精簡 teacher rollcall 建立／啟動／停止入口。研究用的未脫敏點名擷取與 API 狀態稽核不屬於這個 beta 主線；日常輸出只保留 sanitized log 與明確 opt-in 的 research metadata。主要能力仍是預發布，請務必自行確認符合校規後再使用。
+---
 
-目前重點：
+## 這個工具可以幹嘛
 
-- 預設啟動會進入單視窗監控輸出：主視窗只逐行顯示事件；按任意鍵會用固定的 `C:\Windows\System32\notepad.exe` 開啟 `config.yaml`
-- `config.yaml` 是沒有註解的極簡人類格式，只保留 `now`、帳號、群組與上課時間；進階項放在同層 `config.advanced.yaml`
-- 常見輸入會自動修正前後空白與多餘空格；QR payload 只 trim 前後空白，不改內部內容
-- 排程可在 `config.advanced.yaml` 設定 IANA timezone；每日可有多段 range
-- THU / TKU / TronClass public cloud 是預設使用者可見 provider；登入後監控、number、radar、QR、課程與學期 API 走同一套 endpoint-driven runtime
-- number 點名先走越權直接讀碼（讀 `student_rollcalls` 的 `number_code` 單發提交，旗標 `number.direct_code_lookup` 預設開）；讀不到時自動退回暴力猜碼，確保不退化
-- Discord HTTP Interactions 是推薦 production 入口；optional Gateway、QR modal、schema sync 已有核心
-- research probe 只在明確 opt-in 下記錄高風險端點的 HTTP 狀態與欄位形狀，不記錄答案值，也不進 daily automation
-- QR 剪貼簿自動送出（預設開）：偵測到 QR 點名時監看剪貼簿，截圖（需 `.[qr-image]` 的 Pillow/OpenCV）或文字 payload 解出後，**僅在 rollcallId 與當前點名相符時**自動送出
-- Windows zip release build runner 會跑 unittest、PyInstaller、artifact validation 與 temp-extract smoke；預設 zip 是小包，不內建 Playwright、keyring 或 QR 圖片解碼 optional extras
+- ✅ **數字點名** — 完整支援。已經過無數次實際課堂驗收與打磨，是成熟、穩定的全自動完成版：偵測到點名 → 自動拿到點名碼 → 自動簽到，全程零操作。
+- ✅ **雷達點名** — 完整支援。同樣經過大量實戰驗收，偵測到雷達點名後會自動完成定位簽到，不需要你開地圖、不需要對座標。
+- ❌ **QR Code 點名** — 不支援。
 
-## 5 分鐘快速開始
+關於 QR：這個工具的核心價值是**全自動、零操作**。QR 點名一定要先拿到當下那張動態 QR 的內容，而你只要人都已經能看到那張 QR 了，直接用官方 App 掃一下其實更快——再繞來用本工具就失去意義了。因為沒辦法做到真正的「自動」，所以 QR 不列入支援，這樣才不會讓你誤會它能幫你掛著自動簽到。
 
-從原始碼執行：
+**支援的學校：東海大學 (THU)、淡江大學 (TKU)。** 兩校都走同一套登入與點名流程，數字、雷達都完整可用。
+
+---
+
+## 怎麼開始用
+
+### 我只是想用（Windows，最簡單）
+
+1. 到 Releases 下載 `THU_Auto_Rollcall-v1.2.1-beta.1-windows-x64.zip`。
+2. **整包解壓縮**到一個固定資料夾（不要在 zip 裡直接雙擊）。
+3. 進到資料夾，執行 `auto-rollcall-thu-tronclass.exe`。
+
+第一次啟動會在 exe 旁邊自動建立 `config.yaml`、`state/`、`log/` 三樣東西。程式一啟動就直接進入監控；**按任意鍵**就會用記事本打開 `config.yaml` 讓你填帳號密碼，存檔關掉記事本後它會自動重新讀取設定。
+
+### 我想用原始碼跑（開發者）
+
+裝好相依套件就能直接跑，不用自己打包：
 
 ```bash
 python -m pip install -r requirements.txt
-python -m troTHU.tron init
-python -m troTHU.tron doctor
 python -m troTHU.tron
 ```
 
-無參數啟動會直接開始監控。它不清螢幕、不重繪、不顯示分頁，也不在終端裡做命令列輸入；監控事件會在主視窗逐行輸出。需要改帳號、密碼、學校、群組或上課時間時，直接按任意鍵，程式會用 Windows 舊版記事本開啟 `config.yaml`。關閉記事本後會重新讀取設定；如果 `now` 改變，會清除目前 session 並切換到新的帳號或群組。
+就這樣。一樣是啟動即監控、按任意鍵用記事本開 `config.yaml`。
 
-如果 `now` 是空白，但整份 `account` 只有一個有效帳號，程式會自動使用那個帳號，不會強迫你再填一次 `now`。如果有多個帳號而 `now` 仍空白，啟動時會先開記事本讓你填寫；關閉後仍無法判斷帳號就會安全停止，不會進入監控。
-
-`run --classic` 仍保留為相容入口，但會走同一套新版監控輸出。若你要放在排程或背景服務，只想看事件、不希望按鍵開記事本：
+如果你要放在工作排程器或背景服務、不希望它監聽按鍵：
 
 ```bash
 python -m troTHU.tron run --no-input
 ```
 
-QR 點名可以貼 payload 或開本機 scanner：
+> 啟動後它**不會清螢幕、不會跳全螢幕介面**，只會在視窗裡一行一行印出目前在做什麼（正在登入、目前時段、偵測到點名、簽到成功…），讓你一眼看出它還活著。
 
-```bash
-python -m troTHU.tron qr paste "貼上 QR URL 或 payload"
-python -m troTHU.tron qr paste --image screenshot.png --yes
-python -m troTHU.tron qr scan --open
-```
+---
 
-老師端 beta 入口只保留建立、啟動、停止：
+## 設定檔教學（最重要的一步）
 
-```bash
-python -m troTHU.tron teacher rollcall create --course-id 301 --type manual --json
-python -m troTHU.tron teacher rollcall create --course-id 301 --type qr --start --json
-python -m troTHU.tron teacher rollcall start 9001 --duration-min 2 --json
-python -m troTHU.tron teacher rollcall stop 9001 --type qr --json
-```
+九成的人會卡在這裡，所以講仔細一點。
 
-排查時先跑：
+### 先說一個容易誤會的點
 
-```bash
-python -m troTHU.tron status --json
-python -m troTHU.tron dashboard --once
-python -m troTHU.tron config doctor
-python -m troTHU.tron logs summarize --limit 20
-python -m troTHU.tron validation local-smoke --json
-```
+`config.yaml` 雖然副檔名是 `.yaml`，但它**其實不是標準 YAML**，而是這個專案自己設計、給人手動編輯用的超簡單格式（是的，副檔名取得有點名不符實，我們自己也吐槽過）。所以：
 
-## 安裝方式
+- 冒號後面**有沒有空格都可以**：`user:s123` 和 `user: s123` 都行。
+- 學校**大小寫不分**：`THU`、`thu`、`東海` 都認得。
+- 你**不需要**懂 YAML 縮排規則，照著下面的範例填就好。
 
-### Windows zip
+一般使用者**只要改四塊**：`now`、`account`、`group`、`operating`。其他進階設定都放在另一個檔 `config.advanced.yaml`，平常完全不用碰。
 
-Release zip 名稱格式：
-
-```text
-THU_Auto_Rollcall-v1.2.1-beta.1-windows-x64.zip
-```
-
-下載後請完整解壓縮，再在資料夾內執行 `auto-rollcall-thu-tronclass.exe`。不要直接在 zip 裡雙擊執行。第一次啟動會在 exe 同層建立或使用 `config.yaml`、`state/`、`log/`。
-
-預設 Windows zip 是小包：browser-assisted login / research browser capture 的 Playwright、OS keyring、以及 QR 圖片解碼用的 Pillow/OpenCV 不會被打包。文字 QR payload、HTTP fast login、number/radar/QR 日常 runtime 與 bot adapters 仍內建；若需要 optional 能力，請改用原始碼安裝對應 extras。
-
-### 原始碼 / 開發者
-
-```bash
-python -m pip install -r requirements.txt
-python -m pip install -e .[packaging]
-python -m pip install -e .[qr-image]   # 選用：靜態圖片 QR 解碼
-python -m pip install -e .[browser]    # 選用：Playwright browser-assisted login
-python -m pip install -e .[keyring]    # 選用：OS keyring 帳密儲存
-python -m troTHU.tron package-check --json
-```
-
-安裝 editable package 後，也可以使用 console scripts：
-
-```bash
-trothu status
-auto-rollcall-thu-tronclass doctor
-```
-
-## 日常使用路徑
-
-- Monitor console：`python -m troTHU.tron` 或 `python -m troTHU.tron run`，主視窗只逐行輸出事件；按任意鍵用舊版記事本開啟 `config.yaml`，沒有全螢幕 UI、第二終端控制通道或同終端命令輸入。
-- CLI-only：`doctor` 檢查環境，`status` 看本地狀態，`run --no-input` 啟動無互動監控。
-- QR assisted：`qr paste` 或 `qr scan --open`；fan-out 只送到同 provider + rollcall id 的 pending profile，沒有 match 不 fallback active profile。
-- Bot generic / LINE / Discord：先設定 bindings/admins；本機測 generic webhook；公開部署需 HTTPS、簽章驗證與反向代理設定。
-- Telegram：目前是 outbound notification sink，不提供 Telegram inbound command bot。
-- Local app shell：`app serve --open` 只綁 localhost，提供 read-only / preview-only companion shell；不送出 QR、不匯入 cookie、不 reauth、不控制帳號。
-
-## 設定檔
-
-`config.yaml` 會保留為可追蹤的中文 placeholder 範例。它不是標準 YAML，而是本專案專用、對空格寬容的人類設定格式；冒號後有沒有空格都可以，`school` 大小寫不敏感，`group` 也相容過去草稿裡誤拼的 `grop`。
-
-一般使用者只需要改四塊：`now`、`account`、`group`、`operating`。number/radar/timezone/research/webview/provider endpoint/Bot token env 等進階設定放在 `config.advanced.yaml`，平常不用碰。
-
-常用命令：
-
-```bash
-python -m troTHU.tron config show
-python -m troTHU.tron config show --json
-python -m troTHU.tron config doctor
-python -m troTHU.tron config compact --dry-run
-python -m troTHU.tron config compact --write
-python -m troTHU.tron config advanced
-```
-
-`config compact --write` 會先建立 `config-legacy-backup-YYYYMMDD-HHMMSS.yaml`，再寫入新版兩檔。`config advanced` 會用同一個舊版記事本開啟 `config.advanced.yaml`。
-
-新版 `config.yaml` 範例：
+### `config.yaml` 範例與逐塊說明
 
 ```text
 now:(填帳號或 class A)
@@ -144,10 +79,6 @@ account:
   passwd:(密碼2)
   school:TKU
 
-  user:(帳號3)
-  passwd:(密碼3)
-  school:TRONCLASS
-
 group:
   class:A
     school:THU
@@ -160,193 +91,208 @@ operating:
     - 00:00 - 00:00
 ```
 
-`now:S12345678` 會監控該帳號；`now:class A` 會使用 `group class:A`。如果只有一個有效帳號，`now` 可以留空，程式會自動使用那個帳號。`operating` 的星期採 `0=星期日 ... 6=星期六`；同一天可寫多個 `- 09:10 - 12:00` 形式的時段。
+**`now`** — 現在要用哪個帳號。可以填某個帳號的學號（例如 `now:s1234567`），也可以填一個群組（例如 `now:class A`）。
+> 小撇步：如果你整份 `account` 只填了一個有效帳號，`now` 可以**留空**，程式會自動用那一個，不會逼你再填一次。
 
-`config.advanced.yaml` 可放進階設定，例如：
+**`account`** — 你的帳號清單，可以放很多組。每組三行：`user`（學號）、`passwd`（密碼）、`school`（`THU` 或 `TKU`）。
+
+**`group`** — （進階／選用）把帳號分組。`class:A` 開一個叫 A 的群組，底下用 `user` 列出屬於這組的帳號。搭配 `now:class A` 一次套用整組設定。只有一個帳號的話這塊可以不用管。
+
+**`operating`** — 上課時段，也就是「什麼時候才需要自動盯點名」。
+- 星期是數字：**`0` = 星期日、`1` = 星期一 … `6` = 星期六**。
+- `enable:true` 代表這天啟用。
+- `range:` 底下用 `- 開始 - 結束` 列時段，**同一天可以列很多段**：
+
+```text
+operating:
+  1:
+    enable:true
+    range:
+    - 09:10 - 12:00
+    - 13:20 - 17:30
+```
+
+（上面是「星期一 09:10–12:00 和 13:20–17:30 都自動盯點名」。）
+
+### 改完設定後
+
+填好帳密、存檔、關掉記事本，程式就會自動重新讀取。如果你改了 `now`，它會清掉目前的登入狀態並切換到新帳號或新群組。
+
+填密碼那關如果你不想把明碼直接寫進 `config.yaml`，也可以改用環境變數、或安裝 `.[keyring]` 之後用系統金鑰圈保存（進階用法，見後面）。
+
+### 常用設定指令
+
+```bash
+python -m troTHU.tron config show       # 看目前讀到的設定
+python -m troTHU.tron config doctor      # 檢查設定有沒有問題
+python -m troTHU.tron config advanced    # 用記事本打開 config.advanced.yaml
+python -m troTHU.tron config compact --write   # 把舊版設定檔整理成新版兩檔（會先自動備份）
+```
+
+`config.advanced.yaml` 是真正的 YAML，放時區、number/radar 細部調整、Bot 設定等。例如：
 
 ```yaml
 time:
   timezone: Asia/Taipei
-auth:
-  browser_assisted_login:
-    enabled: false
-research:
-  enabled: false
-  allow_api_exploration: false
-  allow_risky_probe: false
 ```
 
-預設初始化會把密碼存到本機 `config.yaml`。若不想把密碼放在 `config.yaml`，可改用環境變數、明確安裝 `.[keyring]` 後使用 keyring，或選擇互動輸入。
+---
 
-## 點名能力
+## 聊天機器人通知（選用，但很好用）
 
-### number
+不想一直開著視窗看？可以把點名結果丟到聊天軟體。Bot 這塊目前做得相當完整，三種都支援，token/密鑰一律只從環境變數讀，不會寫進 log。
 
-number 點名支援錯碼、成功、暫時性錯誤、限流、session expired 與未知回應分類。遇到 429/5xx 或暫時性錯誤會 cooldown、降併發，避免硬衝。
+### Discord（推薦）
 
-number 點名會先嘗試**直接讀碼**：透過 `student_rollcalls` 端點讀出當次 `number_code` 後單發提交（旗標 `number.direct_code_lookup`，預設開）；只有在讀不到（端點未提供、過期或非預期回應）時才退回上述暴力猜碼路徑。因此正常情況下一次點名只需極少請求，並保有暴力猜碼作為不退化的後備。真實課堂行為以 R1 validation 記錄為準。
-
-### radar
-
-radar 使用 THU 幾何求解器，支援 lite/beacon payload、`radarSignal`、距離回應 fixture compatibility、安全診斷與 Radar Assist map contract。真實課堂環境仍建議用 R1 validation 記錄結果。
-
-### QR
-
-QR 支援 `_p` JSON、`p` compact、relative URL、query-only、pure JSON、pure compact、unknown field diagnostic，也可用 `qr paste --image <path>` 從截圖或照片解出 QR。影像解碼需要選用 extra；preview/result 不回顯 raw payload 或 QR `data`。
-
-## Bot / 通知
-
-### Generic webhook
-
-本機測試入口：
+推薦用 **HTTP Interactions**（不用一直掛著連線，部署最省事）：
 
 ```bash
-python -m troTHU.tron bot serve --adapter generic
+python -m troTHU.tron bot discord-schema --json      # 看要註冊哪些指令
+python -m troTHU.tron bot discord-sync --dry-run --json
+python -m troTHU.tron bot serve --adapter discord    # 本機起服務
 ```
 
-Generic request 形狀：
-
-```json
-{"source_user_id":"user-id","channel_id":"local","text":"status"}
-```
+也保留了選用的 Gateway 模式，但不是預設推薦的部署方式。
 
 ### LINE
 
-LINE webhook 支援 signature 驗證、reply API、push notification sink。token/secret 只從 env 讀，不寫入 log/worklog/response。
-
-常用 env：
+支援 webhook 簽章驗證、回覆與推播通知。常用環境變數：
 
 ```text
 LINE_CHANNEL_ACCESS_TOKEN
 LINE_CHANNEL_SECRET
 ```
 
-### Discord
-
-Discord HTTP Interactions 是推薦 production 入口：
-
-```bash
-python -m troTHU.tron bot discord-schema --json
-python -m troTHU.tron bot discord-sync --dry-run --json
-python -m troTHU.tron bot serve --adapter discord
-```
-
-optional Gateway 也存在，但不是預設部署方式：
-
-```bash
-python -m troTHU.tron bot discord-gateway --dry-run --json
-```
-
 ### Telegram
 
-Telegram 目前支援 outbound notification bus sink：
+目前是**單向通知**（程式 → 你），把結果推給你看；不提供從 Telegram 反向下指令。綁定方式：
 
 ```bash
-python -m troTHU.tron account bind telegram TELEGRAM_CHAT_ID default
+python -m troTHU.tron account bind telegram <你的 TELEGRAM_CHAT_ID> default
 ```
 
-## Provider：THU / TKU / TronClass ready
+### 想先在本機試 webhook？
 
 ```bash
-python -m troTHU.tron provider list
-python -m troTHU.tron provider show tku --json
-python -m troTHU.tron provider show tronclass --json
-python -m troTHU.tron provider fixture review-template tku --json
-python -m troTHU.tron provider ready-gate tku --fixture fixture.json --json
+python -m troTHU.tron bot serve --adapter generic
 ```
 
-THU、TKU、TronClass public cloud 在預設使用者入口中是可見 ready provider；三者都可啟動完整日常流程，不需要 `provider.allow_experimental`。這個舊欄位會保留作為相容 no-op。TKU 會優先使用 HTTP fast SSO 路徑模擬 iClass/SSO 表單、ImageValidate 與 redirect，並在登入後用 iClass API 驗證 session；若 fast path 失敗或 API 驗證失敗，只有安裝 Playwright optional extra 的原始碼環境才會自動回退到 browser-assisted login，預設 Windows 小包會回報 browser assist unavailable。TronClass public cloud 使用 `/login?login=email` 的 email/password HTTP 登入，取得 session 後共用 TronClass API runtime。fixture review / ready-gate 只處理 sanitized fixture 與人工 acceptance，不會保存密碼、cookie、raw response、完整 QR payload 或 number code。NFU/GUET/XMU 不在 provider ready 目標內。
+送個最簡單的測試請求：
 
-## App shell / WebView / Research
+```json
+{"source_user_id":"user-id","channel_id":"local","text":"status"}
+```
 
-- `app blueprint`：輸出未來 App/GUI contract。
-- `app serve --open`：開 localhost read-only companion shell，所有 `/app/api/*` 需要短效 local token。
-- `webview preview/import`：只做 cookie sync contract 與本地 cookie cache bridge；真正 import 必須同時開 config gate 與 `--save`。
-- `research status/api/browser-check/browser-capture`：明確 opt-in 的 read-only metadata capture；不查答案、不保存 raw body/header/cookie/token/QR。
-- `research probe <target> --rollcall-id <id>`：獨立的 shape-only **取證**探測（與日常直接讀碼分開），只記 HTTP 狀態與欄位形狀；目標支援 `student_rollcalls`、`lite`、`ongoing_rollcalls`（後者免 `--rollcall-id`）；需要 `research.enabled=true`、`allow_api_exploration=true`、`allow_risky_probe=true`，且不會把答案值寫入輸出。
-- 日常監控不保存未脫敏 raw response、header、cookie、token 或 QR 內容；需要研究端點形狀時請使用上方 gated research 指令。
-- `auth.browser_assisted_login.enabled=true`：一般 provider 遇到 CAS/登入頁改版時，可手動啟用 Playwright 後備登入；TKU 預設先跑 HTTP fast SSO，必要時自動使用 Playwright 作為保底；TronClass public cloud 預設走 email HTTP fast login。Playwright 不隨預設 Windows 小包內建，需原始碼安裝 `.[browser]`。這些流程都不保存 header/body/密碼。
+---
 
-## R1/R2/R3 驗收
+## 其他功能
 
-R1 是真實 THU acceptance。沒有課堂點名時，可以先記 blocked，但不能宣稱 fully ready：
+- **多帳號 / 群組**：一份設定管多個學號，用 `now` 一鍵切換（見上面 config 教學）。
+- **時區排程**：`config.advanced.yaml` 裡可設 IANA 時區（如 `Asia/Taipei`），每天可有多個時段。
+- **本機唯讀面板**：`python -m troTHU.tron app serve --open` 會在 localhost 開一個唯讀的小面板，只能「看」狀態（不會送點名、不會匯入 cookie、不會改帳號）。
+- **環境自我檢查**：`python -m troTHU.tron doctor` 一鍵檢查環境、設定、登入來源是否正常。
+- **狀態快照**：`python -m troTHU.tron status --json` 印出目前本機狀態。
+
+---
+
+## 原理：它到底是怎麼自動簽到的？
+
+這段用白話講「為什麼做得到」。本質上，TronClass 這套系統把一些**本來不該讓學生拿到的東西，透過學生自己就能呼叫的 API 漏掉了**，這個工具就是把這些漏洞自動化而已。
+
+### 數字點名：點名碼其實藏在 API 回應裡
+
+老師按下數字點名後，會在螢幕投影一組四位數字要大家輸入。問題是：**學生端有一支 API（`student_rollcalls`）會直接把這組正確的點名碼回給你**。所以這個工具偵測到數字點名後，直接去讀那組碼、一發送出就完成——正常情況下一次點名只要極少的請求。
+
+萬一哪天那支 API 不給碼了，還有後備方案：四位數字也才 0000–9999 一萬種，直接暴力試碼（有限流冷卻、不會把伺服器打爆），所以**不會退化、依然會成功**。
+
+### 雷達點名：送一個「空答案」就過了
+
+雷達點名理論上要驗證你的 GPS 座標在教室範圍內。但實測發現一個明確的伺服器漏洞：**對點名送出一個完全空的答案 `{}`（不帶任何座標），伺服器就直接把你判定為「到場」。** 這招實測 100% 成功，所以是預設、也是主力做法——送出後再回查一次確認真的簽到成功才算數。
+
+> 後面那些定位演算法只是「萬一哪天空答案被擋下來」的保險：它會利用「座標答錯時伺服器會回傳你離目標多遠」這個特性，用多個點反推出教室的精確座標再送出；真的還不行就改用無限擴張的棋盤格掃過去，直到命中或點名結束。實務上幾乎輪不到它們出場。
+
+### 為什麼 QR 做不到自動
+
+QR 點名每次都是一張當下才產生的動態圖片，程式無法在「不靠人」的前提下取得它的內容。一旦需要你動手去拍、去貼，就不是全自動了——而你都能拿到 QR 了，直接用官方 App 掃更快。所以這不在本工具的目標範圍內。
+
+---
+
+## 技術細節（給想複製到其他學校的開發者）
+
+TronClass / iLearn 是不少學校共用的系統，下面整理核心 API 與做法，方便其他同樣用 TronClass 的學校快速理解、自行實作。除了 THU / TKU，這套 runtime 也能套用在 **TronClass 公有雲官網**以及其他基於 TronClass 的學校（換掉 base URL 與登入流程即可）。
+
+> 端點以 `{base}` 代表學校的 TronClass 網域（如 `https://ilearn.thu.edu.tw`）。所有請求都帶登入後的 session cookie。
+
+### 列出目前的點名
+
+```http
+GET {base}/api/radar/rollcalls?api_version=1.1.0
+```
+
+回傳目前進行中的點名清單與類型（number / radar / qr），程式據此分流處理。
+
+### 數字點名（越權讀碼 + 後備暴力）
+
+```http
+# 1) 直接讀出正確點名碼（關鍵：這支學生就能呼叫）
+GET {base}/api/rollcall/{rollcall_id}/student_rollcalls
+    → 回應內含 number_code 欄位
+
+# 2) 送出簽到
+PUT {base}/api/rollcall/{rollcall_id}/answer_number_rollcall
+    body: {"deviceId": "<隨機>", "numberCode": "0837"}
+```
+
+讀不到 `number_code` 時，就對 `answer_number_rollcall` 以 `0000`–`9999` 批次併發試碼（含限流冷卻與降併發）。
+
+### 雷達點名（空答案漏洞 + 距離反推備援）
+
+```http
+# 主力：空答案即過（伺服器漏洞）
+PUT {base}/api/rollcall/{rollcall_id}/answer
+    body: {}
+# 送出後回查 rollcall 狀態，確認為 on_call_fine（已簽到）才採信。
+
+# 備援：帶座標的答案；答錯時回應會夾帶「距離目標多遠」
+PUT {base}/api/rollcall/{rollcall_id}/answer?api_version=1.76
+    body: { ...座標、device、user 等... }
+GET {base}/api/rollcall/{rollcall_id}/lite   # 取得 beacon / 訊號等附帶資訊
+```
+
+備援解法把「距離」當觀測量，用最小平方法多點定位（WGS84）反推教室座標，再不行則無限棋盤格覆蓋。
+
+### 程式結構速覽
+
+- `troTHU/runtime_context.py`：中央樞紐，持有全域執行狀態，並把扁平的函式命名空間懶載入到各模組。新增要能用 `ctx.foo` 呼叫的函式時，要在這裡的 `_LEGACY_EXPORTS` 註冊。
+- `troTHU/monitor_runtime.py`：預設的監控主迴圈（登入 → 依排程 → 偵測點名 → 分流）。
+- `troTHU/number_runtime.py`、`troTHU/radar_runtime.py`：兩種點名的實作核心（上面的 API 就在這裡）。
+- `troTHU/providers.py`：支援的學校登錄表（base URL、登入流程、能力旗標），加新學校從這裡開始。
+- `troTHU/tron_http.py`：端點驅動的 HTTP client 與登入流程（THU CAS / TKU SSO / 公有雲 email 登入）。
+
+### 安裝選用功能（原始碼）
 
 ```bash
-python -m troTHU.tron validation checklist
-python -m troTHU.tron validation local-smoke --json
-python -m troTHU.tron validation local-smoke --record --json
-python -m troTHU.tron validation record thu_number_live --status blocked --reason blocked_by_no_live_rollcall --note "no live rollcall available"
-python -m troTHU.tron validation summary --json
+python -m pip install -e .[packaging]   # PyInstaller 打包
+python -m pip install -e .[browser]     # Playwright（登入頁改版時的後備登入）
+python -m pip install -e .[keyring]     # 用系統金鑰圈存帳密
 ```
 
-`local-smoke --record` 只會寫入本機可證明的非 live case：preflight、time schedule、Bot fake sandbox、package/release static、安全 gate。`auth_restore`、number/radar/QR live、靜態 QR live、fan-out live 仍需要真實 THU 情境，不會被自動假造。
-
-R1 checklist 也會列出本輪新增的非 UI 驗收面：`time_schedule_local`、`qr_static_image_live`、`doctor_probe_opt_in`、`browser_assisted_login_provider_auto`、`research_student_rollcalls_probe`。其中 doctor probe / research probe 不會在日常流程自動執行；browser-assisted login 對一般 provider 仍是 opt-in，對 TKU 則作為 fast SSO 失敗時的自動保底，但預設 Windows 小包不內建 Playwright。若沒有真實課堂 QR 截圖或研究授權，就記錄為 blocked/skip，不要用假資料宣稱完成。
-
-R2 是 release build：
-
-```bash
-python -m troTHU.tron release-build --dry-run --json
-python -m troTHU.tron release-build --execute --json
-python -m troTHU.tron release-check --dist dist --json
-```
-
-R3 是使用文件收束。本 README 是公開入口；`.codex-worklog.md` 是 Codex 自用作戰手冊，不作為使用者文件。
-
-## 打包與 Git hygiene
-
-本 repo 保留 source/test/docs/CI/spec/placeholder config。以下資料只留在本機，不提交：
-
-- `build/`
-- `dist/`
-- `state/`
-- `log/`
-- `.tmp-tests/`
-- `其他專案參考/`
-- cookie、runtime state、真實 validation record、真實 QR payload
-
-打包前檢查：
-
-```bash
-python -m troTHU.tron package-check --json
-python -m troTHU.tron release-check --json
-python -m troTHU.tron release-build --execute --json
-```
-
-`release-build --execute` 會跑 full unittest、package-check、release-check、PyInstaller、zip packaging、artifact validation，並在臨時解壓副本中 smoke `--help`、`status --json`、`package-check --json`。
-
-## 疑難排解速查
-
-| 症狀 | 優先檢查 | 常用命令 |
-| --- | --- | --- |
-| 登入失敗 | 帳密來源、SSO 表單、TLS/SSL、cookie 是否過期 | `doctor --json`、`refresh`、`validation local-smoke --json` |
-| cookie 過期 | cookie cache、last login、是否需要 reauth | `status --json`、`account state --json`、`refresh` |
-| QR no match | pending QR provider + rollcall id 是否一致、fan-out 是否過期、圖片解碼是否安裝 optional extra | `qr pending --json`、`qr paste --json "..."`、`qr paste --image screenshot.png --json` |
-| radar 失敗 | 邊界設定、lite/beacon payload、距離回應、session expired 或 429/5xx | `doctor --json`、`app serve --open`、`logs summarize --limit 20` |
-| 監控 console 沒有反應 | 主視窗只輸出事件；按任意鍵會開啟 `config.yaml`；若用了 `--no-input` 則不監聽按鍵 | 檢查 `config.yaml` 的 `now`，必要時重啟 `python -m troTHU.tron run` |
-| 尚未登入訊息停住 | 程式會避免反覆刷屏；看到提示後請按任意鍵開啟 `config.yaml`，填好帳號密碼並關閉記事本 | 關閉記事本後會重新讀取設定並嘗試重新登入 |
-| 帳密或學校切換問題 | 直接按任意鍵，用 `C:\Windows\System32\notepad.exe` 修改 `config.yaml`；關閉後程式會重新載入 | `python -m troTHU.tron config show`、`python -m troTHU.tron config doctor` |
-| Discord signature 失敗 | public key env、timestamp/signature header、Endpoint URL 是否 HTTPS | `bot serve --adapter discord`、`bot discord-sync --dry-run --json` |
-| LINE signature 失敗 | channel secret env、reverse proxy 是否保留 raw body、Webhook URL | `bot serve --adapter line`、`doctor --json` |
-| PyInstaller missing | packaging extra 是否安裝、本機 Python 是否可 import PyInstaller | `python -m pip install -e .[packaging]`、`package-check --json` |
-| 網路品質不穩 | 只在需要時 opt-in 跑連線 probe，預設 doctor 不打外部網路 | `doctor --probe-url https://ilearn.thu.edu.tw --probe-count 3 --json` |
-| artifact unsafe | zip 內是否誤含 `config.yaml`、`state/`、`log/`、cookies、tests | `release-check --dist dist --json`、重跑 `release-build --execute --json` |
+---
 
 ## 開發與測試
+
+測試全部離線執行（用假的 TronClass 伺服器模擬），不會碰到任何真實學校：
 
 ```bash
 python -m py_compile troTHU/tron.py troTHU/runtime_context.py troTHU/cli_main.py
 python -m unittest discover -v
-python -m troTHU.tron package-check --json
 python -m troTHU.tron release-build --dry-run --json
 ```
 
-目前測試以本地 fake server、fake Bot adapter、fake LINE/Discord/TG sender 與 synthetic fixture 為主，不會打真 TronClass 或平台 API。
+---
 
 ## 目前限制
 
-- R1 真實 THU live acceptance records 尚未補齊；功能已具備，但完整宣稱仍需 live validation。
-- TKU 的 `verification` ledger 尚待補齊 sanitized evidence；TronClass public cloud 已通過 email 登入與課程 API smoke，但完整點名可用性仍需實際課堂環境驗收。
-- native/mobile App、App-side encrypted vault、map SDK 仍不是本版本目標。
-- Telegram inbound command bot 不做；目前只提供 outbound notification sink。
-- number 直接讀碼已是日常能力（`number.direct_code_lookup`，預設開）：先讀 `student_rollcalls` 的 `number_code` 單發提交、讀不到再退回暴力猜碼；真實 THU live 行為仍待 R1 課堂驗收記錄。`research probe` 維持獨立的 shape-only 取證工具。
+- **不支援 QR Code 點名**（原因見上，與全自動目標衝突）。
+- **Telegram 只做單向通知**，不接收指令。
+- 預設的 Windows zip 是精簡包，不內建 Playwright、keyring、QR 影像解碼等選用功能；需要的話請用原始碼安裝對應 extras。

@@ -29,9 +29,7 @@ class AppShellPolishTest(unittest.TestCase):
                 make_config(),
                 base_dir=Path(temp_dir),
                 reports={
-                    "validation_summary": {"status": "warn", "token": "token-secret"},
-                    "release_check": {"status": "ok"},
-                    "provider_review": {"status": "candidate_ready_for_human_review"},
+                    "release_check": {"status": "ok", "token": "token-secret"},
                     "logs_summary": {"recent_events": {"errors": [{"raw_body": "secret"}]}},
                 },
             )
@@ -40,7 +38,6 @@ class AppShellPolishTest(unittest.TestCase):
         self.assertEqual(model["status"], "ok")
         self.assertTrue(model["read_only"])
         self.assertTrue(model["preview_only"])
-        self.assertIn("validation", {panel["id"] for panel in model["panels"]})
         self.assertEqual(model["badges"]["release"]["status"], "ok")
         self.assertIn("actions", model["action_catalog"])
         self.assertNotIn("token-secret", encoded)

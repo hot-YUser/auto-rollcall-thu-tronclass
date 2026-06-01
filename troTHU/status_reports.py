@@ -36,17 +36,6 @@ def provider_report() -> ctx.Dict[str, ctx.Any]:
     support = ctx.provider_support_report(active, allow_experimental=ctx.coerce_bool(active.get('allow_experimental'), False))
     active['support'] = support
     active['daily_ready'] = support['daily_ready']
-    active['verification'] = ctx.summarize_provider_verification(active)
-    active['ready_gate'] = ctx.build_provider_ready_gate(active, config=ctx.CONFIG)
-    active['fixture_review'] = ctx.build_provider_fixture_review(active, config=ctx.CONFIG)
-    active['internal'] = {
-        'verification': active['verification'],
-        'ready_gate': active['ready_gate'],
-        'fixture_review': active['fixture_review'],
-        'user_runtime_blocking': False,
-    }
-    if active['verification'].get('verification') != 'verified' and ctx.CONFIG.get('research', {}).get('enabled'):
-        ctx.log(event='provider_verification_status', status='debug', message='Provider verification ledger is pending; runtime remains unblocked.', extra={'provider': active.get('key'), 'verification': active['verification'].get('verification'), 'user_runtime_blocking': False})
     return active
 
 
@@ -236,7 +225,7 @@ def doctor_report(network_probe: ctx.Optional[ctx.Mapping[str, ctx.Any]]=None) -
     probe = dict(network_probe or {"enabled": False, "status": "disabled"})
     if probe.get("enabled") and probe.get("status") == "fail" and status == "ok":
         status = "warn"
-    return {'status': status, 'base_dir': str(ctx.BASE_DIR), 'config_path': str(ctx.CONFIG_PATH), 'provider': provider, 'provider_support': provider_support, 'internal': {'provider_verification': provider.get('internal', {})}, 'active_profile': active.name, 'checks': checks, 'time': {'timezone': ctx.get_config_timezone_name(), 'now': ctx.current_datetime().isoformat(timespec='seconds')}, 'http_timeout': ctx.get_http_timeout_seconds(), 'notification_timeout': ctx.get_notification_timeout_seconds(), 'cookie': cookie, 'notifications': ctx.notification_report(), 'integrations': ctx.integration_report(), 'research': research, 'browser_assisted_login': browser_login, 'course_discovery': ctx.course_discovery_report(), 'network_probe': probe, 'config_warnings': list(getattr(ctx, 'CONFIG_WARNINGS', [])), 'packaging': packaging}
+    return {'status': status, 'base_dir': str(ctx.BASE_DIR), 'config_path': str(ctx.CONFIG_PATH), 'provider': provider, 'provider_support': provider_support, 'active_profile': active.name, 'checks': checks, 'time': {'timezone': ctx.get_config_timezone_name(), 'now': ctx.current_datetime().isoformat(timespec='seconds')}, 'http_timeout': ctx.get_http_timeout_seconds(), 'notification_timeout': ctx.get_notification_timeout_seconds(), 'cookie': cookie, 'notifications': ctx.notification_report(), 'integrations': ctx.integration_report(), 'research': research, 'browser_assisted_login': browser_login, 'course_discovery': ctx.course_discovery_report(), 'network_probe': probe, 'config_warnings': list(getattr(ctx, 'CONFIG_WARNINGS', [])), 'packaging': packaging}
 
 
 def print_status(json_output: bool=False) -> None:

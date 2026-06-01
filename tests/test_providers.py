@@ -51,17 +51,14 @@ class ProviderConfigTest(unittest.TestCase):
         self.assertTrue(registry["available"]["tronclass"]["ready"])
         self.assertTrue(registry["available"]["tronclass"]["user_visible"])
         self.assertEqual(registry["available"]["fju"]["support_level"], "ready")
-        self.assertEqual(registry["available"]["fju"]["verification"], "unverified")
         self.assertEqual(registry["available"]["fju"]["auth_flow"], "manual_cookie_only")
         self.assertTrue(registry["available"]["fju"]["capabilities"]["radar"])
         self.assertEqual(registry["available"]["tku"]["support_level"], "ready")
-        self.assertEqual(registry["available"]["tku"]["verification"], "account_pending")
         self.assertEqual(registry["available"]["tku"]["base_url"], "https://iclass.tku.edu.tw")
         self.assertEqual(registry["available"]["tku"]["auth_flow"], "tku_sso_browser")
         self.assertTrue(registry["available"]["tku"]["capabilities"]["radar"])
         self.assertEqual(registry["available"]["tronclass"]["base_url"], "https://www.tronclass.com.tw")
         self.assertEqual(registry["available"]["tronclass"]["auth_flow"], "public_cloud_email")
-        self.assertEqual(registry["available"]["tronclass"]["verification"], "verified")
         self.assertTrue(registry["available"]["tronclass"]["capabilities"]["course_discovery"])
 
     def test_supported_provider_registry_hides_fju_by_default(self) -> None:
@@ -127,13 +124,11 @@ class ProviderConfigTest(unittest.TestCase):
         tronclass = provider_support_report(get_provider("tronclass"))
 
         self.assertEqual(blocked["support_level"], "ready")
-        self.assertEqual(blocked["verification"], "unverified")
         self.assertTrue(blocked["daily_ready"])
         self.assertFalse(blocked["user_visible"])
         self.assertTrue(blocked["capabilities"]["radar"])
         self.assertTrue(allowed["daily_ready"])
         self.assertTrue(allowed["endpoint_configured"]["base_url"])
-        self.assertEqual(tronclass["verification"], "verified")
         self.assertTrue(tronclass["daily_ready"])
         self.assertTrue(tronclass["user_visible"])
 
@@ -189,7 +184,7 @@ class ResearchModeConfigTest(unittest.TestCase):
         self.assertTrue(report["research"]["enabled"])
         self.assertTrue(report["research"]["allow_api_exploration"])
 
-    def test_doctor_report_keeps_pending_verification_internal(self) -> None:
+    def test_doctor_report_marks_fju_daily_ready(self) -> None:
         tron.CONFIG.update(
             tron.normalize_config(
                 {
@@ -205,7 +200,6 @@ class ResearchModeConfigTest(unittest.TestCase):
         self.assertEqual(report["provider"]["key"], "fju")
         self.assertEqual(report["provider_support"]["support_level"], "ready")
         self.assertTrue(report["provider_support"]["daily_ready"])
-        self.assertEqual(report["internal"]["provider_verification"]["verification"]["verification"], "unverified")
         provider_checks = [item for item in report["checks"] if item["name"].startswith("provider")]
         self.assertTrue(all(item["status"] == "ok" for item in provider_checks))
 

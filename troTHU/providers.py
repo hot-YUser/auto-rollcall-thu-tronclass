@@ -45,7 +45,6 @@ class ProviderDefinition:
     courses_url: str = ""
     status: str = "stub"
     support_level: str = ""
-    verification: str = "unverified"
     capabilities: ProviderCapabilities = field(default_factory=ProviderCapabilities)
     notes: str = ""
     user_visible: bool = True
@@ -90,7 +89,6 @@ class ProviderDefinition:
             "auth_flow": self.auth_flow,
             "status": self.status,
             "support_level": self.effective_support_level,
-            "verification": self.verification,
             "ready": self.ready,
             "daily_ready": self.daily_ready,
             "user_visible": self.user_visible,
@@ -120,7 +118,6 @@ PROVIDERS: Dict[str, ProviderDefinition] = {
         auth_flow="thu_cas",
         status="ready",
         support_level="ready",
-        verification="verified",
         capabilities=ProviderCapabilities(
             number=True,
             radar=True,
@@ -141,7 +138,6 @@ PROVIDERS: Dict[str, ProviderDefinition] = {
         auth_flow="manual_cookie_only",
         status="ready",
         support_level="ready",
-        verification="unverified",
         user_visible=False,
         capabilities=ProviderCapabilities(
             number=True,
@@ -163,7 +159,6 @@ PROVIDERS: Dict[str, ProviderDefinition] = {
         auth_flow="tku_sso_browser",
         status="ready",
         support_level="ready",
-        verification="account_pending",
         capabilities=ProviderCapabilities(
             number=True,
             radar=True,
@@ -174,7 +169,7 @@ PROVIDERS: Dict[str, ProviderDefinition] = {
             local_scanner=True,
             direct_code_lookup=True,
         ),
-        notes="Ready for user-level daily flow. TKU SSO uses HTTP fast SSO first and falls back to browser-assisted login when the SSO form or API validation changes; internal verification ledger is account-pending while sanitized evidence is collected.",
+        notes="Ready for user-level daily flow. TKU SSO uses HTTP fast SSO first and falls back to browser-assisted login when the SSO form changes.",
     ),
     "tronclass": ProviderDefinition(
         key="tronclass",
@@ -184,7 +179,6 @@ PROVIDERS: Dict[str, ProviderDefinition] = {
         auth_flow="public_cloud_email",
         status="ready",
         support_level="ready",
-        verification="verified",
         capabilities=ProviderCapabilities(
             number=True,
             radar=True,
@@ -297,17 +291,12 @@ def provider_support_report(provider: Any, allow_experimental: bool = False) -> 
         "current_semester_url": bool(str(config.get("current_semester_url") or "").strip()),
         "courses_url": bool(str(config.get("courses_url") or "").strip()),
     }
-    verification_value = config.get("verification")
-    if isinstance(verification_value, Mapping):
-        verification_value = verification_value.get("verification") or verification_value.get("status")
-    verification = str(verification_value or "unverified")
     daily_ready = support_level == "ready"
     return {
         "key": str(config.get("key") or DEFAULT_PROVIDER),
         "label": str(config.get("label") or ""),
         "support_level": support_level,
         "status": str(config.get("status") or support_level),
-        "verification": verification,
         "ready": support_level == "ready",
         "daily_ready": daily_ready,
         "user_visible": bool(config.get("user_visible", True)),

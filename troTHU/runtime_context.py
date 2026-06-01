@@ -121,23 +121,6 @@ try:
         format_log_summary,
     )
     from troTHU.package_diagnostics import build_package_diagnostic_report
-    from troTHU.provider_ready_gate import (
-        build_provider_ready_gate,
-        format_provider_ready_gate,
-    )
-    from troTHU.provider_verification import (
-        build_provider_fixture_template,
-        build_provider_verification_checklist,
-        summarize_provider_verification,
-        validate_provider_fixture,
-    )
-    from troTHU.provider_fixture_review import (
-        build_provider_fixture_review,
-        build_provider_fixture_review_template,
-        format_provider_fixture_review,
-        review_provider_fixture_dir,
-        review_provider_fixture_file,
-    )
     from troTHU.pending_qr import (
         DEFAULT_PENDING_QR_PROVIDER,
         add_pending_qr,
@@ -229,15 +212,6 @@ try:
     from troTHU.release_builder import (
         format_release_build_summary,
         run_release_build_pipeline,
-    )
-    from troTHU.real_validation import (
-        append_local_smoke_validation_records,
-        append_real_validation_record,
-        build_local_smoke_validation_records,
-        build_real_validation_checklist,
-        format_real_validation_summary,
-        run_local_validation_smoke,
-        summarize_real_validation,
     )
     from troTHU.discord_adapter import sync_discord_command_schema
     from troTHU.discord_gateway import build_gateway_health, run_discord_gateway
@@ -379,23 +353,6 @@ except ImportError:
         format_log_summary,
     )
     from package_diagnostics import build_package_diagnostic_report
-    from provider_ready_gate import (
-        build_provider_ready_gate,
-        format_provider_ready_gate,
-    )
-    from provider_verification import (
-        build_provider_fixture_template,
-        build_provider_verification_checklist,
-        summarize_provider_verification,
-        validate_provider_fixture,
-    )
-    from provider_fixture_review import (
-        build_provider_fixture_review,
-        build_provider_fixture_review_template,
-        format_provider_fixture_review,
-        review_provider_fixture_dir,
-        review_provider_fixture_file,
-    )
     from pending_qr import (
         DEFAULT_PENDING_QR_PROVIDER,
         add_pending_qr,
@@ -487,15 +444,6 @@ except ImportError:
     from release_builder import (
         format_release_build_summary,
         run_release_build_pipeline,
-    )
-    from real_validation import (
-        append_local_smoke_validation_records,
-        append_real_validation_record,
-        build_local_smoke_validation_records,
-        build_real_validation_checklist,
-        format_real_validation_summary,
-        run_local_validation_smoke,
-        summarize_real_validation,
     )
     from discord_adapter import sync_discord_command_schema
     from discord_gateway import build_gateway_health, run_discord_gateway
@@ -862,8 +810,6 @@ _LEGACY_EXPORTS = {
     '_app_shell_integrations': ('troTHU.cli_app', '_app_shell_integrations'),
     '_app_shell_logs_summary': ('troTHU.cli_app', '_app_shell_logs_summary'),
     '_app_shell_polish_reports': ('troTHU.cli_app', '_app_shell_polish_reports'),
-    '_app_shell_provider_ready_gate': ('troTHU.cli_app', '_app_shell_provider_ready_gate'),
-    '_app_shell_provider_verification': ('troTHU.cli_app', '_app_shell_provider_verification'),
     '_app_shell_release_check': ('troTHU.cli_app', '_app_shell_release_check'),
     '_app_shell_release_plan': ('troTHU.cli_app', '_app_shell_release_plan'),
     '_app_shell_snapshot': ('troTHU.cli_app', '_app_shell_snapshot'),
@@ -1005,22 +951,15 @@ _LEGACY_EXPORTS = {
     'print_status': ('troTHU.status_reports', 'print_status'),
     'parse_simple_config_text': ('troTHU.simple_config', 'parse_simple_config_text'),
     'provider_block_message': ('troTHU.status_reports', 'provider_block_message'),
-    'provider_fixture_review_command': ('troTHU.cli_provider', 'provider_fixture_review_command'),
-    'provider_fixture_review_dir_command': ('troTHU.cli_provider', 'provider_fixture_review_dir_command'),
-    'provider_fixture_review_template_command': ('troTHU.cli_provider', 'provider_fixture_review_template_command'),
-    'provider_fixture_template_command': ('troTHU.cli_provider', 'provider_fixture_template_command'),
-    'provider_fixture_validate_command': ('troTHU.cli_provider', 'provider_fixture_validate_command'),
     'provider_guard_result': ('troTHU.status_reports', 'provider_guard_result'),
     'provider_is_daily_allowed': ('troTHU.status_reports', 'provider_is_daily_allowed'),
     'provider_list_command': ('troTHU.cli_provider', 'provider_list_command'),
     'provider_prefers_browser_assisted_login': ('troTHU.auth_runtime', 'provider_prefers_browser_assisted_login'),
-    'provider_ready_gate_command': ('troTHU.cli_provider', 'provider_ready_gate_command'),
     'provider_requires_api_session_validation': ('troTHU.auth_runtime', 'provider_requires_api_session_validation'),
     'provider_requires_manual_cookie_login': ('troTHU.auth_runtime', 'provider_requires_manual_cookie_login'),
     'provider_report': ('troTHU.status_reports', 'provider_report'),
     'provider_show_command': ('troTHU.cli_provider', 'provider_show_command'),
     'provider_summary': ('troTHU.cli_provider', 'provider_summary'),
-    'provider_verify_checklist_command': ('troTHU.cli_provider', 'provider_verify_checklist_command'),
     'qr_command': ('troTHU.cli_qr', 'qr_command'),
     'qr_fanout_command': ('troTHU.qr_runtime', 'qr_fanout_command'),
     'qr_fanout_result': ('troTHU.qr_runtime', 'qr_fanout_result'),
@@ -1093,10 +1032,6 @@ _LEGACY_EXPORTS = {
     'tronclass_api_endpoints': ('troTHU.providers', 'tronclass_api_endpoints'),
     'unbind_account': ('troTHU.cli_accounts', 'unbind_account'),
     'validate_login_api_session': ('troTHU.auth_runtime', 'validate_login_api_session'),
-    'validation_checklist_command': ('troTHU.cli_system', 'validation_checklist_command'),
-    'validation_local_smoke_command': ('troTHU.cli_system', 'validation_local_smoke_command'),
-    'validation_record_command': ('troTHU.cli_system', 'validation_record_command'),
-    'validation_summary_command': ('troTHU.cli_system', 'validation_summary_command'),
     'webview_import_command': ('troTHU.cli_app', 'webview_import_command'),
     'webview_preview_command': ('troTHU.cli_app', 'webview_preview_command'),
     'webview_status_command': ('troTHU.cli_app', 'webview_status_command'),

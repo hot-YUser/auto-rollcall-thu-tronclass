@@ -354,10 +354,11 @@ def _readme_report(path: Path) -> Dict[str, Any]:
             "current release status documented",
             severity="warn",
         ),
-        _check("README release-check", "release-check" in text, "release-check documented", severity="warn"),
-        _check("README monitor console quickstart", "監控 console" in text and "run --no-input" in text, "monitor console quickstart documented", severity="warn"),
-        _check("README current bot docs", "HTTP Interactions" in text and "optional Gateway" in text, "current Discord entrypoints documented", severity="warn"),
-        _check("README provider scope", "THU / TKU / TronClass" in text and "fast SSO" in text and "provider.allow_experimental" in text, "THU/TKU/TronClass provider scope documented", severity="warn"),
+        _check("README monitor console quickstart", "run --no-input" in text and "按任意鍵" in text, "monitor console quickstart documented", severity="warn"),
+        _check("README config tutorial", "config.advanced.yaml" in text and "operating" in text, "config tutorial documented", severity="warn"),
+        _check("README bot docs", "HTTP Interactions" in text and "Telegram" in text, "bot entrypoints documented", severity="warn"),
+        _check("README provider scope", "THU" in text and "TKU" in text, "THU/TKU provider scope documented", severity="warn"),
+        _check("README qr unsupported", "不支援 QR Code 點名" in text, "QR documented as unsupported", severity="warn"),
         _check("README no stale stable-version advice", "建議優先使用上一個正式版" not in text and "v0.2.8" not in text, "no obsolete v0.2.8 recommendation", severity="warn"),
     ]
     return {"exists": path.exists(), "file": path.name, "checks": checks, "status": _overall_status(checks)}

@@ -19,14 +19,11 @@ PANEL_IDS = (
     "qr-preview",
     "radar-assist",
     "webview-sync",
-    "provider-verify",
-    "ready-gate",
     "release-check",
     "release-plan",
     "shell-policy",
     "logs",
     "diagnostics",
-    "validation",
 )
 MUTATING_ACTIONS = ("account_control", "qr_submit", "webview_import", "reauth", "release_build")
 SENSITIVE_KEY_RE = re.compile(
@@ -115,13 +112,6 @@ def build_shell_action_catalog(config: Mapping[str, Any]) -> Dict[str, Any]:
             "executes_in_shell": False,
         },
         {
-            "id": "validation_summary",
-            "label": "R1 Validation Summary",
-            "category": "safe-read",
-            "command_template": "python -m troTHU.tron validation summary --json",
-            "executes_in_shell": False,
-        },
-        {
             "id": "qr_preview",
             "label": "QR Preview",
             "category": "preview-only",
@@ -133,13 +123,6 @@ def build_shell_action_catalog(config: Mapping[str, Any]) -> Dict[str, Any]:
             "label": "WebView Cookie Preview",
             "category": "preview-only",
             "command_template": "python -m troTHU.tron webview preview --input cookies.json --json",
-            "executes_in_shell": False,
-        },
-        {
-            "id": "provider_review",
-            "label": "Provider Fixture Review",
-            "category": "manual-assisted",
-            "command_template": "python -m troTHU.tron provider fixture review --input fixture.json --provider {} --json".format(provider_key),
             "executes_in_shell": False,
         },
         {
@@ -167,9 +150,7 @@ def build_shell_ui_model(
 ) -> Dict[str, Any]:
     data = _reports(reports)
     badges = {
-        "validation": _badge(_status_from_report(data.get("validation_summary"))),
         "release": _badge(_status_from_report(data.get("release_check"))),
-        "provider": _badge(_status_from_report(data.get("provider_review") or data.get("provider_ready_gate"))),
         "diagnostics": _badge(_status_from_report(data.get("doctor_report"))),
     }
     panels = [
@@ -222,10 +203,7 @@ def build_shell_drilldown(
         "accounts": "accounts",
         "logs": "logs_summary",
         "diagnostics": "doctor_report",
-        "validation": "validation_summary",
         "release-check": "release_check",
-        "provider-verify": "provider_verification",
-        "ready-gate": "provider_ready_gate",
         "radar-assist": "radar_assist",
         "webview-sync": "webview_status",
         "shell-policy": "shell_policy",

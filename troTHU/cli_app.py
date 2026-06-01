@@ -46,14 +46,6 @@ def _app_shell_integrations() -> ctx.Dict[str, ctx.Any]:
     return {'status': 'ok', 'bindings': report.get('binding_count', 0), 'adapter_counts': report.get('adapter_counts', {}), 'admins': report.get('admins', {}), 'security': report.get('security', {})}
 
 
-def _app_shell_provider_verification() -> ctx.Dict[str, ctx.Any]:
-    return ctx.build_provider_verification_checklist(ctx.provider_report(), config=ctx.CONFIG)
-
-
-def _app_shell_provider_ready_gate() -> ctx.Dict[str, ctx.Any]:
-    return ctx.build_provider_ready_gate(ctx.provider_report(), config=ctx.CONFIG)
-
-
 def _app_shell_release_check() -> ctx.Dict[str, ctx.Any]:
     return ctx.build_release_checklist(ctx.BASE_DIR, config=ctx.CONFIG)
 
@@ -63,7 +55,7 @@ def _app_shell_release_plan() -> ctx.Dict[str, ctx.Any]:
 
 
 def _app_shell_polish_reports() -> ctx.Dict[str, ctx.Any]:
-    return {'snapshot': ctx._app_shell_snapshot(), 'accounts': ctx._app_shell_accounts(), 'logs_summary': ctx._app_shell_logs_summary(), 'doctor_report': ctx.doctor_report(), 'provider_verification': ctx._app_shell_provider_verification(), 'provider_ready_gate': ctx._app_shell_provider_ready_gate(), 'provider_review': ctx.build_provider_fixture_review(ctx.provider_report(), config=ctx.CONFIG), 'release_check': ctx._app_shell_release_check(), 'release_plan': ctx._app_shell_release_plan(), 'validation_summary': ctx.summarize_real_validation(ctx.BASE_DIR), 'shell_policy': {'read_only': True, 'preview_only': True}}
+    return {'snapshot': ctx._app_shell_snapshot(), 'accounts': ctx._app_shell_accounts(), 'logs_summary': ctx._app_shell_logs_summary(), 'doctor_report': ctx.doctor_report(), 'release_check': ctx._app_shell_release_check(), 'release_plan': ctx._app_shell_release_plan(), 'shell_policy': {'read_only': True, 'preview_only': True}}
 
 
 def _app_shell_ui_model() -> ctx.Dict[str, ctx.Any]:
@@ -84,7 +76,7 @@ async def app_serve_command(args: ctx.argparse.Namespace) -> int:
     else:
         print('Starting local companion shell at {}'.format(metadata['url']))
         print('Read-only / preview-only. Mutating actions stay in CLI, Bot, or scanner flows.')
-    await ctx.run_app_shell(ctx.CONFIG, host=host, port=port, open_browser=bool(getattr(args, 'open', False)), token_ttl_seconds=ttl, snapshot_builder=ctx._app_shell_snapshot, accounts_builder=ctx._app_shell_accounts, log_summary_builder=ctx._app_shell_logs_summary, diagnostics_builder=ctx.doctor_report, integrations_builder=ctx._app_shell_integrations, qr_previewer=ctx.build_qr_preview, webview_previewer=lambda records: ctx.build_webview_cookie_preview(records, config=ctx.CONFIG, provider=ctx.provider_report(), profile=ctx.get_active_profile(ctx.CONFIG).name), radar_assist_builder=lambda: ctx.build_radar_map_assist(ctx.CONFIG, provider=ctx.provider_report()), provider_verification_builder=ctx._app_shell_provider_verification, provider_ready_gate_builder=ctx._app_shell_provider_ready_gate, release_check_builder=ctx._app_shell_release_check, release_plan_builder=ctx._app_shell_release_plan, shell_ui_builder=ctx._app_shell_ui_model, shell_drilldown_builder=ctx._app_shell_drilldown, action_catalog_builder=lambda: ctx.build_shell_action_catalog(ctx.CONFIG), validation_summary_builder=lambda: ctx.summarize_real_validation(ctx.BASE_DIR))
+    await ctx.run_app_shell(ctx.CONFIG, host=host, port=port, open_browser=bool(getattr(args, 'open', False)), token_ttl_seconds=ttl, snapshot_builder=ctx._app_shell_snapshot, accounts_builder=ctx._app_shell_accounts, log_summary_builder=ctx._app_shell_logs_summary, diagnostics_builder=ctx.doctor_report, integrations_builder=ctx._app_shell_integrations, qr_previewer=ctx.build_qr_preview, webview_previewer=lambda records: ctx.build_webview_cookie_preview(records, config=ctx.CONFIG, provider=ctx.provider_report(), profile=ctx.get_active_profile(ctx.CONFIG).name), radar_assist_builder=lambda: ctx.build_radar_map_assist(ctx.CONFIG, provider=ctx.provider_report()), release_check_builder=ctx._app_shell_release_check, release_plan_builder=ctx._app_shell_release_plan, shell_ui_builder=ctx._app_shell_ui_model, shell_drilldown_builder=ctx._app_shell_drilldown, action_catalog_builder=lambda: ctx.build_shell_action_catalog(ctx.CONFIG))
     return 0
 
 

@@ -19,7 +19,6 @@ class AppShellDashboardTest(unittest.TestCase):
                 "pending_qr": [{"rollcall_id": "r1"}],
                 "logs": {"record_count": 9},
             },
-            provider_ready_gate={"status": "not_required", "ready_candidate": True},
             release_report={"status": "warn"},
             policy=build_shell_policy(route_count=18),
         )
@@ -28,7 +27,6 @@ class AppShellDashboardTest(unittest.TestCase):
         self.assertTrue(model["read_only"])
         self.assertTrue(model["preview_only"])
         card_ids = {card["id"] for card in model["cards"]}
-        self.assertIn("provider_ready_gate", card_ids)
         self.assertIn("release", card_ids)
         self.assertIn("shell_policy", card_ids)
 
@@ -59,7 +57,6 @@ class AppShellDashboardTest(unittest.TestCase):
         lines = format_shell_dashboard_cards(
             build_shell_dashboard_cards(
                 snapshot={"provider": {"key": "thu", "daily_ready": True}},
-                provider_ready_gate={"status": "not_required", "ready_candidate": True},
                 release_report={"status": "ok"},
                 policy=build_shell_policy(route_count=18),
             )
@@ -67,7 +64,6 @@ class AppShellDashboardTest(unittest.TestCase):
         text = "\n".join(lines)
 
         self.assertIn("App shell dashboard: ok", text)
-        self.assertIn("Provider Ready Gate", text)
         self.assertIn("Release", text)
 
 
