@@ -25,6 +25,60 @@ async def sleep_or_shutdown(shutdown_event: ctx.asyncio.Event, seconds: float) -
         return
 
 
+def next_schedule_transition(now=None):
+    try:
+        base_now = now or ctx.current_datetime()
+        schedule_cache = {}
+
+        def schedule_for_weekday(weekday):
+            if weekday not in schedule_cache:
+                schedule = ctx.get_schedule_for_day(weekday)
+                if not schedule.get('enable', False):
+                    schedule_cache[weekday] = (False, ())
+                else:
+                    schedule_ranges = schedule.get('ranges', schedule.get('range'))
+                    schedule_cache[weekday] = (True, tuple(ctx.parse_schedule_ranges(schedule_ranges)))
+            return schedule_cache[weekday]
+
+        def active_at(moment):
+            enabled, ranges = schedule_for_weekday(moment.weekday())
+            if not enabled:
+                return False
+            current_time = moment.time()
+            return any(
+                ctx.is_within_schedule(start, end, current_time)
+                for start, end in ranges
+            )
+
+        predicted = ctx.predict_schedule_change(base_now, active_at)
+        if predicted is None:
+            return None
+        return predicted[0]
+    except Exception:
+        return None
+
+
+async def status_line_loop(shutdown_event: ctx.asyncio.Event) -> None:
+    if not ctx.console_is_interactive():
+        await shutdown_event.wait()
+        return
+    try:
+        while not shutdown_event.is_set():
+            ctx.render_status_line()
+            try:
+                await ctx.asyncio.wait_for(shutdown_event.wait(), timeout=1.0)
+            except ctx.asyncio.TimeoutError:
+                pass
+    finally:
+        ctx.clear_status_line()
+
+
+def _update_monitor_status(*, legacy_message=None, **kwargs) -> None:
+    ctx.update_monitor_status(**kwargs)
+    if legacy_message and not ctx.console_is_interactive():
+        ctx.status_print(legacy_message)
+
+
 async def monitor_loop(session: ctx.aiohttp.ClientSession, shutdown_event: ctx.asyncio.Event) -> None:
     flag_day_night = False
     login_retry_attempt = 0
@@ -32,6 +86,8 @@ async def monitor_loop(session: ctx.aiohttp.ClientSession, shutdown_event: ctx.a
     next_runtime_heartbeat = 0.0
     unauth_notice_state = ''
     ctx.record_monitor_runtime('running')
+    ctx.reset_monitor_status()
+    ctx.update_monitor_status(phase='logging_in', detail='正在登入…', redraw=False)
     if ctx.COOKIE_CACHE_RESTORED and ctx.has_session_cookie(session):
         active_profile = ctx.get_active_profile(ctx.CONFIG)
         login_result = ctx.LoginResult(status='success', credential_source='cookie_cache', user=active_profile.user)
@@ -100,12 +156,18 @@ async def monitor_loop(session: ctx.aiohttp.ClientSession, shutdown_event: ctx.a
             login_retry_attempt = 0
             next_login_retry_at = 0.0
         configured_now = ctx.current_datetime()
+        next_switch = ctx.next_schedule_transition(configured_now)
         today = configured_now.weekday()
         schedule = ctx.get_schedule_for_day(today)
         schedule_ranges = schedule.get('ranges', schedule.get('range'))
         current_time = configured_now.time()
         if not schedule.get('enable', False):
-            ctx.status_print('今日非上課日 (休眠中)')
+            _update_monitor_status(
+                phase='standby',
+                detail='今日非上課日',
+                next_switch_at=next_switch,
+                legacy_message='今日非上課日 (休眠中)',
+            )
             await ctx.sleep_or_shutdown(shutdown_event, 60)
             continue
         if ctx.is_within_any_schedule(schedule_ranges, current_time):
@@ -120,7 +182,12 @@ async def monitor_loop(session: ctx.aiohttp.ClientSession, shutdown_event: ctx.a
                 text = '今日課程結束，進入休眠...\n'
                 ctx.log_print(text)
                 await ctx.mes(text)
-            ctx.status_print('非上課時段 (休眠中)')
+            _update_monitor_status(
+                phase='standby',
+                detail='非上課時段',
+                next_switch_at=next_switch,
+                legacy_message='非上課時段 (休眠中)',
+            )
             await ctx.sleep_or_shutdown(shutdown_event, 60)
             continue
         try:
@@ -128,19 +195,26 @@ async def monitor_loop(session: ctx.aiohttp.ClientSession, shutdown_event: ctx.a
             error_cnt = 0
             if status_msg == 'not call':
                 ctx.reset_unsupported_rollcall_state()
-                ctx.status_print('第 {} 次檢查: 目前無點名'.format(ctx.cnt))
+                detail = '目前無點名'
             elif status_msg == 'unsupported_radar':
-                ctx.status_print('第 {} 次檢查: 發現未支援的 radar 點名'.format(ctx.cnt))
+                detail = '發現未支援的 radar 點名'
             elif status_msg == 'unsupported_qrcode':
-                ctx.status_print('第 {} 次檢查: 發現 QR Code 點名，等待手動 QR 內容'.format(ctx.cnt))
+                detail = '發現 QR Code 點名，等待手動 QR 內容'
             elif status_msg == 'unsupported_rollcall':
-                ctx.status_print('第 {} 次檢查: 發現未支援的點名類型'.format(ctx.cnt))
+                detail = '發現未支援的點名類型'
             elif status_msg == 'is_radar':
-                ctx.status_print('第 {} 次檢查: 雷達點名已觸發'.format(ctx.cnt))
+                detail = '雷達點名已觸發'
             elif status_msg == 'radar_failed':
-                ctx.status_print('第 {} 次檢查: 雷達點名處理失敗，下一輪會再檢查'.format(ctx.cnt))
+                detail = '雷達點名處理失敗，下一輪會再檢查'
             else:
-                ctx.status_print('第 {} 次檢查: {}'.format(ctx.cnt, status_msg))
+                detail = status_msg
+            _update_monitor_status(
+                phase='monitoring',
+                check_count=ctx.cnt,
+                detail=detail,
+                next_switch_at=next_switch,
+                legacy_message='第 {} 次檢查: {}'.format(ctx.cnt, detail),
+            )
         except ctx.UnauthorizedError:
             ctx.record_runtime_error('unauthorized', 'Cookie expired; reauth required.')
             ctx.log(event='tron_http_error', counter=ctx.cnt, status='unauthorized', message='Cookie 已過期，準備重新登入。')
@@ -167,7 +241,7 @@ async def monitor_loop(session: ctx.aiohttp.ClientSession, shutdown_event: ctx.a
         except ctx.TronHttpError as exc:
             ctx.record_runtime_error('tron_http_error', exc)
             if error_cnt < ctx.get_retry_limit():
-                text = 'check rollcall error on {}, trying {} times, error: {}'.format(ctx.cnt, error_cnt, exc)
+                text = '檢查點名時發生錯誤（第 {} 次，已重試 {} 次）：{}'.format(ctx.cnt, error_cnt, exc)
                 ctx.log(event='tron_http_error', counter=ctx.cnt, status='retrying', message=text, error=exc)
                 ctx.log_print(text)
                 await ctx.mes(text)
@@ -184,7 +258,7 @@ async def monitor_loop(session: ctx.aiohttp.ClientSession, shutdown_event: ctx.a
                 error_cnt = 0
                 continue
             if error_cnt < ctx.get_retry_limit():
-                text = 'network error on {}, trying {} times, error: {}'.format(ctx.cnt, error_cnt, exc)
+                text = '網路連線發生錯誤（第 {} 次，已重試 {} 次）：{}'.format(ctx.cnt, error_cnt, exc)
                 ctx.log(event='network_error', counter=ctx.cnt, status='retrying', message=text, error=exc)
                 ctx.log_print(text)
                 await ctx.mes(text)
@@ -221,6 +295,7 @@ async def app_main(*, input_enabled: bool=True, external_shutdown_event: ctx.Any
                 tasks = [
                     ctx.asyncio.create_task(ctx.monitor_loop(session, shutdown_event)),
                     ctx.asyncio.create_task(ctx.watch_any_key_to_edit_config(shutdown_event, session)),
+                    ctx.asyncio.create_task(ctx.status_line_loop(shutdown_event)),
                 ]
                 try:
                     done, pending = await ctx.asyncio.wait(tasks, return_when=ctx.asyncio.FIRST_COMPLETED)

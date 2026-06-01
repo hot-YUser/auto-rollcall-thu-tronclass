@@ -63,7 +63,6 @@ def _count(value: Any) -> int:
 def build_shell_dashboard_cards(
     *,
     snapshot: Mapping[str, Any] | None = None,
-    provider_ready_gate: Mapping[str, Any] | None = None,
     release_report: Mapping[str, Any] | None = None,
     policy: Mapping[str, Any] | None = None,
 ) -> Dict[str, Any]:
@@ -78,7 +77,6 @@ def build_shell_dashboard_cards(
         pending_qr = []
     log_summary = snapshot.get("log_summary") if isinstance(snapshot.get("log_summary"), Mapping) else snapshot.get("logs", {})
     release_status = release_report.get("status") if isinstance(release_report, Mapping) else "not_configured"
-    gate_status = provider_ready_gate.get("status") if isinstance(provider_ready_gate, Mapping) else "not_configured"
     disabled_mutations = policy.get("disabled_mutations") if isinstance(policy, Mapping) else []
     cards = [
         _status_card(
@@ -115,13 +113,6 @@ def build_shell_dashboard_cards(
             str(_count(log_summary.get("record_count") if isinstance(log_summary, Mapping) else 0)),
             "recent events summarized locally",
             severity="info",
-        ),
-        _status_card(
-            "provider_ready_gate",
-            "Provider Ready Gate",
-            str(gate_status or "unknown"),
-            "ready_candidate={}".format(provider_ready_gate.get("ready_candidate") if isinstance(provider_ready_gate, Mapping) else False),
-            severity="ok" if gate_status in {"candidate_ready", "not_required"} else "warn",
         ),
         _status_card(
             "release",
@@ -165,7 +156,6 @@ def build_shell_policy(*, route_count: int = 0) -> Dict[str, Any]:
             "qr_submit",
             "qr_fanout",
             "webview_import",
-            "provider_verify",
             "release_check",
         ],
         "forbidden_outputs": [

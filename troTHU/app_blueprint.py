@@ -41,7 +41,6 @@ REQUIRED_ENDPOINT_IDS = {
     "webview_cookie_preview",
     "webview_cookie_import",
     "dashboard_cards",
-    "provider_ready_gate",
     "release_build_plan",
     "shell_policy",
 }
@@ -146,11 +145,9 @@ def build_app_blueprint(config: Mapping[str, Any] | None = None) -> Dict[str, An
         "integration_bindings": "Adapter counts and channel-scoped capability summary.",
         "webview_sync_contract": "Safe WebView login cookie preview/import gate summaries.",
         "radar_map_assist": "Read-only radar boundary, center, and candidate grid summaries.",
-        "provider_ready_gate": "Hidden-provider and TKU ready-gate criteria plus sanitized acceptance state.",
         "release_build_plan": "Static release artifact plan and manifest summary.",
         "shell_policy": "Local shell read-only route and handoff policy.",
         "shell_ui_model": "Polished read-only local shell model, badges, filters, and drilldown summaries.",
-        "validation_summary": "R1 validation checklist and local acceptance summary.",
     }
     actions = {
         "refresh_snapshot": "Reload local summaries.",
@@ -169,11 +166,9 @@ def build_app_blueprint(config: Mapping[str, Any] | None = None) -> Dict[str, An
         "webview_cookie_preview": "Preview exported WebView cookies without saving values.",
         "webview_cookie_import": "Import accepted WebView cookies into existing local cookie cache.",
         "radar_map_assist": "Preview radar boundary and candidate coordinate model.",
-        "provider_ready_gate": "Inspect hidden-provider/TKU ready-gate blockers without changing provider state.",
         "release_build_plan": "Inspect non-executing release build plan.",
         "view_shell_policy": "Show read-only shell policy and disabled mutation list.",
         "view_shell_ui_model": "Show polished local shell panel model and read-only action catalog.",
-        "view_validation_summary": "Show R1 validation summary without recording new results.",
     }
     screens = [
         _screen(
@@ -184,7 +179,7 @@ def build_app_blueprint(config: Mapping[str, Any] | None = None) -> Dict[str, An
             future_notes=("Use dense status cards; no marketing hero.", "Show stale monitor and pending QR clearly."),
             details={
                 "prototype_status": "dashboard_cards_core",
-                "served_routes": ["dashboard_cards", "shell_policy", "ui_model", "validation_summary"],
+                "served_routes": ["dashboard_cards", "shell_policy", "ui_model"],
                 "shell_status": "polished_read_only_shell_core",
             },
         ),
@@ -296,8 +291,8 @@ def build_app_blueprint(config: Mapping[str, Any] | None = None) -> Dict[str, An
             "dashboard_cards",
             "GET",
             "/app/api/dashboard/cards",
-            data_sources=("observability_snapshot", "provider_ready_gate", "release_build_plan", "shell_policy"),
-            actions=("refresh_snapshot", "provider_ready_gate", "release_build_plan", "view_shell_policy"),
+            data_sources=("observability_snapshot", "release_build_plan", "shell_policy"),
+            actions=("refresh_snapshot", "release_build_plan", "view_shell_policy"),
             response_fields=("cards", "read_only", "preview_only", "status"),
             served_now=True,
         ),
@@ -359,15 +354,6 @@ def build_app_blueprint(config: Mapping[str, Any] | None = None) -> Dict[str, An
             served_now=True,
         ),
         _endpoint(
-            "provider_ready_gate",
-            "GET",
-            "/app/api/provider/ready-gate",
-            data_sources=("provider_capabilities", "provider_ready_gate"),
-            actions=("provider_ready_gate",),
-            response_fields=("status", "provider", "ready_candidate", "blockers", "criteria"),
-            served_now=True,
-        ),
-        _endpoint(
             "release_build_plan",
             "GET",
             "/app/api/release/plan",
@@ -389,18 +375,9 @@ def build_app_blueprint(config: Mapping[str, Any] | None = None) -> Dict[str, An
             "ui_model",
             "GET",
             "/app/api/ui/model",
-            data_sources=("shell_ui_model", "validation_summary", "release_build_plan"),
+            data_sources=("shell_ui_model", "release_build_plan"),
             actions=("view_shell_ui_model",),
             response_fields=("panels", "badges", "action_catalog", "recent_event_groups"),
-            served_now=True,
-        ),
-        _endpoint(
-            "validation_summary",
-            "GET",
-            "/app/api/validation/summary",
-            data_sources=("validation_summary",),
-            actions=("view_validation_summary",),
-            response_fields=("counts", "ready_for_r2", "live_acceptance"),
             served_now=True,
         ),
         _endpoint(

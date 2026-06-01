@@ -189,7 +189,7 @@ class ResearchModeConfigTest(unittest.TestCase):
         self.assertTrue(report["research"]["enabled"])
         self.assertTrue(report["research"]["allow_api_exploration"])
 
-    def test_doctor_report_keeps_pending_verification_internal(self) -> None:
+    def test_doctor_report_keeps_provider_support_ready(self) -> None:
         tron.CONFIG.update(
             tron.normalize_config(
                 {
@@ -205,7 +205,6 @@ class ResearchModeConfigTest(unittest.TestCase):
         self.assertEqual(report["provider"]["key"], "fju")
         self.assertEqual(report["provider_support"]["support_level"], "ready")
         self.assertTrue(report["provider_support"]["daily_ready"])
-        self.assertEqual(report["internal"]["provider_verification"]["verification"]["verification"], "unverified")
         provider_checks = [item for item in report["checks"] if item["name"].startswith("provider")]
         self.assertTrue(all(item["status"] == "ok" for item in provider_checks))
 

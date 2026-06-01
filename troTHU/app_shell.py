@@ -30,16 +30,12 @@ try:  # pragma: no cover - script execution fallback
         build_shell_ui_model,
     )
     from troTHU.app_shell_dashboard import build_shell_dashboard_cards, build_shell_policy
-    from troTHU.provider_ready_gate import build_provider_ready_gate
-    from troTHU.provider_verification import build_provider_verification_checklist
     from troTHU.radar_map_assist import build_radar_map_assist, validate_radar_point
     from troTHU.release_checklist import build_release_build_plan, build_release_checklist
     from troTHU.webview_sync import WebViewSyncError, build_webview_cookie_preview, build_webview_sync_status, parse_webview_cookie_export
 except ImportError:  # pragma: no cover
     from app_shell_polish import build_shell_action_catalog, build_shell_drilldown, build_shell_ui_model
     from app_shell_dashboard import build_shell_dashboard_cards, build_shell_policy
-    from provider_ready_gate import build_provider_ready_gate
-    from provider_verification import build_provider_verification_checklist
     from radar_map_assist import build_radar_map_assist, validate_radar_point
     from release_checklist import build_release_build_plan, build_release_checklist
     from webview_sync import WebViewSyncError, build_webview_cookie_preview, build_webview_sync_status, parse_webview_cookie_export
@@ -136,14 +132,11 @@ def _shell_html(token: str) -> str:
         ("qr-preview", "QR Preview"),
         ("radar-assist", "Radar Assist"),
         ("webview-sync", "WebView Sync"),
-        ("provider-verify", "Provider Verify"),
-        ("ready-gate", "Ready Gate"),
         ("release-check", "Release Check"),
         ("release-plan", "Release Plan"),
         ("shell-policy", "Shell Policy"),
         ("ui-model", "UI Model"),
         ("action-catalog", "Action Catalog"),
-        ("validation", "Validation"),
         ("logs", "Logs"),
         ("diagnostics", "Diagnostics"),
     ]
@@ -218,14 +211,11 @@ const routes = {
   diagnostics: "/app/api/diagnostics",
   "radar-assist": "/app/api/radar/assist",
   "webview-sync": "/app/api/webview/status",
-  "provider-verify": "/app/api/provider/verification",
-  "ready-gate": "/app/api/provider/ready-gate",
   "release-check": "/app/api/release/check",
   "release-plan": "/app/api/release/plan",
   "shell-policy": "/app/api/shell/policy",
   "ui-model": "/app/api/ui/model",
-  "action-catalog": "/app/api/actions/catalog",
-  "validation": "/app/api/validation/summary"
+  "action-catalog": "/app/api/actions/catalog"
 };
 async function getJson(path) {
   const response = await fetch(path, {headers: {"X-Local-Token": LOCAL_TOKEN}});
@@ -306,15 +296,12 @@ def create_app_shell(
     diagnostics_builder: Builder | None = None,
     integrations_builder: Builder | None = None,
     radar_assist_builder: Builder | None = None,
-    provider_verification_builder: Builder | None = None,
-    provider_ready_gate_builder: Builder | None = None,
     release_check_builder: Builder | None = None,
     release_plan_builder: Builder | None = None,
     dashboard_builder: Builder | None = None,
     shell_ui_builder: Builder | None = None,
     shell_drilldown_builder: Builder | None = None,
     action_catalog_builder: Builder | None = None,
-    validation_summary_builder: Builder | None = None,
 ) -> Any:
     """Create a localhost companion shell app."""
     if web is None:  # pragma: no cover
@@ -345,8 +332,6 @@ def create_app_shell(
                     "/app/api/webview/cookies/preview",
                     "/app/api/radar/assist",
                     "/app/api/radar/validate",
-                    "/app/api/provider/verification",
-                    "/app/api/provider/ready-gate",
                     "/app/api/actions/handoff",
                     "/app/api/release/check",
                     "/app/api/release/plan",
@@ -354,7 +339,6 @@ def create_app_shell(
                     "/app/api/ui/model",
                     "/app/api/ui/drilldown/{panel}",
                     "/app/api/actions/catalog",
-                    "/app/api/validation/summary",
                 ],
                 "disabled_mutations": ["account_control", "qr_submit", "webview_import", "reauth", "release_build"],
             }
@@ -369,7 +353,7 @@ def create_app_shell(
 
     async def shell_policy(request: Any) -> Any:
         _check_api_token(request, token, token_expires_at)
-        return _json(build_shell_policy(route_count=22))
+        return _json(build_shell_policy(route_count=19))
 
     async def ui_model(request: Any) -> Any:
         _check_api_token(request, token, token_expires_at)
@@ -393,29 +377,18 @@ def create_app_shell(
             value = build_shell_action_catalog(config)
         return _json({"status": "ok", "actions": value})
 
-    async def validation_summary(request: Any) -> Any:
-        _check_api_token(request, token, token_expires_at)
-        value = await _maybe_call(validation_summary_builder)
-        if value is None:
-            value = {"status": "not_configured"}
-        return _json({"status": "ok", "validation": value})
-
     async def dashboard_cards(request: Any) -> Any:
         _check_api_token(request, token, token_expires_at)
         value = await _maybe_call(dashboard_builder)
         if value is None:
             snapshot_value = await _maybe_call(snapshot_builder) or {}
-            gate_value = await _maybe_call(provider_ready_gate_builder)
-            if gate_value is None:
-                gate_value = build_provider_ready_gate(_provider_from_config(config), config=config)
             release_value = await _maybe_call(release_check_builder)
             if release_value is None:
                 release_value = build_release_checklist(".")
             value = build_shell_dashboard_cards(
                 snapshot=snapshot_value,
-                provider_ready_gate=gate_value,
                 release_report=release_value,
-                policy=build_shell_policy(route_count=22),
+                policy=build_shell_policy(route_count=19),
             )
         return _json({"status": "ok", "dashboard": value})
 
@@ -497,20 +470,6 @@ def create_app_shell(
         result = validate_radar_point(request.query.get("lat"), request.query.get("lon"), boundary=boundary)
         return _json({"status": "ok" if result.get("ok") else "failed", "validation": result})
 
-    async def provider_verification(request: Any) -> Any:
-        _check_api_token(request, token, token_expires_at)
-        value = await _maybe_call(provider_verification_builder)
-        if value is None:
-            value = build_provider_verification_checklist(_provider_from_config(config), config=config)
-        return _json({"status": "ok", "provider_verification": value})
-
-    async def provider_ready_gate(request: Any) -> Any:
-        _check_api_token(request, token, token_expires_at)
-        value = await _maybe_call(provider_ready_gate_builder)
-        if value is None:
-            value = build_provider_ready_gate(_provider_from_config(config), config=config)
-        return _json({"status": "ok", "provider_ready_gate": value})
-
     async def action_handoff(request: Any) -> Any:
         _check_api_token(request, token, token_expires_at)
         payload = await _json_body(request)
@@ -520,7 +479,6 @@ def create_app_shell(
             "qr_fanout": "python -m troTHU.tron qr paste --all --yes <QR_URL_OR_PAYLOAD>",
             "webview_import": "python -m troTHU.tron webview import --input cookies.json --profile default --save --json",
             "reauth": "python -m troTHU.tron bot serve --adapter generic",
-            "provider_verify": "python -m troTHU.tron provider verify-checklist tku --json",
             "release_check": "python -m troTHU.tron release-check --json",
         }
         template = templates.get(action) or "python -m troTHU.tron status --json"
@@ -564,8 +522,6 @@ def create_app_shell(
     app.router.add_post("/app/api/webview/cookies/preview", webview_cookie_preview)
     app.router.add_get("/app/api/radar/assist", radar_assist)
     app.router.add_get("/app/api/radar/validate", radar_validate)
-    app.router.add_get("/app/api/provider/verification", provider_verification)
-    app.router.add_get("/app/api/provider/ready-gate", provider_ready_gate)
     app.router.add_post("/app/api/actions/handoff", action_handoff)
     app.router.add_get("/app/api/release/check", release_check)
     app.router.add_get("/app/api/release/plan", release_plan)
@@ -573,7 +529,6 @@ def create_app_shell(
     app.router.add_get("/app/api/ui/model", ui_model)
     app.router.add_get("/app/api/ui/drilldown/{panel}", ui_drilldown)
     app.router.add_get("/app/api/actions/catalog", action_catalog)
-    app.router.add_get("/app/api/validation/summary", validation_summary)
     return app
 
 

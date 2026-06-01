@@ -94,7 +94,8 @@ async def watch_any_key_to_edit_config(shutdown_event: ctx.asyncio.Event, sessio
             pass
         ctx.log_print("偵測到按鍵，開啟 config.yaml。關閉記事本後會重新載入設定。")
         before = effective_config_now_value(ctx.CONFIG)
-        opened = await ctx.asyncio.to_thread(ctx.open_config_in_legacy_notepad, ctx.CONFIG_PATH, wait=True)
+        with ctx.pause_status_line():
+            opened = await ctx.asyncio.to_thread(ctx.open_config_in_legacy_notepad, ctx.CONFIG_PATH, wait=True)
         if not opened.get("ok"):
             ctx.log_print("無法開啟舊版記事本: {}".format(opened.get("status")))
             continue

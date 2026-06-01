@@ -331,7 +331,6 @@ class TronCliSmokeTest(unittest.TestCase):
         self.assertFalse(providers["fju"]["user_visible"])
         self.assertTrue(providers["fju"]["capabilities"]["radar"])
         self.assertTrue(providers["tronclass"]["user_visible"])
-        self.assertEqual(providers["tronclass"]["verification"], "verified")
 
     def test_provider_show_json_command_dispatches(self) -> None:
         outputs = []
@@ -346,88 +345,6 @@ class TronCliSmokeTest(unittest.TestCase):
         self.assertTrue(payload["capabilities"]["radar"])
         self.assertEqual(payload["support"]["support_level"], "ready")
         self.assertTrue(payload["support"]["daily_ready"])
-        self.assertEqual(payload["verification"]["status"], "unverified")
-        self.assertEqual(payload["internal"]["verification"]["verification"], "unverified")
-        self.assertEqual(payload["ready_gate"]["status"], "blocked")
-
-    def test_provider_verify_checklist_and_fixture_template_dispatch(self) -> None:
-        outputs = []
-        with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):
-            checklist_result = tron.main(["provider", "verify-checklist", "fju", "--json"])
-            template_result = tron.main(["provider", "fixture", "template", "tku", "--json"])
-
-        self.assertEqual(checklist_result, 0)
-        self.assertEqual(template_result, 0)
-        checklist = json.loads(outputs[0])
-        template = json.loads(outputs[1])
-        self.assertEqual(checklist["provider"], "fju")
-        self.assertEqual(template["provider"], "tku")
-        self.assertEqual(template["version"], "provider-fixture-v1")
-
-    def test_provider_fixture_validate_dispatches(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            path = Path(temp_dir) / "fixture.json"
-            fixture = {
-                "version": "provider-fixture-v1",
-                "provider": "fju",
-                "records": [
-                    {"endpoint_type": endpoint, "status": "ok", "http_status": 200, "field_names": ["id"]}
-                    for endpoint in ("login", "session", "current_semester", "courses", "rollcalls", "qr", "radar")
-                ],
-            }
-            path.write_text(json.dumps(fixture), encoding="utf-8")
-            outputs = []
-            with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):
-                result = tron.main(["provider", "fixture", "validate", "--input", str(path), "--provider", "fju", "--json"])
-
-        self.assertEqual(result, 0)
-        payload = json.loads(outputs[0])
-        self.assertTrue(payload["ok"])
-
-    def test_provider_fixture_review_commands_dispatch(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            path = Path(temp_dir) / "fixture.json"
-            fixture = {
-                "version": "provider-fixture-v1",
-                "provider": "fju",
-                "records": [
-                    {"endpoint_type": endpoint, "status": "ok", "http_status": 200, "field_names": ["id"]}
-                    for endpoint in ("login", "session", "current_semester", "courses", "rollcalls", "qr")
-                ]
-                + [{"endpoint_type": "radar", "status": "unsupported", "http_status": 0, "field_names": []}],
-                "manual_acceptance": {
-                    "login_verified": True,
-                    "session_verified": True,
-                    "courses_verified": True,
-                    "rollcalls_verified": True,
-                    "qr_verified": True,
-                    "radar_verified": False,
-                },
-            }
-            path.write_text(json.dumps(fixture), encoding="utf-8")
-            outputs = []
-            with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):
-                template_result = tron.main(["provider", "fixture", "review-template", "fju", "--json"])
-                review_result = tron.main(["provider", "fixture", "review", "--input", str(path), "--provider", "fju", "--json"])
-                dir_result = tron.main(["provider", "fixture", "review-dir", "--dir", temp_dir, "--json"])
-
-        self.assertEqual(template_result, 0)
-        self.assertEqual(review_result, 0)
-        self.assertEqual(dir_result, 0)
-        self.assertEqual(json.loads(outputs[0])["review_version"], "provider-fixture-review-v1")
-        self.assertEqual(json.loads(outputs[1])["status"], "candidate_ready_for_human_review")
-        self.assertEqual(json.loads(outputs[2])["count"], 1)
-
-    def test_provider_ready_gate_dispatches(self) -> None:
-        outputs = []
-        with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):
-            result = tron.main(["provider", "ready-gate", "fju", "--json"])
-
-        self.assertEqual(result, 1)
-        payload = json.loads(outputs[0])
-        self.assertEqual(payload["provider"], "fju")
-        self.assertEqual(payload["status"], "blocked")
-        self.assertFalse(payload["promotes_provider"])
 
     def test_release_check_json_command_dispatches(self) -> None:
         outputs = []
@@ -486,59 +403,6 @@ class TronCliSmokeTest(unittest.TestCase):
         payload = json.loads(outputs[0])
         self.assertEqual(payload["status"], "ok")
         self.assertEqual(payload["smoke"]["status"], "ok")
-
-    def test_validation_checklist_json_command_dispatches(self) -> None:
-        outputs = []
-        with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):
-            result = tron.main(["validation", "checklist", "--json"])
-
-        self.assertEqual(result, 0)
-        payload = json.loads(outputs[0])
-        self.assertEqual(payload["version"], "real-validation-v1")
-        self.assertIn("cases", payload)
-        self.assertEqual(payload["provider_scope"]["fju"]["support_level"], "ready")
-        self.assertEqual(payload["provider_scope"]["fju"]["verification"], "unverified")
-
-    def test_validation_record_and_summary_json_commands_dispatch(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            outputs = []
-            with (
-                patch.object(tron, "BASE_DIR", Path(temp_dir)),
-                patch.object(tron, "bootstrap_config"),
-                patch("builtins.print", side_effect=outputs.append),
-            ):
-                record_result = tron.main(
-                    [
-                        "validation",
-                        "record",
-                        "preflight_status_doctor_dashboard",
-                        "--status",
-                        "pass",
-                        "--note",
-                        "ok",
-                        "--json",
-                    ]
-                )
-                summary_result = tron.main(["validation", "summary", "--json"])
-
-        self.assertEqual(record_result, 0)
-        self.assertEqual(summary_result, 1)
-        record = json.loads(outputs[0])
-        summary = json.loads(outputs[1])
-        self.assertEqual(record["case_id"], "preflight_status_doctor_dashboard")
-        self.assertEqual(summary["record_count"], 1)
-        self.assertIn("auth_restore", summary["required"]["missing"])
-
-    def test_validation_local_smoke_json_command_dispatches_without_network(self) -> None:
-        outputs = []
-        with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):
-            result = tron.main(["validation", "local-smoke", "--json"])
-
-        self.assertEqual(result, 0)
-        payload = json.loads(outputs[0])
-        self.assertEqual(payload["version"], "real-validation-v1")
-        self.assertIn("bot_sandbox", payload["checks"])
-        self.assertEqual(payload["checks"]["bot_sandbox"], "ok")
 
     def test_run_allows_fju_provider_without_experimental_flag(self) -> None:
         tron.CONFIG.clear()
@@ -747,7 +611,6 @@ class TronBotServeCommandTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["url"], "http://127.0.0.1:8790/app")
         self.assertNotIn("token", outputs[0].replace("token_ttl_seconds", ""))
         self.assertIn("shell_ui_builder", seen)
-        self.assertIn("validation_summary_builder", seen)
 
     async def test_discord_sync_and_gateway_dry_run_dispatch(self) -> None:
         outputs = []

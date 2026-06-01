@@ -54,58 +54,6 @@ def release_build_command(args: ctx.argparse.Namespace) -> int:
     return 0 if report.get('status') in {'ok', 'dry_run', 'warn'} else 1
 
 
-def validation_checklist_command(json_output: bool=False) -> int:
-    checklist = ctx.build_real_validation_checklist(ctx.CONFIG)
-    if json_output:
-        print(ctx.json_text(checklist))
-        return 0
-    print('R1 real validation checklist')
-    for item in checklist.get('cases', []):
-        required = 'required' if item.get('required') else 'optional'
-        live = ', live' if item.get('live') else ''
-        print('- {id} ({required}{live}): {title}'.format(id=item.get('id', ''), required=required, live=live, title=item.get('title', '')))
-        print('  command: {}'.format(item.get('manual_command', '')))
-    return 0
-
-
-def validation_record_command(args: ctx.argparse.Namespace) -> int:
-    record = ctx.append_real_validation_record(ctx.BASE_DIR, {'case_id': getattr(args, 'case', ''), 'status': getattr(args, 'status', ''), 'note': getattr(args, 'note', ''), 'reason': getattr(args, 'reason', ''), 'profile': getattr(args, 'profile', '') or ctx.get_active_profile(ctx.CONFIG).name, 'provider': getattr(args, 'provider', '') or ctx.get_active_provider_key(), 'metadata': {}})
-    if getattr(args, 'json', False):
-        print(ctx.json_text(record))
-    else:
-        print('Recorded {} as {}.'.format(record.get('case_id', ''), record.get('status', '')))
-    return 0
-
-
-def validation_summary_command(json_output: bool=False) -> int:
-    summary = ctx.summarize_real_validation(ctx.BASE_DIR)
-    if json_output:
-        print(ctx.json_text(summary))
-        return 0 if summary.get('ready_for_r2') else 1
-    print('\n'.join(ctx.format_real_validation_summary(summary)))
-    return 0 if summary.get('ready_for_r2') else 1
-
-
-def validation_local_smoke_command(json_output: bool=False, record: bool=False) -> int:
-    local_reports = {'status_report': ctx.status_report(), 'doctor_report': ctx.doctor_report(), 'dashboard_snapshot': ctx.build_observability_snapshot(ctx.status_report(), log_summary=ctx.summarize_logs(ctx.PATH), recent_logs=ctx.tail_log_records(ctx.PATH, 20), account_states=[ctx.account_state_report(profile.name) for profile in ctx.list_profiles(ctx.CONFIG)]), 'package_check': ctx.build_package_diagnostic_report(ctx.BASE_DIR, config=ctx.CONFIG), 'release_check': ctx.build_release_checklist(ctx.BASE_DIR, config=ctx.CONFIG)}
-    report = ctx.run_local_validation_smoke(ctx.CONFIG, base_dir=ctx.BASE_DIR, local_reports=local_reports)
-    recorded = []
-    if record:
-        active = ctx.get_active_profile(ctx.CONFIG)
-        recorded = ctx.append_local_smoke_validation_records(ctx.BASE_DIR, report, profile=active.name, provider=ctx.get_active_provider_key())
-        report = dict(report)
-        report['recorded'] = recorded
-    if json_output:
-        print(ctx.json_text(report))
-    else:
-        print('Validation local smoke: {}'.format(report.get('status', 'unknown')))
-        for name, status in report.get('checks', {}).items():
-            print('- {}: {}'.format(name, status))
-        if recorded:
-            print('Recorded local validation cases: {}'.format(', '.join(item.get('case_id', '') for item in recorded)))
-    return 0 if report.get('status') != 'fail' else 1
-
-
 def logs_command(args: ctx.argparse.Namespace) -> int:
     command = args.logs_command or 'tail'
     json_mode = bool(getattr(args, 'json', False))

@@ -76,14 +76,11 @@ class AppShellTest(unittest.IsolatedAsyncioTestCase):
             "QR Preview",
             "Radar Assist",
             "WebView Sync",
-            "Provider Verify",
-            "Ready Gate",
             "Release Check",
             "Release Plan",
             "Shell Policy",
             "UI Model",
             "Action Catalog",
-            "Validation",
             "Logs",
             "Diagnostics",
         ):
@@ -135,15 +132,12 @@ class AppShellTest(unittest.IsolatedAsyncioTestCase):
                     "/app/api/integrations/capabilities",
                     "/app/api/radar/assist",
                     "/app/api/dashboard/cards",
-                    "/app/api/provider/verification",
-                    "/app/api/provider/ready-gate",
                     "/app/api/release/check",
                     "/app/api/release/plan",
                     "/app/api/shell/policy",
                     "/app/api/ui/model",
                     "/app/api/ui/drilldown/overview",
                     "/app/api/actions/catalog",
-                    "/app/api/validation/summary",
                 ]
                 texts = []
                 for path in paths:
@@ -209,60 +203,46 @@ class AppShellTest(unittest.IsolatedAsyncioTestCase):
         app_shell = create_app_shell(
             make_config(),
             token="good",
-            provider_verification_builder=lambda: {"provider": "fju", "status": "manual"},
-            provider_ready_gate_builder=lambda: {"provider": "fju", "status": "blocked", "ready_candidate": False},
             release_check_builder=lambda: {"status": "warn", "checks": []},
             release_plan_builder=lambda: {"version": "release-build-plan-v1", "executes_build": False},
         )
         async with RunningApp(app_shell) as app:
             async with aiohttp.ClientSession() as session:
-                unauthorized = await session.get(app.base_url + "/app/api/provider/verification")
+                unauthorized = await session.get(app.base_url + "/app/api/release/check")
             async with aiohttp.ClientSession(headers={"X-Local-Token": "good"}) as session:
-                provider = await session.get(app.base_url + "/app/api/provider/verification")
-                gate = await session.get(app.base_url + "/app/api/provider/ready-gate")
                 release = await session.get(app.base_url + "/app/api/release/check")
                 plan = await session.get(app.base_url + "/app/api/release/plan")
                 policy = await session.get(app.base_url + "/app/api/shell/policy")
                 ui = await session.get(app.base_url + "/app/api/ui/model")
                 drilldown = await session.get(app.base_url + "/app/api/ui/drilldown/overview")
                 actions = await session.get(app.base_url + "/app/api/actions/catalog")
-                validation = await session.get(app.base_url + "/app/api/validation/summary")
                 cards = await session.get(app.base_url + "/app/api/dashboard/cards")
                 radar = await session.get(app.base_url + "/app/api/radar/validate?lat=24.1815&lon=120.6005")
 
-                provider_body = await provider.json()
-                gate_body = await gate.json()
                 release_body = await release.json()
                 plan_body = await plan.json()
                 policy_body = await policy.json()
                 ui_body = await ui.json()
                 drilldown_body = await drilldown.json()
                 actions_body = await actions.json()
-                validation_body = await validation.json()
                 cards_body = await cards.json()
                 radar_body = await radar.json()
 
         self.assertEqual(unauthorized.status, 401)
-        self.assertEqual(provider.status, 200)
-        self.assertEqual(gate.status, 200)
         self.assertEqual(release.status, 200)
         self.assertEqual(plan.status, 200)
         self.assertEqual(policy.status, 200)
         self.assertEqual(ui.status, 200)
         self.assertEqual(drilldown.status, 200)
         self.assertEqual(actions.status, 200)
-        self.assertEqual(validation.status, 200)
         self.assertEqual(cards.status, 200)
         self.assertEqual(radar.status, 200)
-        self.assertEqual(provider_body["provider_verification"]["provider"], "fju")
-        self.assertEqual(gate_body["provider_ready_gate"]["status"], "blocked")
         self.assertEqual(release_body["release"]["status"], "warn")
         self.assertFalse(plan_body["release_plan"]["executes_build"])
         self.assertTrue(policy_body["read_only"])
         self.assertIn("panels", ui_body["ui_model"])
         self.assertEqual(drilldown_body["drilldown"]["panel"], "overview")
         self.assertTrue(actions_body["actions"]["read_only"])
-        self.assertEqual(validation_body["validation"]["status"], "not_configured")
         self.assertIn("cards", cards_body["dashboard"])
         self.assertTrue(radar_body["validation"]["ok"])
 

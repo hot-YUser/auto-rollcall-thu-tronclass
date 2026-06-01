@@ -1473,10 +1473,10 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
             await tron.monitor_loop(session, shutdown_event)
 
         self.assertTrue(
-            any("check rollcall error on " in call.args[0] for call in mes_mock.await_args_list)
+            any("檢查點名時發生錯誤" in call.args[0] for call in mes_mock.await_args_list)
         )
         self.assertTrue(
-            any("check rollcall error on " in call.args[0] for call in log_print.call_args_list)
+            any("檢查點名時發生錯誤" in call.args[0] for call in log_print.call_args_list)
         )
 
     async def test_monitor_loop_auto_retries_transient_login_failure(self) -> None:
@@ -1697,6 +1697,117 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(write_mock.call_args_list[0].args[0], "[監控] 尚未登入 (請按任意鍵開啟 config.yaml)\n")
         self.assertEqual(write_mock.call_args_list[1].args[0], "背景訊息\n")
         self.assertEqual(flush_mock.call_count, 3)
+
+    async def test_console_output_interactive_redraws_status_and_timestamps_events(self) -> None:
+        previous_interactive = tron.CONSOLE_INTERACTIVE
+        previous_status = dict(tron.MONITOR_STATUS)
+        previous_width = tron.STATUS_LINE_WIDTH
+        previous_pause_depth = tron.STATUS_LINE_PAUSE_DEPTH
+        fixed_now = tron.datetime(2026, 1, 2, 14, 3, 27)
+        tron.CONSOLE_INTERACTIVE = True
+        tron.STATUS_LINE_PAUSE_DEPTH = 0
+        tron.reset_monitor_status()
+        tron.update_monitor_status(
+            phase="monitoring",
+            check_count=3,
+            detail="目前無點名",
+            next_switch_at=None,
+            redraw=False,
+        )
+        try:
+            with (
+                patch.object(tron, "current_datetime", return_value=fixed_now),
+                patch.object(tron.sys.stdout, "write") as write_mock,
+                patch.object(tron.sys.stdout, "flush") as flush_mock,
+            ):
+                tron.render_status_line()
+                tron.log_print("背景訊息")
+        finally:
+            tron.CONSOLE_INTERACTIVE = previous_interactive
+            tron.MONITOR_STATUS.clear()
+            tron.MONITOR_STATUS.update(previous_status)
+            tron.STATUS_LINE_WIDTH = previous_width
+            tron.STATUS_LINE_PAUSE_DEPTH = previous_pause_depth
+
+        writes = [call.args[0] for call in write_mock.call_args_list]
+        self.assertTrue(
+            any(item.startswith("\r監控中 · 第 3 次 · 目前無點名 · 14:03:27") for item in writes)
+        )
+        self.assertTrue(any(item.startswith("\r") and item.endswith("\r") for item in writes))
+        self.assertIn("[14:03:27] 背景訊息\n", writes)
+        self.assertGreaterEqual(flush_mock.call_count, 3)
+
+    async def test_console_output_interactive_timestamps_each_multiline_event_line(self) -> None:
+        previous_interactive = tron.CONSOLE_INTERACTIVE
+        previous_status = dict(tron.MONITOR_STATUS)
+        previous_width = tron.STATUS_LINE_WIDTH
+        previous_pause_depth = tron.STATUS_LINE_PAUSE_DEPTH
+        fixed_now = tron.datetime(2026, 1, 2, 14, 3, 27)
+        tron.CONSOLE_INTERACTIVE = True
+        tron.STATUS_LINE_PAUSE_DEPTH = 0
+        tron.reset_monitor_status()
+        try:
+            with (
+                patch.object(tron, "current_datetime", return_value=fixed_now),
+                patch.object(tron.sys.stdout, "write") as write_mock,
+                patch.object(tron.sys.stdout, "flush"),
+            ):
+                tron.log_print("第一行\n第二行")
+        finally:
+            tron.CONSOLE_INTERACTIVE = previous_interactive
+            tron.MONITOR_STATUS.clear()
+            tron.MONITOR_STATUS.update(previous_status)
+            tron.STATUS_LINE_WIDTH = previous_width
+            tron.STATUS_LINE_PAUSE_DEPTH = previous_pause_depth
+
+        writes = [call.args[0] for call in write_mock.call_args_list]
+        self.assertIn("[14:03:27] 第一行\n[14:03:27] 第二行\n", writes)
+
+    async def test_next_schedule_transition_uses_schedule_boundary_minute(self) -> None:
+        now = tron.datetime(2026, 1, 2, 14, 3, 27)
+        with patch.object(
+            tron,
+            "get_schedule_for_day",
+            return_value={"enable": True, "ranges": [["08:00", "18:00"]]},
+        ):
+            transition = tron.next_schedule_transition(now)
+
+        self.assertIsNotNone(transition)
+        self.assertEqual(tron.format_hhmm(transition), "18:00")
+
+    async def test_next_schedule_transition_hides_always_on_schedule(self) -> None:
+        now = tron.datetime(2026, 1, 2, 14, 3, 27)
+        with patch.object(
+            tron,
+            "get_schedule_for_day",
+            return_value={"enable": True, "ranges": [["00:00", "00:00"]]},
+        ):
+            transition = tron.next_schedule_transition(now)
+
+        self.assertIsNone(transition)
+
+    async def test_next_schedule_transition_caches_parsed_ranges_by_weekday(self) -> None:
+        now = tron.datetime(2026, 1, 2, 14, 3, 27)
+        schedule = {"enable": True, "ranges": [["00:00", "00:00"]]}
+        parse_calls = 0
+
+        def fake_parse_schedule_ranges(_ranges):
+            nonlocal parse_calls
+            parse_calls += 1
+            return [(dt_time(0, 0), dt_time(0, 0))]
+
+        with (
+            patch.object(tron, "get_schedule_for_day", return_value=schedule),
+            patch.object(
+                tron,
+                "parse_schedule_ranges",
+                side_effect=fake_parse_schedule_ranges,
+            ),
+        ):
+            transition = tron.next_schedule_transition(now)
+
+        self.assertIsNone(transition)
+        self.assertLessEqual(parse_calls, 7)
 
     async def test_app_main_uses_explicit_http_timeout(self) -> None:
         fake_session = MagicMock()

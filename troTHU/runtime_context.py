@@ -121,23 +121,6 @@ try:
         format_log_summary,
     )
     from troTHU.package_diagnostics import build_package_diagnostic_report
-    from troTHU.provider_ready_gate import (
-        build_provider_ready_gate,
-        format_provider_ready_gate,
-    )
-    from troTHU.provider_verification import (
-        build_provider_fixture_template,
-        build_provider_verification_checklist,
-        summarize_provider_verification,
-        validate_provider_fixture,
-    )
-    from troTHU.provider_fixture_review import (
-        build_provider_fixture_review,
-        build_provider_fixture_review_template,
-        format_provider_fixture_review,
-        review_provider_fixture_dir,
-        review_provider_fixture_file,
-    )
     from troTHU.pending_qr import (
         DEFAULT_PENDING_QR_PROVIDER,
         add_pending_qr,
@@ -230,15 +213,6 @@ try:
         format_release_build_summary,
         run_release_build_pipeline,
     )
-    from troTHU.real_validation import (
-        append_local_smoke_validation_records,
-        append_real_validation_record,
-        build_local_smoke_validation_records,
-        build_real_validation_checklist,
-        format_real_validation_summary,
-        run_local_validation_smoke,
-        summarize_real_validation,
-    )
     from troTHU.discord_adapter import sync_discord_command_schema
     from troTHU.discord_gateway import build_gateway_health, run_discord_gateway
     from troTHU.tron_http import (
@@ -273,12 +247,17 @@ try:
         TransientCooldownDecision,
         TransientCooldownPolicy,
         TransientCooldownTracker,
+        build_monitor_status_line,
         build_number_progress_message,
         build_radar_signal,
         coerce_bool,
         coerce_positive_float,
         coerce_positive_int,
+        display_width,
+        format_clock,
+        format_countdown,
         format_found_code_banner,
+        format_hhmm,
         format_radar_success_banner,
         format_time_value,
         is_within_any_schedule,
@@ -292,7 +271,9 @@ try:
         parse_schedule_range,
         parse_schedule_ranges,
         parse_time_value,
+        predict_schedule_change,
         render_big_digits,
+        truncate_to_width,
     )
     from troTHU.ux_tools import (
         check_item,
@@ -372,23 +353,6 @@ except ImportError:
         format_log_summary,
     )
     from package_diagnostics import build_package_diagnostic_report
-    from provider_ready_gate import (
-        build_provider_ready_gate,
-        format_provider_ready_gate,
-    )
-    from provider_verification import (
-        build_provider_fixture_template,
-        build_provider_verification_checklist,
-        summarize_provider_verification,
-        validate_provider_fixture,
-    )
-    from provider_fixture_review import (
-        build_provider_fixture_review,
-        build_provider_fixture_review_template,
-        format_provider_fixture_review,
-        review_provider_fixture_dir,
-        review_provider_fixture_file,
-    )
     from pending_qr import (
         DEFAULT_PENDING_QR_PROVIDER,
         add_pending_qr,
@@ -481,15 +445,6 @@ except ImportError:
         format_release_build_summary,
         run_release_build_pipeline,
     )
-    from real_validation import (
-        append_local_smoke_validation_records,
-        append_real_validation_record,
-        build_local_smoke_validation_records,
-        build_real_validation_checklist,
-        format_real_validation_summary,
-        run_local_validation_smoke,
-        summarize_real_validation,
-    )
     from discord_adapter import sync_discord_command_schema
     from discord_gateway import build_gateway_health, run_discord_gateway
     from tron_http import (
@@ -524,12 +479,17 @@ except ImportError:
         TransientCooldownDecision,
         TransientCooldownPolicy,
         TransientCooldownTracker,
+        build_monitor_status_line,
         build_number_progress_message,
         build_radar_signal,
         coerce_bool,
         coerce_positive_float,
         coerce_positive_int,
+        display_width,
+        format_clock,
+        format_countdown,
         format_found_code_banner,
+        format_hhmm,
         format_radar_success_banner,
         format_time_value,
         is_within_any_schedule,
@@ -543,7 +503,9 @@ except ImportError:
         parse_schedule_range,
         parse_schedule_ranges,
         parse_time_value,
+        predict_schedule_change,
         render_big_digits,
+        truncate_to_width,
     )
     from ux_tools import (
         check_item,
@@ -563,6 +525,28 @@ PROMPT_INPUT_ACTIVE = False
 CONSOLE_DEFERRED_LINES: List[str] = []
 
 LAST_STATUS = "初始化中"
+
+# Snapshot driving the single in-place monitor status line. The renderer reads
+# this every second; monitor_loop updates it instead of reprinting each poll.
+#   phase: 'monitoring' | 'standby' | 'logging_in' | 'paused'
+#   check_count: rolling poll counter (shown as "第 N 次" while monitoring)
+#   detail: short status text (e.g. "目前無點名" or a progress message)
+#   next_switch_at: datetime of the next schedule transition, or None
+MONITOR_STATUS: Dict[str, Any] = {
+    "phase": "logging_in",
+    "check_count": 0,
+    "detail": "",
+    "next_switch_at": None,
+}
+
+# Console status-line bookkeeping (interactive TTY only). STATUS_LINE_WIDTH is
+# the display width of the currently drawn line so it can be cleared cleanly;
+# STATUS_LINE_PAUSE_DEPTH > 0 suspends in-place drawing during blocking prompts.
+STATUS_LINE_WIDTH = 0
+
+STATUS_LINE_PAUSE_DEPTH = 0
+
+CONSOLE_INTERACTIVE: Optional[bool] = None
 
 NUMBER_CODE_LIMIT = 10000
 
@@ -836,8 +820,6 @@ _LEGACY_EXPORTS = {
     '_app_shell_integrations': ('troTHU.cli_app', '_app_shell_integrations'),
     '_app_shell_logs_summary': ('troTHU.cli_app', '_app_shell_logs_summary'),
     '_app_shell_polish_reports': ('troTHU.cli_app', '_app_shell_polish_reports'),
-    '_app_shell_provider_ready_gate': ('troTHU.cli_app', '_app_shell_provider_ready_gate'),
-    '_app_shell_provider_verification': ('troTHU.cli_app', '_app_shell_provider_verification'),
     '_app_shell_release_check': ('troTHU.cli_app', '_app_shell_release_check'),
     '_app_shell_release_plan': ('troTHU.cli_app', '_app_shell_release_plan'),
     '_app_shell_snapshot': ('troTHU.cli_app', '_app_shell_snapshot'),
@@ -971,6 +953,12 @@ _LEGACY_EXPORTS = {
     'log': ('troTHU.logging_runtime', 'log'),
     'log_print': ('troTHU.logging_runtime', 'log_print'),
     'flush_console_output': ('troTHU.logging_runtime', 'flush_console_output'),
+    'console_is_interactive': ('troTHU.logging_runtime', 'console_is_interactive'),
+    'update_monitor_status': ('troTHU.logging_runtime', 'update_monitor_status'),
+    'reset_monitor_status': ('troTHU.logging_runtime', 'reset_monitor_status'),
+    'render_status_line': ('troTHU.logging_runtime', 'render_status_line'),
+    'clear_status_line': ('troTHU.logging_runtime', 'clear_status_line'),
+    'pause_status_line': ('troTHU.logging_runtime', 'pause_status_line'),
     'login': ('troTHU.auth_runtime', 'login'),
     'login_test_command': ('troTHU.cli_courses', 'login_test_command'),
     'logs_command': ('troTHU.cli_system', 'logs_command'),
@@ -981,6 +969,8 @@ _LEGACY_EXPORTS = {
     'mes': ('troTHU.logging_runtime', 'mes'),
     'module_available': ('troTHU.status_reports', 'module_available'),
     'monitor_loop': ('troTHU.monitor_runtime', 'monitor_loop'),
+    'status_line_loop': ('troTHU.monitor_runtime', 'status_line_loop'),
+    'next_schedule_transition': ('troTHU.monitor_runtime', 'next_schedule_transition'),
     'normalize_config': ('troTHU.config_runtime', 'normalize_config'),
     'normalize_radar_boundary_points': ('troTHU.config_runtime', 'normalize_radar_boundary_points'),
     'list_all_providers': ('troTHU.providers', 'list_all_providers'),
@@ -996,22 +986,15 @@ _LEGACY_EXPORTS = {
     'print_status': ('troTHU.status_reports', 'print_status'),
     'parse_simple_config_text': ('troTHU.simple_config', 'parse_simple_config_text'),
     'provider_block_message': ('troTHU.status_reports', 'provider_block_message'),
-    'provider_fixture_review_command': ('troTHU.cli_provider', 'provider_fixture_review_command'),
-    'provider_fixture_review_dir_command': ('troTHU.cli_provider', 'provider_fixture_review_dir_command'),
-    'provider_fixture_review_template_command': ('troTHU.cli_provider', 'provider_fixture_review_template_command'),
-    'provider_fixture_template_command': ('troTHU.cli_provider', 'provider_fixture_template_command'),
-    'provider_fixture_validate_command': ('troTHU.cli_provider', 'provider_fixture_validate_command'),
     'provider_guard_result': ('troTHU.status_reports', 'provider_guard_result'),
     'provider_is_daily_allowed': ('troTHU.status_reports', 'provider_is_daily_allowed'),
     'provider_list_command': ('troTHU.cli_provider', 'provider_list_command'),
     'provider_prefers_browser_assisted_login': ('troTHU.auth_runtime', 'provider_prefers_browser_assisted_login'),
-    'provider_ready_gate_command': ('troTHU.cli_provider', 'provider_ready_gate_command'),
     'provider_requires_api_session_validation': ('troTHU.auth_runtime', 'provider_requires_api_session_validation'),
     'provider_requires_manual_cookie_login': ('troTHU.auth_runtime', 'provider_requires_manual_cookie_login'),
     'provider_report': ('troTHU.status_reports', 'provider_report'),
     'provider_show_command': ('troTHU.cli_provider', 'provider_show_command'),
     'provider_summary': ('troTHU.cli_provider', 'provider_summary'),
-    'provider_verify_checklist_command': ('troTHU.cli_provider', 'provider_verify_checklist_command'),
     'QrInfoCaptureOptions': ('troTHU.qr_info_capture', 'QrInfoCaptureOptions'),
     'analyze_qr_observation': ('troTHU.qr_info_capture', 'analyze_qr_observation'),
     'build_qr_info_capture_options_for_rollcall': ('troTHU.qr_info_capture', 'build_qr_info_capture_options_for_rollcall'),
@@ -1092,10 +1075,6 @@ _LEGACY_EXPORTS = {
     'tronclass_api_endpoints': ('troTHU.providers', 'tronclass_api_endpoints'),
     'unbind_account': ('troTHU.cli_accounts', 'unbind_account'),
     'validate_login_api_session': ('troTHU.auth_runtime', 'validate_login_api_session'),
-    'validation_checklist_command': ('troTHU.cli_system', 'validation_checklist_command'),
-    'validation_local_smoke_command': ('troTHU.cli_system', 'validation_local_smoke_command'),
-    'validation_record_command': ('troTHU.cli_system', 'validation_record_command'),
-    'validation_summary_command': ('troTHU.cli_system', 'validation_summary_command'),
     'webview_import_command': ('troTHU.cli_app', 'webview_import_command'),
     'webview_preview_command': ('troTHU.cli_app', 'webview_preview_command'),
     'webview_status_command': ('troTHU.cli_app', 'webview_status_command'),

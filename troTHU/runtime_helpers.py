@@ -2,9 +2,10 @@ import hashlib
 import json
 import re
 import time
+import unicodedata
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Any, List, Optional, Tuple
+from datetime import datetime, timedelta
+from typing import Any, Callable, List, Optional, Tuple
 
 try:
     from troTHU.radar_solver import DEFAULT_BOUNDARY_POINTS
@@ -585,3 +586,155 @@ def is_within_schedule(start: Any, end: Any, current_time: Any) -> bool:
 
 def is_within_any_schedule(ranges: Any, current_time: Any) -> bool:
     return any(is_within_schedule(start, end, current_time) for start, end in parse_schedule_ranges(ranges))
+
+
+# ---------------------------------------------------------------------------
+# Console status-line helpers (pure; no I/O). Used by the monitor's single
+# in-place refreshing status line and the scrolling event log above it.
+# ---------------------------------------------------------------------------
+
+def display_width(text: Any) -> int:
+    """Best-effort terminal column width, counting CJK/wide glyphs as 2."""
+    total = 0
+    for char in str(text or ""):
+        if unicodedata.east_asian_width(char) in ("W", "F"):
+            total += 2
+        else:
+            total += 1
+    return total
+
+
+def truncate_to_width(text: Any, max_width: int) -> str:
+    """Trim ``text`` so its display width never exceeds ``max_width`` columns."""
+    text = str(text or "")
+    if max_width <= 0:
+        return ""
+    if display_width(text) <= max_width:
+        return text
+    result: List[str] = []
+    used = 0
+    for char in text:
+        char_width = 2 if unicodedata.east_asian_width(char) in ("W", "F") else 1
+        if used + char_width > max_width:
+            break
+        result.append(char)
+        used += char_width
+    return "".join(result)
+
+
+def format_clock(moment: Any) -> str:
+    """Render a ``datetime`` (or time-like) as ``HH:MM:SS``."""
+    try:
+        return moment.strftime("%H:%M:%S")
+    except Exception:
+        return "--:--:--"
+
+
+def format_hhmm(moment: Any) -> str:
+    """Render a ``datetime`` (or time-like) as ``HH:MM``."""
+    try:
+        return moment.strftime("%H:%M")
+    except Exception:
+        return "--:--"
+
+
+def format_countdown(seconds: Any) -> str:
+    """Render a remaining-seconds count as ``HH:MM:SS`` (hours may exceed 24)."""
+    try:
+        total = int(max(0, round(float(seconds))))
+    except (TypeError, ValueError):
+        total = 0
+    hours = total // 3600
+    minutes = (total % 3600) // 60
+    secs = total % 60
+    return "{:02d}:{:02d}:{:02d}".format(hours, minutes, secs)
+
+
+def build_monitor_status_line(status: Any, now: Any) -> str:
+    """Build the single-line monitor status string from a status snapshot.
+
+    ``status`` is the ``MONITOR_STATUS`` mapping; ``now`` is the current
+    (timezone-aware) ``datetime``. Pure and side-effect free so it can be unit
+    tested directly. Segments are joined with a middle dot.
+    """
+    status = status if isinstance(status, dict) else {}
+    phase = str(status.get("phase") or "monitoring")
+    clock = format_clock(now)
+    next_at = status.get("next_switch_at")
+    parts: List[str] = []
+
+    if phase == "standby":
+        parts.append("待機中")
+        if next_at is not None:
+            try:
+                remaining = (next_at - now).total_seconds()
+            except Exception:
+                remaining = 0
+            parts.append("倒數 " + format_countdown(remaining))
+        parts.append(clock)
+        if next_at is not None:
+            parts.append("{} 開始監控".format(format_hhmm(next_at)))
+    elif phase == "logging_in":
+        parts.append("登入中")
+        detail = normalize_text(status.get("detail"))
+        if detail:
+            parts.append(detail)
+        parts.append(clock)
+    elif phase == "paused":
+        parts.append("已暫停")
+        detail = normalize_text(status.get("detail"))
+        if detail:
+            parts.append(detail)
+        parts.append(clock)
+    else:  # monitoring (default)
+        parts.append("監控中")
+        try:
+            count = int(status.get("check_count") or 0)
+        except (TypeError, ValueError):
+            count = 0
+        if count:
+            parts.append("第 {} 次".format(count))
+        detail = normalize_text(status.get("detail"))
+        if detail:
+            parts.append(detail)
+        parts.append(clock)
+        if next_at is not None:
+            parts.append("{} 進入待機".format(format_hhmm(next_at)))
+
+    return " · ".join(parts)
+
+
+def predict_schedule_change(
+    now: datetime,
+    active_at: Callable[[datetime], bool],
+    *,
+    horizon_days: int = 7,
+    step_seconds: int = 60,
+) -> Optional[Tuple[datetime, bool]]:
+    """Find the next moment the monitoring/standby state flips.
+
+    ``active_at(dt)`` returns whether monitoring is active at ``dt``. It scans on
+    aligned minute boundaries up to ``horizon_days`` ahead, then refines the
+    matching minute to second precision so inclusive end-times such as
+    ``08:00-18:00`` still display as an ``18:00`` transition rather than
+    ``18:01``. Returns ``(moment, new_state)`` or ``None`` when no transition
+    occurs within the horizon (e.g. always-on schedules). Pure except for the
+    injected predicate; never raises.
+    """
+    try:
+        current_state = bool(active_at(now))
+        step = timedelta(seconds=max(1, int(step_seconds)))
+        moment = now.replace(second=0, microsecond=0) + step
+        horizon_end = now + timedelta(days=max(1, int(horizon_days)))
+        while moment <= horizon_end:
+            if bool(active_at(moment)) != current_state:
+                probe = moment - step + timedelta(seconds=1)
+                while probe <= moment:
+                    if bool(active_at(probe)) != current_state:
+                        return (probe.replace(microsecond=0), not current_state)
+                    probe += timedelta(seconds=1)
+                return (moment, not current_state)
+            moment += step
+    except Exception:
+        return None
+    return None

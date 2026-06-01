@@ -56,6 +56,25 @@ class InputSafetyTest(unittest.TestCase):
             self.assertEqual(masked_password_input("pw> "), "secret")
         input_mock.assert_called_once_with("pw> ")
 
+    def test_masked_password_pauses_status_line_while_reading(self) -> None:
+        events = []
+
+        class FakePause:
+            def __enter__(self):
+                events.append("enter")
+
+            def __exit__(self, exc_type, exc, tb):
+                events.append("exit")
+
+        with (
+            patch("troTHU.input_safety._optional_status_line_pause", return_value=FakePause()),
+            patch("sys.platform", "unknown-test-os"),
+            patch("builtins.input", return_value=" secret "),
+        ):
+            self.assertEqual(masked_password_input("pw> "), "secret")
+
+        self.assertEqual(events, ["enter", "exit"])
+
 
 if __name__ == "__main__":
     unittest.main()

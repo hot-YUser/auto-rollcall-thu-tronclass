@@ -95,21 +95,6 @@ def main(argv: ctx.Optional[ctx.List[str]]=None) -> int:
         return ctx.release_check_command(args)
     if args.command == 'release-build':
         return ctx.release_build_command(args)
-    if args.command == 'validation':
-        validation_command = getattr(args, 'validation_command', None) or 'checklist'
-        if validation_command == 'checklist':
-            return ctx.validation_checklist_command(json_output=getattr(args, 'json', False))
-        if validation_command == 'record':
-            return ctx.validation_record_command(args)
-        if validation_command == 'summary':
-            return ctx.validation_summary_command(json_output=getattr(args, 'json', False))
-        if validation_command == 'local-smoke':
-            return ctx.validation_local_smoke_command(
-                json_output=getattr(args, 'json', False),
-                record=getattr(args, 'record', False),
-            )
-        parser.print_help()
-        return 1
     if args.command == 'provider':
         provider_command = getattr(args, 'provider_command', None) or 'list'
         if provider_command == 'list':
@@ -119,22 +104,6 @@ def main(argv: ctx.Optional[ctx.List[str]]=None) -> int:
             )
         if provider_command == 'show':
             return ctx.provider_show_command(getattr(args, 'name', ''), json_output=getattr(args, 'json', False))
-        if provider_command == 'verify-checklist':
-            return ctx.provider_verify_checklist_command(args)
-        if provider_command == 'ready-gate':
-            return ctx.provider_ready_gate_command(args)
-        if provider_command == 'fixture':
-            fixture_command = getattr(args, 'provider_fixture_command', None) or 'template'
-            if fixture_command == 'template':
-                return ctx.provider_fixture_template_command(args)
-            if fixture_command == 'validate':
-                return ctx.provider_fixture_validate_command(args)
-            if fixture_command == 'review-template':
-                return ctx.provider_fixture_review_template_command(args)
-            if fixture_command == 'review':
-                return ctx.provider_fixture_review_command(args)
-            if fixture_command == 'review-dir':
-                return ctx.provider_fixture_review_dir_command(args)
         parser.print_help()
         return 1
     if args.command == 'app':
