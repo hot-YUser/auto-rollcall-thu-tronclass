@@ -182,6 +182,6 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
     if fatal_error is not None:
         raise fatal_error
     text = 'Total time: {:.2f}s\nTotal request: {}/{}{}\nCode: {}\n'.format(elapsed, request_count, ctx.NUMBER_CODE_LIMIT, ' (Stopped early)' if found_code != 'NA' else '', found_code)
-    print(text)
+    ctx.log_print(text)
     await ctx.mes(text)
     return found_code

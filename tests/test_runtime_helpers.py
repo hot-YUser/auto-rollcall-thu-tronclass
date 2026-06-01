@@ -243,6 +243,80 @@ class RuntimeHelpersTest(unittest.TestCase):
         self.assertIn("已送出 123/10000", progress)
         self.assertIn("最近代碼 0123", progress)
 
+    def test_monitor_status_helpers_match_expected_shape(self) -> None:
+        now = runtime_helpers.datetime(2026, 1, 2, 14, 3, 27)
+        standby_next = runtime_helpers.datetime(2026, 1, 2, 19, 0, 0)
+        monitoring_next = runtime_helpers.datetime(2026, 1, 2, 18, 0, 0)
+
+        self.assertEqual(runtime_helpers.format_countdown(3661), "01:01:01")
+        self.assertEqual(runtime_helpers.format_countdown("bad"), "00:00:00")
+        self.assertEqual(
+            runtime_helpers.build_monitor_status_line(
+                {
+                    "phase": "monitoring",
+                    "check_count": 42,
+                    "detail": "目前無點名",
+                    "next_switch_at": monitoring_next,
+                },
+                now,
+            ),
+            "監控中 · 第 42 次 · 目前無點名 · 14:03:27 · 18:00 進入待機",
+        )
+        self.assertEqual(
+            runtime_helpers.build_monitor_status_line(
+                {"phase": "standby", "next_switch_at": standby_next},
+                now,
+            ),
+            "待機中 · 倒數 04:56:33 · 14:03:27 · 19:00 開始監控",
+        )
+        self.assertEqual(
+            runtime_helpers.build_monitor_status_line(
+                {"phase": "monitoring", "check_count": 5, "detail": "目前無點名"},
+                now,
+            ),
+            "監控中 · 第 5 次 · 目前無點名 · 14:03:27",
+        )
+        self.assertEqual(
+            runtime_helpers.build_monitor_status_line(
+                {"phase": "logging_in", "detail": "正在登入…"},
+                now,
+            ),
+            "登入中 · 正在登入… · 14:03:27",
+        )
+
+    def test_predict_schedule_change_finds_next_flip_or_none(self) -> None:
+        start = runtime_helpers.datetime.strptime("08:00", "%H:%M").time()
+        end = runtime_helpers.datetime.strptime("18:00", "%H:%M").time()
+        now = runtime_helpers.datetime(2026, 1, 2, 17, 59, 27)
+
+        def active_at(moment):
+            return start <= moment.time() < end
+
+        predicted = runtime_helpers.predict_schedule_change(now, active_at)
+
+        self.assertIsNotNone(predicted)
+        self.assertEqual(predicted[0], runtime_helpers.datetime(2026, 1, 2, 18, 0, 0))
+        self.assertFalse(predicted[1])
+        self.assertIsNone(runtime_helpers.predict_schedule_change(now, lambda _moment: True))
+
+    def test_predict_schedule_change_keeps_inclusive_end_hint_on_boundary_minute(self) -> None:
+        start = runtime_helpers.datetime.strptime("08:00", "%H:%M").time()
+        end = runtime_helpers.datetime.strptime("18:00", "%H:%M").time()
+        now = runtime_helpers.datetime(2026, 1, 2, 14, 3, 27)
+
+        predicted = runtime_helpers.predict_schedule_change(
+            now,
+            lambda moment: runtime_helpers.is_within_schedule(start, end, moment.time()),
+        )
+
+        self.assertIsNotNone(predicted)
+        self.assertEqual(runtime_helpers.format_hhmm(predicted[0]), "18:00")
+        self.assertLessEqual(
+            (predicted[0] - runtime_helpers.datetime(2026, 1, 2, 18, 0, 0)).total_seconds(),
+            1,
+        )
+        self.assertFalse(predicted[1])
+
     def test_radar_success_banner_matches_expected_shape(self) -> None:
         banner = runtime_helpers.format_radar_success_banner(
             30017,

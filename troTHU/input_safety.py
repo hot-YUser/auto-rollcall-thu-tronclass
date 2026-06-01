@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import re
 import sys
 from dataclasses import dataclass, field
@@ -184,7 +185,26 @@ def _fallback_password_input(prompt: str) -> str:
         return ""
 
 
+def _optional_status_line_pause():
+    try:
+        import troTHU.runtime_context as ctx  # type: ignore
+    except Exception:
+        try:
+            import runtime_context as ctx  # type: ignore
+        except Exception:
+            return contextlib.nullcontext()
+    try:
+        return ctx.pause_status_line()
+    except Exception:
+        return contextlib.nullcontext()
+
+
 def masked_password_input(prompt: str = "輸入密碼 > ") -> str:
+    with _optional_status_line_pause():
+        return _masked_password_input(prompt)
+
+
+def _masked_password_input(prompt: str = "輸入密碼 > ") -> str:
     """Read a password with a best-effort local mask without using getpass."""
     prompt_text = str(prompt or "輸入密碼 > ")
     if sys.platform.startswith("win"):
