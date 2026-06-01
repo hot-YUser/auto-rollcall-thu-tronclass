@@ -1,12 +1,14 @@
 import json
 import tempfile
 import unittest
+import unittest.mock
 import zipfile
 from pathlib import Path
 
 from troTHU.package_diagnostics import PROJECT_NAME
 from troTHU.release_checklist import EXPECTED_WINDOWS_ZIP
 from troTHU.release_builder import (
+    RELEASE_NOTES_FILE,
     ReleaseBuildError,
     build_release_build_preflight,
     package_release_artifact,
@@ -17,6 +19,7 @@ from troTHU.release_builder import (
 class ReleaseBuilderTest(unittest.TestCase):
     def _prepare_base(self, root: Path) -> None:
         (root / "README.md").write_text("# Test README\n", encoding="utf-8")
+        (root / RELEASE_NOTES_FILE).write_text("# Test Release Notes\n\nShip this note.\n", encoding="utf-8")
         (root / "auto-rollcall-thu-tronclass.spec").write_text("# spec\n", encoding="utf-8")
         (root / "troTHU").mkdir()
         (root / "troTHU" / "__init__.py").write_text("", encoding="utf-8")
@@ -72,9 +75,13 @@ class ReleaseBuilderTest(unittest.TestCase):
             self.assertTrue(report["smoke"]["uses_temp_extract"])
             with zipfile.ZipFile(artifact) as archive:
                 names = archive.namelist()
+                release_notes = archive.read(
+                    next(name for name in names if name.endswith("RELEASE_NOTES.txt"))
+                ).decode("utf-8")
 
         self.assertTrue(any(name.endswith("README.md") for name in names))
         self.assertTrue(any(name.endswith("RELEASE_NOTES.txt") for name in names))
+        self.assertIn("Ship this note.", release_notes)
         self.assertFalse(any("/config.yaml" in name or "/state/" in name or "/tests/" in name for name in names))
 
     def test_smoke_runs_from_temporary_extract_not_collect_source(self) -> None:

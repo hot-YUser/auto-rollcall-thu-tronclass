@@ -55,6 +55,7 @@ SENSITIVE_WORDS = (
     "payload",
 )
 ARTIFACT_ROOT = "THU_Auto_Rollcall-v{}-windows-x64".format(PROJECT_RELEASE_LABEL)
+RELEASE_NOTES_FILE = "RELEASE_NOTES-v{}.md".format(PROJECT_RELEASE_LABEL)
 LATEST_BUILD_REPORT = Path("state") / "release" / "latest_release_build.json"
 
 
@@ -216,23 +217,15 @@ def _iter_collect_files(collect_dir: Path) -> List[Path]:
         return []
 
 
-def _release_notes_text() -> str:
-    return "\n".join(
-        [
-            "THU Auto Rollcall v{} 預發布說明".format(PROJECT_RELEASE_LABEL),
-            "",
-            "此 Windows 壓縮檔由 `python -m troTHU.tron release-build --execute` 產生。",
-            "內容包含 PyInstaller collect output、README.md 與本預發布說明。",
-            "",
-            "預發布提醒：",
-            "- 這是 alpha 預發布版本，尚未經實際課堂環境完整驗收。",
-            "- 預設 Windows zip 是小包：不內建 Playwright browser-assisted login、keyring 或 QR 圖片解碼 optional extras。",
-            "- 壓縮檔不應包含本機 config.yaml、config.advanced.yaml、state/、log/、cookies/、tests/ 或 Codex 工作紀錄。",
-            "- 解壓縮後可先執行 `auto-rollcall-thu-tronclass.exe status --json` 檢查本機狀態。",
-            "- 真實可用性仍需後續 number/radar/QR 實際驗收紀錄補齊。",
-            "",
-        ]
-    )
+def _release_notes_text(base_dir: Path) -> str:
+    path = Path(base_dir) / RELEASE_NOTES_FILE
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ReleaseBuildError("missing_release_notes") from exc
+    if not text.strip():
+        raise ReleaseBuildError("empty_release_notes")
+    return text
 
 
 def _safe_report_copy(value: Any) -> Any:
@@ -502,7 +495,12 @@ def run_release_build_pipeline(
             return report
 
     try:
-        packaged = package_release_artifact(collect_dir, artifact_path, readme_path=base / "README.md", notes_text=_release_notes_text())
+        packaged = package_release_artifact(
+            collect_dir,
+            artifact_path,
+            readme_path=base / "README.md",
+            notes_text=_release_notes_text(base),
+        )
     except ReleaseBuildError as exc:
         report["status"] = "fail"
         report["reason"] = str(exc)
