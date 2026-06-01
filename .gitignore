@@ -48,6 +48,7 @@ config-broken-*.yaml
 build/
 dist/
 *.spec.tmp
+RELEASE_NOTES-v*.md
 
 # Local Codex/user planning material. Do not publish these.
 .codex-worklog.md
