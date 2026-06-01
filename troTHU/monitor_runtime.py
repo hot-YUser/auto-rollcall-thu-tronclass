@@ -28,16 +28,26 @@ async def sleep_or_shutdown(shutdown_event: ctx.asyncio.Event, seconds: float) -
 def next_schedule_transition(now=None):
     try:
         base_now = now or ctx.current_datetime()
+        schedule_cache = {}
+
+        def schedule_for_weekday(weekday):
+            if weekday not in schedule_cache:
+                schedule = ctx.get_schedule_for_day(weekday)
+                if not schedule.get('enable', False):
+                    schedule_cache[weekday] = (False, ())
+                else:
+                    schedule_ranges = schedule.get('ranges', schedule.get('range'))
+                    schedule_cache[weekday] = (True, tuple(ctx.parse_schedule_ranges(schedule_ranges)))
+            return schedule_cache[weekday]
 
         def active_at(moment):
-            schedule = ctx.get_schedule_for_day(moment.weekday())
-            if not schedule.get('enable', False):
+            enabled, ranges = schedule_for_weekday(moment.weekday())
+            if not enabled:
                 return False
-            schedule_ranges = schedule.get('ranges', schedule.get('range'))
             current_time = moment.time()
             return any(
                 ctx.is_within_schedule(start, end, current_time)
-                for start, end in ctx.parse_schedule_ranges(schedule_ranges)
+                for start, end in ranges
             )
 
         predicted = ctx.predict_schedule_change(base_now, active_at)

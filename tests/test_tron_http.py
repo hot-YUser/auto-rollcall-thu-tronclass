@@ -1665,6 +1665,29 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsNone(transition)
 
+    async def test_next_schedule_transition_caches_parsed_ranges_by_weekday(self) -> None:
+        now = tron.datetime(2026, 1, 2, 14, 3, 27)
+        schedule = {"enable": True, "ranges": [["00:00", "00:00"]]}
+        parse_calls = 0
+
+        def fake_parse_schedule_ranges(_ranges):
+            nonlocal parse_calls
+            parse_calls += 1
+            return [(dt_time(0, 0), dt_time(0, 0))]
+
+        with (
+            patch.object(tron, "get_schedule_for_day", return_value=schedule),
+            patch.object(
+                tron,
+                "parse_schedule_ranges",
+                side_effect=fake_parse_schedule_ranges,
+            ),
+        ):
+            transition = tron.next_schedule_transition(now)
+
+        self.assertIsNone(transition)
+        self.assertLessEqual(parse_calls, 7)
+
     async def test_app_main_uses_explicit_http_timeout(self) -> None:
         fake_session = MagicMock()
         fake_session.cookie_jar = MagicMock()
