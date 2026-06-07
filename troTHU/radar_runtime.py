@@ -19,6 +19,10 @@ class _RadarNoFallback(Exception):
     pass
 
 
+class _RadarSubmittedUnconfirmed(Exception):
+    pass
+
+
 def _is_transient_radar_result(result: ctx.RadarCoordinateResult) -> bool:
     return result.error_code in _TRANSIENT_RADAR_ERROR_CODES
 
@@ -104,14 +108,43 @@ def _global_radar_bool(global_config: ctx.Mapping[str, ctx.Any], key: str) -> bo
 
 
 async def _announce_radar_success(
+    client: ctx.Any,
     rollcall_id: ctx.Any,
     *,
     method: ctx.Any,
     detail: ctx.Any = "",
-) -> None:
-    banner = ctx.format_radar_success_banner(rollcall_id, method, detail)
+    verification: ctx.Any = None,
+) -> bool:
+    verification_result = dict(verification or {}) if isinstance(verification, dict) else {}
+    if not verification_result:
+        verification_result = await ctx.verify_rollcall_on_call_fine(
+            client.session,
+            rollcall_id,
+            endpoints=client.endpoints,
+            request_ssl=client.request_ssl,
+            rollcall_type="radar",
+        )
+    if not (verification_result.get("ok") and verification_result.get("status") == "on_call_fine"):
+        ctx.log(
+            event="radar_rollcall_submitted_unconfirmed",
+            status="submitted_unconfirmed",
+            rollcall_id=rollcall_id,
+            rollcall_type="radar",
+            message="雷達點名答案已送出，但尚未確認 on_call_fine。",
+            extra={"method": method, "detail": detail, "verification": verification_result},
+        )
+        await ctx.mes("雷達點名 #{} 已送出，但尚未確認 on_call_fine；下一輪會繼續檢查。".format(rollcall_id))
+        return False
+    banner = ctx.format_rollcall_success_banner(
+        ctx.AttendanceType.RADAR,
+        rollcall_id,
+        method=method,
+        detail=detail or "on_call_fine",
+    )
     ctx.log_print(banner)
+    ctx.remember_rollcall_progress(verification_result)
     await ctx.mes("雷達點名成功！", highlight_block=banner)
+    return True
 
 
 def _rollcall_id_matches(rollcall: ctx.Any, rollcall_id: ctx.Any) -> bool:
@@ -245,7 +278,8 @@ async def _run_unbounded_grid_retry(
         attempts += 1
 
         if kind == "success":
-            await _announce_radar_success(
+            if await _announce_radar_success(
+                client,
                 rollcall_id,
                 method=success_method,
                 detail="{} east={:.0f}m north={:.0f}m".format(
@@ -253,8 +287,9 @@ async def _run_unbounded_grid_retry(
                     candidate.east_offset,
                     candidate.north_offset,
                 ),
-            )
-            return True
+            ):
+                return True
+            return False
         if kind == "scope_distance" and result is not None:
             ctx.log_print(
                 "最終棋盤格 {} 未命中，距離 {:.2f} 公尺。".format(
@@ -307,8 +342,11 @@ async def radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str,
 
     # Default strategy: empty_answer — submit a coordinate-free `{}` answer first
     # and only trust it once attendance is verified, then fall back to global_wgs84.
-    if await empty_answer_radar(main_session, rollcall):
-        return True
+    try:
+        if await empty_answer_radar(main_session, rollcall):
+            return True
+    except _RadarSubmittedUnconfirmed:
+        return False
     if not ctx.coerce_bool(
         radar_config.get(
             "empty_answer_fallback_enabled",
@@ -336,7 +374,7 @@ async def _global_then_legacy(
 ) -> bool:
     try:
         success = await global_radar(main_session, rollcall, radar_config=radar_config)
-    except _RadarNoFallback:
+    except (_RadarNoFallback, _RadarSubmittedUnconfirmed):
         return False
     if success:
         return True
@@ -416,13 +454,20 @@ async def empty_answer_radar(main_session: ctx.aiohttp.ClientSession, rollcall: 
 
         if result.success:
             try:
-                marked_present = await _radar_marked_present(client, rollcall_id)
+                verification = await ctx.verify_rollcall_on_call_fine(
+                    session,
+                    rollcall_id,
+                    endpoints=client.endpoints,
+                    request_ssl=client.request_ssl,
+                    rollcall_type="radar",
+                )
             except ctx.UnauthorizedError:
                 raise
             except (ctx.UnexpectedResponseError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError) as exc:
                 diagnostic["verify_error"] = str(exc)[:200]
-                marked_present = False
-            diagnostic["verified_present"] = bool(marked_present)
+                verification = {"ok": False, "status": "submitted_unconfirmed", "rollcall_id": rollcall_id}
+            marked_present = bool(verification.get("ok") and verification.get("status") == "on_call_fine")
+            diagnostic["verified_present"] = marked_present
             if marked_present:
                 ctx.log(
                     event="radar_empty_answer_attempt",
@@ -432,12 +477,23 @@ async def empty_answer_radar(main_session: ctx.aiohttp.ClientSession, rollcall: 
                     message="雷達空答案簽到成功並已確認。",
                     extra=diagnostic,
                 )
-                await _announce_radar_success(
+                if await _announce_radar_success(
+                    client,
                     rollcall_id,
                     method="empty_answer",
                     detail="已確認 on_call_fine",
+                    verification=verification,
+                ):
+                    return True
+            else:
+                await _announce_radar_success(
+                    client,
+                    rollcall_id,
+                    method="empty_answer",
+                    detail="submitted_unconfirmed",
+                    verification=verification,
                 )
-                return True
+                raise _RadarSubmittedUnconfirmed("雷達空答案已送出但尚未確認 on_call_fine。")
             ctx.log(
                 event="radar_empty_answer_attempt",
                 status="api_accepted_no_attendance",
@@ -738,6 +794,7 @@ async def global_radar(
             return ("transient", None)
 
         async def submit_point(point: ctx.GeoPoint, label: str) -> str:
+            nonlocal found, final_status
             kind, result = await try_coord(point, label)
             if kind == "scope_distance" and result is not None:
                 observations.append(ctx.GlobalDistanceObservation(point, result.distance, label))
@@ -746,11 +803,15 @@ async def global_radar(
                 detail = label
                 if result is not None and result.present_hint and not result.success:
                     detail = "{} verified-present".format(label)
-                await _announce_radar_success(
+                if not await _announce_radar_success(
+                    client,
                     rollcall_id,
                     method="global_wgs84",
                     detail=detail,
-                )
+                ):
+                    found = False
+                    final_status = "submitted_unconfirmed"
+                    raise _RadarSubmittedUnconfirmed("雷達座標已送出但尚未確認 on_call_fine。")
             elif kind == "transient":
                 await register_attempt_status("transient")
             elif kind == "fatal":
@@ -1091,12 +1152,12 @@ async def legacy_radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Di
             geo_probe = probe_plan.frame.to_geo(local_probe)
             result = await try_coord(geo_probe, f'legacy-probe-{index}')
             if result.success:
-                await _announce_radar_success(
+                return await _announce_radar_success(
+                    client,
                     rollcall_id,
                     method="legacy_thu",
                     detail=f"legacy-probe-{index}",
                 )
-                return True
             if not result.is_scope_distance:
                 text = f'雷達點名 #{rollcall_id} 失敗：伺服器拒絕 THU fallback 探測點 {index} ({result.error_code})。'
                 ctx.log_print(text)
@@ -1116,12 +1177,12 @@ async def legacy_radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Di
             fourth_geo = probe_plan.frame.to_geo(fourth_probe)
             result = await try_coord(fourth_geo, 'legacy-probe-4')
             if result.success:
-                await _announce_radar_success(
+                return await _announce_radar_success(
+                    client,
                     rollcall_id,
                     method="legacy_thu",
                     detail="legacy-probe-4",
                 )
-                return True
             if not result.is_scope_distance:
                 text = f'雷達點名 #{rollcall_id} 失敗：伺服器拒絕 THU fallback 第四探測點 ({result.error_code})。'
                 ctx.log_print(text)

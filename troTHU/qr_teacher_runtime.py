@@ -252,6 +252,7 @@ async def run_teacher_assisted_qr(student_session, rollcall) -> bool:
         submitted = False
         last_qr_data = None
         last_result = {}
+        last_verification = {}
         deadline = ctx.time.monotonic() + QR_ASSIST_CONFIRM_WINDOW_SECONDS
         while ctx.time.monotonic() < deadline:
             qr_payload = await client.fetch_teacher_qr_code(course_id, teacher_rollcall_id)
@@ -269,19 +270,21 @@ async def run_teacher_assisted_qr(student_session, rollcall) -> bool:
                 # answer_qr_rollcall raises on non-2xx, so reaching here means the PUT was accepted.
                 submitted = True
                 last_qr_data = qr_data
-                progress = await ctx.fetch_rollcall_progress(
+                last_verification = await ctx.verify_rollcall_on_call_fine(
                     student_session,
                     student_rollcall_id,
                     endpoints=ctx.get_active_http_endpoints(),
                     request_ssl=ctx.get_ssl_request_setting(),
-                    my_user_no=ctx.get_active_profile(ctx.CONFIG).name,
+                    rollcall_type="qrcode",
                 )
-                if progress.get("my_present"):
+                if last_verification.get("ok") and last_verification.get("status") == "on_call_fine":
                     await ctx.finalize_qr_submission(
                         student_session,
                         qr_data,
                         last_result,
                         notification_body="已透過教師帳號輔助取得 QR data 完成送出。",
+                        progress_log_output=False,
+                        verification=last_verification,
                     )
                     success = True
                     break
@@ -291,18 +294,17 @@ async def run_teacher_assisted_qr(student_session, rollcall) -> bool:
             return True
         if submitted and last_qr_data is not None:
             # The student PUT returned 2xx at least once but presence could not be confirmed
-            # within the window (e.g. roster user_no did not match the active profile name).
-            # Treat as done-but-unconfirmed: mark complete so the monitor does not recreate a
-            # teacher rollcall every cooldown, and surface a clear "please verify" notice.
-            ctx.COMPLETED_QR_ROLLCALLS[student_rollcall_id] = True
+            # within the window. Keep it uncompleted so the next monitor poll can re-check.
             await ctx.finalize_qr_submission(
                 student_session,
                 last_qr_data,
                 last_result,
                 notification_body="教師輔助已送出，但未能即時確認簽到，請留意。",
+                progress_log_output=False,
+                verification=last_verification or {"ok": False, "status": "submitted_unconfirmed", "rollcall_id": student_rollcall_id},
             )
-            ctx.log(event="qr_teacher_assist", status="submitted_unconfirmed", rollcall_id=student_rollcall_id, rollcall_type="qrcode", message="教師 QR 輔助已送出但未即時確認簽到，已標記完成避免重複發起。", extra={"teacher_rollcall_id": teacher_rollcall_id})
-            return True
+            ctx.log(event="qr_teacher_assist", status="submitted_unconfirmed", rollcall_id=student_rollcall_id, rollcall_type="qrcode", message="教師 QR 輔助已送出但未即時確認簽到，下一輪會重新檢查。", extra={"teacher_rollcall_id": teacher_rollcall_id})
+            return False
         ctx.log(event="qr_teacher_assist", status="not_confirmed", rollcall_id=student_rollcall_id, rollcall_type="qrcode", message="教師 QR 輔助送出後未確認簽到成功。", extra={"teacher_rollcall_id": teacher_rollcall_id})
         return False
     except ctx.UnauthorizedError as exc:

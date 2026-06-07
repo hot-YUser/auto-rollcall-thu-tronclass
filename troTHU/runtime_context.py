@@ -259,6 +259,7 @@ try:
         format_found_code_banner,
         format_hhmm,
         format_radar_success_banner,
+        format_rollcall_success_banner,
         format_time_value,
         is_within_any_schedule,
         is_within_schedule,
@@ -491,6 +492,7 @@ except ImportError:
         format_found_code_banner,
         format_hhmm,
         format_radar_success_banner,
+        format_rollcall_success_banner,
         format_time_value,
         is_within_any_schedule,
         is_within_schedule,
@@ -531,14 +533,18 @@ LAST_STATUS = "初始化中"
 #   phase: 'monitoring' | 'standby' | 'logging_in' | 'paused'
 #   check_count: rolling poll counter (shown as "第 N 次" while monitoring)
 #   detail: short status text (e.g. "目前無點名" or a progress message)
+#   rollcall_status: optional canonical status segment (e.g. "on_call_fine")
 #   next_switch_at: datetime of the next schedule transition, or None
 MONITOR_STATUS: Dict[str, Any] = {
     "phase": "logging_in",
     "check_count": 0,
     "detail": "",
+    "rollcall_status": "",
     "next_switch_at": None,
     "teacher_state": "off",
 }
+
+LAST_ROLLCALL_PROGRESS: Dict[str, Any] = {}
 
 # Console status-line bookkeeping (interactive TTY only). STATUS_LINE_WIDTH is
 # the display width of the currently drawn line so it can be cleared cleanly;
@@ -1001,7 +1007,11 @@ _LEGACY_EXPORTS = {
     'clipboard_autosubmit_enabled': ('troTHU.clipboard_qr', 'clipboard_autosubmit_enabled'),
     'report_rollcall_progress': ('troTHU.rollcall_progress', 'report_rollcall_progress'),
     'fetch_rollcall_progress': ('troTHU.rollcall_progress', 'fetch_rollcall_progress'),
+    'format_rollcall_progress_text': ('troTHU.rollcall_progress', 'format_rollcall_progress_text'),
+    'remember_rollcall_progress': ('troTHU.rollcall_progress', 'remember_rollcall_progress'),
+    'clear_rollcall_progress': ('troTHU.rollcall_progress', 'clear_rollcall_progress'),
     'summarize_rollcall_progress': ('troTHU.rollcall_progress', 'summarize_rollcall_progress'),
+    'verify_rollcall_on_call_fine': ('troTHU.rollcall_progress', 'verify_rollcall_on_call_fine'),
     'record_login_runtime': ('troTHU.auth_runtime', 'record_login_runtime'),
     'record_monitor_runtime': ('troTHU.monitor_runtime', 'record_monitor_runtime'),
     'record_runtime_error': ('troTHU.rollcall_runtime', 'record_runtime_error'),

@@ -88,9 +88,12 @@ async def try_clipboard_qr_autosubmit(session: ctx.aiohttp.ClientSession, rollca
             ctx.log_print('剪貼簿 QR 對應點名 {} 與目前 {} 不符，略過。'.format(clip_rollcall_id, current_rollcall_id))
             ctx.log(event='clipboard_qr_autosubmit', status='rollcall_mismatch', rollcall_id=current_rollcall_id, rollcall_type='qrcode', message='剪貼簿 QR 與目前點名不符。', extra={'clipboard_rollcall_id': clip_rollcall_id, 'source': read.get('source')})
             return False
-        await ctx.submit_qr_payload(session, payload)
-        ctx.log_print('已從剪貼簿（{}）自動送出 QR 點名 #{}。'.format(read.get('source'), current_rollcall_id or clip_rollcall_id))
-        ctx.log(event='clipboard_qr_autosubmit', status='submitted', rollcall_id=current_rollcall_id or clip_rollcall_id, rollcall_type='qrcode', message='已從剪貼簿自動送出 QR 點名。', extra={'source': read.get('source')})
+        ok = await ctx.submit_qr_payload(session, payload, progress_log_output=False)
+        if not ok:
+            ctx.log(event='clipboard_qr_autosubmit', status='submitted_unconfirmed', rollcall_id=current_rollcall_id or clip_rollcall_id, rollcall_type='qrcode', message='已從剪貼簿自動送出 QR 點名，但尚未確認 on_call_fine。', extra={'source': read.get('source')})
+            return False
+        ctx.log_print('已從剪貼簿（{}）自動送出並確認 QR 點名 #{}。'.format(read.get('source'), current_rollcall_id or clip_rollcall_id))
+        ctx.log(event='clipboard_qr_autosubmit', status='success', rollcall_id=current_rollcall_id or clip_rollcall_id, rollcall_type='qrcode', message='已從剪貼簿自動送出並確認 QR 點名。', extra={'source': read.get('source')})
         return True
     except Exception as exc:
         ctx.log(event='clipboard_qr_autosubmit', status='error', rollcall_type='qrcode', message='剪貼簿自動送出失敗。', error=exc)
@@ -154,12 +157,13 @@ async def check_rollcall(session: ctx.aiohttp.ClientSession, cnt: int=-1) -> str
         await ctx.mes(text)
         found_code = await ctx.number(session, rollcall_id)
         ctx.mark_completed_number_rollcall(rollcall_id, found_code)
-        try:
-            group_result = await ctx.submit_group_number(found_code, session=session, config=ctx.CONFIG)
-            if group_result.get('ok'):
-                ctx.log(event='group_number_fanout_planned', status='planned', rollcall_id=rollcall_id, rollcall_type='number', message='群組 number fan-out 已建立安全執行計畫。', extra=group_result)
-        except Exception as exc:
-            ctx.log(event='group_number_fanout_planned', status='failed', rollcall_id=rollcall_id, rollcall_type='number', message='群組 number fan-out 計畫建立失敗。', error=exc)
+        if ctx.normalize_text(found_code) and ctx.normalize_text(found_code) != 'NA':
+            try:
+                group_result = await ctx.submit_group_number(found_code, session=session, config=ctx.CONFIG)
+                if group_result.get('ok'):
+                    ctx.log(event='group_number_fanout_planned', status='planned', rollcall_id=rollcall_id, rollcall_type='number', message='群組 number fan-out 已建立安全執行計畫。', extra=group_result)
+            except Exception as exc:
+                ctx.log(event='group_number_fanout_planned', status='failed', rollcall_id=rollcall_id, rollcall_type='number', message='群組 number fan-out 計畫建立失敗。', error=exc)
         return 'is_number'
     if selected_status == 'is_radar' and selected_rollcall is not None:
         ctx.reset_unsupported_rollcall_state()

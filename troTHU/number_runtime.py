@@ -14,6 +14,7 @@ def __getattr__(name: str):
 async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
     request_count = 0
     found_code = 'NA'
+    submitted_unconfirmed_code = ''
     stop_event = ctx.asyncio.Event()
     progress_done = ctx.asyncio.Event()
     device = ctx.random_id()
@@ -55,7 +56,7 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
     direct_read_status = ''
 
     async def try_number_code(session: ctx.aiohttp.ClientSession, try_code: int) -> str:
-        nonlocal request_count, found_code, fatal_error, latest_try_code, last_transient_error
+        nonlocal request_count, found_code, submitted_unconfirmed_code, fatal_error, latest_try_code, last_transient_error
         payload = {'deviceId': device, 'numberCode': '{:04d}'.format(try_code)}
         for attempt in range(request_retries):
             if stop_event.is_set():
@@ -69,11 +70,44 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
                     body = await resp.text()
                     classification = ctx.classify_number_response(resp.status, body)
                     if classification.status == ctx.NumberAttemptStatus.SUCCESS:
-                        found_code = payload['numberCode']
                         stop_event.set()
-                        banner = ctx.format_found_code_banner(found_code)
+                        try:
+                            verification = await ctx.verify_rollcall_on_call_fine(
+                                session,
+                                rcid,
+                                rollcall_type='number',
+                            )
+                        except ctx.UnauthorizedError as exc:
+                            if fatal_error is None and found_code == 'NA':
+                                fatal_error = exc
+                            return 'fatal'
+                        if not (verification.get('ok') and verification.get('status') == 'on_call_fine'):
+                            submitted_unconfirmed_code = payload['numberCode']
+                            ctx.log(
+                                event='number_rollcall_submitted_unconfirmed',
+                                path=ctx.number_log_path(rcid),
+                                counter=try_code,
+                                status='submitted_unconfirmed',
+                                url=str(resp.url),
+                                http_status=resp.status,
+                                rollcall_id=rcid,
+                                rollcall_type='number',
+                                message='數字點名碼已送出，但尚未確認 on_call_fine。',
+                                extra={'code': submitted_unconfirmed_code, 'verification': verification},
+                            )
+                            await ctx.mes('數字點名碼 {} 已送出，但尚未確認 on_call_fine；下一輪會繼續檢查。'.format(submitted_unconfirmed_code))
+                            return 'submitted_unconfirmed'
+                        found_code = payload['numberCode']
+                        banner = ctx.format_rollcall_success_banner(
+                            ctx.AttendanceType.NUMBER,
+                            rcid,
+                            method='number',
+                            detail='on_call_fine',
+                            code=found_code,
+                        )
                         ctx.log_print(banner)
-                        await ctx.mes('找到點名數字！', highlight_block=banner)
+                        ctx.remember_rollcall_progress(verification)
+                        await ctx.mes('數字點名成功！', highlight_block=banner)
                         return 'success'
                     elif classification.status == ctx.NumberAttemptStatus.WRONG_CODE:
                         return 'wrong'
@@ -169,19 +203,24 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
             progress_done.set()
             await progress_task
     elapsed = ctx.time.perf_counter() - started_at
-    if fatal_error is None and found_code == 'NA' and (last_transient_error is not None):
+    if fatal_error is None and found_code == 'NA' and submitted_unconfirmed_code == '' and (last_transient_error is not None):
         fatal_error = last_transient_error
     if fatal_error is not None:
         summary_status = 'failed'
         summary_message = '數字點名流程提早中止。'
+    elif submitted_unconfirmed_code and found_code == 'NA':
+        summary_status = 'submitted_unconfirmed'
+        summary_message = '數字點名流程已送出但尚未確認。'
     else:
         summary_status = 'completed'
         summary_message = '數字點名流程結束。'
     resolution_method = 'direct_read' if direct_read_status == 'success' else ('brute_force' if found_code != 'NA' else 'none')
-    ctx.log(event='number_rollcall_summary', path=ctx.number_log_path(rcid), status=summary_status, rollcall_id=rcid, rollcall_type='number', message=summary_message, extra={'spend_time_seconds': round(elapsed, 2), 'request_count': request_count, 'found_code': found_code, 'stopped_early': found_code != 'NA', 'fatal_error': ctx.normalize_text(fatal_error) or None, 'cooldowns_used': cooldown_tracker.cooldowns_used, 'final_concurrency': current_concurrency, 'method': resolution_method, 'direct_read_attempted': direct_read_attempted, 'direct_read_status': direct_read_status})
+    ctx.log(event='number_rollcall_summary', path=ctx.number_log_path(rcid), status=summary_status, rollcall_id=rcid, rollcall_type='number', message=summary_message, extra={'spend_time_seconds': round(elapsed, 2), 'request_count': request_count, 'found_code': found_code, 'submitted_unconfirmed_code': submitted_unconfirmed_code or None, 'stopped_early': found_code != 'NA' or bool(submitted_unconfirmed_code), 'fatal_error': ctx.normalize_text(fatal_error) or None, 'cooldowns_used': cooldown_tracker.cooldowns_used, 'final_concurrency': current_concurrency, 'method': resolution_method, 'direct_read_attempted': direct_read_attempted, 'direct_read_status': direct_read_status})
     if fatal_error is not None:
         raise fatal_error
     text = 'Total time: {:.2f}s\nTotal request: {}/{}{}\nCode: {}\n'.format(elapsed, request_count, ctx.NUMBER_CODE_LIMIT, ' (Stopped early)' if found_code != 'NA' else '', found_code)
+    if submitted_unconfirmed_code and found_code == 'NA':
+        text += 'Submitted code (unconfirmed): {}\n'.format(submitted_unconfirmed_code)
     ctx.log_print(text)
     await ctx.mes(text)
     return found_code

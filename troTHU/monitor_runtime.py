@@ -168,9 +168,11 @@ async def monitor_loop(session: ctx.aiohttp.ClientSession, shutdown_event: ctx.a
         schedule_ranges = schedule.get('ranges', schedule.get('range'))
         current_time = configured_now.time()
         if not schedule.get('enable', False):
+            ctx.clear_rollcall_progress()
             _update_monitor_status(
                 phase='standby',
                 detail='今日非上課日',
+                rollcall_status='',
                 next_switch_at=next_switch,
                 legacy_message='今日非上課日 (休眠中)',
             )
@@ -191,6 +193,7 @@ async def monitor_loop(session: ctx.aiohttp.ClientSession, shutdown_event: ctx.a
             _update_monitor_status(
                 phase='standby',
                 detail='非上課時段',
+                rollcall_status='',
                 next_switch_at=next_switch,
                 legacy_message='非上課時段 (休眠中)',
             )
@@ -201,27 +204,52 @@ async def monitor_loop(session: ctx.aiohttp.ClientSession, shutdown_event: ctx.a
             error_cnt = 0
             if status_msg == 'not call':
                 ctx.reset_unsupported_rollcall_state()
+                ctx.clear_rollcall_progress()
                 detail = '目前無點名'
+                rollcall_status = ''
             elif status_msg == 'unsupported_radar':
+                ctx.clear_rollcall_progress()
                 detail = '發現未支援的 radar 點名'
+                rollcall_status = ''
             elif status_msg == 'unsupported_qrcode':
+                ctx.clear_rollcall_progress()
                 detail = '發現 QR Code 點名，等待手動 QR 內容'
+                rollcall_status = ''
             elif status_msg == 'unsupported_rollcall':
+                ctx.clear_rollcall_progress()
                 detail = '發現未支援的點名類型'
+                rollcall_status = ''
             elif status_msg == 'is_radar':
                 detail = '雷達點名已觸發'
+                rollcall_status = ''
             elif status_msg == 'radar_failed':
+                ctx.clear_rollcall_progress()
                 detail = '雷達點名處理失敗，下一輪會再檢查'
+                rollcall_status = ''
             elif status_msg == 'is_qrcode':
                 detail = 'QR 點名已透過教師帳號完成'
+                rollcall_status = ''
+            elif status_msg == 'is_number':
+                detail = '數字點名已觸發'
+                rollcall_status = ''
+            elif status_msg == 'on_call_fine':
+                detail = 'on_call_fine'
+                rollcall_status = 'on_call_fine'
             else:
                 detail = status_msg
+                rollcall_status = ''
+            progress = ctx.LAST_ROLLCALL_PROGRESS if isinstance(ctx.LAST_ROLLCALL_PROGRESS, dict) else {}
+            if status_msg in {'is_qrcode', 'is_number', 'is_radar', 'on_call_fine'} and progress.get('detail'):
+                detail = progress.get('detail')
+                rollcall_status = progress.get('status') or rollcall_status
+            legacy_detail = detail if not rollcall_status else '{} · {}'.format(detail, rollcall_status)
             _update_monitor_status(
                 phase='monitoring',
                 check_count=ctx.cnt,
                 detail=detail,
+                rollcall_status=rollcall_status,
                 next_switch_at=next_switch,
-                legacy_message='第 {} 次檢查: {}'.format(ctx.cnt, detail),
+                legacy_message='第 {} 次檢查: {}'.format(ctx.cnt, legacy_detail),
             )
         except ctx.UnauthorizedError:
             ctx.record_runtime_error('unauthorized', 'Cookie expired; reauth required.')

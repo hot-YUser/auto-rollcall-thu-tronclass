@@ -251,24 +251,90 @@ async def qr_scanner_submit(payload: str, fanout_all: bool=False) -> ctx.Dict[st
     return {'ok': result_code == 0, 'status': 'submitted' if result_code == 0 else 'failed', 'provider': preview.get('provider'), 'rollcall_id': preview.get('rollcall_id'), 'preview': preview}
 
 
+def _qr_confirmation_status(progress_summary: ctx.Mapping[str, ctx.Any]) -> str:
+    if not isinstance(progress_summary, dict) or not progress_summary.get('ok'):
+        status = ctx.normalize_text(progress_summary.get('status') if isinstance(progress_summary, dict) else '')
+        return 'submitted_unconfirmed' if status == 'submitted_unconfirmed' else 'submitted'
+    if progress_summary.get('confirmed_present'):
+        return 'confirmed'
+    return 'submitted_unconfirmed'
+
+
+def _qr_notification_body(base_body: str, confirmation_status: str) -> str:
+    status_text = {
+        'confirmed': '狀態：已確認簽到成功。',
+        'submitted_unconfirmed': '狀態：已送出，但未能即時確認個人狀態。',
+        'submitted': '狀態：已送出。',
+    }.get(confirmation_status, '狀態：已送出。')
+    base_text = ctx.normalize_text(base_body)
+    return '{}\n{}'.format(base_text, status_text) if base_text else status_text
+
+
 async def finalize_qr_submission(
     session: ctx.aiohttp.ClientSession,
     qr_data,
     result,
     *,
     notification_body: str = "已使用手動提供的 QR 內容完成送出。",
+    progress_summary: ctx.Mapping[str, ctx.Any] | None = None,
+    progress_log_output: bool = True,
+    verification: ctx.Mapping[str, ctx.Any] | None = None,
 ) -> bool:
     rollcall_id = qr_data.rollcall_id
     text = 'QR Code 點名 #{} 已送出。'.format(rollcall_id)
-    ctx.log(event='qrcode_rollcall_answered', status='success', rollcall_id=rollcall_id, rollcall_type='qrcode', message=text, payload_excerpt={'field_names': sorted(qr_data.fields.keys()), 'extra_field_names': sorted(qr_data.extras.keys()), 'result': result})
-    ctx.log_print(text)
     active = ctx.get_active_profile(ctx.CONFIG)
     ctx.remove_pending_qr(ctx.BASE_DIR, profile=active.name, rollcall_id=rollcall_id, provider=ctx.get_active_provider_key())
-    await ctx.notify_event(ctx.NotificationEvent(event='qrcode_rollcall_answered', title=text, body=notification_body, attendance_type=ctx.AttendanceType.QRCODE, rollcall_id=rollcall_id))
+    verification_result: ctx.Dict[str, ctx.Any] = dict(verification or {}) if isinstance(verification, dict) else {}
     try:
-        await ctx.report_rollcall_progress(session, rollcall_id)
+        if not verification_result:
+            verification_result = await ctx.verify_rollcall_on_call_fine(
+                session,
+                rollcall_id,
+                progress_summary=progress_summary,
+                rollcall_type='qrcode',
+            )
     except Exception:
-        pass
+        verification_result = {'ok': False, 'status': 'submitted_unconfirmed', 'rollcall_id': rollcall_id}
+    progress = verification_result.get('progress') if isinstance(verification_result.get('progress'), dict) else {}
+    confirmation_status = 'confirmed' if verification_result.get('ok') and verification_result.get('status') == 'on_call_fine' else _qr_confirmation_status(verification_result)
+    if progress_log_output:
+        progress_text = ctx.normalize_text(progress.get('progress_text') or verification_result.get('progress_text'))
+        if progress_text:
+            ctx.log_print(progress_text)
+    if confirmation_status != 'confirmed':
+        ctx.log(event='qrcode_rollcall_answered', status='submitted_unconfirmed', rollcall_id=rollcall_id, rollcall_type='qrcode', message=text, payload_excerpt={'field_names': sorted(qr_data.fields.keys()), 'extra_field_names': sorted(qr_data.extras.keys()), 'result': result}, extra={'confirmation_status': confirmation_status, 'verification': verification_result or None})
+        await ctx.notify_event(
+            ctx.NotificationEvent(
+                event='qrcode_rollcall_answered',
+                title='QR Code 點名已送出，尚未確認',
+                body=_qr_notification_body(notification_body, 'submitted_unconfirmed'),
+                attendance_type=ctx.AttendanceType.QRCODE,
+                rollcall_id=rollcall_id,
+                data={'confirmation_status': 'submitted_unconfirmed'},
+            )
+        )
+        return False
+
+    banner = ctx.format_rollcall_success_banner(
+        ctx.AttendanceType.QRCODE,
+        rollcall_id,
+        method='qrcode',
+        detail='on_call_fine',
+    )
+    ctx.log_print(banner)
+    ctx.remember_rollcall_progress(verification_result)
+    ctx.log(event='qrcode_rollcall_answered', status='success', rollcall_id=rollcall_id, rollcall_type='qrcode', message=text, payload_excerpt={'field_names': sorted(qr_data.fields.keys()), 'extra_field_names': sorted(qr_data.extras.keys()), 'result': result}, extra={'confirmation_status': confirmation_status, 'verification': verification_result or None})
+    await ctx.notify_event(
+        ctx.NotificationEvent(
+            event='qrcode_rollcall_answered',
+            title='QR Code 點名成功！',
+            body=_qr_notification_body(notification_body, confirmation_status),
+            attendance_type=ctx.AttendanceType.QRCODE,
+            rollcall_id=rollcall_id,
+            data={'confirmation_status': confirmation_status},
+        ),
+        highlight_block=banner,
+    )
     return True
 
 
@@ -283,17 +349,17 @@ async def _answer_qr_data(session: ctx.aiohttp.ClientSession, qr_data):
     )
 
 
-async def submit_qr_payload(session: ctx.aiohttp.ClientSession, raw_payload: str) -> bool:
+async def submit_qr_payload(session: ctx.aiohttp.ClientSession, raw_payload: str, *, progress_log_output: bool = True) -> bool:
     qr_data = ctx.parse_qr_payload(raw_payload)
     rollcall_id = qr_data.rollcall_id
     if not rollcall_id:
         raise ValueError('QR 內容缺少 rollcallId，無法送出。')
 
     result = await _answer_qr_data(session, qr_data)
-    return await ctx.finalize_qr_submission(session, qr_data, result)
+    return await ctx.finalize_qr_submission(session, qr_data, result, progress_log_output=progress_log_output)
 
 
-async def submit_qr_with_data(session: ctx.aiohttp.ClientSession, rollcall_id, data) -> bool:
+async def submit_qr_with_data(session: ctx.aiohttp.ClientSession, rollcall_id, data, *, progress_log_output: bool = True) -> bool:
     rollcall_id_text = ctx.normalize_text(rollcall_id)
     data_text = ctx.normalize_text(data)
     if not rollcall_id_text:
@@ -307,4 +373,5 @@ async def submit_qr_with_data(session: ctx.aiohttp.ClientSession, rollcall_id, d
         qr_data,
         result,
         notification_body='已透過教師帳號輔助取得 QR data 完成送出。',
+        progress_log_output=progress_log_output,
     )

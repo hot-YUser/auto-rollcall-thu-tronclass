@@ -98,7 +98,7 @@ def render_status_line() -> None:
 
 
 def update_monitor_status(*, phase=None, check_count=None, detail=None,
-                          next_switch_at=Ellipsis, teacher_state=None,
+                          rollcall_status=None, next_switch_at=Ellipsis, teacher_state=None,
                           redraw: bool = True) -> None:
     """Update the live status snapshot and (interactively) redraw the line.
 
@@ -112,6 +112,8 @@ def update_monitor_status(*, phase=None, check_count=None, detail=None,
         status['check_count'] = check_count
     if detail is not None:
         status['detail'] = detail
+    if rollcall_status is not None:
+        status['rollcall_status'] = rollcall_status
     if next_switch_at is not Ellipsis:
         status['next_switch_at'] = next_switch_at
     if teacher_state is not None:
@@ -126,6 +128,7 @@ def reset_monitor_status() -> None:
         'phase': 'logging_in',
         'check_count': 0,
         'detail': '',
+        'rollcall_status': '',
         'next_switch_at': None,
         'teacher_state': 'off',
     })

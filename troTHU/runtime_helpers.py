@@ -501,6 +501,70 @@ def render_big_digits(text: str) -> str:
     return "\n".join(row.rstrip() for row in rows)
 
 
+def _attendance_type_text(attendance_type: Any) -> str:
+    value = getattr(attendance_type, "value", attendance_type)
+    text = normalize_text(value).lower()
+    if text in {"qr", "qrcode", "qr_code"}:
+        return "qrcode"
+    if text in {"num", "number"}:
+        return "number"
+    if text == "radar":
+        return "radar"
+    return text or "rollcall"
+
+
+def _format_banner_box(rows: List[str]) -> str:
+    safe_rows = [normalize_text(row) for row in rows if normalize_text(row)]
+    if not safe_rows:
+        safe_rows = ["點名成功！"]
+    width = max(len(row) for row in safe_rows)
+    border = "+" + "=" * (width + 2) + "+"
+    lines = [border]
+    for index, row in enumerate(safe_rows):
+        content = row.center(width) if index == 0 else row.ljust(width)
+        lines.append("| {} |".format(content))
+    lines.append(border)
+    return "\n".join(lines)
+
+
+def format_rollcall_success_banner(
+    attendance_type: Any,
+    rollcall_id: Any = "",
+    method: Any = "",
+    detail: Any = "",
+    code: Any = "",
+) -> str:
+    type_text = _attendance_type_text(attendance_type)
+    title_by_type = {
+        "number": "數字點名成功！",
+        "radar": "雷達點名成功！",
+        "qrcode": "QR Code 點名成功！",
+    }
+    method_by_type = {
+        "number": "number",
+        "radar": "radar",
+        "qrcode": "qrcode",
+    }
+    title = title_by_type.get(type_text, "點名成功！")
+    rollcall_text = normalize_text(rollcall_id) or "unknown"
+    method_text = normalize_text(method) or method_by_type.get(type_text, type_text or "rollcall")
+    detail_text = normalize_text(detail) or "success"
+    result_label = "Hit" if type_text == "radar" else "Result"
+    code_text = normalize_text(code)
+
+    rows = [title]
+    if type_text == "number" and code_text:
+        rows.extend(render_big_digits(code_text).splitlines())
+    rows.extend([
+        "Rollcall: {}".format(rollcall_text),
+        "Method: {}".format(method_text),
+    ])
+    if code_text:
+        rows.append("Code: {}".format(code_text))
+    rows.append("{}: {}".format(result_label, detail_text))
+    return _format_banner_box(rows)
+
+
 def format_found_code_banner(code: str) -> str:
     code_text = normalize_text(code) or "NA"
     big_code = render_big_digits(code_text)
@@ -520,23 +584,7 @@ def format_found_code_banner(code: str) -> str:
 
 
 def format_radar_success_banner(rollcall_id: Any, method: Any = "", detail: Any = "") -> str:
-    rollcall_text = normalize_text(rollcall_id) or "unknown"
-    method_text = normalize_text(method) or "radar"
-    detail_text = normalize_text(detail) or "success"
-    rows = [
-        "雷達點名成功！",
-        "Rollcall: {}".format(rollcall_text),
-        "Method: {}".format(method_text),
-        "Hit: {}".format(detail_text),
-    ]
-    width = max(len(row) for row in rows)
-    border = "+" + "=" * (width + 2) + "+"
-    lines = [border]
-    for index, row in enumerate(rows):
-        content = row.center(width) if index == 0 else row.ljust(width)
-        lines.append("| {} |".format(content))
-    lines.append(border)
-    return "\n".join(lines)
+    return format_rollcall_success_banner("radar", rollcall_id, method, detail)
 
 
 def build_number_progress_message(
@@ -698,9 +746,9 @@ def build_monitor_status_line(status: Any, now: Any) -> str:
         detail = normalize_text(status.get("detail"))
         if detail:
             parts.append(detail)
-        parts.append(clock)
-        if next_at is not None:
-            parts.append("{} 進入待機".format(format_hhmm(next_at)))
+        rollcall_status = normalize_text(status.get("rollcall_status"))
+        if rollcall_status:
+            parts.append(rollcall_status)
 
     if teacher_state == "ready":
         parts.append("QR教師✓")

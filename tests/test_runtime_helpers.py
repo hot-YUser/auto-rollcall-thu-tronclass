@@ -263,6 +263,35 @@ class RuntimeHelpersTest(unittest.TestCase):
         self.assertIn("已送出 123/10000", progress)
         self.assertIn("最近代碼 0123", progress)
 
+    def test_rollcall_success_banner_supports_number_radar_and_qr(self) -> None:
+        number_banner = runtime_helpers.format_rollcall_success_banner(
+            "number",
+            42,
+            method="number",
+            detail="找到點名數字",
+            code="0427",
+        )
+        radar_banner = runtime_helpers.format_rollcall_success_banner(
+            "radar",
+            30017,
+            method="global_wgs84",
+            detail="estimate-standard-ring-1",
+        )
+        qr_banner = runtime_helpers.format_rollcall_success_banner(
+            "qrcode",
+            30053,
+            method="qrcode",
+            detail="submitted",
+        )
+
+        self.assertIn("數字點名成功！", number_banner)
+        self.assertIn("Code: 0427", number_banner)
+        self.assertIn("Rollcall: 42", number_banner)
+        self.assertIn("雷達點名成功！", radar_banner)
+        self.assertIn("Hit: estimate-standard-ring-1", radar_banner)
+        self.assertIn("QR Code 點名成功！", qr_banner)
+        self.assertIn("Result: submitted", qr_banner)
+
     def test_monitor_status_helpers_match_expected_shape(self) -> None:
         now = runtime_helpers.datetime(2026, 1, 2, 14, 3, 27)
         standby_next = runtime_helpers.datetime(2026, 1, 2, 19, 0, 0)
@@ -280,7 +309,7 @@ class RuntimeHelpersTest(unittest.TestCase):
                 },
                 now,
             ),
-            "監控中 · 第 42 次 · 目前無點名 · 14:03:27 · 18:00 進入待機",
+            "監控中 · 第 42 次 · 目前無點名",
         )
         self.assertEqual(
             runtime_helpers.build_monitor_status_line(
@@ -294,7 +323,20 @@ class RuntimeHelpersTest(unittest.TestCase):
                 {"phase": "monitoring", "check_count": 5, "detail": "目前無點名"},
                 now,
             ),
-            "監控中 · 第 5 次 · 目前無點名 · 14:03:27",
+            "監控中 · 第 5 次 · 目前無點名",
+        )
+        self.assertEqual(
+            runtime_helpers.build_monitor_status_line(
+                {
+                    "phase": "monitoring",
+                    "check_count": 247,
+                    "detail": "點名 #30055 進度：已簽到 1/1 人",
+                    "rollcall_status": "on_call_fine",
+                    "teacher_state": "ready",
+                },
+                now,
+            ),
+            "監控中 · 第 247 次 · 點名 #30055 進度：已簽到 1/1 人 · on_call_fine · QR教師✓",
         )
         self.assertEqual(
             runtime_helpers.build_monitor_status_line(

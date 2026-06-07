@@ -195,6 +195,12 @@ class FakeTronServer:
             if str(rollcall.get("rollcall_id") or rollcall.get("id")) == str(rollcall_id):
                 rollcall["status"] = "on_call_fine"
 
+    def _mark_student_rollcalls_present(self) -> None:
+        self.student_rollcalls_status = "on_call_fine"
+        for entry in self.student_rollcalls:
+            entry["rollcall_status"] = "on_call_fine"
+            entry["status"] = "on_call_fine"
+
     async def login_page(self, _request):
         scripted = self._script_response("login_page")
         if scripted is not None:
@@ -265,6 +271,8 @@ class FakeTronServer:
         if scripted is not None:
             return scripted
         if str(body.get("numberCode")) == self.correct_number_code:
+            self._mark_student_rollcalls_present()
+            self._mark_rollcall_present(request.match_info["rollcall_id"])
             return web.json_response({"success": True, "status": "on_call_fine"})
         return web.json_response({"success": False, "message": "wrong number code"}, status=400)
 
@@ -298,6 +306,7 @@ class FakeTronServer:
         if "latitude" not in body:
             if self.radar_empty_answer_accepted:
                 if self.radar_empty_answer_marks_present:
+                    self._mark_student_rollcalls_present()
                     self._mark_rollcall_present(request.match_info["rollcall_id"])
                 return web.json_response({"success": True})
             return web.json_response(
@@ -312,6 +321,8 @@ class FakeTronServer:
         if self.radar_success or (
             distance is not None and distance <= self.radar_success_radius_meters
         ):
+            self._mark_student_rollcalls_present()
+            self._mark_rollcall_present(request.match_info["rollcall_id"])
             return web.json_response({"success": True})
         return web.json_response(
             {
@@ -337,9 +348,7 @@ class FakeTronServer:
         scripted = self._script_response("qr")
         if scripted is not None:
             return scripted
-        for entry in self.student_rollcalls:
-            entry["rollcall_status"] = "on_call_fine"
-            entry["status"] = "on_call_fine"
+        self._mark_student_rollcalls_present()
         self._mark_rollcall_present(request.match_info["rollcall_id"])
         return web.json_response({"ok": True})
 

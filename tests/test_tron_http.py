@@ -503,6 +503,8 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         self.original_unsupported_rollcall_state = copy.deepcopy(tron.UNSUPPORTED_ROLLCALL_STATE)
         self.original_completed_number_rollcalls = copy.deepcopy(tron.COMPLETED_NUMBER_ROLLCALLS)
         self.original_completed_radar_rollcalls = copy.deepcopy(tron.COMPLETED_RADAR_ROLLCALLS)
+        self.original_completed_qr_rollcalls = copy.deepcopy(tron.COMPLETED_QR_ROLLCALLS)
+        self.original_last_rollcall_progress = copy.deepcopy(tron.LAST_ROLLCALL_PROGRESS)
         self.original_tron_user = os.environ.get("TRON_USER")
         self.original_tron_pass = os.environ.get("TRON_PASS")
         self.original_last_login_result = tron.LAST_LOGIN_RESULT
@@ -513,6 +515,8 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         tron.IS_LOGGING_IN = False
         tron.COMPLETED_NUMBER_ROLLCALLS.clear()
         tron.COMPLETED_RADAR_ROLLCALLS.clear()
+        tron.COMPLETED_QR_ROLLCALLS.clear()
+        tron.LAST_ROLLCALL_PROGRESS.clear()
         tron.clear_runtime_credentials()
         os.environ.pop("TRON_USER", None)
         os.environ.pop("TRON_PASS", None)
@@ -530,6 +534,10 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         tron.COMPLETED_NUMBER_ROLLCALLS.update(copy.deepcopy(self.original_completed_number_rollcalls))
         tron.COMPLETED_RADAR_ROLLCALLS.clear()
         tron.COMPLETED_RADAR_ROLLCALLS.update(copy.deepcopy(self.original_completed_radar_rollcalls))
+        tron.COMPLETED_QR_ROLLCALLS.clear()
+        tron.COMPLETED_QR_ROLLCALLS.update(copy.deepcopy(self.original_completed_qr_rollcalls))
+        tron.LAST_ROLLCALL_PROGRESS.clear()
+        tron.LAST_ROLLCALL_PROGRESS.update(copy.deepcopy(self.original_last_rollcall_progress))
         tron.LAST_LOGIN_RESULT = self.original_last_login_result
         tron.BASE_DIR = self.original_base_dir
         shutil.rmtree(self.temp_dir, ignore_errors=True)
@@ -1402,6 +1410,57 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
             any("稍後會自動重試" in call.args[0] for call in log_print.call_args_list)
         )
 
+    async def test_monitor_loop_folds_progress_into_status_and_resets_on_not_call(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = MagicMock()
+        shutdown_event = asyncio.Event()
+        poll_count = 0
+
+        async def fake_check_rollcall(_session, _cnt):
+            nonlocal poll_count
+            poll_count += 1
+            if poll_count == 1:
+                tron.LAST_ROLLCALL_PROGRESS.update(
+                    {
+                        "rollcall_id": "30055",
+                        "detail": "點名 #30055 進度：已簽到 1/1 人",
+                        "status": "on_call_fine",
+                    }
+                )
+                return "is_qrcode"
+            return "not call"
+
+        async def fake_sleep(_event, _seconds):
+            if poll_count >= 2:
+                shutdown_event.set()
+
+        with (
+            patch.object(
+                tron,
+                "login",
+                AsyncMock(return_value=make_login_result("success", final_url="https://ilearn.thu.edu.tw/home")),
+            ),
+            patch.object(tron, "has_session_cookie", return_value=True),
+            patch.object(tron, "check_rollcall", AsyncMock(side_effect=fake_check_rollcall)),
+            patch.object(
+                tron,
+                "get_schedule_for_day",
+                return_value={"enable": True, "range": ["00:00", "23:59"]},
+            ),
+            patch.object(tron, "parse_schedule_range", return_value=(dt_time(0, 0), dt_time(23, 59))),
+            patch.object(tron, "sleep_or_shutdown", AsyncMock(side_effect=fake_sleep)),
+            patch.object(tron, "status_print") as status_print,
+            patch.object(tron, "log_print"),
+            patch.object(tron, "mes", AsyncMock()),
+        ):
+            await tron.monitor_loop(session, shutdown_event)
+
+        legacy_lines = [call.args[0] for call in status_print.call_args_list if call.args]
+        self.assertTrue(any("點名 #30055 進度：已簽到 1/1 人 · on_call_fine" in line for line in legacy_lines))
+        self.assertTrue(any("目前無點名" in line for line in legacy_lines))
+        self.assertEqual(tron.MONITOR_STATUS.get("detail"), "目前無點名")
+        self.assertEqual(tron.MONITOR_STATUS.get("rollcall_status"), "")
+
     async def test_monitor_loop_does_not_dense_retry_rejected_login(self) -> None:
         session = MagicMock()
         session.cookie_jar = MagicMock()
@@ -1610,7 +1669,7 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
 
         writes = [call.args[0] for call in write_mock.call_args_list]
         self.assertTrue(
-            any(item.startswith("\r監控中 · 第 3 次 · 目前無點名 · 14:03:27") for item in writes)
+            any(item.startswith("\r監控中 · 第 3 次 · 目前無點名") for item in writes)
         )
         self.assertTrue(any(item.startswith("\r") and item.endswith("\r") for item in writes))
         self.assertIn("[14:03:27] 背景訊息\n", writes)
@@ -1845,6 +1904,7 @@ class TronNumberRollcallTest(unittest.IsolatedAsyncioTestCase):
             patch.object(tron, "status_print") as status_print,
             patch.object(tron, "log_print") as log_print,
             patch.object(tron, "log", return_value=True),
+            patch.object(tron, "verify_rollcall_on_call_fine", AsyncMock(return_value={"ok": True, "status": "on_call_fine", "rollcall_id": "42", "monitor_detail": "點名 #42 進度：已簽到 1/1 人", "monitor_status": "on_call_fine"})),
             patch.object(tron, "NUMBER_CODE_LIMIT", 2),
             patch.object(tron, "NUMBER_WORKER_COUNT", 1),
             patch.object(tron, "random_ua", return_value="ua"),
@@ -1862,6 +1922,34 @@ class TronNumberRollcallTest(unittest.IsolatedAsyncioTestCase):
             "Code: 0001",
             mes_mock.await_args_list[0].kwargs["highlight_block"],
         )
+
+    async def test_number_accepted_without_on_call_fine_does_not_show_success_banner(self) -> None:
+        main_session = MagicMock()
+        main_session.cookie_jar = FakeCookieJar([FakeCookie("session", "ilearn.thu.edu.tw")])
+        worker_session = MagicMock()
+        worker_session.cookie_jar = MagicMock()
+        worker_session.put.return_value = make_context_manager(
+            make_response(status=200, url="https://example.com/rollcall")
+        )
+        client_session_context = make_context_manager(worker_session)
+
+        with (
+            patch.object(tron.aiohttp, "ClientSession", return_value=client_session_context),
+            patch.object(tron, "create_http_connector", return_value=MagicMock()),
+            patch.object(tron, "mes", AsyncMock()),
+            patch.object(tron, "status_print"),
+            patch.object(tron, "log_print"),
+            patch.object(tron, "log", return_value=True),
+            patch.object(tron, "format_rollcall_success_banner") as banner,
+            patch.object(tron, "verify_rollcall_on_call_fine", AsyncMock(return_value={"ok": False, "status": "submitted_unconfirmed", "rollcall_id": "42"})),
+            patch.object(tron, "NUMBER_CODE_LIMIT", 1),
+            patch.object(tron, "NUMBER_WORKER_COUNT", 1),
+            patch.object(tron, "random_ua", return_value="ua"),
+        ):
+            found = await tron.number(main_session, 42)
+
+        self.assertEqual(found, "NA")
+        banner.assert_not_called()
 
 
 if __name__ == "__main__":

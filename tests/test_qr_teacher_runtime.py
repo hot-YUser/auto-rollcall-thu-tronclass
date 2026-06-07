@@ -2,6 +2,7 @@ import copy
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 try:
@@ -14,6 +15,65 @@ except (ImportError, ModuleNotFoundError):
 from troTHU import tron
 from troTHU import qr_teacher_runtime
 from tests.fake_tron_server import FakeTronServer
+
+
+class QrRuntimeFinalizeTest(unittest.IsolatedAsyncioTestCase):
+    async def test_finalize_qr_submission_uses_success_banner_and_highlight_notification(self) -> None:
+        qr_data = tron.QrCodeData(fields={"rollcallId": "77", "data": "safe-test-data"})
+        notify_event = AsyncMock()
+        verification = {
+            "ok": True,
+            "status": "on_call_fine",
+            "rollcall_id": "77",
+            "progress": {"ok": True, "confirmed_present": True},
+            "monitor_detail": "點名 #77 進度：已簽到 1/1 人",
+            "monitor_status": "on_call_fine",
+        }
+        with (
+            patch.object(tron, "format_rollcall_success_banner", return_value="BANNER") as banner,
+            patch.object(tron, "log_print") as log_print,
+            patch.object(tron, "log", return_value=True),
+            patch.object(tron, "get_active_profile", return_value=SimpleNamespace(name="user1")),
+            patch.object(tron, "get_active_provider_key", return_value="thu"),
+            patch.object(tron, "remove_pending_qr", return_value=True),
+            patch.object(tron, "verify_rollcall_on_call_fine", AsyncMock(return_value=verification)),
+            patch.object(tron, "remember_rollcall_progress"),
+            patch.object(tron, "notify_event", notify_event),
+        ):
+            ok = await tron.finalize_qr_submission(object(), qr_data, {"ok": True}, progress_log_output=False)
+
+        self.assertTrue(ok)
+        banner.assert_called_once()
+        self.assertEqual(banner.call_args.args[0], tron.AttendanceType.QRCODE)
+        log_print.assert_called_once_with("BANNER")
+        notify_event.assert_awaited_once()
+        event = notify_event.await_args.args[0]
+        self.assertEqual(event.title, "QR Code 點名成功！")
+        self.assertIn("已確認簽到成功", event.body)
+        self.assertEqual(notify_event.await_args.kwargs["highlight_block"], "BANNER")
+
+    async def test_finalize_qr_submission_does_not_banner_when_unconfirmed(self) -> None:
+        qr_data = tron.QrCodeData(fields={"rollcallId": "77", "data": "safe-test-data"})
+        notify_event = AsyncMock()
+        with (
+            patch.object(tron, "format_rollcall_success_banner") as banner,
+            patch.object(tron, "log_print") as log_print,
+            patch.object(tron, "log", return_value=True),
+            patch.object(tron, "get_active_profile", return_value=SimpleNamespace(name="user1")),
+            patch.object(tron, "get_active_provider_key", return_value="thu"),
+            patch.object(tron, "remove_pending_qr", return_value=True),
+            patch.object(tron, "verify_rollcall_on_call_fine", AsyncMock(return_value={"ok": False, "status": "submitted_unconfirmed", "rollcall_id": "77"})),
+            patch.object(tron, "notify_event", notify_event),
+        ):
+            ok = await tron.finalize_qr_submission(object(), qr_data, {"ok": True}, progress_log_output=False)
+
+        self.assertFalse(ok)
+        banner.assert_not_called()
+        log_print.assert_not_called()
+        notify_event.assert_awaited_once()
+        event = notify_event.await_args.args[0]
+        self.assertEqual(event.title, "QR Code 點名已送出，尚未確認")
+        self.assertNotIn("highlight_block", notify_event.await_args.kwargs)
 
 
 def _teacher_config() -> dict:
@@ -50,6 +110,7 @@ class QrTeacherRuntimeTest(unittest.IsolatedAsyncioTestCase):
         self.original_teacher_course_id = tron.TEACHER_COURSE_ID
         self.original_completed_qr = copy.deepcopy(tron.COMPLETED_QR_ROLLCALLS)
         self.original_qr_attempts = copy.deepcopy(tron.QR_ASSIST_ATTEMPTS)
+        self.original_last_progress = copy.deepcopy(tron.LAST_ROLLCALL_PROGRESS)
         self.temp_dir = tempfile.TemporaryDirectory()
         tron.BASE_DIR = Path(self.temp_dir.name)
         tron.PATH = tron.BASE_DIR / "log"
@@ -62,6 +123,7 @@ class QrTeacherRuntimeTest(unittest.IsolatedAsyncioTestCase):
         tron.TEACHER_COURSE_ID = ""
         tron.COMPLETED_QR_ROLLCALLS.clear()
         tron.QR_ASSIST_ATTEMPTS.clear()
+        tron.LAST_ROLLCALL_PROGRESS.clear()
 
     def tearDown(self) -> None:
         tron.CONFIG.clear()
@@ -77,6 +139,8 @@ class QrTeacherRuntimeTest(unittest.IsolatedAsyncioTestCase):
         tron.COMPLETED_QR_ROLLCALLS.update(self.original_completed_qr)
         tron.QR_ASSIST_ATTEMPTS.clear()
         tron.QR_ASSIST_ATTEMPTS.update(self.original_qr_attempts)
+        tron.LAST_ROLLCALL_PROGRESS.clear()
+        tron.LAST_ROLLCALL_PROGRESS.update(self.original_last_progress)
         self.temp_dir.cleanup()
 
     async def test_run_teacher_assisted_qr_completes_and_stops_teacher_rollcall(self) -> None:
@@ -111,6 +175,45 @@ class QrTeacherRuntimeTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(server.teacher_rollcall_stops[-1]["endpoint"], "stop_qr_rollcall")
         self.assertIn("77", tron.COMPLETED_QR_ROLLCALLS)
 
+    async def test_run_teacher_assisted_qr_accepts_all_present_when_profile_mismatches(self) -> None:
+        async with FakeTronServer() as server:
+            server.courses = [{"id": 301, "name": "Teacher Course"}]
+            server.rollcalls = [{"rollcall_id": "77", "type": "qr_rollcall", "status": "in_progress"}]
+            server.student_rollcalls = [
+                {"student_id": 1, "user_no": "someone_else", "status": "pending", "rollcall_status": "on_call"}
+            ]
+            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as student_session:
+                async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as teacher_session:
+                    await server.login_session(student_session)
+                    tron.TEACHER_SESSION = teacher_session
+                    tron.TEACHER_ENDPOINTS = server.endpoints()
+                    notify_event = AsyncMock()
+                    with (
+                        patch.object(tron, "get_active_http_endpoints", return_value=server.endpoints()),
+                        patch.object(tron, "get_ssl_request_setting", return_value=None),
+                        patch.object(tron, "notify_event", notify_event),
+                        patch.object(tron, "log_print") as log_print,
+                    ):
+                        ok = await tron.run_teacher_assisted_qr(student_session, {"rollcall_id": "77"})
+                        progress = await tron.fetch_rollcall_progress(
+                            student_session,
+                            "77",
+                            endpoints=server.endpoints(),
+                            request_ssl=None,
+                            my_user_no="user1",
+                        )
+
+        self.assertTrue(ok)
+        self.assertFalse(progress["my_status_known"])
+        self.assertTrue(progress["progress_present"])
+        self.assertTrue(progress["confirmed_present"])
+        self.assertIn("77", tron.COMPLETED_QR_ROLLCALLS)
+        notify_event.assert_awaited_once()
+        printed = "\n".join(str(call.args[0]) for call in log_print.call_args_list if call.args)
+        self.assertNotIn("你的狀態：未簽到", printed)
+        self.assertIn("已簽到 1/1", tron.LAST_ROLLCALL_PROGRESS.get("detail", ""))
+        self.assertEqual(tron.LAST_ROLLCALL_PROGRESS.get("status"), "on_call_fine")
+
     async def test_run_teacher_assisted_qr_skips_when_not_configured(self) -> None:
         tron.CONFIG["teacher"] = {"user": "", "passwd": "", "school": "tronclass", "course": ""}
 
@@ -132,7 +235,7 @@ class QrTeacherRuntimeTest(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(tron.TEACHER_READY)
         self.assertEqual(tron.TEACHER_LOGIN_RESULT.status, "missing_session")
 
-    async def test_run_teacher_assisted_qr_marks_done_when_submitted_but_unconfirmed(self) -> None:
+    async def test_run_teacher_assisted_qr_does_not_mark_done_when_submitted_but_unconfirmed(self) -> None:
         async with FakeTronServer() as server:
             server.courses = [{"id": 301, "name": "Teacher Course"}]
             server.rollcalls = [{"rollcall_id": "77", "type": "qr_rollcall", "status": "in_progress"}]
@@ -144,19 +247,15 @@ class QrTeacherRuntimeTest(unittest.IsolatedAsyncioTestCase):
                     with (
                         patch.object(tron, "get_active_http_endpoints", return_value=server.endpoints()),
                         patch.object(tron, "get_ssl_request_setting", return_value=None),
-                        # Force the student to look "not present" so the confirmation gate fails
-                        # even though answer_qr_rollcall returned 2xx.
-                        patch.object(tron, "fetch_rollcall_progress", AsyncMock(return_value={"ok": True, "my_present": False})),
+                        patch.object(tron, "verify_rollcall_on_call_fine", AsyncMock(return_value={"ok": False, "status": "submitted_unconfirmed", "rollcall_id": "77"})),
                         patch.object(qr_teacher_runtime, "QR_ASSIST_CONFIRM_WINDOW_SECONDS", 0.05),
                         patch.object(qr_teacher_runtime, "QR_ASSIST_POLL_INTERVAL_SECONDS", 0.02),
                         patch.object(tron, "log_print"),
                     ):
                         ok = await tron.run_teacher_assisted_qr(student_session, {"rollcall_id": "77"})
 
-        # Submitted (2xx) but unconfirmed: still treated as done so the monitor does not
-        # recreate a teacher rollcall every cooldown.
-        self.assertTrue(ok)
-        self.assertIn("77", tron.COMPLETED_QR_ROLLCALLS)
+        self.assertFalse(ok)
+        self.assertNotIn("77", tron.COMPLETED_QR_ROLLCALLS)
         self.assertEqual(len(server.teacher_rollcalls), 1)
         self.assertEqual(server.teacher_rollcall_stops[-1]["endpoint"], "stop_qr_rollcall")
 
