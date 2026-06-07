@@ -107,6 +107,7 @@ def parse_simple_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
     simple: ctx.Dict[str, ctx.Any] = {
         "now": "",
         "accounts": [],
+        "teacher": {"user": "", "passwd": "", "school": "tronclass", "course": ""},
         "groups": [],
         "operating": {},
         "warnings": [],
@@ -160,6 +161,13 @@ def parse_simple_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
             current_day = None
             pending_range_day = None
             continue
+        if key == "teacher" and not value:
+            finish_group()
+            finish_account()
+            section = "teacher"
+            current_day = None
+            pending_range_day = None
+            continue
         if key in {"group", "groups", "grop"} and not value:
             finish_account()
             finish_group()
@@ -189,6 +197,20 @@ def parse_simple_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
                 current_account["passwd"] = value
             elif key == "school":
                 current_account["school"] = _canonical_school(value)
+            continue
+        if section == "teacher":
+            teacher = simple.setdefault("teacher", {"user": "", "passwd": "", "school": "tronclass", "course": ""})
+            if not isinstance(teacher, dict):
+                teacher = {"user": "", "passwd": "", "school": "tronclass", "course": ""}
+                simple["teacher"] = teacher
+            if key == "user":
+                teacher["user"] = value
+            elif key in {"passwd", "password"}:
+                teacher["passwd"] = value
+            elif key == "school":
+                teacher["school"] = _canonical_school(value)
+            elif key in {"course", "course_id", "courseid"}:
+                teacher["course"] = value
             continue
         if section == "group":
             if key == "class":
@@ -275,6 +297,13 @@ def merge_simple_and_advanced_config(simple: ctx.Mapping[str, ctx.Any], advanced
     config = ctx.copy.deepcopy(dict(advanced or {}))
     account = _simple_target_account(simple)
     config["account"] = {"user": account["user"], "passwd": account["passwd"]}
+    teacher_source = simple.get("teacher") if isinstance(simple.get("teacher"), dict) else {}
+    config["teacher"] = {
+        "user": _strip_value(teacher_source.get("user")),
+        "passwd": _strip_value(teacher_source.get("passwd")),
+        "school": _canonical_school(teacher_source.get("school") or "tronclass"),
+        "course": _strip_value(teacher_source.get("course")),
+    }
     profiles: ctx.Dict[str, ctx.Any] = {}
     for item in simple.get("accounts", []) or []:
         if not isinstance(item, dict):
@@ -323,6 +352,7 @@ def merge_simple_and_advanced_config(simple: ctx.Mapping[str, ctx.Any], advanced
     config["_simple"] = {
         "now": _strip_value(simple.get("now")),
         "accounts": ctx.copy.deepcopy(simple.get("accounts", [])),
+        "teacher": ctx.copy.deepcopy(config["teacher"]),
         "groups": ctx.copy.deepcopy(simple.get("groups", [])),
     }
     return config
@@ -332,6 +362,7 @@ def split_normalized_config(config: ctx.Mapping[str, ctx.Any]) -> ctx.Tuple[ctx.
     normalized = ctx.normalize_config(ctx.copy.deepcopy(dict(config)))
     simple_meta = normalized.get("_simple") if isinstance(normalized.get("_simple"), dict) else {}
     accounts = simple_meta.get("accounts") if isinstance(simple_meta.get("accounts"), list) else []
+    teacher = simple_meta.get("teacher") if isinstance(simple_meta.get("teacher"), dict) else {}
     groups = simple_meta.get("groups") if isinstance(simple_meta.get("groups"), list) else []
     accounts = [ctx.copy.deepcopy(item) for item in accounts if isinstance(item, dict)]
     account_index = {_strip_value(item.get("user")).lower(): item for item in accounts if _strip_value(item.get("user"))}
@@ -362,10 +393,21 @@ def split_normalized_config(config: ctx.Mapping[str, ctx.Any]) -> ctx.Tuple[ctx.
         if simple_day is None:
             continue
         simple_operating[simple_day] = ctx.copy.deepcopy(entry)
-    simple = {"now": now, "accounts": accounts, "groups": groups, "operating": simple_operating}
+    normalized_teacher = normalized.get("teacher") if isinstance(normalized.get("teacher"), dict) else {}
+    teacher_user = _strip_value(teacher.get("user")) or _strip_value(normalized_teacher.get("user"))
+    teacher_passwd = _strip_value(teacher.get("passwd")) or _strip_value(normalized_teacher.get("passwd"))
+    teacher_school = _canonical_school(_strip_value(teacher.get("school")) or normalized_teacher.get("school") or "tronclass")
+    teacher_course = _strip_value(teacher.get("course")) or _strip_value(normalized_teacher.get("course"))
+    simple_teacher = {
+        "user": teacher_user,
+        "passwd": teacher_passwd,
+        "school": teacher_school,
+        "course": teacher_course,
+    }
+    simple = {"now": now, "accounts": accounts, "teacher": simple_teacher, "groups": groups, "operating": simple_operating}
     advanced = {}
     for key, value in normalized.items():
-        if key in {"account", "accounts", "operating", "_simple"}:
+        if key in {"account", "accounts", "teacher", "operating", "_simple"}:
             continue
         if key in ctx.DEFAULT_CONFIG and value == ctx.DEFAULT_CONFIG.get(key):
             continue
@@ -402,6 +444,17 @@ def render_simple_config(config: ctx.Mapping[str, ctx.Any] | None = None) -> str
                 "",
             ]
         )
+    teacher = simple.get("teacher") if isinstance(simple.get("teacher"), dict) else {}
+    lines.extend(
+        [
+            "teacher:",
+            "  user:{}".format(teacher.get("user") or "(教師帳號)"),
+            "  passwd:{}".format(teacher.get("passwd") or "(教師密碼)"),
+            "  school:{}".format((_canonical_school(teacher.get("school") or "tronclass") or "tronclass").upper()),
+            "  course:{}".format(teacher.get("course") or "(留空自動偵測)"),
+            "",
+        ]
+    )
     lines.append("group:")
     for group in groups:
         class_name = group.get("class") or ("A" if len(lines) == 0 else "B")

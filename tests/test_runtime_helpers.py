@@ -108,6 +108,26 @@ class RuntimeHelpersTest(unittest.TestCase):
         self.assertEqual(runtime_helpers.make_payload_excerpt({"a": 1}), json.dumps({"a": 1}, ensure_ascii=False))
         self.assertEqual(runtime_helpers.make_payload_excerpt("abcdef", limit=3), "abc...(truncated)")
 
+    def test_monitor_status_line_includes_teacher_state(self) -> None:
+        now = runtime_helpers.datetime(2026, 1, 2, 14, 3, 27)
+
+        ready = runtime_helpers.build_monitor_status_line(
+            {"phase": "monitoring", "check_count": 1, "detail": "目前無點名", "teacher_state": "ready"},
+            now,
+        )
+        failed = runtime_helpers.build_monitor_status_line(
+            {"phase": "monitoring", "check_count": 1, "detail": "目前無點名", "teacher_state": "failed"},
+            now,
+        )
+        working = runtime_helpers.build_monitor_status_line(
+            {"phase": "monitoring", "check_count": 1, "detail": "目前無點名", "teacher_state": "working"},
+            now,
+        )
+
+        self.assertIn("QR教師✓", ready)
+        self.assertIn("QR教師✗", failed)
+        self.assertIn("QR教師發起中", working)
+
     def test_radar_helpers_parse_distance_and_signal(self) -> None:
         result = runtime_helpers.parse_radar_answer_result(
             400,

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+
 try:  # pragma: no cover - package import path
     import troTHU.runtime_context as ctx
 except ImportError:  # pragma: no cover - direct script fallback
@@ -87,6 +89,10 @@ async def monitor_loop(session: ctx.aiohttp.ClientSession, shutdown_event: ctx.a
     unauth_notice_state = ''
     ctx.record_monitor_runtime('running')
     ctx.reset_monitor_status()
+    if ctx.teacher_assist_configured(ctx.CONFIG):
+        ctx.update_monitor_status(teacher_state='ready' if ctx.TEACHER_READY else 'failed', redraw=False)
+    else:
+        ctx.update_monitor_status(teacher_state='failed', redraw=False)
     ctx.update_monitor_status(phase='logging_in', detail='正在登入…', redraw=False)
     if ctx.COOKIE_CACHE_RESTORED and ctx.has_session_cookie(session):
         active_profile = ctx.get_active_profile(ctx.CONFIG)
@@ -206,6 +212,8 @@ async def monitor_loop(session: ctx.aiohttp.ClientSession, shutdown_event: ctx.a
                 detail = '雷達點名已觸發'
             elif status_msg == 'radar_failed':
                 detail = '雷達點名處理失敗，下一輪會再檢查'
+            elif status_msg == 'is_qrcode':
+                detail = 'QR 點名已透過教師帳號完成'
             else:
                 detail = status_msg
             _update_monitor_status(
@@ -283,35 +291,67 @@ async def app_main(*, input_enabled: bool=True, external_shutdown_event: ctx.Any
     if timeout is not None:
         session_kwargs['timeout'] = timeout
     async with ctx.aiohttp.ClientSession(**session_kwargs) as session:
-        try:
-            active_profile = ctx.get_active_profile(ctx.CONFIG)
-            if ctx.cookie_cache_enabled(ctx.CONFIG) and ctx.load_session_cookies(session, ctx.BASE_DIR, active_profile.name):
-                ctx.COOKIE_CACHE_RESTORED = True
-                ctx.log_print('已載入 {} 的 cookie 快取。'.format(active_profile.name))
-        except Exception as exc:
-            ctx.log(event='session_cookie_cache', status='failed', message='cookie 快取載入失敗。', error=exc)
-        try:
-            if input_enabled:
-                tasks = [
-                    ctx.asyncio.create_task(ctx.monitor_loop(session, shutdown_event)),
-                    ctx.asyncio.create_task(ctx.watch_any_key_to_edit_config(shutdown_event, session)),
-                    ctx.asyncio.create_task(ctx.status_line_loop(shutdown_event)),
-                ]
-                try:
-                    done, pending = await ctx.asyncio.wait(tasks, return_when=ctx.asyncio.FIRST_COMPLETED)
-                    shutdown_event.set()
-                    await ctx.asyncio.gather(*pending, return_exceptions=True)
-                    for task in done:
-                        task.result()
-                finally:
-                    for task in tasks:
-                        if not task.done():
-                            task.cancel()
-                    await ctx.asyncio.gather(*tasks, return_exceptions=True)
-            else:
-                await ctx.monitor_loop(session, shutdown_event)
-        finally:
-            ctx.record_monitor_runtime('stopped', heartbeat=False)
+        async with contextlib.AsyncExitStack() as teacher_stack:
+            try:
+                active_profile = ctx.get_active_profile(ctx.CONFIG)
+                if ctx.cookie_cache_enabled(ctx.CONFIG) and ctx.load_session_cookies(session, ctx.BASE_DIR, active_profile.name):
+                    ctx.COOKIE_CACHE_RESTORED = True
+                    ctx.log_print('已載入 {} 的 cookie 快取。'.format(active_profile.name))
+            except Exception as exc:
+                ctx.log(event='session_cookie_cache', status='failed', message='cookie 快取載入失敗。', error=exc)
+            try:
+                if ctx.teacher_assist_configured(ctx.CONFIG):
+                    teacher_config = ctx.get_teacher_config(ctx.CONFIG)
+                    ctx.TEACHER_ENDPOINTS = ctx.build_teacher_endpoints(teacher_config.get('school'))
+                    teacher_session_kwargs: ctx.Dict[str, ctx.Any] = {
+                        'connector': ctx.create_http_connector(),
+                        'headers': {'User-Agent': ctx.random_ua()},
+                        'cookie_jar': ctx.aiohttp.CookieJar(unsafe=True),
+                    }
+                    teacher_timeout = ctx.create_http_client_timeout()
+                    if teacher_timeout is not None:
+                        teacher_session_kwargs['timeout'] = teacher_timeout
+                    ctx.TEACHER_SESSION = await teacher_stack.enter_async_context(ctx.aiohttp.ClientSession(**teacher_session_kwargs))
+                    if ctx.cookie_cache_enabled(ctx.CONFIG) and ctx.load_session_cookies(ctx.TEACHER_SESSION, ctx.BASE_DIR, 'teacher'):
+                        ctx.log_print('已載入 teacher 的 cookie 快取。')
+                    if await ctx.ensure_teacher_ready():
+                        ctx.log_print('QR 教師帳號就緒。')
+                    else:
+                        ctx.log_print('QR 點名功能未啟用：教師帳號登入失敗，請於 config.yaml 設定 teacher 帳號。')
+                else:
+                    ctx.TEACHER_READY = False
+                    ctx.TEACHER_LOGIN_RESULT = ctx.LoginResult(status='missing_credentials', credential_source='missing')
+                    ctx.update_monitor_status(teacher_state='failed', redraw=False)
+                    ctx.log_print('QR 點名功能未啟用：請於 config.yaml 設定 teacher 帳號。')
+            except Exception as exc:
+                ctx.TEACHER_READY = False
+                ctx.TEACHER_LOGIN_RESULT = ctx.LoginResult(status='error', credential_source='runtime', error=ctx.normalize_text(exc))
+                ctx.update_monitor_status(teacher_state='failed', redraw=False)
+                ctx.log(event='qr_teacher_login', status='error', message='QR 教師帳號啟動檢查失敗。', error=exc)
+                ctx.log_print('QR 點名功能未啟用：教師帳號啟動檢查失敗，數字/雷達仍會照常監控。')
+            try:
+                if input_enabled:
+                    tasks = [
+                        ctx.asyncio.create_task(ctx.monitor_loop(session, shutdown_event)),
+                        ctx.asyncio.create_task(ctx.watch_any_key_to_edit_config(shutdown_event, session)),
+                        ctx.asyncio.create_task(ctx.status_line_loop(shutdown_event)),
+                    ]
+                    try:
+                        done, pending = await ctx.asyncio.wait(tasks, return_when=ctx.asyncio.FIRST_COMPLETED)
+                        shutdown_event.set()
+                        await ctx.asyncio.gather(*pending, return_exceptions=True)
+                        for task in done:
+                            task.result()
+                    finally:
+                        for task in tasks:
+                            if not task.done():
+                                task.cancel()
+                        await ctx.asyncio.gather(*tasks, return_exceptions=True)
+                else:
+                    await ctx.monitor_loop(session, shutdown_event)
+            finally:
+                ctx.record_monitor_runtime('stopped', heartbeat=False)
+                ctx.TEACHER_SESSION = None
 
 
 def run_monitor_forever(*, no_input: bool=False) -> int:

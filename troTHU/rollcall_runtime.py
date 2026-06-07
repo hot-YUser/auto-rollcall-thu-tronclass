@@ -186,7 +186,20 @@ async def check_rollcall(session: ctx.aiohttp.ClientSession, cnt: int=-1) -> str
     if selected_rollcall is not None:
         answered_automatically = False
         if selected_status == 'unsupported_qrcode':
-            answered_automatically = await ctx.try_clipboard_qr_autosubmit(session, selected_rollcall)
+            qr_key = ctx.normalize_text(selected_rollcall.get('rollcall_id') or selected_rollcall.get('id'))
+            if qr_key in ctx.COMPLETED_QR_ROLLCALLS:
+                ctx.log(event='qrcode_rollcall_skipped', counter=cnt, status='already_completed', url=result.url, http_status=result.status_code, rollcall_id=qr_key, rollcall_type='qrcode', message='QR 點名已處理，略過重複嘗試。', payload_excerpt=selected_rollcall)
+                return 'qr 點名已處理'
+            if ctx.teacher_assist_configured(ctx.CONFIG):
+                answered_automatically = await ctx.run_teacher_assisted_qr(session, selected_rollcall)
+                if answered_automatically and qr_key:
+                    ctx.COMPLETED_QR_ROLLCALLS[qr_key] = True
+                    return 'is_qrcode'
+            if not answered_automatically:
+                answered_automatically = await ctx.try_clipboard_qr_autosubmit(session, selected_rollcall)
+                if answered_automatically and qr_key:
+                    ctx.COMPLETED_QR_ROLLCALLS[qr_key] = True
+                    return 'is_qrcode'
         if not answered_automatically:
             await ctx.maybe_notify_unsupported_rollcall(selected_status, selected_rollcall, selected_message, selected_rollcall_type)
     return selected_status

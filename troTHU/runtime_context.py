@@ -537,6 +537,7 @@ MONITOR_STATUS: Dict[str, Any] = {
     "check_count": 0,
     "detail": "",
     "next_switch_at": None,
+    "teacher_state": "off",
 }
 
 # Console status-line bookkeeping (interactive TTY only). STATUS_LINE_WIDTH is
@@ -597,6 +598,12 @@ DEFAULT_CONFIG = {
     "account": {
         "user": "YOUR_STUDENT_ID",
         "passwd": "YOUR_PASSWORD",
+    },
+    "teacher": {
+        "user": "",
+        "passwd": "",
+        "school": "tronclass",
+        "course": "",
     },
     "accounts": {
         "current": "default",
@@ -777,6 +784,18 @@ COMPLETED_NUMBER_ROLLCALLS: Dict[str, str] = {}
 
 COMPLETED_RADAR_ROLLCALLS: Dict[str, bool] = {}
 
+COMPLETED_QR_ROLLCALLS: Dict[str, bool] = {}
+
+QR_ASSIST_ATTEMPTS: Dict[str, float] = {}
+
+TEACHER_SESSION = None
+
+TEACHER_ENDPOINTS = None
+
+TEACHER_READY = False
+
+TEACHER_COURSE_ID = ""
+
 BOOTSTRAP_WARNINGS: List[str] = []
 
 CONFIG_BOOTSTRAPPED = False
@@ -803,6 +822,8 @@ class LoginResult:
         return self.status in {"missing_session", "transient_error"}
 
 LAST_LOGIN_RESULT = LoginResult(status="missing_credentials", credential_source="missing")
+
+TEACHER_LOGIN_RESULT = LoginResult(status="missing_credentials", credential_source="missing")
 
 _LEGACY_EXPORTS = {
     '_app_shell_accounts': ('troTHU.cli_app', '_app_shell_accounts'),
@@ -841,6 +862,7 @@ _LEGACY_EXPORTS = {
     'build_fatal_error_report': ('troTHU.logging_runtime', 'build_fatal_error_report'),
     'build_notification_requests': ('troTHU.logging_runtime', 'build_notification_requests'),
     'build_qr_preview': ('troTHU.qr_runtime', 'build_qr_preview'),
+    'build_teacher_endpoints': ('troTHU.qr_teacher_runtime', 'build_teacher_endpoints'),
     'build_teacher_rollcall_payload': ('troTHU.teacher_rollcall', 'build_teacher_rollcall_payload'),
     'build_user_config': ('troTHU.config_view', 'build_user_config'),
     'check_rollcall': ('troTHU.rollcall_runtime', 'check_rollcall'),
@@ -878,10 +900,12 @@ _LEGACY_EXPORTS = {
     'doctor': ('troTHU.status_reports', 'doctor'),
     'doctor_report': ('troTHU.status_reports', 'doctor_report'),
     'enable_insecure_ssl_fallback': ('troTHU.auth_runtime', 'enable_insecure_ssl_fallback'),
+    'ensure_teacher_ready': ('troTHU.qr_teacher_runtime', 'ensure_teacher_ready'),
     'ensure_config_exists': ('troTHU.config_runtime', 'ensure_config_exists'),
     'extract_login_form': ('troTHU.auth_runtime', 'extract_login_form'),
     'extract_rollcall_id': ('troTHU.teacher_rollcall', 'extract_rollcall_id'),
     'fallback_to_browser_assisted_login': ('troTHU.auth_runtime', 'fallback_to_browser_assisted_login'),
+    'finalize_qr_submission': ('troTHU.qr_runtime', 'finalize_qr_submission'),
     'find_profile': ('troTHU.status_reports', 'find_profile'),
     'format_config_doctor': ('troTHU.config_view', 'format_config_doctor'),
     'get_active_http_endpoints': ('troTHU.status_reports', 'get_active_http_endpoints'),
@@ -903,6 +927,7 @@ _LEGACY_EXPORTS = {
     'get_schedule_for_day': ('troTHU.config_runtime', 'get_schedule_for_day'),
     'get_session_id_header': ('troTHU.auth_runtime', 'get_session_id_header'),
     'get_ssl_request_setting': ('troTHU.auth_runtime', 'get_ssl_request_setting'),
+    'get_teacher_config': ('troTHU.qr_teacher_runtime', 'get_teacher_config'),
     'get_verify_ssl': ('troTHU.auth_runtime', 'get_verify_ssl'),
     'handle_account_command': ('troTHU.cli_accounts', 'handle_account_command'),
     'has_real_credential': ('troTHU.config_runtime', 'has_real_credential'),
@@ -995,6 +1020,8 @@ _LEGACY_EXPORTS = {
     'run_connection_probe': ('troTHU.connection_probe', 'run_connection_probe'),
     'reset_unsupported_rollcall_state': ('troTHU.rollcall_runtime', 'reset_unsupported_rollcall_state'),
     'resolve_credentials': ('troTHU.config_runtime', 'resolve_credentials'),
+    'resolve_teacher_credentials': ('troTHU.config_runtime', 'resolve_teacher_credentials'),
+    'resolve_teacher_course_id': ('troTHU.qr_teacher_runtime', 'resolve_teacher_course_id'),
     'merge_simple_and_advanced_config': ('troTHU.simple_config', 'merge_simple_and_advanced_config'),
     'split_normalized_config': ('troTHU.simple_config', 'split_normalized_config'),
     'is_simple_config_text': ('troTHU.simple_config', 'is_simple_config_text'),
@@ -1011,6 +1038,7 @@ _LEGACY_EXPORTS = {
     'submit_group_number': ('troTHU.group_runtime', 'submit_group_number'),
     'submit_group_radar': ('troTHU.group_runtime', 'submit_group_radar'),
     'run_monitor_forever': ('troTHU.monitor_runtime', 'run_monitor_forever'),
+    'run_teacher_assisted_qr': ('troTHU.qr_teacher_runtime', 'run_teacher_assisted_qr'),
     'save_account_for_next_launch': ('troTHU.config_runtime', 'save_account_for_next_launch'),
     'save_config': ('troTHU.config_runtime', 'save_config'),
     'sanitize_config_values': ('troTHU.input_safety', 'sanitize_config_values'),
@@ -1027,7 +1055,11 @@ _LEGACY_EXPORTS = {
     'status_print': ('troTHU.logging_runtime', 'status_print'),
     'status_report': ('troTHU.status_reports', 'status_report'),
     'submit_qr_payload': ('troTHU.qr_runtime', 'submit_qr_payload'),
+    'submit_qr_with_data': ('troTHU.qr_runtime', 'submit_qr_with_data'),
+    'teacher_assist_configured': ('troTHU.qr_teacher_runtime', 'teacher_assist_configured'),
+    'teacher_assist_report': ('troTHU.status_reports', 'teacher_assist_report'),
     'teacher_command': ('troTHU.cli_teacher', 'teacher_command'),
+    'teacher_login': ('troTHU.qr_teacher_runtime', 'teacher_login'),
     'teacher_stop_path': ('troTHU.teacher_rollcall', 'teacher_stop_path'),
     'tronclass_api_endpoints': ('troTHU.providers', 'tronclass_api_endpoints'),
     'unbind_account': ('troTHU.cli_accounts', 'unbind_account'),

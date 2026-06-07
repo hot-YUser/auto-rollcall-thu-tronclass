@@ -251,21 +251,60 @@ async def qr_scanner_submit(payload: str, fanout_all: bool=False) -> ctx.Dict[st
     return {'ok': result_code == 0, 'status': 'submitted' if result_code == 0 else 'failed', 'provider': preview.get('provider'), 'rollcall_id': preview.get('rollcall_id'), 'preview': preview}
 
 
+async def finalize_qr_submission(
+    session: ctx.aiohttp.ClientSession,
+    qr_data,
+    result,
+    *,
+    notification_body: str = "已使用手動提供的 QR 內容完成送出。",
+) -> bool:
+    rollcall_id = qr_data.rollcall_id
+    text = 'QR Code 點名 #{} 已送出。'.format(rollcall_id)
+    ctx.log(event='qrcode_rollcall_answered', status='success', rollcall_id=rollcall_id, rollcall_type='qrcode', message=text, payload_excerpt={'field_names': sorted(qr_data.fields.keys()), 'extra_field_names': sorted(qr_data.extras.keys()), 'result': result})
+    ctx.log_print(text)
+    active = ctx.get_active_profile(ctx.CONFIG)
+    ctx.remove_pending_qr(ctx.BASE_DIR, profile=active.name, rollcall_id=rollcall_id, provider=ctx.get_active_provider_key())
+    await ctx.notify_event(ctx.NotificationEvent(event='qrcode_rollcall_answered', title=text, body=notification_body, attendance_type=ctx.AttendanceType.QRCODE, rollcall_id=rollcall_id))
+    try:
+        await ctx.report_rollcall_progress(session, rollcall_id)
+    except Exception:
+        pass
+    return True
+
+
+async def _answer_qr_data(session: ctx.aiohttp.ClientSession, qr_data):
+    return await ctx.answer_qr_rollcall(
+        session,
+        qr_data,
+        device_id=ctx.random_id(),
+        request_ssl=ctx.get_ssl_request_setting(),
+        session_id=ctx.get_session_id_header(session),
+        base_url=ctx.get_active_http_endpoints().base_url,
+    )
+
+
 async def submit_qr_payload(session: ctx.aiohttp.ClientSession, raw_payload: str) -> bool:
     qr_data = ctx.parse_qr_payload(raw_payload)
     rollcall_id = qr_data.rollcall_id
     if not rollcall_id:
         raise ValueError('QR 內容缺少 rollcallId，無法送出。')
 
-    result = await ctx.answer_qr_rollcall(session, qr_data, device_id=ctx.random_id(), request_ssl=ctx.get_ssl_request_setting(), session_id=ctx.get_session_id_header(session), base_url=ctx.get_active_http_endpoints().base_url)
-    text = 'QR Code 點名 #{} 已送出。'.format(rollcall_id)
-    ctx.log(event='qrcode_rollcall_answered', status='success', rollcall_id=rollcall_id, rollcall_type='qrcode', message=text, payload_excerpt={'field_names': sorted(qr_data.fields.keys()), 'extra_field_names': sorted(qr_data.extras.keys()), 'result': result})
-    ctx.log_print(text)
-    active = ctx.get_active_profile(ctx.CONFIG)
-    ctx.remove_pending_qr(ctx.BASE_DIR, profile=active.name, rollcall_id=rollcall_id, provider=ctx.get_active_provider_key())
-    await ctx.notify_event(ctx.NotificationEvent(event='qrcode_rollcall_answered', title=text, body='已使用手動提供的 QR 內容完成送出。', attendance_type=ctx.AttendanceType.QRCODE, rollcall_id=rollcall_id))
-    try:
-        await ctx.report_rollcall_progress(session, rollcall_id)
-    except Exception:
-        pass
-    return True
+    result = await _answer_qr_data(session, qr_data)
+    return await ctx.finalize_qr_submission(session, qr_data, result)
+
+
+async def submit_qr_with_data(session: ctx.aiohttp.ClientSession, rollcall_id, data) -> bool:
+    rollcall_id_text = ctx.normalize_text(rollcall_id)
+    data_text = ctx.normalize_text(data)
+    if not rollcall_id_text:
+        raise ValueError('QR 內容缺少 rollcallId，無法送出。')
+    if not data_text:
+        raise ValueError('QR 內容缺少 data，無法送出。')
+    qr_data = ctx.QrCodeData(fields={"rollcallId": rollcall_id_text, "data": data_text})
+    result = await _answer_qr_data(session, qr_data)
+    return await ctx.finalize_qr_submission(
+        session,
+        qr_data,
+        result,
+        notification_body='已透過教師帳號輔助取得 QR data 完成送出。',
+    )

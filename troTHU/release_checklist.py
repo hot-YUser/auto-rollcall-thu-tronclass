@@ -358,7 +358,7 @@ def _readme_report(path: Path) -> Dict[str, Any]:
         _check("README config tutorial", "config.advanced.yaml" in text and "operating" in text, "config tutorial documented", severity="warn"),
         _check("README bot docs", "HTTP Interactions" in text and "Telegram" in text, "bot entrypoints documented", severity="warn"),
         _check("README provider scope", "THU" in text and "TKU" in text, "THU/TKU provider scope documented", severity="warn"),
-        _check("README qr unsupported", "不支援 QR Code 點名" in text, "QR documented as unsupported", severity="warn"),
+        _check("README qr teacher assist", "QR Code 點名" in text and "教師輔助" in text, "QR teacher assist documented", severity="warn"),
         _check("README no stale stable-version advice", "建議優先使用上一個正式版" not in text and "v0.2.8" not in text, "no obsolete v0.2.8 recommendation", severity="warn"),
     ]
     return {"exists": path.exists(), "file": path.name, "checks": checks, "status": _overall_status(checks)}

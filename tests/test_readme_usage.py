@@ -12,8 +12,8 @@ class ReadmeUsageTest(unittest.TestCase):
         self.assertIn("## 這個工具可以幹嘛", self.text)
         self.assertIn("數字點名", self.text)
         self.assertIn("雷達點名", self.text)
-        # QR must be stated as unsupported, never presented as a usable feature.
-        self.assertIn("不支援 QR Code 點名", self.text)
+        self.assertIn("QR Code 點名", self.text)
+        self.assertIn("教師輔助", self.text)
         # Supported schools shown up front.
         self.assertIn("THU", self.text)
         self.assertIn("TKU", self.text)
@@ -27,7 +27,7 @@ class ReadmeUsageTest(unittest.TestCase):
 
     def test_config_tutorial_is_present(self) -> None:
         self.assertIn("## 設定檔教學", self.text)
-        for key in ("now", "account", "group", "operating"):
+        for key in ("now", "account", "teacher", "group", "operating"):
             self.assertIn(key, self.text)
         self.assertIn("config.advanced.yaml", self.text)
         self.assertIn("config show", self.text)

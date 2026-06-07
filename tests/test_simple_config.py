@@ -86,6 +86,38 @@ class SimpleConfigTest(unittest.TestCase):
         self.assertEqual(config["account"]["user"], "")
         self.assertEqual(config["accounts"]["current"], "unset")
 
+    def test_teacher_block_round_trips_in_simple_config(self) -> None:
+        parsed = tron.parse_simple_config_text(
+            "now:S1\n"
+            "account:\n"
+            "  user:S1\n"
+            "  passwd:P1\n"
+            "  school:THU\n"
+            "\n"
+            "teacher:\n"
+            "  user:T1\n"
+            "  passwd:TP1\n"
+            "  school:TRONCLASS\n"
+            "  course:\n"
+            "\n"
+            "operating:\n"
+            "  0:\n"
+            "    enable:true\n"
+            "    range:\n"
+            "    - 00:00 - 00:00\n"
+        )
+        config = tron.normalize_config(tron.merge_simple_and_advanced_config(parsed, {}))
+        simple, advanced = tron.split_normalized_config(config)
+        rendered = tron.render_simple_config(simple)
+        reparsed = tron.parse_simple_config_text(rendered)
+
+        self.assertEqual(config["teacher"], {"user": "T1", "passwd": "TP1", "school": "tronclass", "course": ""})
+        self.assertEqual(advanced, {})
+        self.assertIn("teacher:", rendered)
+        self.assertIn("  user:T1", rendered)
+        self.assertEqual(reparsed["teacher"]["school"], "tronclass")
+        self.assertEqual(reparsed["teacher"]["course"], "")
+
 
 if __name__ == "__main__":
     unittest.main()

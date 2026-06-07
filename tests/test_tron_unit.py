@@ -79,6 +79,8 @@ class TronHelpersTest(unittest.TestCase):
         self.original_runtime_credentials = copy.deepcopy(tron.RUNTIME_CREDENTIALS)
         self.original_tron_user = os.environ.get("TRON_USER")
         self.original_tron_pass = os.environ.get("TRON_PASS")
+        self.original_tron_teacher_user = os.environ.get("TRON_TEACHER_USER")
+        self.original_tron_teacher_pass = os.environ.get("TRON_TEACHER_PASS")
         self.original_config_path = tron.CONFIG_PATH
         self.original_config_bootstrapped = tron.CONFIG_BOOTSTRAPPED
         self.original_bootstrap_warnings = list(tron.BOOTSTRAP_WARNINGS)
@@ -104,6 +106,14 @@ class TronHelpersTest(unittest.TestCase):
             os.environ.pop("TRON_PASS", None)
         else:
             os.environ["TRON_PASS"] = self.original_tron_pass
+        if self.original_tron_teacher_user is None:
+            os.environ.pop("TRON_TEACHER_USER", None)
+        else:
+            os.environ["TRON_TEACHER_USER"] = self.original_tron_teacher_user
+        if self.original_tron_teacher_pass is None:
+            os.environ.pop("TRON_TEACHER_PASS", None)
+        else:
+            os.environ["TRON_TEACHER_PASS"] = self.original_tron_teacher_pass
 
     def test_extract_login_form_collects_inputs_and_decodes_action(self) -> None:
         html = """
@@ -214,6 +224,22 @@ class TronHelpersTest(unittest.TestCase):
             normalized["config"]["notification_timeout"],
             tron.DEFAULT_CONFIG["config"]["notification_timeout"],
         )
+
+    def test_normalize_config_defaults_teacher_assist(self) -> None:
+        normalized = tron.normalize_config({"config": {}})
+
+        self.assertEqual(
+            normalized["teacher"],
+            {"user": "", "passwd": "", "school": "tronclass", "course": ""},
+        )
+
+    def test_normalize_config_accepts_teacher_provider_alias(self) -> None:
+        normalized = tron.normalize_config(
+            {"teacher": {"user": "t1", "passwd": "tp1", "school": "官方站", "course": 301}}
+        )
+
+        self.assertEqual(normalized["teacher"]["school"], "tronclass")
+        self.assertEqual(normalized["teacher"]["course"], "301")
 
     def test_normalize_config_defaults_radar_settings(self) -> None:
         normalized = tron.normalize_config({"config": {}})
@@ -386,6 +412,26 @@ class TronHelpersTest(unittest.TestCase):
         user, password, source = tron.resolve_credentials()
 
         self.assertEqual((user, password, source), ("config-user", "config-pass", "config"))
+
+    def test_resolve_teacher_credentials_prefers_environment_over_config(self) -> None:
+        tron.CONFIG["teacher"] = {"user": "config-teacher", "passwd": "config-pass", "school": "tronclass", "course": ""}
+        os.environ["TRON_TEACHER_USER"] = "env-teacher"
+        os.environ["TRON_TEACHER_PASS"] = "env-pass"
+
+        user, password, source = tron.resolve_teacher_credentials()
+
+        self.assertEqual((user, password, source), ("env-teacher", "env-pass", "environment"))
+
+    def test_resolve_teacher_credentials_uses_keyring_profile(self) -> None:
+        os.environ.pop("TRON_TEACHER_USER", None)
+        os.environ.pop("TRON_TEACHER_PASS", None)
+        tron.CONFIG["teacher"] = {"user": "teacher-user", "passwd": "", "school": "tronclass", "course": ""}
+
+        with patch.object(tron, "get_keyring_password", return_value="teacher-keyring-pass") as keyring:
+            user, password, source = tron.resolve_teacher_credentials()
+
+        keyring.assert_called_once_with("teacher", "teacher-user")
+        self.assertEqual((user, password, source), ("teacher-user", "teacher-keyring-pass", "keyring"))
 
     def test_normalize_config_migrates_legacy_account_to_default_profile(self) -> None:
         normalized = tron.normalize_config(

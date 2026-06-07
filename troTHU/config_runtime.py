@@ -68,6 +68,25 @@ def resolve_credentials() -> ctx.Tuple[str, str, str]:
     return ('', '', 'missing')
 
 
+def resolve_teacher_credentials() -> ctx.Tuple[str, str, str]:
+    env_user = ctx.normalize_text(ctx.os.getenv('TRON_TEACHER_USER'))
+    env_passwd = ctx.normalize_text(ctx.os.getenv('TRON_TEACHER_PASS'))
+    if ctx.has_real_credential(env_user) and ctx.has_real_credential(env_passwd):
+        return (env_user, env_passwd, 'environment')
+    teacher = ctx.CONFIG.get('teacher', {}) if isinstance(ctx.CONFIG, dict) else {}
+    if not isinstance(teacher, dict):
+        teacher = {}
+    config_user = ctx.normalize_text(teacher.get('user'))
+    config_password = ctx.normalize_text(teacher.get('passwd'))
+    if ctx.has_real_credential(config_user):
+        keyring_password = ctx.get_keyring_password('teacher', config_user)
+        if ctx.has_real_credential(keyring_password):
+            return (config_user, keyring_password, 'keyring')
+    if ctx.has_real_credential(config_user) and ctx.has_real_credential(config_password):
+        return (config_user, config_password, 'config')
+    return ('', '', 'missing')
+
+
 def save_account_for_next_launch(user: str, password: str) -> bool:
     ctx.CONFIG['account']['user'] = ctx.normalize_text(user)
     ctx.CONFIG['account']['passwd'] = ctx.normalize_text(password)
@@ -124,6 +143,14 @@ def write_config_file(config: ctx.Dict[str, ctx.Any]) -> None:
     ctx.write_advanced_config_file(advanced)
 
 
+def _normalize_teacher_school(value: ctx.Any) -> str:
+    text = ctx.normalize_text(value) or ctx.DEFAULT_CONFIG['teacher']['school']
+    try:
+        return ctx.get_provider(text).key
+    except Exception:
+        return ctx.DEFAULT_CONFIG['teacher']['school']
+
+
 def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
     if not isinstance(raw_config, dict):
         raw_config = {}
@@ -149,6 +176,15 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
         account['user'] = active_profile.user
     if not ctx.has_real_credential(account.get('passwd')) and ctx.has_real_credential(active_profile.passwd):
         account['passwd'] = active_profile.passwd
+    teacher = config.setdefault('teacher', {})
+    if not isinstance(teacher, dict):
+        teacher = {}
+        config['teacher'] = teacher
+    default_teacher = ctx.DEFAULT_CONFIG['teacher']
+    teacher['user'] = ctx.normalize_text(teacher.get('user', default_teacher['user']))
+    teacher['passwd'] = ctx.normalize_text(teacher.get('passwd', default_teacher['passwd']))
+    teacher['school'] = _normalize_teacher_school(teacher.get('school', default_teacher['school']))
+    teacher['course'] = ctx.normalize_text(teacher.get('course', default_teacher['course']))
     config['provider'] = ctx.normalize_provider_config(config.get('provider', ctx.DEFAULT_CONFIG['provider']))
     session_config = config.setdefault('session', {})
     if not isinstance(session_config, dict):

@@ -177,6 +177,38 @@ def pending_qr_summary(profile_name: str='') -> ctx.Dict[str, ctx.Any]:
     return {'count': len(pending), 'items': pending}
 
 
+def teacher_assist_report() -> ctx.Dict[str, ctx.Any]:
+    teacher = ctx.get_teacher_config(ctx.CONFIG)
+    user, _password, credential_source = ctx.resolve_teacher_credentials()
+    configured = ctx.teacher_assist_configured(ctx.CONFIG)
+    login = ctx.TEACHER_LOGIN_RESULT
+    course_config = ctx.normalize_text(teacher.get('course'))
+    cached_course = ctx.normalize_text(ctx.TEACHER_COURSE_ID)
+    if course_config:
+        course_source = 'config'
+        course_id = course_config
+    elif cached_course:
+        course_source = 'auto'
+        course_id = cached_course
+    else:
+        course_source = 'auto_pending'
+        course_id = ''
+    return {
+        'configured': configured,
+        'school': teacher.get('school'),
+        'user_configured': ctx.has_real_credential(teacher.get('user')) or ctx.has_real_credential(user),
+        'credential_source': credential_source,
+        'login': {
+            'status': login.status,
+            'credential_source': login.credential_source,
+            'user': login.user,
+        },
+        'ready': bool(ctx.TEACHER_READY),
+        'course_id': course_id,
+        'course_source': course_source,
+    }
+
+
 def account_runtime_summary(profile_name: str='') -> ctx.Dict[str, ctx.Any]:
     profile = ctx.find_profile(profile_name)
     if profile is None:
@@ -201,7 +233,7 @@ def status_report() -> ctx.Dict[str, ctx.Any]:
     pending = [item.to_dict() for item in ctx.list_pending_qr(ctx.BASE_DIR)]
     provider = ctx.provider_report()
     now = ctx.current_datetime()
-    return {'provider': provider, 'provider_support': provider.get('support', {}), 'active_profile': active.name, 'user': active.user if ctx.has_real_credential(active.user) else '', 'credential': ctx.credential_report(active.name), 'cookie': ctx.cookie_report(active.name), 'log_dir': str(ctx.PATH), 'notifications': ctx.notification_report(), 'integrations': ctx.integration_report(), 'research': ctx.research_report(), 'course_discovery': ctx.course_discovery_report(), 'runtime_state': ctx.account_runtime_summary(active.name), 'pending_qr': pending, 'time': {'timezone': ctx.get_config_timezone_name(), 'now': now.isoformat(timespec='seconds'), 'weekday': now.weekday()}, 'config_warnings': list(getattr(ctx, 'CONFIG_WARNINGS', [])), 'last_login': {'status': ctx.LAST_LOGIN_RESULT.status, 'credential_source': ctx.LAST_LOGIN_RESULT.credential_source, 'user': ctx.LAST_LOGIN_RESULT.user}}
+    return {'provider': provider, 'provider_support': provider.get('support', {}), 'active_profile': active.name, 'user': active.user if ctx.has_real_credential(active.user) else '', 'credential': ctx.credential_report(active.name), 'cookie': ctx.cookie_report(active.name), 'log_dir': str(ctx.PATH), 'notifications': ctx.notification_report(), 'integrations': ctx.integration_report(), 'research': ctx.research_report(), 'course_discovery': ctx.course_discovery_report(), 'teacher_assist': ctx.teacher_assist_report(), 'runtime_state': ctx.account_runtime_summary(active.name), 'pending_qr': pending, 'time': {'timezone': ctx.get_config_timezone_name(), 'now': now.isoformat(timespec='seconds'), 'weekday': now.weekday()}, 'config_warnings': list(getattr(ctx, 'CONFIG_WARNINGS', [])), 'last_login': {'status': ctx.LAST_LOGIN_RESULT.status, 'credential_source': ctx.LAST_LOGIN_RESULT.credential_source, 'user': ctx.LAST_LOGIN_RESULT.user}}
 
 
 def doctor_report(network_probe: ctx.Optional[ctx.Mapping[str, ctx.Any]]=None) -> ctx.Dict[str, ctx.Any]:
@@ -212,8 +244,9 @@ def doctor_report(network_probe: ctx.Optional[ctx.Mapping[str, ctx.Any]]=None) -
     browser_login = ctx.browser_assisted_login_status()
     credential = ctx.credential_report(active.name)
     cookie = ctx.cookie_report(active.name)
+    teacher_assist = ctx.teacher_assist_report()
     packaging = ctx.build_package_diagnostic_report(ctx.BASE_DIR, config=ctx.CONFIG)
-    checks = [ctx.check_item('provider', bool(provider_support.get('daily_ready')), '{} ({}) support: {}'.format(provider.get('key'), provider.get('label'), provider_support.get('support_level', provider.get('status'))), severity='warn'), ctx.check_item('provider fallback', not bool(provider.get('fallback_reason')), 'requested {} -> active {}'.format(provider.get('requested', provider.get('key')), provider.get('key')), severity='warn'), ctx.check_item('provider support level', provider_support.get('support_level') == 'ready', 'provider user-level support is ready', severity='warn'), ctx.check_item('config', ctx.CONFIG_PATH.exists(), str(ctx.CONFIG_PATH), severity='fail'), ctx.check_item('timezone', bool(ctx.get_config_timezone_name()), 'IANA timezone: {}'.format(ctx.get_config_timezone_name()), severity='fail'), ctx.check_item('yaml', ctx.module_available('yaml'), 'PyYAML importable', severity='fail'), ctx.check_item('aiohttp', ctx.module_available('aiohttp'), 'aiohttp importable', severity='fail'), ctx.check_item('aiohttp.web', ctx.module_available('aiohttp.web'), 'needed for local QR scanner', severity='warn'), ctx.check_item('playwright', (not browser_login.get('enabled')) or bool(browser_login.get('playwright_available')), 'browser-assisted login {}'.format('available' if browser_login.get('playwright_available') else 'disabled/unavailable'), severity='warn'), ctx.check_item('keyring', ctx.keyring_available(), 'optional password store', severity='warn'), ctx.check_item('active profile user', bool(credential.get('user_configured')), 'profile {} has a user'.format(active.name), severity='fail'), ctx.check_item('credential', credential.get('effective_source') != 'missing', 'effective source: {}'.format(credential.get('effective_source')), severity='warn'), ctx.check_item('cookie cache', not cookie['exists'] or bool(cookie['valid']), 'file: {} age: {}'.format(cookie['path'], cookie['age']), severity='warn'), ctx.check_item('verify_ssl', ctx.get_verify_ssl(), 'TLS verification should stay enabled', severity='warn'), ctx.check_item('course discovery', bool(ctx.course_discovery_report()['current_semester_endpoint']) and bool(ctx.course_discovery_report()['courses_endpoint']), 'read-only course endpoints configured', severity='warn'), ctx.check_item('research mode', not bool(research.get('enabled')), 'disabled for daily automation' if not bool(research.get('enabled')) else 'enabled; use only for explicit capture/API exploration', severity='warn'), ctx.check_item('log directory', ctx.PATH.exists() or ctx.os.access(str(ctx.BASE_DIR), ctx.os.W_OK), str(ctx.PATH), severity='warn')]
+    checks = [ctx.check_item('provider', bool(provider_support.get('daily_ready')), '{} ({}) support: {}'.format(provider.get('key'), provider.get('label'), provider_support.get('support_level', provider.get('status'))), severity='warn'), ctx.check_item('provider fallback', not bool(provider.get('fallback_reason')), 'requested {} -> active {}'.format(provider.get('requested', provider.get('key')), provider.get('key')), severity='warn'), ctx.check_item('provider support level', provider_support.get('support_level') == 'ready', 'provider user-level support is ready', severity='warn'), ctx.check_item('config', ctx.CONFIG_PATH.exists(), str(ctx.CONFIG_PATH), severity='fail'), ctx.check_item('timezone', bool(ctx.get_config_timezone_name()), 'IANA timezone: {}'.format(ctx.get_config_timezone_name()), severity='fail'), ctx.check_item('yaml', ctx.module_available('yaml'), 'PyYAML importable', severity='fail'), ctx.check_item('aiohttp', ctx.module_available('aiohttp'), 'aiohttp importable', severity='fail'), ctx.check_item('aiohttp.web', ctx.module_available('aiohttp.web'), 'needed for local QR scanner', severity='warn'), ctx.check_item('playwright', (not browser_login.get('enabled')) or bool(browser_login.get('playwright_available')), 'browser-assisted login {}'.format('available' if browser_login.get('playwright_available') else 'disabled/unavailable'), severity='warn'), ctx.check_item('keyring', ctx.keyring_available(), 'optional password store', severity='warn'), ctx.check_item('active profile user', bool(credential.get('user_configured')), 'profile {} has a user'.format(active.name), severity='fail'), ctx.check_item('credential', credential.get('effective_source') != 'missing', 'effective source: {}'.format(credential.get('effective_source')), severity='warn'), ctx.check_item('QR teacher assist', bool(teacher_assist.get('configured')), 'configured={} login={} course_source={}'.format(teacher_assist.get('configured'), teacher_assist.get('login', {}).get('status'), teacher_assist.get('course_source')), severity='warn'), ctx.check_item('cookie cache', not cookie['exists'] or bool(cookie['valid']), 'file: {} age: {}'.format(cookie['path'], cookie['age']), severity='warn'), ctx.check_item('verify_ssl', ctx.get_verify_ssl(), 'TLS verification should stay enabled', severity='warn'), ctx.check_item('course discovery', bool(ctx.course_discovery_report()['current_semester_endpoint']) and bool(ctx.course_discovery_report()['courses_endpoint']), 'read-only course endpoints configured', severity='warn'), ctx.check_item('research mode', not bool(research.get('enabled')), 'disabled for daily automation' if not bool(research.get('enabled')) else 'enabled; use only for explicit capture/API exploration', severity='warn'), ctx.check_item('log directory', ctx.PATH.exists() or ctx.os.access(str(ctx.BASE_DIR), ctx.os.W_OK), str(ctx.PATH), severity='warn')]
     checks.extend(packaging.get('checks', []))
     for warning in ctx.BOOTSTRAP_WARNINGS:
         checks.append(ctx.check_item('bootstrap', False, warning, severity='warn'))
@@ -225,7 +258,7 @@ def doctor_report(network_probe: ctx.Optional[ctx.Mapping[str, ctx.Any]]=None) -
     probe = dict(network_probe or {"enabled": False, "status": "disabled"})
     if probe.get("enabled") and probe.get("status") == "fail" and status == "ok":
         status = "warn"
-    return {'status': status, 'base_dir': str(ctx.BASE_DIR), 'config_path': str(ctx.CONFIG_PATH), 'provider': provider, 'provider_support': provider_support, 'active_profile': active.name, 'checks': checks, 'time': {'timezone': ctx.get_config_timezone_name(), 'now': ctx.current_datetime().isoformat(timespec='seconds')}, 'http_timeout': ctx.get_http_timeout_seconds(), 'notification_timeout': ctx.get_notification_timeout_seconds(), 'cookie': cookie, 'notifications': ctx.notification_report(), 'integrations': ctx.integration_report(), 'research': research, 'browser_assisted_login': browser_login, 'course_discovery': ctx.course_discovery_report(), 'network_probe': probe, 'config_warnings': list(getattr(ctx, 'CONFIG_WARNINGS', [])), 'packaging': packaging}
+    return {'status': status, 'base_dir': str(ctx.BASE_DIR), 'config_path': str(ctx.CONFIG_PATH), 'provider': provider, 'provider_support': provider_support, 'active_profile': active.name, 'checks': checks, 'time': {'timezone': ctx.get_config_timezone_name(), 'now': ctx.current_datetime().isoformat(timespec='seconds')}, 'http_timeout': ctx.get_http_timeout_seconds(), 'notification_timeout': ctx.get_notification_timeout_seconds(), 'cookie': cookie, 'notifications': ctx.notification_report(), 'integrations': ctx.integration_report(), 'research': research, 'browser_assisted_login': browser_login, 'course_discovery': ctx.course_discovery_report(), 'teacher_assist': teacher_assist, 'network_probe': probe, 'config_warnings': list(getattr(ctx, 'CONFIG_WARNINGS', [])), 'packaging': packaging}
 
 
 def print_status(json_output: bool=False) -> None:
@@ -247,6 +280,8 @@ def print_status(json_output: bool=False) -> None:
     print('Cookie cache: {}'.format('enabled' if cookie['enabled'] else 'disabled'))
     print('Cookie file: {} ({})'.format(cookie['path'], cookie['age']))
     print('Course discovery: {}'.format('enabled' if report['course_discovery']['enabled'] else 'disabled'))
+    teacher_assist = report.get('teacher_assist', {})
+    print('QR teacher assist: {} ({}, course: {})'.format('ready' if teacher_assist.get('ready') else 'not ready', teacher_assist.get('login', {}).get('status', 'missing'), teacher_assist.get('course_id') or teacher_assist.get('course_source')))
     runtime = report['runtime_state']
     print('Bot state: {}'.format(runtime.get('bot_state', 'stopped')))
     print('Monitor state: {}{}'.format(runtime.get('monitor_state', 'unknown'), ' (stale)' if runtime.get('heartbeat_stale') else ''))

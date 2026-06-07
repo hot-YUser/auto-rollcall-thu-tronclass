@@ -616,6 +616,16 @@ class TronHttpClient:
             expected_status=(200, 204),
         )
 
+    async def fetch_teacher_qr_code(self, course_id: Any, rollcall_id: Any) -> Any:
+        return await self.request_json(
+            "GET",
+            self.api_url("/api/course/{}/rollcall/{}/qr_code".format(
+                str(course_id).strip(),
+                str(rollcall_id).strip(),
+            )),
+            expected_status=(200,),
+        )
+
     async def fetch_rollcalls(self) -> RollcallsResult:
         async with self.session.get(self.endpoints.rollcalls_url, **self.request_kwargs()) as resp:
             url = str(resp.url)

@@ -661,6 +661,7 @@ def build_monitor_status_line(status: Any, now: Any) -> str:
     phase = str(status.get("phase") or "monitoring")
     clock = format_clock(now)
     next_at = status.get("next_switch_at")
+    teacher_state = normalize_text(status.get("teacher_state")).lower()
     parts: List[str] = []
 
     if phase == "standby":
@@ -700,6 +701,13 @@ def build_monitor_status_line(status: Any, now: Any) -> str:
         parts.append(clock)
         if next_at is not None:
             parts.append("{} 進入待機".format(format_hhmm(next_at)))
+
+    if teacher_state == "ready":
+        parts.append("QR教師✓")
+    elif teacher_state == "failed":
+        parts.append("QR教師✗")
+    elif teacher_state == "working":
+        parts.append("QR教師發起中")
 
     return " · ".join(parts)
 

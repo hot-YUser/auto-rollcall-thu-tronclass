@@ -98,7 +98,8 @@ def render_status_line() -> None:
 
 
 def update_monitor_status(*, phase=None, check_count=None, detail=None,
-                          next_switch_at=Ellipsis, redraw: bool = True) -> None:
+                          next_switch_at=Ellipsis, teacher_state=None,
+                          redraw: bool = True) -> None:
     """Update the live status snapshot and (interactively) redraw the line.
 
     ``next_switch_at`` uses an ``Ellipsis`` sentinel so callers can explicitly
@@ -113,6 +114,8 @@ def update_monitor_status(*, phase=None, check_count=None, detail=None,
         status['detail'] = detail
     if next_switch_at is not Ellipsis:
         status['next_switch_at'] = next_switch_at
+    if teacher_state is not None:
+        status['teacher_state'] = teacher_state
     if redraw:
         render_status_line()
 
@@ -124,6 +127,7 @@ def reset_monitor_status() -> None:
         'check_count': 0,
         'detail': '',
         'next_switch_at': None,
+        'teacher_state': 'off',
     })
     ctx.STATUS_LINE_WIDTH = 0
 

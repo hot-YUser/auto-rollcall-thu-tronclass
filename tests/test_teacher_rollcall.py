@@ -120,6 +120,7 @@ class TeacherRollcallHttpTest(unittest.IsolatedAsyncioTestCase):
 
                 manual_id = created_by_kind["manual"]["id"]
                 started = await client.start_teacher_rollcall(manual_id, {"duration": 60})
+                qr_code = await client.fetch_teacher_qr_code(301, created_by_kind["qr"]["id"])
                 for kind, created in created_by_kind.items():
                     stopped = await client.stop_teacher_rollcall(created["id"], rollcall_type=kind)
                     self.assertEqual(stopped["status"], "finished")
@@ -130,6 +131,7 @@ class TeacherRollcallHttpTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(created_by_kind["qr"]["type"], "qr_rollcall")
         self.assertEqual(created_by_kind["self_registration"]["type"], "self_registration")
         self.assertEqual(started["start_payload"]["duration"], 60)
+        self.assertEqual(qr_code["data"], server.teacher_qr_data)
         self.assertEqual(
             [item["endpoint"] for item in server.teacher_rollcall_stops],
             [

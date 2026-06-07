@@ -12,9 +12,9 @@
 
 - ✅ **數字點名** — 完整支援。已經過無數次實際課堂驗收與打磨，是成熟、穩定的全自動完成版：偵測到點名 → 自動拿到點名碼 → 自動簽到，全程零操作。
 - ✅ **雷達點名** — 完整支援。同樣經過大量實戰驗收，偵測到雷達點名後會自動完成定位簽到，不需要你開地圖、不需要對座標。
-- ❌ **QR Code 點名** — 不支援。
+- ⚠️ **QR Code 點名** — 預設支援手動貼上 / 剪貼簿輔助；若你另外提供一個有權限發起 QR 點名的 TronClass 教師帳號，可啟用「教師輔助發起」自動完成。
 
-關於 QR：這個工具的核心價值是**全自動、零操作**。QR 點名一定要先拿到當下那張動態 QR 的內容，而你只要人都已經能看到那張 QR 了，直接用官方 App 掃一下其實更快——再繞來用本工具就失去意義了。因為沒辦法做到真正的「自動」，所以 QR 不列入支援，這樣才不會讓你誤會它能幫你掛著自動簽到。
+關於 QR：學生端 API 不會提供 QR 的 `data` token，所以未設定教師帳號時，程式只會提示你貼上 QR 內容或嘗試剪貼簿輔助。教師輔助模式會使用你自備的教師帳號即時發起一場 QR 點名取得 `data`，再用學生帳號送出；教師登入失敗不會影響數字 / 雷達點名。
 
 **支援的學校：東海大學 (THU)、淡江大學 (TKU)。** 兩校都走同一套登入與點名流程，數字、雷達都完整可用。
 
@@ -63,7 +63,7 @@ python -m troTHU.tron run --no-input
 - 學校**大小寫不分**：`THU`、`thu`、`東海` 都認得。
 - 你**不需要**懂 YAML 縮排規則，照著下面的範例填就好。
 
-一般使用者**只要改四塊**：`now`、`account`、`group`、`operating`。其他進階設定都放在另一個檔 `config.advanced.yaml`，平常完全不用碰。
+一般使用者主要改四塊：`now`、`account`、`group`、`operating`。如果要啟用 QR 教師輔助，再填 `teacher`。其他進階設定都放在另一個檔 `config.advanced.yaml`，平常完全不用碰。
 
 ### `config.yaml` 範例與逐塊說明
 
@@ -78,6 +78,12 @@ account:
   user:(帳號2)
   passwd:(密碼2)
   school:TKU
+
+teacher:
+  user:(教師帳號)
+  passwd:(教師密碼)
+  school:TRONCLASS
+  course:(留空自動偵測)
 
 group:
   class:A
@@ -95,6 +101,8 @@ operating:
 > 小撇步：如果你整份 `account` 只填了一個有效帳號，`now` 可以**留空**，程式會自動用那一個，不會逼你再填一次。
 
 **`account`** — 你的帳號清單，可以放很多組。每組三行：`user`（學號）、`passwd`（密碼）、`school`（`THU` 或 `TKU`）。
+
+**`teacher`** — （選用）QR 教師輔助帳號。`user` / `passwd` 是教師帳密，`school` 可填 `TRONCLASS`、`THU`、`TKU`；`course` 留空時會用 `/api/my-courses` 自動挑第一個課程，也可以手動填課程 ID。
 
 **`group`** — （進階／選用）把帳號分組。`class:A` 開一個叫 A 的群組，底下用 `user` 列出屬於這組的帳號。搭配 `now:class A` 一次套用整組設定。只有一個帳號的話這塊可以不用管。
 
@@ -211,9 +219,9 @@ python -m troTHU.tron bot serve --adapter generic
 
 > 後面那些定位演算法只是「萬一哪天空答案被擋下來」的保險：它會利用「座標答錯時伺服器會回傳你離目標多遠」這個特性，用多個點反推出教室的精確座標再送出；真的還不行就改用無限擴張的棋盤格掃過去，直到命中或點名結束。實務上幾乎輪不到它們出場。
 
-### 為什麼 QR 做不到自動
+### QR 點名：手動內容或教師帳號輔助
 
-QR 點名每次都是一張當下才產生的動態圖片，程式無法在「不靠人」的前提下取得它的內容。一旦需要你動手去拍、去貼，就不是全自動了——而你都能拿到 QR 了，直接用官方 App 掃更快。所以這不在本工具的目標範圍內。
+QR 點名的學生端 API 只接受 `data` + `deviceId`，但不會把 `data` 回給學生。未設定教師帳號時，程式會保留手動貼上與剪貼簿輔助；設定 `teacher` 後，程式會在偵測到 QR 點名時用教師帳號即時發起一場 QR 點名，讀取教師端 `qr_code` API 的 `data`，再送出學生端 QR answer，最後回查 `student_rollcalls` 確認自己已簽到，並關閉教師端那場點名。
 
 ---
 
@@ -261,11 +269,33 @@ GET {base}/api/rollcall/{rollcall_id}/lite   # 取得 beacon / 訊號等附帶�
 
 備援解法把「距離」當觀測量，用最小平方法多點定位（WGS84）反推教室座標，再不行則無限棋盤格覆蓋。
 
+### QR 點名（教師輔助取得 data）
+
+```http
+# 教師帳號建立 / 啟動一場 QR 點名
+POST {teacher_base}/api/course/{course_id}/rollcall
+POST {teacher_base}/api/rollcall/{teacher_rollcall_id}/start-rollcall
+
+# 教師端讀取動態 QR data
+GET {teacher_base}/api/course/{course_id}/rollcall/{teacher_rollcall_id}/qr_code
+    → 回應內含 data
+
+# 學生帳號送出原本課堂的 QR 點名
+PUT {student_base}/api/rollcall/{student_rollcall_id}/answer_qr_rollcall
+    body: {"data": "<teacher data>", "deviceId": "<隨機>"}
+
+# 不論成功失敗都關閉教師端點名
+PUT {teacher_base}/api/rollcall/{teacher_rollcall_id}/stop_qr_rollcall
+```
+
+送出後會再讀學生端 `student_rollcalls` / `answers` 確認狀態。教師帳號登入失敗或找不到課程時，只會停用 QR 教師輔助，數字與雷達點名仍照常監控。
+
 ### 程式結構速覽
 
 - `troTHU/runtime_context.py`：中央樞紐，持有全域執行狀態，並把扁平的函式命名空間懶載入到各模組。新增要能用 `ctx.foo` 呼叫的函式時，要在這裡的 `_LEGACY_EXPORTS` 註冊。
 - `troTHU/monitor_runtime.py`：預設的監控主迴圈（登入 → 依排程 → 偵測點名 → 分流）。
 - `troTHU/number_runtime.py`、`troTHU/radar_runtime.py`：兩種點名的實作核心（上面的 API 就在這裡）。
+- `troTHU/qr_runtime.py`、`troTHU/qr_teacher_runtime.py`：QR 手動 / 剪貼簿送出與教師帳號輔助流程。
 - `troTHU/providers.py`：支援的學校登錄表（base URL、登入流程、能力旗標），加新學校從這裡開始。
 - `troTHU/tron_http.py`：端點驅動的 HTTP client 與登入流程（THU CAS / TKU SSO / 公有雲 email 登入）。
 
@@ -293,6 +323,6 @@ python -m troTHU.tron release-build --dry-run --json
 
 ## 目前限制
 
-- **不支援 QR Code 點名**（原因見上，與全自動目標衝突）。
+- **QR 教師輔助需要可登入且可發起點名的教師帳號**；未設定或登入失敗時，只保留手動貼上 / 剪貼簿輔助。
 - **Telegram 只做單向通知**，不接收指令。
 - 預設的 Windows zip 是精簡包，不內建 Playwright、keyring、QR 影像解碼等選用功能；需要的話請用原始碼安裝對應 extras。

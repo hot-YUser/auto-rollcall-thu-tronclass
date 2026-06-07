@@ -26,10 +26,12 @@ class FakeTronServer:
         self.number_attempts: List[Dict[str, Any]] = []
         self.radar_answers: List[Dict[str, Any]] = []
         self.qr_answers: List[Dict[str, Any]] = []
+        self.teacher_qr_code_requests: List[Dict[str, Any]] = []
+        self.teacher_qr_data = "fake-teacher-qr-data"
         # Real TronClass shape: student_rollcalls is a per-student status array on the
         # rollcall object; number_code is a top-level field on that object.
         self.student_rollcalls: List[Dict[str, Any]] = [
-            {"student_id": 1, "status": "pending", "rollcall_status": "on_call"}
+            {"student_id": 1, "user_no": "user1", "status": "pending", "rollcall_status": "on_call"}
         ]
         # When False, the GET .../student_rollcalls response omits number_code so the
         # runtime must fall back to brute-force (simulates a backend that blocks the leak).
@@ -335,6 +337,10 @@ class FakeTronServer:
         scripted = self._script_response("qr")
         if scripted is not None:
             return scripted
+        for entry in self.student_rollcalls:
+            entry["rollcall_status"] = "on_call_fine"
+            entry["status"] = "on_call_fine"
+        self._mark_rollcall_present(request.match_info["rollcall_id"])
         return web.json_response({"ok": True})
 
     async def student_rollcalls_api(self, request):
@@ -418,6 +424,21 @@ class FakeTronServer:
             rollcall["start_payload"] = body
         return web.json_response(rollcall)
 
+    async def teacher_qr_code_api(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        scripted = self._script_response("teacher_qr_code")
+        if scripted is not None:
+            return scripted
+        course_id = request.match_info["course_id"]
+        rollcall_id = request.match_info["rollcall_id"]
+        rollcall = self._teacher_rollcall(rollcall_id)
+        if rollcall is None:
+            return web.Response(status=404, text="not found")
+        self.teacher_qr_code_requests.append({"course_id": course_id, "rollcall_id": rollcall_id})
+        return web.json_response({"courseId": course_id, "data": self.teacher_qr_data, "rollcallId": rollcall_id})
+
     async def stop_rollcall_api(self, request):
         unauthorized = self._unauthorized_if_needed(request)
         if unauthorized is not None:
@@ -473,6 +494,7 @@ class FakeTronServer:
         app.router.add_get("/api/current-semester-info", self.current_semester_api)
         app.router.add_get("/api/my-courses", self.courses_api)
         app.router.add_post("/api/course/{course_id}/rollcall", self.create_course_rollcall_api)
+        app.router.add_get("/api/course/{course_id}/rollcall/{rollcall_id}/qr_code", self.teacher_qr_code_api)
         app.router.add_put("/api/rollcall/{rollcall_id}/answer_number_rollcall", self.answer_number)
         app.router.add_get("/api/rollcall/{rollcall_id}/lite", self.radar_lite)
         app.router.add_put("/api/rollcall/{rollcall_id}/answer", self.answer_radar)
