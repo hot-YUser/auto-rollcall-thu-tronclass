@@ -346,3 +346,11 @@ python -m troTHU.tron release-build --dry-run --json
 - **QR 教師輔助需要可登入且可發起點名的教師帳號**；未設定或登入失敗時，只保留手動貼上 / 剪貼簿輔助。
 - **Telegram 只做單向通知**，不接收指令。
 - 預設的 Windows zip 是精簡包，不內建 Playwright、keyring、QR 影像解碼等選用功能；需要的話請用原始碼安裝對應 extras。
+
+---
+
+## 授權
+
+本專案以 GNU Affero General Public License v3.0 或更新版本（`AGPL-3.0-or-later`）授權。詳見 [LICENSE](LICENSE)。
+
+如果你修改本專案並分發，或將修改版透過網路提供服務，請依 AGPL 條款提供對應原始碼。
