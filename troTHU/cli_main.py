@@ -23,7 +23,11 @@ def main(argv: ctx.Optional[ctx.List[str]]=None) -> int:
         else:
             parser.error('unrecognized arguments: {}'.format(' '.join(unknown_args)))
     if args.command in (None, 'run'):
-        return ctx.run_monitor_forever(no_input=bool(getattr(args, 'no_input', False)))
+        ignore_gate = True if bool(getattr(args, 'ignore_attendance_rate_gate', False)) else None
+        return ctx.run_monitor_forever(
+            no_input=bool(getattr(args, 'no_input', False)),
+            ignore_attendance_rate_gate=ignore_gate,
+        )
     ctx.bootstrap_config()
     if args.command == 'init':
         return ctx.init_command(args)

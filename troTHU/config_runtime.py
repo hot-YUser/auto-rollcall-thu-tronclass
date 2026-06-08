@@ -209,6 +209,15 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
         config['ux'] = ux_config
     ux_config['pending_qr_ttl_seconds'] = ctx.coerce_positive_int(ux_config.get('pending_qr_ttl_seconds', ctx.DEFAULT_CONFIG['ux']['pending_qr_ttl_seconds']), ctx.DEFAULT_CONFIG['ux']['pending_qr_ttl_seconds'], minimum=30)
     ux_config['debug_bundle_log_limit'] = ctx.coerce_positive_int(ux_config.get('debug_bundle_log_limit', ctx.DEFAULT_CONFIG['ux']['debug_bundle_log_limit']), ctx.DEFAULT_CONFIG['ux']['debug_bundle_log_limit'], minimum=1)
+    monitor_config = config.setdefault('monitor', {})
+    if not isinstance(monitor_config, dict):
+        monitor_config = {}
+        config['monitor'] = monitor_config
+    default_monitor = ctx.DEFAULT_CONFIG['monitor']
+    monitor_config['ignore_attendance_rate_gate'] = ctx.coerce_bool(
+        monitor_config.get('ignore_attendance_rate_gate', default_monitor['ignore_attendance_rate_gate']),
+        default_monitor['ignore_attendance_rate_gate'],
+    )
     local_ui = config.setdefault('local_ui', {})
     if not isinstance(local_ui, dict):
         local_ui = {}
@@ -559,6 +568,19 @@ def get_poll_interval() -> float:
     except (TypeError, ValueError):
         return 1.0
     return max(interval, 0.1)
+
+
+def get_ignore_attendance_rate_gate(override: ctx.Optional[bool]=None) -> bool:
+    if override is not None:
+        return bool(override)
+    try:
+        monitor_config = ctx.CONFIG.get('monitor', {}) if isinstance(ctx.CONFIG, dict) else {}
+        if not isinstance(monitor_config, dict):
+            monitor_config = {}
+        default_value = ctx.DEFAULT_CONFIG['monitor']['ignore_attendance_rate_gate']
+        return ctx.coerce_bool(monitor_config.get('ignore_attendance_rate_gate', default_value), default_value)
+    except Exception:
+        return False
 
 
 def get_retry_limit() -> int:

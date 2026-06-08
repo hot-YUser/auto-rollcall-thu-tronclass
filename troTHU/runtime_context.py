@@ -259,6 +259,7 @@ try:
         format_found_code_banner,
         format_hhmm,
         format_radar_success_banner,
+        format_rollcall_start_message,
         format_rollcall_success_banner,
         format_time_value,
         is_within_any_schedule,
@@ -492,6 +493,7 @@ except ImportError:
         format_found_code_banner,
         format_hhmm,
         format_radar_success_banner,
+        format_rollcall_start_message,
         format_rollcall_success_banner,
         format_time_value,
         is_within_any_schedule,
@@ -636,6 +638,9 @@ DEFAULT_CONFIG = {
     "ux": {
         "pending_qr_ttl_seconds": 600,
         "debug_bundle_log_limit": 50,
+    },
+    "monitor": {
+        "ignore_attendance_rate_gate": False,
     },
     "local_ui": {
         "host": "127.0.0.1",
@@ -794,6 +799,8 @@ COMPLETED_QR_ROLLCALLS: Dict[str, bool] = {}
 
 QR_ASSIST_ATTEMPTS: Dict[str, float] = {}
 
+ACTIVE_TEACHER_QR_ASSISTS: Dict[str, Dict[str, Any]] = {}
+
 TEACHER_SESSION = None
 
 TEACHER_ENDPOINTS = None
@@ -854,6 +861,7 @@ _LEGACY_EXPORTS = {
     'app_blueprint_command': ('troTHU.cli_app', 'app_blueprint_command'),
     'app_main': ('troTHU.monitor_runtime', 'app_main'),
     'app_serve_command': ('troTHU.cli_app', 'app_serve_command'),
+    'announce_rollcall_start': ('troTHU.rollcall_runtime', 'announce_rollcall_start'),
     'bind_account': ('troTHU.cli_accounts', 'bind_account'),
     'binding_summary': ('troTHU.status_reports', 'binding_summary'),
     'bootstrap_config': ('troTHU.config_runtime', 'bootstrap_config'),
@@ -922,6 +930,7 @@ _LEGACY_EXPORTS = {
     'get_config_timezone': ('troTHU.config_runtime', 'get_config_timezone'),
     'get_config_timezone_name': ('troTHU.config_runtime', 'get_config_timezone_name'),
     'get_environment_credentials': ('troTHU.config_runtime', 'get_environment_credentials'),
+    'get_ignore_attendance_rate_gate': ('troTHU.config_runtime', 'get_ignore_attendance_rate_gate'),
     'get_http_timeout_seconds': ('troTHU.auth_runtime', 'get_http_timeout_seconds'),
     'get_login_retry_delay': ('troTHU.auth_runtime', 'get_login_retry_delay'),
     'get_notification_timeout_seconds': ('troTHU.auth_runtime', 'get_notification_timeout_seconds'),
@@ -936,6 +945,7 @@ _LEGACY_EXPORTS = {
     'get_teacher_config': ('troTHU.qr_teacher_runtime', 'get_teacher_config'),
     'get_verify_ssl': ('troTHU.auth_runtime', 'get_verify_ssl'),
     'handle_account_command': ('troTHU.cli_accounts', 'handle_account_command'),
+    'handle_rollcall_decision': ('troTHU.rollcall_runtime', 'handle_rollcall_decision'),
     'has_real_credential': ('troTHU.config_runtime', 'has_real_credential'),
     'has_session_cookie': ('troTHU.auth_runtime', 'has_session_cookie'),
     'init_command': ('troTHU.cli_system', 'init_command'),
@@ -991,6 +1001,8 @@ _LEGACY_EXPORTS = {
     'provider_report': ('troTHU.status_reports', 'provider_report'),
     'provider_show_command': ('troTHU.cli_provider', 'provider_show_command'),
     'provider_summary': ('troTHU.cli_provider', 'provider_summary'),
+    'poll_rollcall_decision': ('troTHU.rollcall_runtime', 'poll_rollcall_decision'),
+    'prepare_teacher_assisted_qr': ('troTHU.qr_teacher_runtime', 'prepare_teacher_assisted_qr'),
     'qr_command': ('troTHU.cli_qr', 'qr_command'),
     'qr_fanout_command': ('troTHU.qr_runtime', 'qr_fanout_command'),
     'qr_fanout_result': ('troTHU.qr_runtime', 'qr_fanout_result'),
@@ -1008,6 +1020,7 @@ _LEGACY_EXPORTS = {
     'report_rollcall_progress': ('troTHU.rollcall_progress', 'report_rollcall_progress'),
     'fetch_rollcall_progress': ('troTHU.rollcall_progress', 'fetch_rollcall_progress'),
     'format_rollcall_progress_text': ('troTHU.rollcall_progress', 'format_rollcall_progress_text'),
+    'format_attendance_rate_text': ('troTHU.rollcall_progress', 'format_attendance_rate_text'),
     'remember_rollcall_progress': ('troTHU.rollcall_progress', 'remember_rollcall_progress'),
     'clear_rollcall_progress': ('troTHU.rollcall_progress', 'clear_rollcall_progress'),
     'summarize_rollcall_progress': ('troTHU.rollcall_progress', 'summarize_rollcall_progress'),
@@ -1064,8 +1077,10 @@ _LEGACY_EXPORTS = {
     'sleep_or_shutdown': ('troTHU.monitor_runtime', 'sleep_or_shutdown'),
     'status_print': ('troTHU.logging_runtime', 'status_print'),
     'status_report': ('troTHU.status_reports', 'status_report'),
+    'stop_prepared_teacher_qr': ('troTHU.qr_teacher_runtime', 'stop_prepared_teacher_qr'),
     'submit_qr_payload': ('troTHU.qr_runtime', 'submit_qr_payload'),
     'submit_qr_with_data': ('troTHU.qr_runtime', 'submit_qr_with_data'),
+    'submit_prepared_teacher_qr': ('troTHU.qr_teacher_runtime', 'submit_prepared_teacher_qr'),
     'teacher_assist_configured': ('troTHU.qr_teacher_runtime', 'teacher_assist_configured'),
     'teacher_assist_report': ('troTHU.status_reports', 'teacher_assist_report'),
     'teacher_command': ('troTHU.cli_teacher', 'teacher_command'),

@@ -52,7 +52,21 @@ class SimpleConfigTest(unittest.TestCase):
         self.assertEqual(config["account"]["user"], "S1")
         self.assertEqual(config["provider"]["current"], "thu")
         self.assertEqual(config["operating"][6]["range"], ["09:10", "12:00"])
-        self.assertFalse(config["operating"][0]["enable"])
+
+    def test_advanced_monitor_ignore_gate_is_preserved(self) -> None:
+        original = copy.deepcopy(tron.CONFIG)
+        try:
+            config = tron.normalize_config({"monitor": {"ignore_attendance_rate_gate": True}})
+            tron.CONFIG.clear()
+            tron.CONFIG.update(config)
+
+            self.assertTrue(config["monitor"]["ignore_attendance_rate_gate"])
+            self.assertTrue(tron.get_ignore_attendance_rate_gate())
+            self.assertFalse(tron.get_ignore_attendance_rate_gate(False))
+        finally:
+            tron.CONFIG.clear()
+            tron.CONFIG.update(original)
+        self.assertTrue(config["operating"][0]["enable"])
 
     def test_placeholders_are_empty_and_rendered_without_comments(self) -> None:
         parsed = tron.parse_simple_config_text("now:(填帳號或 class A)\naccount:\n  user:(帳號1)\n  passwd:(密碼1)\n  school:THU\n")

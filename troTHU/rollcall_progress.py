@@ -80,10 +80,14 @@ def summarize_rollcall_progress(student_rollcalls: Any, answers: Any, my_user_no
     my_present = bool(_present_status(my_status))
     progress_present = total > 0 and present == total
     progress_status_present = bool(_present_status(rollcall_status))
+    present_rate_known = total > 0
+    present_rate_percent = (float(present) / float(total) * 100.0) if present_rate_known else None
     return {
         "total": total,
         "present": present,
         "answered": answered,
+        "present_rate_known": present_rate_known,
+        "present_rate_percent": present_rate_percent,
         "rollcall_status": rollcall_status,
         "my_user_no": str(my_user_no or ""),
         "my_status": my_status,
@@ -105,6 +109,18 @@ def progress_status_label(summary: Mapping[str, Any]) -> str:
     if _present_status(summary.get("rollcall_status")):
         return "已確認 on_call_fine，個人狀態未能匹配確認"
     return "個人狀態未能確認"
+
+
+def format_attendance_rate_text(rollcall_id: Any, summary: Mapping[str, Any]) -> str:
+    total = int(summary.get("total") or 0)
+    present = int(summary.get("present") or 0)
+    if total <= 0 or not summary.get("present_rate_known"):
+        return "點名 #{} 簽到率未知".format(rollcall_id)
+    try:
+        rate = float(summary.get("present_rate_percent") or 0.0)
+    except (TypeError, ValueError):
+        rate = 0.0
+    return "點名 #{} 簽到率 {:.1f}%（{}/{}）".format(rollcall_id, rate, present, total)
 
 
 def format_rollcall_progress_text(
@@ -136,6 +152,7 @@ def _with_progress_text(rollcall_id: Any, summary: Dict[str, Any]) -> Dict[str, 
         summary,
         include_personal_status=False,
     )
+    summary["attendance_rate_text"] = format_attendance_rate_text(rollcall_id, summary)
     summary["monitor_status"] = "on_call_fine" if summary.get("confirmed_present") else ""
     return summary
 
@@ -368,6 +385,7 @@ async def report_rollcall_progress(
             include_personal_status=False,
         )
         summary["monitor_status"] = "on_call_fine" if summary.get("confirmed_present") else ""
+        summary["attendance_rate_text"] = ctx.format_attendance_rate_text(rollcall_id, summary)
         if summary.get("confirmed_present"):
             remember_rollcall_progress(summary)
         if log_output:

@@ -1315,7 +1315,7 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
             patch.object(tron, "login", AsyncMock(side_effect=fake_login)) as login_mock,
             patch.object(
                 tron,
-                "check_rollcall",
+                "poll_rollcall_decision",
                 AsyncMock(side_effect=tron_http.UnauthorizedError("expired")),
             ),
             patch.object(tron, "has_session_cookie", return_value=True),
@@ -1346,7 +1346,7 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
             ),
             patch.object(
                 tron,
-                "check_rollcall",
+                "poll_rollcall_decision",
                 AsyncMock(side_effect=tron_http.UnexpectedResponseError("boom")),
             ),
             patch.object(tron, "has_session_cookie", return_value=True),
@@ -1371,9 +1371,9 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
         session.cookie_jar = MagicMock()
         shutdown_event = asyncio.Event()
 
-        async def fake_check_rollcall(_session, _cnt):
+        async def fake_poll_rollcall(_session, _cnt):
             shutdown_event.set()
-            return "not call"
+            return {"status": "not_call", "rollcall": None, "rollcall_type": "", "message": ""}
 
         login_results = [
             make_login_result("transient_error", error="timeout"),
@@ -1393,7 +1393,7 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
             ) as login_mock,
             patch.object(tron, "has_session_cookie", side_effect=[False, True]),
             patch.object(tron, "get_login_retry_delay", return_value=0.0),
-            patch.object(tron, "check_rollcall", AsyncMock(side_effect=fake_check_rollcall)),
+            patch.object(tron, "poll_rollcall_decision", AsyncMock(side_effect=fake_poll_rollcall)),
             patch.object(
                 tron,
                 "get_schedule_for_day",
@@ -1416,19 +1416,30 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
         shutdown_event = asyncio.Event()
         poll_count = 0
 
-        async def fake_check_rollcall(_session, _cnt):
+        async def fake_poll_rollcall(_session, _cnt):
             nonlocal poll_count
             poll_count += 1
             if poll_count == 1:
-                tron.LAST_ROLLCALL_PROGRESS.update(
-                    {
-                        "rollcall_id": "30055",
-                        "detail": "點名 #30055 進度：已簽到 1/1 人",
-                        "status": "on_call_fine",
-                    }
-                )
-                return "is_qrcode"
-            return "not call"
+                return {
+                    "status": "unsupported_qrcode",
+                    "rollcall": {"rollcall_id": "30055", "is_qrcode": True},
+                    "rollcall_type": "qrcode",
+                    "message": "偵測到 QR Code 點名，請貼上 QR 內容後手動送出。",
+                }
+            return {"status": "not_call", "rollcall": None, "rollcall_type": "", "message": ""}
+
+        async def fake_progress(_session, _rollcall_id):
+            return {
+                "ok": True,
+                "rollcall_id": "30055",
+                "total": 1,
+                "present": 1,
+                "answered": 1,
+                "present_rate_known": True,
+                "present_rate_percent": 100.0,
+                "attendance_rate_text": "點名 #30055 簽到率 100.0%（1/1）",
+                "monitor_status": "on_call_fine",
+            }
 
         async def fake_sleep(_event, _seconds):
             if poll_count >= 2:
@@ -1441,7 +1452,9 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
                 AsyncMock(return_value=make_login_result("success", final_url="https://ilearn.thu.edu.tw/home")),
             ),
             patch.object(tron, "has_session_cookie", return_value=True),
-            patch.object(tron, "check_rollcall", AsyncMock(side_effect=fake_check_rollcall)),
+            patch.object(tron, "poll_rollcall_decision", AsyncMock(side_effect=fake_poll_rollcall)),
+            patch.object(tron, "handle_rollcall_decision", AsyncMock(return_value="is_qrcode")),
+            patch("troTHU.monitor_runtime._fetch_monitor_rollcall_progress", AsyncMock(side_effect=fake_progress)),
             patch.object(
                 tron,
                 "get_schedule_for_day",
@@ -1456,10 +1469,364 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
             await tron.monitor_loop(session, shutdown_event)
 
         legacy_lines = [call.args[0] for call in status_print.call_args_list if call.args]
-        self.assertTrue(any("點名 #30055 進度：已簽到 1/1 人 · on_call_fine" in line for line in legacy_lines))
+        self.assertTrue(any("點名 #30055 簽到率 100.0%（1/1） · on_call_fine" in line for line in legacy_lines))
         self.assertTrue(any("目前無點名" in line for line in legacy_lines))
         self.assertEqual(tron.MONITOR_STATUS.get("detail"), "目前無點名")
         self.assertEqual(tron.MONITOR_STATUS.get("rollcall_status"), "")
+
+    async def test_monitor_loop_keeps_attendance_rate_when_poll_turns_on_call_fine(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = MagicMock()
+        shutdown_event = asyncio.Event()
+        poll_count = 0
+
+        async def fake_poll_rollcall(_session, _cnt):
+            nonlocal poll_count
+            poll_count += 1
+            if poll_count == 1:
+                return {
+                    "status": "unsupported_qrcode",
+                    "rollcall": {"rollcall_id": "30063", "is_qrcode": True},
+                    "rollcall_type": "qrcode",
+                    "message": "偵測到 QR Code 點名，請貼上 QR 內容後手動送出。",
+                }
+            return {"status": "on_call_fine", "rollcall": None, "rollcall_type": "", "message": ""}
+
+        async def fake_progress(_session, rollcall_id):
+            return {
+                "ok": True,
+                "rollcall_id": rollcall_id,
+                "total": 16,
+                "present": 5,
+                "answered": 5,
+                "present_rate_known": True,
+                "present_rate_percent": 31.25,
+                "attendance_rate_text": "點名 #{} 簽到率 31.2%（5/16）".format(rollcall_id),
+                "monitor_status": "on_call_fine",
+            }
+
+        async def fake_sleep(_event, _seconds):
+            if poll_count >= 2:
+                shutdown_event.set()
+
+        progress_mock = AsyncMock(side_effect=fake_progress)
+        with (
+            patch.object(tron, "login", AsyncMock(return_value=make_login_result("success"))),
+            patch.object(tron, "has_session_cookie", return_value=True),
+            patch.object(tron, "poll_rollcall_decision", AsyncMock(side_effect=fake_poll_rollcall)),
+            patch.object(tron, "teacher_assist_configured", return_value=True),
+            patch.object(tron, "prepare_teacher_assisted_qr", AsyncMock(return_value={"ok": True, "status": "prepared", "student_rollcall_id": "30063"})),
+            patch.object(tron, "handle_rollcall_decision", AsyncMock(return_value="is_qrcode")),
+            patch.object(tron, "announce_rollcall_start", AsyncMock()),
+            patch("troTHU.monitor_runtime._fetch_monitor_rollcall_progress", progress_mock),
+            patch.object(tron, "get_schedule_for_day", return_value={"enable": True, "range": ["00:00", "23:59"]}),
+            patch.object(tron, "parse_schedule_range", return_value=(dt_time(0, 0), dt_time(23, 59))),
+            patch.object(tron, "sleep_or_shutdown", AsyncMock(side_effect=fake_sleep)),
+            patch.object(tron, "status_print") as status_print,
+            patch.object(tron, "log_print"),
+            patch.object(tron, "mes", AsyncMock()),
+        ):
+            await tron.monitor_loop(session, shutdown_event, ignore_attendance_rate_gate=True)
+
+        self.assertEqual([call.args[1] for call in progress_mock.call_args_list], ["30063", "30063"])
+        legacy_lines = [call.args[0] for call in status_print.call_args_list if call.args]
+        self.assertTrue(any("點名 #30063 簽到率 31.2%（5/16） · on_call_fine" in line for line in legacy_lines))
+        self.assertFalse(any("on_call_fine · on_call_fine" in line for line in legacy_lines))
+        self.assertEqual(tron.MONITOR_STATUS.get("detail"), "點名 #30063 簽到率 31.2%（5/16）")
+        self.assertEqual(tron.MONITOR_STATUS.get("rollcall_status"), "on_call_fine")
+
+    async def test_monitor_loop_startup_idle_poll_interval_is_one_second(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = MagicMock()
+        shutdown_event = asyncio.Event()
+        sleep_seconds = []
+
+        async def fake_sleep(_event, seconds):
+            sleep_seconds.append(seconds)
+            shutdown_event.set()
+
+        with (
+            patch.object(tron, "login", AsyncMock(return_value=make_login_result("success"))),
+            patch.object(tron, "has_session_cookie", return_value=True),
+            patch.object(tron, "poll_rollcall_decision", AsyncMock(return_value={"status": "not_call", "rollcall": None, "rollcall_type": "", "message": ""})),
+            patch.object(tron, "get_schedule_for_day", return_value={"enable": True, "range": ["00:00", "23:59"]}),
+            patch.object(tron, "parse_schedule_range", return_value=(dt_time(0, 0), dt_time(23, 59))),
+            patch.object(tron, "sleep_or_shutdown", AsyncMock(side_effect=fake_sleep)),
+            patch.object(tron, "log_print"),
+            patch.object(tron, "mes", AsyncMock()),
+        ):
+            await tron.monitor_loop(session, shutdown_event)
+
+        self.assertEqual(sleep_seconds[-1], 1.0)
+
+    async def test_monitor_loop_idle_poll_interval_is_five_seconds_after_startup_window(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = MagicMock()
+        shutdown_event = asyncio.Event()
+        sleep_seconds = []
+
+        async def fake_sleep(_event, seconds):
+            sleep_seconds.append(seconds)
+            shutdown_event.set()
+
+        with (
+            patch("troTHU.monitor_runtime.MONITOR_STARTUP_FAST_WINDOW_SECONDS", 0.0),
+            patch.object(tron, "login", AsyncMock(return_value=make_login_result("success"))),
+            patch.object(tron, "has_session_cookie", return_value=True),
+            patch.object(tron, "poll_rollcall_decision", AsyncMock(return_value={"status": "not_call", "rollcall": None, "rollcall_type": "", "message": ""})),
+            patch.object(tron, "get_schedule_for_day", return_value={"enable": True, "range": ["00:00", "23:59"]}),
+            patch.object(tron, "parse_schedule_range", return_value=(dt_time(0, 0), dt_time(23, 59))),
+            patch.object(tron, "sleep_or_shutdown", AsyncMock(side_effect=fake_sleep)),
+            patch.object(tron, "log_print"),
+            patch.object(tron, "mes", AsyncMock()),
+        ):
+            await tron.monitor_loop(session, shutdown_event)
+
+        self.assertEqual(sleep_seconds[-1], 5.0)
+
+    async def test_monitor_loop_idle_poll_returns_to_five_after_rollcall_flow_ends(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = MagicMock()
+        shutdown_event = asyncio.Event()
+        sleep_seconds = []
+        poll_count = 0
+
+        async def fake_poll(_session, _cnt):
+            nonlocal poll_count
+            poll_count += 1
+            if poll_count == 1:
+                return {"status": "is_number", "rollcall": {"rollcall_id": "42", "is_number": True}, "rollcall_type": "number", "message": ""}
+            return {"status": "not_call", "rollcall": None, "rollcall_type": "", "message": ""}
+
+        async def fake_progress(_session, _rollcall_id):
+            return {
+                "ok": True,
+                "rollcall_id": "42",
+                "total": 20,
+                "present": 3,
+                "present_rate_known": True,
+                "present_rate_percent": 15.0,
+                "attendance_rate_text": "點名 #42 簽到率 15.0%（3/20）",
+                "monitor_status": "",
+            }
+
+        async def fake_sleep(_event, seconds):
+            sleep_seconds.append(seconds)
+            if poll_count >= 2:
+                shutdown_event.set()
+
+        with (
+            patch.object(tron, "login", AsyncMock(return_value=make_login_result("success"))),
+            patch.object(tron, "has_session_cookie", return_value=True),
+            patch.object(tron, "poll_rollcall_decision", AsyncMock(side_effect=fake_poll)),
+            patch.object(tron, "handle_rollcall_decision", AsyncMock(return_value="is_number")),
+            patch("troTHU.monitor_runtime._fetch_monitor_rollcall_progress", AsyncMock(side_effect=fake_progress)),
+            patch.object(tron, "get_schedule_for_day", return_value={"enable": True, "range": ["00:00", "23:59"]}),
+            patch.object(tron, "parse_schedule_range", return_value=(dt_time(0, 0), dt_time(23, 59))),
+            patch.object(tron, "sleep_or_shutdown", AsyncMock(side_effect=fake_sleep)),
+            patch.object(tron, "log_print"),
+            patch.object(tron, "mes", AsyncMock()),
+        ):
+            await tron.monitor_loop(session, shutdown_event)
+
+        self.assertEqual(sleep_seconds, [0.5, 5.0])
+
+    async def test_monitor_loop_waits_below_attendance_rate_gate(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = MagicMock()
+        shutdown_event = asyncio.Event()
+        sleep_seconds = []
+        handle = AsyncMock(return_value="is_number")
+
+        async def fake_sleep(_event, seconds):
+            sleep_seconds.append(seconds)
+            shutdown_event.set()
+
+        async def fake_progress(_session, _rollcall_id):
+            return {
+                "ok": True,
+                "rollcall_id": "42",
+                "total": 1000,
+                "present": 149,
+                "present_rate_known": True,
+                "present_rate_percent": 14.9,
+                "attendance_rate_text": "點名 #42 簽到率 14.9%（149/1000）",
+                "monitor_status": "",
+            }
+
+        with (
+            patch.object(tron, "login", AsyncMock(return_value=make_login_result("success"))),
+            patch.object(tron, "has_session_cookie", return_value=True),
+            patch.object(tron, "poll_rollcall_decision", AsyncMock(return_value={"status": "is_number", "rollcall": {"rollcall_id": "42", "is_number": True}, "rollcall_type": "number", "message": ""})),
+            patch.object(tron, "handle_rollcall_decision", handle),
+            patch("troTHU.monitor_runtime._fetch_monitor_rollcall_progress", AsyncMock(side_effect=fake_progress)),
+            patch.object(tron, "get_schedule_for_day", return_value={"enable": True, "range": ["00:00", "23:59"]}),
+            patch.object(tron, "parse_schedule_range", return_value=(dt_time(0, 0), dt_time(23, 59))),
+            patch.object(tron, "sleep_or_shutdown", AsyncMock(side_effect=fake_sleep)),
+            patch.object(tron, "log_print"),
+            patch.object(tron, "mes", AsyncMock()),
+        ):
+            await tron.monitor_loop(session, shutdown_event)
+
+        handle.assert_not_awaited()
+        self.assertEqual(sleep_seconds[-1], 0.5)
+
+    async def test_monitor_loop_starts_at_equal_attendance_rate_gate(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = MagicMock()
+        shutdown_event = asyncio.Event()
+        handle = AsyncMock(return_value="is_number")
+
+        async def fake_sleep(_event, _seconds):
+            shutdown_event.set()
+
+        async def fake_progress(_session, _rollcall_id):
+            return {
+                "ok": True,
+                "rollcall_id": "42",
+                "total": 20,
+                "present": 3,
+                "present_rate_known": True,
+                "present_rate_percent": 15.0,
+                "attendance_rate_text": "點名 #42 簽到率 15.0%（3/20）",
+                "monitor_status": "",
+            }
+
+        with (
+            patch.object(tron, "login", AsyncMock(return_value=make_login_result("success"))),
+            patch.object(tron, "has_session_cookie", return_value=True),
+            patch.object(tron, "poll_rollcall_decision", AsyncMock(return_value={"status": "is_number", "rollcall": {"rollcall_id": "42", "is_number": True}, "rollcall_type": "number", "message": ""})),
+            patch.object(tron, "handle_rollcall_decision", handle),
+            patch("troTHU.monitor_runtime._fetch_monitor_rollcall_progress", AsyncMock(side_effect=fake_progress)),
+            patch.object(tron, "get_schedule_for_day", return_value={"enable": True, "range": ["00:00", "23:59"]}),
+            patch.object(tron, "parse_schedule_range", return_value=(dt_time(0, 0), dt_time(23, 59))),
+            patch.object(tron, "sleep_or_shutdown", AsyncMock(side_effect=fake_sleep)),
+            patch.object(tron, "log_print"),
+            patch.object(tron, "mes", AsyncMock()),
+        ):
+            await tron.monitor_loop(session, shutdown_event)
+
+        handle.assert_awaited_once()
+
+    async def test_monitor_loop_ignore_gate_starts_with_unknown_rate(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = MagicMock()
+        shutdown_event = asyncio.Event()
+        handle = AsyncMock(return_value="is_number")
+
+        async def fake_sleep(_event, _seconds):
+            shutdown_event.set()
+
+        async def fake_progress(_session, _rollcall_id):
+            return {"ok": True, "rollcall_id": "42", "total": 0, "present": 0, "present_rate_known": False}
+
+        with (
+            patch.object(tron, "login", AsyncMock(return_value=make_login_result("success"))),
+            patch.object(tron, "has_session_cookie", return_value=True),
+            patch.object(tron, "poll_rollcall_decision", AsyncMock(return_value={"status": "is_number", "rollcall": {"rollcall_id": "42", "is_number": True}, "rollcall_type": "number", "message": ""})),
+            patch.object(tron, "handle_rollcall_decision", handle),
+            patch("troTHU.monitor_runtime._fetch_monitor_rollcall_progress", AsyncMock(side_effect=fake_progress)),
+            patch.object(tron, "get_schedule_for_day", return_value={"enable": True, "range": ["00:00", "23:59"]}),
+            patch.object(tron, "parse_schedule_range", return_value=(dt_time(0, 0), dt_time(23, 59))),
+            patch.object(tron, "sleep_or_shutdown", AsyncMock(side_effect=fake_sleep)),
+            patch.object(tron, "log_print"),
+            patch.object(tron, "mes", AsyncMock()),
+        ):
+            await tron.monitor_loop(session, shutdown_event, ignore_attendance_rate_gate=True)
+
+        handle.assert_awaited_once()
+
+    async def test_monitor_loop_qr_prepares_before_gate_without_submit(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = MagicMock()
+        shutdown_event = asyncio.Event()
+        prepare = AsyncMock(return_value={"ok": True, "status": "prepared", "student_rollcall_id": "77"})
+        handle = AsyncMock(return_value="is_qrcode")
+
+        async def fake_sleep(_event, _seconds):
+            shutdown_event.set()
+
+        async def fake_progress(_session, _rollcall_id):
+            return {
+                "ok": True,
+                "rollcall_id": "77",
+                "total": 10,
+                "present": 0,
+                "present_rate_known": True,
+                "present_rate_percent": 0.0,
+                "attendance_rate_text": "點名 #77 簽到率 0.0%（0/10）",
+                "monitor_status": "",
+            }
+
+        with (
+            patch.object(tron, "login", AsyncMock(return_value=make_login_result("success"))),
+            patch.object(tron, "has_session_cookie", return_value=True),
+            patch.object(tron, "poll_rollcall_decision", AsyncMock(return_value={"status": "unsupported_qrcode", "rollcall": {"rollcall_id": "77", "is_qrcode": True}, "rollcall_type": "qrcode", "message": "QR"})),
+            patch.object(tron, "teacher_assist_configured", return_value=True),
+            patch.object(tron, "prepare_teacher_assisted_qr", prepare),
+            patch.object(tron, "handle_rollcall_decision", handle),
+            patch.object(tron, "announce_rollcall_start", AsyncMock()),
+            patch("troTHU.monitor_runtime._fetch_monitor_rollcall_progress", AsyncMock(side_effect=fake_progress)),
+            patch.object(tron, "get_schedule_for_day", return_value={"enable": True, "range": ["00:00", "23:59"]}),
+            patch.object(tron, "parse_schedule_range", return_value=(dt_time(0, 0), dt_time(23, 59))),
+            patch.object(tron, "sleep_or_shutdown", AsyncMock(side_effect=fake_sleep)),
+            patch.object(tron, "log_print"),
+            patch.object(tron, "mes", AsyncMock()),
+        ):
+            await tron.monitor_loop(session, shutdown_event)
+
+        prepare.assert_awaited_once()
+        handle.assert_not_awaited()
+
+    async def test_monitor_loop_stops_prepared_qr_when_rollcall_ends(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = MagicMock()
+        shutdown_event = asyncio.Event()
+        poll_count = 0
+        stop_qr = AsyncMock(return_value={"ok": True, "status": "stopped", "stopped": 1})
+
+        async def fake_poll(_session, _cnt):
+            nonlocal poll_count
+            poll_count += 1
+            if poll_count == 1:
+                return {"status": "unsupported_qrcode", "rollcall": {"rollcall_id": "77", "is_qrcode": True}, "rollcall_type": "qrcode", "message": "QR"}
+            return {"status": "not_call", "rollcall": None, "rollcall_type": "", "message": ""}
+
+        async def fake_sleep(_event, _seconds):
+            if poll_count >= 2:
+                shutdown_event.set()
+
+        async def fake_progress(_session, _rollcall_id):
+            return {
+                "ok": True,
+                "rollcall_id": "77",
+                "total": 10,
+                "present": 0,
+                "present_rate_known": True,
+                "present_rate_percent": 0.0,
+                "attendance_rate_text": "點名 #77 簽到率 0.0%（0/10）",
+                "monitor_status": "",
+            }
+
+        with (
+            patch.object(tron, "login", AsyncMock(return_value=make_login_result("success"))),
+            patch.object(tron, "has_session_cookie", return_value=True),
+            patch.object(tron, "poll_rollcall_decision", AsyncMock(side_effect=fake_poll)),
+            patch.object(tron, "teacher_assist_configured", return_value=True),
+            patch.object(tron, "prepare_teacher_assisted_qr", AsyncMock(return_value={"ok": True, "status": "prepared", "student_rollcall_id": "77"})),
+            patch.object(tron, "stop_prepared_teacher_qr", stop_qr),
+            patch.object(tron, "handle_rollcall_decision", AsyncMock(return_value="is_qrcode")),
+            patch.object(tron, "announce_rollcall_start", AsyncMock()),
+            patch("troTHU.monitor_runtime._fetch_monitor_rollcall_progress", AsyncMock(side_effect=fake_progress)),
+            patch.object(tron, "get_schedule_for_day", return_value={"enable": True, "range": ["00:00", "23:59"]}),
+            patch.object(tron, "parse_schedule_range", return_value=(dt_time(0, 0), dt_time(23, 59))),
+            patch.object(tron, "sleep_or_shutdown", AsyncMock(side_effect=fake_sleep)),
+            patch.object(tron, "log_print"),
+            patch.object(tron, "mes", AsyncMock()),
+        ):
+            await tron.monitor_loop(session, shutdown_event)
+
+        stop_qr.assert_awaited_once_with("77")
 
     async def test_monitor_loop_does_not_dense_retry_rejected_login(self) -> None:
         session = MagicMock()
@@ -1557,9 +1924,9 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
         session.cookie_jar = MagicMock()
         shutdown_event = asyncio.Event()
 
-        async def fake_check_rollcall(_session, _cnt):
+        async def fake_poll_rollcall(_session, _cnt):
             shutdown_event.set()
-            return "not call"
+            return {"status": "not_call", "rollcall": None, "rollcall_type": "", "message": ""}
 
         async def fake_login(_session):
             result = make_login_result("success", final_url="https://ilearn.thu.edu.tw/home")
@@ -1569,7 +1936,7 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
         with (
             patch.object(tron, "login", AsyncMock(side_effect=fake_login)) as login_mock,
             patch.object(tron, "has_session_cookie", side_effect=[False, True]),
-            patch.object(tron, "check_rollcall", AsyncMock(side_effect=fake_check_rollcall)),
+            patch.object(tron, "poll_rollcall_decision", AsyncMock(side_effect=fake_poll_rollcall)),
             patch.object(
                 tron,
                 "get_schedule_for_day",
@@ -1674,6 +2041,35 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any(item.startswith("\r") and item.endswith("\r") for item in writes))
         self.assertIn("[14:03:27] 背景訊息\n", writes)
         self.assertGreaterEqual(flush_mock.call_count, 3)
+
+    async def test_console_output_interactive_clears_status_when_width_is_unknown(self) -> None:
+        previous_interactive = tron.CONSOLE_INTERACTIVE
+        previous_status = dict(tron.MONITOR_STATUS)
+        previous_width = tron.STATUS_LINE_WIDTH
+        previous_pause_depth = tron.STATUS_LINE_PAUSE_DEPTH
+        fixed_now = tron.datetime(2026, 1, 2, 14, 3, 27)
+        tron.CONSOLE_INTERACTIVE = True
+        tron.STATUS_LINE_PAUSE_DEPTH = 0
+        tron.reset_monitor_status()
+        tron.STATUS_LINE_WIDTH = 0
+        try:
+            with (
+                patch.object(tron, "current_datetime", return_value=fixed_now),
+                patch("troTHU.logging_runtime.shutil.get_terminal_size", return_value=os.terminal_size((40, 24))),
+                patch.object(tron.sys.stdout, "write") as write_mock,
+                patch.object(tron.sys.stdout, "flush"),
+            ):
+                tron.log_print("已載入快取 session，先嘗試直接監控。")
+        finally:
+            tron.CONSOLE_INTERACTIVE = previous_interactive
+            tron.MONITOR_STATUS.clear()
+            tron.MONITOR_STATUS.update(previous_status)
+            tron.STATUS_LINE_WIDTH = previous_width
+            tron.STATUS_LINE_PAUSE_DEPTH = previous_pause_depth
+
+        writes = [call.args[0] for call in write_mock.call_args_list]
+        self.assertEqual(writes[0], "\r" + " " * 40 + "\r")
+        self.assertIn("[14:03:27] 已載入快取 session，先嘗試直接監控。\n", writes)
 
     async def test_console_output_interactive_timestamps_each_multiline_event_line(self) -> None:
         previous_interactive = tron.CONSOLE_INTERACTIVE

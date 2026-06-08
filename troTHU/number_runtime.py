@@ -55,7 +55,7 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
     direct_read_attempted = False
     direct_read_status = ''
 
-    async def try_number_code(session: ctx.aiohttp.ClientSession, try_code: int) -> str:
+    async def try_number_code(session: ctx.aiohttp.ClientSession, try_code: int, *, method: str='brute_force') -> str:
         nonlocal request_count, found_code, submitted_unconfirmed_code, fatal_error, latest_try_code, last_transient_error
         payload = {'deviceId': device, 'numberCode': '{:04d}'.format(try_code)}
         for attempt in range(request_retries):
@@ -101,7 +101,7 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
                         banner = ctx.format_rollcall_success_banner(
                             ctx.AttendanceType.NUMBER,
                             rcid,
-                            method='number',
+                            method=method,
                             detail='on_call_fine',
                             code=found_code,
                         )
@@ -160,7 +160,7 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
             ctx.log(event='number_direct_lookup', path=ctx.number_log_path(rcid), status='no_code', rollcall_id=rcid, rollcall_type='number', message='student_rollcalls 未提供可用 number_code，改用暴力猜碼。', extra={'source': lookup.source, 'rollcall_status': lookup.status})
             return False
         ctx.log(event='number_direct_lookup', path=ctx.number_log_path(rcid), status='code_found', rollcall_id=rcid, rollcall_type='number', message='直接讀碼成功，單發提交點名碼。', extra={'source': lookup.source, 'rollcall_status': lookup.status})
-        submit_result = await try_number_code(session, int(lookup.code))
+        submit_result = await try_number_code(session, int(lookup.code), method='direct_read')
         direct_read_status = 'success' if found_code != 'NA' else 'submit_{}'.format(submit_result)
         return found_code != 'NA'
 
@@ -182,7 +182,7 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
                 batch_size = max(1, min(current_concurrency, ctx.NUMBER_CODE_LIMIT - next_code))
                 batch = list(range(next_code, next_code + batch_size))
                 next_code += batch_size
-                results = await ctx.asyncio.gather(*[try_number_code(session, candidate) for candidate in batch])
+                results = await ctx.asyncio.gather(*[try_number_code(session, candidate, method='brute_force') for candidate in batch])
                 transient_count = sum((1 for result in results if result == 'transient'))
                 if fatal_error is not None or stop_event.is_set():
                     break

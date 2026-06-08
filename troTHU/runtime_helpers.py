@@ -553,8 +553,6 @@ def format_rollcall_success_banner(
     code_text = normalize_text(code)
 
     rows = [title]
-    if type_text == "number" and code_text:
-        rows.extend(render_big_digits(code_text).splitlines())
     rows.extend([
         "Rollcall: {}".format(rollcall_text),
         "Method: {}".format(method_text),
@@ -563,6 +561,29 @@ def format_rollcall_success_banner(
         rows.append("Code: {}".format(code_text))
     rows.append("{}: {}".format(result_label, detail_text))
     return _format_banner_box(rows)
+
+
+def format_rollcall_start_message(
+    attendance_type: Any,
+    rollcall_id: Any = "",
+    detail: Any = "",
+    method: Any = "",
+) -> str:
+    type_text = _attendance_type_text(attendance_type)
+    command_by_type = {
+        "number": "number",
+        "radar": "radar",
+        "qrcode": "qrcode",
+    }
+    command = command_by_type.get(type_text, type_text or "rollcall")
+    lines = ["start {}".format(command), "  id:{}".format(normalize_text(rollcall_id) or "unknown")]
+    method_text = normalize_text(method)
+    if method_text:
+        lines.append("  method:{}".format(method_text))
+    detail_text = normalize_text(detail)
+    if detail_text:
+        lines.append("  {}".format(detail_text))
+    return "\n".join(lines)
 
 
 def format_found_code_banner(code: str) -> str:

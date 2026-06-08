@@ -18,6 +18,7 @@ def build_arg_parser() -> ctx.argparse.ArgumentParser:
     run_mode = run_parser.add_mutually_exclusive_group()
     run_mode.add_argument('--classic', action='store_true', help='相容舊參數；仍使用新版單視窗監控輸出')
     run_mode.add_argument('--no-input', action='store_true', help='只輸出監控事件，不監聽任意鍵開啟 config.yaml')
+    run_parser.add_argument('--ignore-attendance-rate-gate', action='store_true', help='忽略 15%% 簽到率門檻，偵測到點名後立即自動簽到')
     init_parser = subcommands.add_parser('init', help='run first-time setup wizard')
     init_parser.add_argument('--profile', default='', help='profile name to create or update')
     init_parser.add_argument('--user', default='', help='student id')

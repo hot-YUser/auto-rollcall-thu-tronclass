@@ -34,11 +34,14 @@ class TronCliSmokeTest(unittest.TestCase):
             self.assertEqual(tron.main(["run"]), 0)
             self.assertEqual(tron.main(["run", "--classic"]), 0)
             self.assertEqual(tron.main(["run", "--no-input"]), 0)
+            self.assertEqual(tron.main(["run", "--ignore-attendance-rate-gate"]), 0)
 
         self.assertEqual(runner.call_args_list[0].kwargs["no_input"], False)
         self.assertEqual(runner.call_args_list[1].kwargs["no_input"], False)
         self.assertEqual(runner.call_args_list[2].kwargs["no_input"], False)
         self.assertEqual(runner.call_args_list[3].kwargs["no_input"], True)
+        self.assertIsNone(runner.call_args_list[1].kwargs["ignore_attendance_rate_gate"])
+        self.assertTrue(runner.call_args_list[4].kwargs["ignore_attendance_rate_gate"])
 
     def test_control_command_is_removed(self) -> None:
         with self.assertRaises(SystemExit):

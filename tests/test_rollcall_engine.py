@@ -41,6 +41,7 @@ class RollcallEngineTest(unittest.TestCase):
         self.assertEqual(qr_decision.attendance_type, AttendanceType.QRCODE)
         self.assertEqual(unknown_decision.action, RollcallAction.REPORT_UNSUPPORTED)
         self.assertEqual(fine_decision.status, "on_call_fine")
+        self.assertEqual(fine_decision.rollcall, {"status": "on_call_fine", "rollcall_id": 11})
         self.assertEqual(empty_decision.status, "not_call")
 
     def test_select_rollcall_and_tron_wrappers_match_engine(self) -> None:

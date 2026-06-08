@@ -28,6 +28,22 @@ class SummarizeProgressTest(unittest.TestCase):
         self.assertFalse(summary["progress_present"])
         self.assertTrue(summary["confirmed_present"])
 
+    def test_present_rate_uses_roster_present_not_answers(self) -> None:
+        student_rollcalls = {
+            "student_rollcalls": [
+                {"user_no": "s1", "rollcall_status": "on_call_fine"},
+                {"user_no": "s2", "rollcall_status": "absent"},
+                {"user_no": "s3", "rollcall_status": "absent"},
+            ]
+        }
+        answers = {"answers": [{"student_id": 1}, {"student_id": 2}, {"student_id": 3}]}
+
+        summary = summarize_rollcall_progress(student_rollcalls, answers, "s1")
+
+        self.assertEqual(summary["answered"], 3)
+        self.assertTrue(summary["present_rate_known"])
+        self.assertAlmostEqual(summary["present_rate_percent"], 100.0 / 3.0)
+
     def test_all_present_without_profile_match_confirms_without_marking_absent(self) -> None:
         student_rollcalls = {
             "student_rollcalls": [
@@ -66,6 +82,8 @@ class SummarizeProgressTest(unittest.TestCase):
             "total": 0,
             "present": 0,
             "answered": 0,
+            "present_rate_known": False,
+            "present_rate_percent": None,
             "rollcall_status": "",
             "my_user_no": "x",
             "my_status": "",

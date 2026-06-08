@@ -74,6 +74,8 @@ def _timestamped(text: str) -> str:
 def clear_status_line() -> None:
     """Erase the in-place status line so an event line can be printed cleanly."""
     width = ctx.STATUS_LINE_WIDTH
+    if not width and console_is_interactive():
+        width = _terminal_width()
     if width:
         ctx.sys.stdout.write('\r' + ' ' * width + '\r')
         ctx.sys.stdout.flush()

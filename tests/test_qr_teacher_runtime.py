@@ -110,6 +110,7 @@ class QrTeacherRuntimeTest(unittest.IsolatedAsyncioTestCase):
         self.original_teacher_course_id = tron.TEACHER_COURSE_ID
         self.original_completed_qr = copy.deepcopy(tron.COMPLETED_QR_ROLLCALLS)
         self.original_qr_attempts = copy.deepcopy(tron.QR_ASSIST_ATTEMPTS)
+        self.original_active_teacher_qr = copy.deepcopy(tron.ACTIVE_TEACHER_QR_ASSISTS)
         self.original_last_progress = copy.deepcopy(tron.LAST_ROLLCALL_PROGRESS)
         self.temp_dir = tempfile.TemporaryDirectory()
         tron.BASE_DIR = Path(self.temp_dir.name)
@@ -123,6 +124,7 @@ class QrTeacherRuntimeTest(unittest.IsolatedAsyncioTestCase):
         tron.TEACHER_COURSE_ID = ""
         tron.COMPLETED_QR_ROLLCALLS.clear()
         tron.QR_ASSIST_ATTEMPTS.clear()
+        tron.ACTIVE_TEACHER_QR_ASSISTS.clear()
         tron.LAST_ROLLCALL_PROGRESS.clear()
 
     def tearDown(self) -> None:
@@ -139,6 +141,8 @@ class QrTeacherRuntimeTest(unittest.IsolatedAsyncioTestCase):
         tron.COMPLETED_QR_ROLLCALLS.update(self.original_completed_qr)
         tron.QR_ASSIST_ATTEMPTS.clear()
         tron.QR_ASSIST_ATTEMPTS.update(self.original_qr_attempts)
+        tron.ACTIVE_TEACHER_QR_ASSISTS.clear()
+        tron.ACTIVE_TEACHER_QR_ASSISTS.update(self.original_active_teacher_qr)
         tron.LAST_ROLLCALL_PROGRESS.clear()
         tron.LAST_ROLLCALL_PROGRESS.update(self.original_last_progress)
         self.temp_dir.cleanup()
@@ -174,6 +178,27 @@ class QrTeacherRuntimeTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(server.qr_answers[0]["body"]["data"], server.teacher_qr_data)
         self.assertEqual(server.teacher_rollcall_stops[-1]["endpoint"], "stop_qr_rollcall")
         self.assertIn("77", tron.COMPLETED_QR_ROLLCALLS)
+
+    async def test_prepare_teacher_assisted_qr_keeps_teacher_rollcall_open_until_stop(self) -> None:
+        async with FakeTronServer() as server:
+            server.courses = [{"id": 301, "name": "Teacher Course"}]
+            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as teacher_session:
+                tron.TEACHER_SESSION = teacher_session
+                tron.TEACHER_ENDPOINTS = server.endpoints()
+                with patch.object(tron, "get_ssl_request_setting", return_value=None):
+                    prepared = await tron.prepare_teacher_assisted_qr({"rollcall_id": "77"})
+
+                    self.assertTrue(prepared["ok"])
+                    self.assertEqual(len(server.teacher_rollcalls), 1)
+                    self.assertEqual(server.teacher_rollcall_stops, [])
+                    self.assertIn("77", tron.ACTIVE_TEACHER_QR_ASSISTS)
+
+                    stopped = await tron.stop_prepared_teacher_qr("77")
+
+        self.assertTrue(stopped["ok"])
+        self.assertEqual(stopped["stopped"], 1)
+        self.assertEqual(server.teacher_rollcall_stops[-1]["endpoint"], "stop_qr_rollcall")
+        self.assertNotIn("77", tron.ACTIVE_TEACHER_QR_ASSISTS)
 
     async def test_run_teacher_assisted_qr_accepts_all_present_when_profile_mismatches(self) -> None:
         async with FakeTronServer() as server:
