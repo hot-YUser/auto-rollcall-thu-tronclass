@@ -355,9 +355,6 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
         'global': 'global_wgs84',
         'wgs84': 'global_wgs84',
         'global_wgs84': 'global_wgs84',
-        'legacy': 'legacy_thu',
-        'legacy_thu': 'legacy_thu',
-        'thu': 'legacy_thu',
         'empty_answer': 'empty_answer',
         'empty': 'empty_answer',
         'direct': 'empty_answer',
@@ -367,7 +364,6 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
     }
     radar_config['strategy'] = strategy_aliases.get(strategy, ctx.DEFAULT_CONFIG['radar']['strategy'])
     radar_config['empty_answer_fallback_enabled'] = ctx.coerce_bool(radar_config.get('empty_answer_fallback_enabled', ctx.DEFAULT_CONFIG['radar']['empty_answer_fallback_enabled']), ctx.DEFAULT_CONFIG['radar']['empty_answer_fallback_enabled'])
-    radar_config['legacy_fallback_enabled'] = ctx.coerce_bool(radar_config.get('legacy_fallback_enabled', ctx.DEFAULT_CONFIG['radar']['legacy_fallback_enabled']), ctx.DEFAULT_CONFIG['radar']['legacy_fallback_enabled'])
     radar_config['boundary_points'] = ctx.normalize_radar_boundary_points(radar_config.get('boundary_points', ctx.DEFAULT_CONFIG['radar']['boundary_points']))
     radar_config['allow_outside_probe'] = ctx.coerce_bool(radar_config.get('allow_outside_probe', ctx.DEFAULT_CONFIG['radar']['allow_outside_probe']), ctx.DEFAULT_CONFIG['radar']['allow_outside_probe'])
     radar_config['outside_scale'] = ctx.coerce_positive_float(radar_config.get('outside_scale', ctx.DEFAULT_CONFIG['radar']['outside_scale']), ctx.DEFAULT_CONFIG['radar']['outside_scale'], minimum=1.0)

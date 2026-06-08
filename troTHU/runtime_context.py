@@ -729,7 +729,6 @@ DEFAULT_CONFIG = {
     "radar": {
         "strategy": "empty_answer",
         "empty_answer_fallback_enabled": True,
-        "legacy_fallback_enabled": True,
         "boundary_points": [[lat, lon] for lat, lon in DEFAULT_BOUNDARY_POINTS],
         "allow_outside_probe": True,
         "outside_scale": 1.6,

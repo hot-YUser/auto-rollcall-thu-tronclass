@@ -253,7 +253,7 @@ class TronHelpersTest(unittest.TestCase):
         self.assertNotIn("final_precision_max", normalized["radar"])
         self.assertEqual(normalized["radar"]["strategy"], "empty_answer")
         self.assertTrue(normalized["radar"]["empty_answer_fallback_enabled"])
-        self.assertTrue(normalized["radar"]["legacy_fallback_enabled"])
+        self.assertNotIn("legacy_fallback_enabled", normalized["radar"])
         self.assertEqual(normalized["radar"]["global"]["max_queries"], 120)
         self.assertEqual(normalized["radar"]["global"]["request_retries"], tron.NUMBER_REQUEST_RETRIES)
         self.assertEqual(normalized["radar"]["global"]["standard_query_count"], 72)
@@ -277,13 +277,12 @@ class TronHelpersTest(unittest.TestCase):
         self.assertNotIn("final_precision_max", normalized["radar"])
         self.assertEqual(normalized["radar"]["final_grid_step_meters"], 100.0)
 
-    def test_normalize_config_accepts_legacy_radar_strategy_alias_and_clamps_global_config(self) -> None:
+    def test_normalize_config_accepts_global_strategy_alias_and_clamps_global_config(self) -> None:
         normalized = tron.normalize_config(
             {
                 "config": {},
                 "radar": {
-                    "strategy": "legacy",
-                    "legacy_fallback_enabled": "false",
+                    "strategy": "global",
                     "global": {
                         "max_queries": 9999,
                         "request_retries": 999,
@@ -301,8 +300,8 @@ class TronHelpersTest(unittest.TestCase):
             }
         )
 
-        self.assertEqual(normalized["radar"]["strategy"], "legacy_thu")
-        self.assertFalse(normalized["radar"]["legacy_fallback_enabled"])
+        self.assertEqual(normalized["radar"]["strategy"], "global_wgs84")
+        self.assertNotIn("legacy_fallback_enabled", normalized["radar"])
         self.assertEqual(normalized["radar"]["global"]["max_queries"], 500)
         self.assertEqual(normalized["radar"]["global"]["request_retries"], 10)
         self.assertEqual(normalized["radar"]["global"]["cooldown_seconds"], 0.1)

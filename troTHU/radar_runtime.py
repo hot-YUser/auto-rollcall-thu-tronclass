@@ -335,10 +335,8 @@ async def radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str,
     strategy = ctx.normalize_text(
         radar_config.get("strategy", ctx.DEFAULT_CONFIG["radar"]["strategy"])
     ).lower().replace("-", "_")
-    if strategy == "legacy_thu":
-        return await legacy_radar(main_session, rollcall)
     if strategy == "global_wgs84":
-        return await _global_then_legacy(main_session, rollcall, radar_config)
+        return await _run_global_radar(main_session, rollcall, radar_config)
 
     # Default strategy: empty_answer — submit a coordinate-free `{}` answer first
     # and only trust it once attendance is verified, then fall back to global_wgs84.
@@ -364,35 +362,18 @@ async def radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str,
         message="空答案雷達簽到未確認，改用 global_wgs84 全球定位作為 fallback。",
     )
     ctx.log_print("空答案雷達簽到未確認，改用 global_wgs84 全球定位作為 fallback...")
-    return await _global_then_legacy(main_session, rollcall, radar_config)
+    return await _run_global_radar(main_session, rollcall, radar_config)
 
 
-async def _global_then_legacy(
+async def _run_global_radar(
     main_session: ctx.aiohttp.ClientSession,
     rollcall: ctx.Dict[str, ctx.Any],
     radar_config: ctx.Dict[str, ctx.Any],
 ) -> bool:
     try:
-        success = await global_radar(main_session, rollcall, radar_config=radar_config)
+        return await global_radar(main_session, rollcall, radar_config=radar_config)
     except (_RadarNoFallback, _RadarSubmittedUnconfirmed):
         return False
-    if success:
-        return True
-    if ctx.coerce_bool(
-        radar_config.get("legacy_fallback_enabled", ctx.DEFAULT_CONFIG["radar"].get("legacy_fallback_enabled", True)),
-        True,
-    ):
-        rollcall_id = rollcall.get("rollcall_id")
-        ctx.log(
-            event="global_radar_fallback_started",
-            status="fallback",
-            rollcall_id=rollcall_id,
-            rollcall_type="radar",
-            message="全球雷達定位未完成，改用舊 THU 定位流程作為幕後 fallback。",
-        )
-        ctx.log_print("全球雷達定位未命中，改用舊 THU 定位流程作為 fallback...")
-        return await legacy_radar(main_session, rollcall)
-    return False
 
 
 async def empty_answer_radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str, ctx.Any]) -> bool:
@@ -1069,6 +1050,15 @@ async def global_radar(
 
 
 async def legacy_radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str, ctx.Any]) -> bool:
+    """Retained legacy THU campus-geometry radar solver — DETACHED from the live flow.
+
+    This is ancient code, kept on purpose (not deleted) for historical reference.
+    The monitor never reaches it: ``radar()`` now runs ``empty_answer -> global_wgs84``
+    only, and the ``legacy_thu`` strategy / ``legacy_fallback_enabled`` config knobs
+    were removed. It is still exercised directly by tests via the THU campus
+    probe-and-trilaterate helpers in ``radar_solver.py``. Do NOT wire it back into
+    the dispatch in ``radar()``.
+    """
     rollcall_id = rollcall.get('rollcall_id')
     device_id = ctx.random_id()
     headers = {'User-Agent': ctx.random_ua()}
