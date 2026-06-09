@@ -80,6 +80,89 @@ def _format_monitor_legacy_detail(detail: ctx.Any, rollcall_status: ctx.Any) -> 
     return '{} · {}'.format(detail_text, status_text)
 
 
+def _rollcall_flow_label(rollcall_type: ctx.Any) -> str:
+    rollcall_type_text = ctx.normalize_text(rollcall_type)
+    return {
+        'number': '數字點名流程',
+        'radar': '雷達點名流程',
+        'qrcode': 'QR 點名流程',
+    }.get(rollcall_type_text, '點名流程')
+
+
+def _format_gate_start_detail(
+    rollcall_id: ctx.Any,
+    rollcall_type: ctx.Any,
+    progress: ctx.Mapping[str, ctx.Any],
+    *,
+    ignore_gate: bool=False,
+) -> str:
+    flow_label = _rollcall_flow_label(rollcall_type)
+    if ignore_gate:
+        return '已忽略 15% 門檻，啟動{}。'.format(flow_label)
+    if isinstance(progress, dict) and progress.get('ok'):
+        rate_text = progress.get('attendance_rate_text') or ctx.format_attendance_rate_text(rollcall_id, progress)
+        return '簽到率已達 {:.1f}% 門檻：{}，啟動{}。'.format(
+            ATTENDANCE_RATE_GATE_PERCENT,
+            rate_text,
+            flow_label,
+        )
+    return ''
+
+
+def _attendance_rate_text_from_progress(rollcall_id: ctx.Any, progress: ctx.Any) -> str:
+    if not isinstance(progress, dict):
+        return ''
+    text = ctx.normalize_text(progress.get('attendance_rate_text'))
+    if text:
+        return text
+    if progress.get('ok'):
+        return ctx.format_attendance_rate_text(rollcall_id, progress)
+    return ''
+
+
+def _final_attendance_rate_text(rollcall_id: ctx.Any, fallback_progress: ctx.Any) -> str:
+    rollcall_key = ctx.normalize_text(rollcall_id)
+    text = _attendance_rate_text_from_progress(rollcall_id, fallback_progress)
+    if text:
+        return text
+    last_progress_state = ctx.LAST_ROLLCALL_PROGRESS if isinstance(ctx.LAST_ROLLCALL_PROGRESS, dict) else {}
+    last_progress = last_progress_state.get('progress') if isinstance(last_progress_state.get('progress'), dict) else {}
+    last_rollcall_id = ctx.normalize_text(last_progress_state.get('rollcall_id') or last_progress.get('rollcall_id'))
+    if last_progress and (not rollcall_key or not last_rollcall_id or last_rollcall_id == rollcall_key):
+        text = _attendance_rate_text_from_progress(rollcall_id, last_progress)
+        if text:
+            return text
+    return ''
+
+
+async def _log_final_attendance_rate_on_close(
+    session: ctx.Any,
+    rollcall_id: ctx.Any,
+    rollcall_type: ctx.Any,
+    *,
+    counter: int,
+    logged_keys: set[str],
+) -> None:
+    rollcall_key = ctx.normalize_text(rollcall_id)
+    if not rollcall_key or rollcall_key in logged_keys:
+        return
+    progress = await _fetch_monitor_rollcall_progress(session, rollcall_key)
+    final_rate_text = _final_attendance_rate_text(rollcall_key, progress)
+    if not final_rate_text:
+        return
+    final_message = '最後點名率：{}'.format(final_rate_text)
+    ctx.log_print(final_message)
+    ctx.log(
+        event='rollcall_final_attendance_rate',
+        counter=counter,
+        status='closed',
+        rollcall_id=rollcall_key,
+        rollcall_type=rollcall_type,
+        message=final_message,
+    )
+    logged_keys.add(rollcall_key)
+
+
 def _idle_poll_delay(monitoring_started_at: float, rollcall_flow_completed: bool) -> float:
     if not rollcall_flow_completed and monitoring_started_at > 0:
         try:
@@ -175,6 +258,7 @@ async def monitor_loop(
     active_detected_at = 0.0
     active_start_announced: set[str] = set()
     active_qr_prepare_attempted: set[str] = set()
+    final_attendance_rate_logged: set[str] = set()
     monitoring_started_at = 0.0
     startup_rollcall_flow_completed = False
     ctx.record_monitor_runtime('running')
@@ -316,6 +400,13 @@ async def monitor_loop(
             now_monotonic = ctx.time.monotonic()
 
             if active_rollcall_id and (status_msg == 'not_call' or (rollcall_id and rollcall_id != active_rollcall_id)):
+                await _log_final_attendance_rate_on_close(
+                    session,
+                    active_rollcall_id,
+                    active_rollcall_type,
+                    counter=ctx.cnt,
+                    logged_keys=final_attendance_rate_logged,
+                )
                 startup_rollcall_flow_completed = True
                 if active_rollcall_type == 'qrcode':
                     await ctx.stop_prepared_teacher_qr(active_rollcall_id)
@@ -377,11 +468,13 @@ async def monitor_loop(
                 progress = await _fetch_monitor_rollcall_progress(session, monitor_rollcall_id)
                 ignore_gate = ctx.get_ignore_attendance_rate_gate(ignore_attendance_rate_gate)
                 gate_passed = _attendance_rate_gate_passed(progress, ignore_gate=ignore_gate)
+                pre_flow_status_updated = False
+                pre_flow_legacy_detail = ''
                 if progress.get('ok'):
                     detail = progress.get('attendance_rate_text') or ctx.format_attendance_rate_text(monitor_rollcall_id, progress)
                     if status_msg == 'on_call_fine':
                         pass
-                    elif ignore_gate and not progress.get('present_rate_known'):
+                    elif ignore_gate:
                         detail = '{}；已忽略 15% 門檻'.format(detail)
                     elif not gate_passed:
                         detail = '{}；等待 >= {:.1f}%'.format(detail, ATTENDANCE_RATE_GATE_PERCENT)
@@ -393,7 +486,29 @@ async def monitor_loop(
                     rollcall_status = 'on_call_fine' if status_msg == 'on_call_fine' else ''
 
                 if gate_passed and status_msg != 'on_call_fine':
-                    status_msg = await ctx.handle_rollcall_decision(session, poll, cnt=ctx.cnt, use_prepared_qr=True)
+                    pre_flow_legacy_detail = _format_monitor_legacy_detail(detail, rollcall_status)
+                    _update_monitor_status(
+                        phase='monitoring',
+                        check_count=ctx.cnt,
+                        detail=detail,
+                        rollcall_status=rollcall_status,
+                        next_switch_at=next_switch,
+                        legacy_message='第 {} 次檢查: {}'.format(ctx.cnt, pre_flow_legacy_detail),
+                    )
+                    pre_flow_status_updated = True
+                    gate_detail = _format_gate_start_detail(
+                        monitor_rollcall_id,
+                        monitor_rollcall_type,
+                        progress,
+                        ignore_gate=ignore_gate,
+                    )
+                    status_msg = await ctx.handle_rollcall_decision(
+                        session,
+                        poll,
+                        cnt=ctx.cnt,
+                        use_prepared_qr=True,
+                        gate_detail=gate_detail,
+                    )
                     if status_msg == 'radar_failed':
                         detail = '雷達點名處理失敗，下一輪會再檢查'
                         rollcall_status = ''
@@ -408,15 +523,17 @@ async def monitor_loop(
                                 'is_number': '數字點名已觸發',
                                 'is_radar': '雷達點名已觸發',
                             }.get(status_msg, detail)
-
                 legacy_detail = _format_monitor_legacy_detail(detail, rollcall_status)
+                legacy_message = '第 {} 次檢查: {}'.format(ctx.cnt, legacy_detail)
+                if pre_flow_status_updated and legacy_detail == pre_flow_legacy_detail:
+                    legacy_message = None
                 _update_monitor_status(
                     phase='monitoring',
                     check_count=ctx.cnt,
                     detail=detail,
                     rollcall_status=rollcall_status,
                     next_switch_at=next_switch,
-                    legacy_message='第 {} 次檢查: {}'.format(ctx.cnt, legacy_detail),
+                    legacy_message=legacy_message,
                 )
             else:
                 if status_msg == 'not_call':

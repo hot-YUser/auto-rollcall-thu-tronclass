@@ -320,6 +320,7 @@ async def finalize_qr_submission(
         rollcall_id,
         method='qrcode',
         detail='on_call_fine',
+        attendance_rate=ctx.format_success_banner_attendance_rate(verification_result),
     )
     ctx.log_print(banner)
     ctx.remember_rollcall_progress(verification_result)

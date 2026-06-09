@@ -128,6 +128,23 @@ class RuntimeHelpersTest(unittest.TestCase):
         self.assertIn("QR教師✗", failed)
         self.assertIn("QR教師發起中", working)
 
+    def test_rollcall_start_message_indents_multiline_detail(self) -> None:
+        text = runtime_helpers.format_rollcall_start_message(
+            "number",
+            42,
+            detail="簽到率已達 15.0% 門檻：點名 #42 簽到率 15.0%（3/20），啟動數字點名流程。\n正在嘗試直接讀碼。",
+        )
+
+        self.assertEqual(
+            text.splitlines(),
+            [
+                "start number",
+                "  id:42",
+                "  簽到率已達 15.0% 門檻：點名 #42 簽到率 15.0%（3/20），啟動數字點名流程。",
+                "  正在嘗試直接讀碼。",
+            ],
+        )
+
     def test_radar_helpers_parse_distance_and_signal(self) -> None:
         result = runtime_helpers.parse_radar_answer_result(
             400,
@@ -270,6 +287,7 @@ class RuntimeHelpersTest(unittest.TestCase):
             method="number",
             detail="找到點名數字",
             code="0427",
+            attendance_rate="15.0% (3/20)",
         )
         radar_banner = runtime_helpers.format_rollcall_success_banner(
             "radar",
@@ -286,11 +304,32 @@ class RuntimeHelpersTest(unittest.TestCase):
 
         self.assertIn("數字點名成功！", number_banner)
         self.assertIn("Code: 0427", number_banner)
+        self.assertIn("Rate: 15.0% (3/20)", number_banner)
         self.assertIn("Rollcall: 42", number_banner)
         self.assertIn("雷達點名成功！", radar_banner)
         self.assertIn("Hit: estimate-standard-ring-1", radar_banner)
         self.assertIn("QR Code 點名成功！", qr_banner)
         self.assertIn("Result: submitted", qr_banner)
+
+    def test_success_banner_attendance_rate_formats_progress(self) -> None:
+        rate = runtime_helpers.format_success_banner_attendance_rate(
+            {
+                "ok": True,
+                "progress": {
+                    "ok": True,
+                    "total": 84,
+                    "present": 41,
+                    "present_rate_known": True,
+                    "present_rate_percent": 48.809,
+                },
+            }
+        )
+        unknown = runtime_helpers.format_success_banner_attendance_rate(
+            {"ok": True, "total": 0, "present": 0, "present_rate_known": False}
+        )
+
+        self.assertEqual(rate, "48.8% (41/84)")
+        self.assertEqual(unknown, "")
 
     def test_monitor_status_helpers_match_expected_shape(self) -> None:
         now = runtime_helpers.datetime(2026, 1, 2, 14, 3, 27)

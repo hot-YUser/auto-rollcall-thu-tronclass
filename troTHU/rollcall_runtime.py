@@ -170,12 +170,22 @@ async def announce_rollcall_start(
     return text
 
 
+def _combine_start_detail(*parts: ctx.Any) -> str:
+    lines = []
+    for part in parts:
+        text = ctx.normalize_text(part)
+        if text:
+            lines.append(text)
+    return '\n'.join(lines)
+
+
 async def handle_rollcall_decision(
     session: ctx.aiohttp.ClientSession,
     poll: ctx.Mapping[str, ctx.Any],
     *,
     cnt: int=-1,
     use_prepared_qr: bool=False,
+    gate_detail: str='',
 ) -> str:
     selected_status = ctx.normalize_text(poll.get('status'))
     selected_rollcall = poll.get('rollcall') if isinstance(poll.get('rollcall'), dict) else None
@@ -199,7 +209,10 @@ async def handle_rollcall_decision(
         await ctx.announce_rollcall_start(
             ctx.AttendanceType.NUMBER,
             rollcall_id,
-            detail='正在嘗試直接讀碼；必要時改用 0000-{:04d}。'.format(ctx.NUMBER_CODE_LIMIT - 1),
+            detail=_combine_start_detail(
+                gate_detail,
+                '正在嘗試直接讀碼；必要時改用 0000-{:04d}。'.format(ctx.NUMBER_CODE_LIMIT - 1),
+            ),
             event='number_rollcall_started',
             counter=cnt,
             url=result_url,
@@ -226,7 +239,7 @@ async def handle_rollcall_decision(
         await ctx.announce_rollcall_start(
             ctx.AttendanceType.RADAR,
             rollcall_id,
-            detail='正在處理雷達點名，請稍候...',
+            detail=_combine_start_detail(gate_detail, '正在處理雷達點名，請稍候...'),
             event='radar_rollcall_started',
             counter=cnt,
             url=result_url,
@@ -251,6 +264,20 @@ async def handle_rollcall_decision(
             if qr_key in ctx.COMPLETED_QR_ROLLCALLS:
                 ctx.log(event='qrcode_rollcall_skipped', counter=cnt, status='already_completed', url=result_url, http_status=http_status, rollcall_id=qr_key, rollcall_type='qrcode', message='QR 點名已處理，略過重複嘗試。', payload_excerpt=selected_rollcall)
                 return 'qr 點名已處理'
+            if ctx.normalize_text(gate_detail):
+                await ctx.announce_rollcall_start(
+                    ctx.AttendanceType.QRCODE,
+                    qr_key or selected_rollcall.get('rollcall_id') or selected_rollcall.get('id'),
+                    detail=_combine_start_detail(
+                        gate_detail,
+                        '正在送出 QR 點名；優先使用教師輔助或剪貼簿內容。',
+                    ),
+                    event='qrcode_rollcall_submit_started',
+                    counter=cnt,
+                    url=result_url,
+                    http_status=http_status,
+                    payload_excerpt=selected_rollcall,
+                )
             if ctx.teacher_assist_configured(ctx.CONFIG):
                 if use_prepared_qr:
                     answered_automatically = await ctx.submit_prepared_teacher_qr(session, selected_rollcall)

@@ -104,6 +104,7 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
                             method=method,
                             detail='on_call_fine',
                             code=found_code,
+                            attendance_rate=ctx.format_success_banner_attendance_rate(verification),
                         )
                         ctx.log_print(banner)
                         ctx.remember_rollcall_progress(verification)

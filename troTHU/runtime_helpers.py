@@ -533,6 +533,7 @@ def format_rollcall_success_banner(
     method: Any = "",
     detail: Any = "",
     code: Any = "",
+    attendance_rate: Any = "",
 ) -> str:
     type_text = _attendance_type_text(attendance_type)
     title_by_type = {
@@ -551,6 +552,7 @@ def format_rollcall_success_banner(
     detail_text = normalize_text(detail) or "success"
     result_label = "Hit" if type_text == "radar" else "Result"
     code_text = normalize_text(code)
+    attendance_rate_text = normalize_text(attendance_rate)
 
     rows = [title]
     rows.extend([
@@ -559,8 +561,30 @@ def format_rollcall_success_banner(
     ])
     if code_text:
         rows.append("Code: {}".format(code_text))
+    if attendance_rate_text:
+        rows.append("Rate: {}".format(attendance_rate_text))
     rows.append("{}: {}".format(result_label, detail_text))
     return _format_banner_box(rows)
+
+
+def format_success_banner_attendance_rate(progress: Any) -> str:
+    if not isinstance(progress, dict):
+        return ""
+    source = progress.get("progress") if isinstance(progress.get("progress"), dict) else progress
+    if not isinstance(source, dict) or not source.get("ok"):
+        return ""
+    try:
+        total = int(source.get("total") or 0)
+        present = int(source.get("present") or 0)
+    except (TypeError, ValueError):
+        return ""
+    if total <= 0 or not source.get("present_rate_known"):
+        return ""
+    try:
+        rate = float(source.get("present_rate_percent") or 0.0)
+    except (TypeError, ValueError):
+        return ""
+    return "{:.1f}% ({}/{})".format(rate, present, total)
 
 
 def format_rollcall_start_message(
@@ -582,7 +606,10 @@ def format_rollcall_start_message(
         lines.append("  method:{}".format(method_text))
     detail_text = normalize_text(detail)
     if detail_text:
-        lines.append("  {}".format(detail_text))
+        for detail_line in detail_text.splitlines():
+            detail_line = normalize_text(detail_line)
+            if detail_line:
+                lines.append("  {}".format(detail_line))
     return "\n".join(lines)
 
 

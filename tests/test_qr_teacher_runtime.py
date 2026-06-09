@@ -25,7 +25,14 @@ class QrRuntimeFinalizeTest(unittest.IsolatedAsyncioTestCase):
             "ok": True,
             "status": "on_call_fine",
             "rollcall_id": "77",
-            "progress": {"ok": True, "confirmed_present": True},
+            "progress": {
+                "ok": True,
+                "confirmed_present": True,
+                "total": 10,
+                "present": 4,
+                "present_rate_known": True,
+                "present_rate_percent": 40.0,
+            },
             "monitor_detail": "點名 #77 進度：已簽到 1/1 人",
             "monitor_status": "on_call_fine",
         }
@@ -45,6 +52,7 @@ class QrRuntimeFinalizeTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(ok)
         banner.assert_called_once()
         self.assertEqual(banner.call_args.args[0], tron.AttendanceType.QRCODE)
+        self.assertEqual(banner.call_args.kwargs["attendance_rate"], "40.0% (4/10)")
         log_print.assert_called_once_with("BANNER")
         notify_event.assert_awaited_once()
         event = notify_event.await_args.args[0]

@@ -140,6 +140,7 @@ async def _announce_radar_success(
         rollcall_id,
         method=method,
         detail=detail or "on_call_fine",
+        attendance_rate=ctx.format_success_banner_attendance_rate(verification_result),
     )
     ctx.log_print(banner)
     ctx.remember_rollcall_progress(verification_result)

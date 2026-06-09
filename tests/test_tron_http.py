@@ -999,6 +999,74 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         number_mock.assert_awaited_once_with(session, 42)
         mes_mock.assert_awaited_once()
 
+    async def test_handle_rollcall_decision_includes_gate_detail_in_number_start(self) -> None:
+        session = MagicMock()
+        announce = AsyncMock()
+        gate_detail = "簽到率已達 15.0% 門檻：點名 #42 簽到率 15.0%（3/20），啟動數字點名流程。"
+
+        with (
+            patch.object(tron, "announce_rollcall_start", announce),
+            patch.object(tron, "number", AsyncMock(return_value="1234")),
+            patch.object(tron, "submit_group_number", AsyncMock(return_value={"ok": False})),
+            patch.object(tron, "log", return_value=True),
+        ):
+            result = await tron.handle_rollcall_decision(
+                session,
+                {"status": "is_number", "rollcall": {"rollcall_id": 42, "is_number": True}, "rollcall_type": "number"},
+                gate_detail=gate_detail,
+            )
+
+        self.assertEqual(result, "is_number")
+        detail = announce.await_args.kwargs["detail"]
+        self.assertTrue(detail.startswith(gate_detail))
+        self.assertIn("正在嘗試直接讀碼", detail)
+
+    async def test_handle_rollcall_decision_includes_gate_detail_in_radar_start(self) -> None:
+        session = MagicMock()
+        announce = AsyncMock()
+        gate_detail = "簽到率已達 15.0% 門檻：點名 #43 簽到率 18.0%（9/50），啟動雷達點名流程。"
+
+        with (
+            patch.object(tron, "announce_rollcall_start", announce),
+            patch.object(tron, "radar", AsyncMock(return_value=True)),
+            patch.object(tron, "submit_group_radar", AsyncMock(return_value={"ok": False})),
+            patch.object(tron, "log", return_value=True),
+        ):
+            result = await tron.handle_rollcall_decision(
+                session,
+                {"status": "is_radar", "rollcall": {"rollcall_id": 43, "is_radar": True}, "rollcall_type": "radar"},
+                gate_detail=gate_detail,
+            )
+
+        self.assertEqual(result, "is_radar")
+        detail = announce.await_args.kwargs["detail"]
+        self.assertTrue(detail.startswith(gate_detail))
+        self.assertIn("正在處理雷達點名", detail)
+
+    async def test_handle_rollcall_decision_includes_gate_detail_in_qr_start(self) -> None:
+        session = MagicMock()
+        announce = AsyncMock()
+        gate_detail = "簽到率已達 15.0% 門檻：點名 #77 簽到率 20.0%（2/10），啟動QR 點名流程。"
+
+        with (
+            patch.object(tron, "announce_rollcall_start", announce),
+            patch.object(tron, "teacher_assist_configured", return_value=True),
+            patch.object(tron, "submit_prepared_teacher_qr", AsyncMock(return_value=True)),
+            patch.object(tron, "log", return_value=True),
+        ):
+            result = await tron.handle_rollcall_decision(
+                session,
+                {"status": "unsupported_qrcode", "rollcall": {"rollcall_id": "77", "is_qrcode": True}, "rollcall_type": "qrcode"},
+                use_prepared_qr=True,
+                gate_detail=gate_detail,
+            )
+
+        self.assertEqual(result, "is_qrcode")
+        detail = announce.await_args.kwargs["detail"]
+        self.assertTrue(detail.startswith(gate_detail))
+        self.assertIn("正在送出 QR 點名", detail)
+        self.assertEqual(announce.await_args.kwargs["event"], "qrcode_rollcall_submit_started")
+
     async def test_check_rollcall_skips_number_rollcall_after_successful_attempt(self) -> None:
         session = MagicMock()
         client = MagicMock()
@@ -1675,7 +1743,13 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
         session = MagicMock()
         session.cookie_jar = MagicMock()
         shutdown_event = asyncio.Event()
-        handle = AsyncMock(return_value="is_number")
+        detail_seen_before_handle = []
+
+        async def fake_handle(*_args, **_kwargs):
+            detail_seen_before_handle.append(tron.MONITOR_STATUS.get("detail"))
+            return "is_number"
+
+        handle = AsyncMock(side_effect=fake_handle)
 
         async def fake_sleep(_event, _seconds):
             shutdown_event.set()
@@ -1701,12 +1775,105 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
             patch.object(tron, "get_schedule_for_day", return_value={"enable": True, "range": ["00:00", "23:59"]}),
             patch.object(tron, "parse_schedule_range", return_value=(dt_time(0, 0), dt_time(23, 59))),
             patch.object(tron, "sleep_or_shutdown", AsyncMock(side_effect=fake_sleep)),
+            patch.object(tron, "status_print") as status_print,
             patch.object(tron, "log_print"),
             patch.object(tron, "mes", AsyncMock()),
         ):
             await tron.monitor_loop(session, shutdown_event)
 
         handle.assert_awaited_once()
+        self.assertEqual(detail_seen_before_handle, ["點名 #42 簽到率 15.0%（3/20）"])
+        self.assertTrue(
+            any("點名 #42 簽到率 15.0%（3/20）" in call.args[0] for call in status_print.call_args_list if call.args)
+        )
+
+    async def test_monitor_loop_logs_final_attendance_rate_once_after_rollcall_closes(self) -> None:
+        session = MagicMock()
+        session.cookie_jar = MagicMock()
+        shutdown_event = asyncio.Event()
+        poll_count = 0
+        progress_count = 0
+        log_print = None
+
+        async def fake_poll(_session, _cnt):
+            nonlocal poll_count
+            poll_count += 1
+            if poll_count == 1:
+                return {"status": "is_number", "rollcall": {"rollcall_id": "42", "is_number": True}, "rollcall_type": "number", "message": ""}
+            return {"status": "not_call", "rollcall": None, "rollcall_type": "", "message": ""}
+
+        async def fake_handle(*_args, **_kwargs):
+            tron.LAST_ROLLCALL_PROGRESS.clear()
+            tron.LAST_ROLLCALL_PROGRESS.update(
+                {
+                    "rollcall_id": "42",
+                    "progress": {
+                        "ok": True,
+                        "rollcall_id": "42",
+                        "total": 20,
+                        "present": 4,
+                        "present_rate_known": True,
+                        "present_rate_percent": 20.0,
+                        "attendance_rate_text": "點名 #42 簽到率 20.0%（4/20）",
+                    },
+                }
+            )
+            self.assertFalse(
+                any(call.args and str(call.args[0]).startswith("最後點名率：") for call in log_print.call_args_list)
+            )
+            return "is_number"
+
+        async def fake_sleep(_event, _seconds):
+            if poll_count >= 2:
+                shutdown_event.set()
+
+        async def fake_progress(_session, _rollcall_id):
+            nonlocal progress_count
+            progress_count += 1
+            if progress_count == 1:
+                return {
+                    "ok": True,
+                    "rollcall_id": "42",
+                    "total": 20,
+                    "present": 3,
+                    "present_rate_known": True,
+                    "present_rate_percent": 15.0,
+                    "attendance_rate_text": "點名 #42 簽到率 15.0%（3/20）",
+                    "monitor_status": "",
+                }
+            return {
+                "ok": True,
+                "rollcall_id": "42",
+                "total": 20,
+                "present": 5,
+                "present_rate_known": True,
+                "present_rate_percent": 25.0,
+                "attendance_rate_text": "點名 #42 簽到率 25.0%（5/20）",
+                "monitor_status": "",
+            }
+
+        with (
+            patch.object(tron, "login", AsyncMock(return_value=make_login_result("success"))),
+            patch.object(tron, "has_session_cookie", return_value=True),
+            patch.object(tron, "poll_rollcall_decision", AsyncMock(side_effect=fake_poll)),
+            patch.object(tron, "handle_rollcall_decision", AsyncMock(side_effect=fake_handle)),
+            patch("troTHU.monitor_runtime._fetch_monitor_rollcall_progress", AsyncMock(side_effect=fake_progress)),
+            patch.object(tron, "get_schedule_for_day", return_value={"enable": True, "range": ["00:00", "23:59"]}),
+            patch.object(tron, "parse_schedule_range", return_value=(dt_time(0, 0), dt_time(23, 59))),
+            patch.object(tron, "sleep_or_shutdown", AsyncMock(side_effect=fake_sleep)),
+            patch.object(tron, "status_print"),
+            patch.object(tron, "log_print") as patched_log_print,
+            patch.object(tron, "mes", AsyncMock()),
+        ):
+            log_print = patched_log_print
+            await tron.monitor_loop(session, shutdown_event)
+
+        final_lines = [
+            call.args[0]
+            for call in log_print.call_args_list
+            if call.args and str(call.args[0]).startswith("最後點名率：")
+        ]
+        self.assertEqual(final_lines, ["最後點名率：點名 #42 簽到率 25.0%（5/20）"])
 
     async def test_monitor_loop_ignore_gate_starts_with_unknown_rate(self) -> None:
         session = MagicMock()
@@ -2300,7 +2467,7 @@ class TronNumberRollcallTest(unittest.IsolatedAsyncioTestCase):
             patch.object(tron, "status_print") as status_print,
             patch.object(tron, "log_print") as log_print,
             patch.object(tron, "log", return_value=True),
-            patch.object(tron, "verify_rollcall_on_call_fine", AsyncMock(return_value={"ok": True, "status": "on_call_fine", "rollcall_id": "42", "monitor_detail": "點名 #42 進度：已簽到 1/1 人", "monitor_status": "on_call_fine"})),
+            patch.object(tron, "verify_rollcall_on_call_fine", AsyncMock(return_value={"ok": True, "status": "on_call_fine", "rollcall_id": "42", "monitor_detail": "點名 #42 進度：已簽到 1/1 人", "monitor_status": "on_call_fine", "progress": {"ok": True, "total": 20, "present": 4, "present_rate_known": True, "present_rate_percent": 20.0}})),
             patch.object(tron, "NUMBER_CODE_LIMIT", 2),
             patch.object(tron, "NUMBER_WORKER_COUNT", 1),
             patch.object(tron, "random_ua", return_value="ua"),
@@ -2314,8 +2481,15 @@ class TronNumberRollcallTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(
             any("Code: 0001" in call.args[0] for call in log_print.call_args_list)
         )
+        self.assertTrue(
+            any("Rate: 20.0% (4/20)" in call.args[0] for call in log_print.call_args_list)
+        )
         self.assertIn(
             "Code: 0001",
+            mes_mock.await_args_list[0].kwargs["highlight_block"],
+        )
+        self.assertIn(
+            "Rate: 20.0% (4/20)",
             mes_mock.await_args_list[0].kwargs["highlight_block"],
         )
 
