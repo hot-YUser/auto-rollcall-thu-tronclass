@@ -64,7 +64,7 @@ def config_view_summary(config: Mapping[str, Any] | None = None) -> Dict[str, An
 
 def render_compact_config(config: Mapping[str, Any] | None = None) -> str:
     user_config = build_user_config(config)
-    return ctx.render_simple_config(user_config.get("simple", {}))
+    return ctx.render_basic_config(user_config.get("simple", {}))
 
 
 def make_full_config_backup_path(config_path: Path, now: datetime | None = None) -> Path:

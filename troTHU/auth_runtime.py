@@ -76,7 +76,7 @@ def enable_insecure_ssl_fallback(exc: BaseException) -> bool:
     if saved:
         ctx.log_print('偵測到 TLS 憑證鏈驗證失敗，已自動將 config.verify_ssl 改成 false，正在重試登入。')
     else:
-        ctx.log_print('偵測到 TLS 憑證鏈驗證失敗，本次執行會暫時停用 verify_ssl 並重試；config.yaml 無法寫入。')
+        ctx.log_print('偵測到 TLS 憑證鏈驗證失敗，本次執行會暫時停用 verify_ssl 並重試；config.conf 無法寫入。')
     return saved
 
 
@@ -469,7 +469,7 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
     user, passwd, credential_source = ctx.resolve_credentials()
     if not ctx.has_real_credential(user) or not ctx.has_real_credential(passwd):
         ctx.log(event='login_failure', status='missing_credentials', message='尚未設定可用帳號密碼。', extra={'credential_source': credential_source})
-        ctx.log_print('未設定帳號密碼。請按任意鍵編輯 config.yaml，填好後關閉記事本。')
+        ctx.log_print('未設定帳號密碼。請按任意鍵編輯 config.conf，填好後關閉記事本。')
         ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='missing_credentials', credential_source=credential_source)
         return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
     ctx.IS_LOGGING_IN = True
@@ -494,7 +494,7 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
                         error=exc,
                     )
                 ctx.log(event='login_failure', status='login_page_changed', message='登入頁結構已更改。', error=exc, extra={'credential_source': credential_source, 'user': user})
-                ctx.log_print('登入頁結構已更改，可在 config.advanced.yaml 啟用 auth.browser_assisted_login 作為 opt-in 後備。')
+                ctx.log_print('登入頁結構已更改，可在 config.advanced.toml 啟用 auth.browser_assisted_login 作為 opt-in 後備。')
                 ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='login_page_changed', credential_source=credential_source, user=user, error=ctx.normalize_text(exc))
                 return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
             except ctx.LoginRejectedError as exc:

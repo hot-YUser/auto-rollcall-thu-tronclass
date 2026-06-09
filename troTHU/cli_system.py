@@ -137,7 +137,7 @@ def init_command(args: ctx.argparse.Namespace) -> int:
         notifications['dc']['key'] = discord_token
         notifications['dc']['chat'] = discord_chat
     if not ctx.save_config():
-        print('Failed to save config.yaml.')
+        print('Failed to save config.conf.')
         return 1
     print('Init saved profile: {}'.format(profile_name))
     if args.test_login:
@@ -178,12 +178,12 @@ def config_compact_command(args: ctx.argparse.Namespace) -> int:
         if getattr(args, 'json', False):
             print(ctx.json_text({"status": "failed", "message": str(exc)}))
         else:
-            print("寫入 config.yaml 失敗: {}".format(exc))
+            print("寫入 config.conf 失敗: {}".format(exc))
         return 1
     if getattr(args, 'json', False):
         print(ctx.json_text(report))
     else:
-        print("config.yaml 已整理成精簡格式。")
+        print("config.conf 已整理成精簡格式。")
         if report.get("backup_path"):
             print("原檔備份: {}".format(report["backup_path"]))
     return 0
@@ -196,7 +196,7 @@ def config_advanced_command(json_output: bool=False) -> int:
         print(ctx.json_text(result))
     else:
         if result.get("ok"):
-            print("已用舊版記事本開啟 config.advanced.yaml。")
+            print("已用舊版記事本開啟 config.advanced.toml。")
         else:
             print("無法開啟舊版記事本: {}".format(result.get("reason", "unknown")))
     return 0 if result.get("ok") else 1

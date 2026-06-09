@@ -58,7 +58,7 @@ class ReleaseBuilderTest(unittest.TestCase):
         self.assertEqual(preflight["artifact"]["name"], EXPECTED_WINDOWS_ZIP)
         self.assertIn("python -m unittest discover -v", "\n".join(preflight["commands"]))
         self.assertTrue(preflight["policy"]["smoke_uses_temp_extract"])
-        self.assertIn("config.yaml", preflight["forbidden_outputs"])
+        self.assertIn("config.conf", preflight["forbidden_outputs"])
         self.assertNotIn("secret-token", encoded)
 
     def test_fake_execute_builds_zip_manifest_and_smoke(self) -> None:
@@ -84,7 +84,7 @@ class ReleaseBuilderTest(unittest.TestCase):
         self.assertTrue(any(name.endswith("CREDITS.md") for name in names))
         self.assertTrue(any(name.endswith("RELEASE_NOTES.txt") for name in names))
         self.assertIn("Ship this note.", release_notes)
-        self.assertFalse(any("/config.yaml" in name or "/state/" in name or "/tests/" in name for name in names))
+        self.assertFalse(any("/config.conf" in name or "/state/" in name or "/tests/" in name for name in names))
 
     def test_smoke_runs_from_temporary_extract_not_collect_source(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -103,7 +103,7 @@ class ReleaseBuilderTest(unittest.TestCase):
             root = Path(temp_dir)
             collect = root / "collect"
             collect.mkdir()
-            (collect / "config.yaml").write_text("unsafe", encoding="utf-8")
+            (collect / "config.conf").write_text("unsafe", encoding="utf-8")
             readme = root / "README.md"
             readme.write_text("# readme\n", encoding="utf-8")
             credits = root / "CREDITS.md"

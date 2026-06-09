@@ -31,8 +31,8 @@ except ImportError:  # pragma: no cover
 
 FORBIDDEN_RELEASE_PARTS = {
     ".codex-worklog.md",
-    "config.yaml",
-    "config.advanced.yaml",
+    "config.conf",
+    "config.advanced.toml",
     "state",
     "log",
     "cookies",

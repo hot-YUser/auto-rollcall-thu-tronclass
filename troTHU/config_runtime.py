@@ -99,24 +99,14 @@ def save_account_for_next_launch(user: str, password: str) -> bool:
     return ctx.save_config()
 
 
-def _deep_merge_config(base: ctx.Dict[str, ctx.Any], overlay: ctx.Mapping[str, ctx.Any]) -> ctx.Dict[str, ctx.Any]:
-    for key, value in dict(overlay or {}).items():
-        if isinstance(value, dict) and isinstance(base.get(key), dict):
-            _deep_merge_config(base[key], value)
-        else:
-            base[key] = ctx.copy.deepcopy(value)
-    return base
-
-
 def load_advanced_config() -> ctx.Dict[str, ctx.Any]:
     if not ctx.CONFIG_ADVANCED_PATH.exists():
         return {}
     try:
         with open(ctx.CONFIG_ADVANCED_PATH, 'r', encoding='utf-8') as file:
-            value = ctx.yaml.safe_load(file) or {}
-    except OSError:
-        return {}
-    except (*ctx.YAML_ERROR_TYPES, ValueError):
+            text = file.read()
+        value = ctx.parse_advanced_config_toml(text)
+    except Exception:
         return {}
     return value if isinstance(value, dict) else {}
 
@@ -124,7 +114,7 @@ def load_advanced_config() -> ctx.Dict[str, ctx.Any]:
 def write_advanced_config_file(config: ctx.Mapping[str, ctx.Any]) -> None:
     ctx.CONFIG_ADVANCED_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(ctx.CONFIG_ADVANCED_PATH, 'w', encoding='utf-8') as file:
-        ctx.yaml.safe_dump(dict(config or {}), file, allow_unicode=True, sort_keys=False)
+        file.write(ctx.render_advanced_config_toml(config))
 
 
 def write_config_file(config: ctx.Dict[str, ctx.Any]) -> None:
@@ -136,10 +126,10 @@ def write_config_file(config: ctx.Dict[str, ctx.Any]) -> None:
             or isinstance(config.get("groups"), list)
         )
         if is_simple_shape:
-            file.write(ctx.render_simple_config(config))
+            file.write(ctx.render_basic_config(config))
             return
         simple, advanced = ctx.split_normalized_config(ctx.normalize_config(ctx.copy.deepcopy(config)))
-        file.write(ctx.render_simple_config(simple))
+        file.write(ctx.render_basic_config(simple))
     ctx.write_advanced_config_file(advanced)
 
 
@@ -473,7 +463,6 @@ def get_config_timezone(config: ctx.Any = None) -> ctx.Any:
 def current_datetime(config: ctx.Any = None) -> ctx.datetime:
     return ctx.datetime.now(ctx.get_config_timezone(config))
 
-
 def ensure_config_exists() -> None:
     if not ctx.CONFIG_PATH.exists():
         ctx.write_config_file(ctx.copy.deepcopy(ctx.DEFAULT_CONFIG))
@@ -486,13 +475,8 @@ def load_config() -> ctx.Dict[str, ctx.Any]:
     advanced = ctx.load_advanced_config()
     with open(ctx.CONFIG_PATH, 'r', encoding='utf-8') as file:
         text = file.read()
-    if ctx.is_simple_config_text(text):
-        simple = ctx.parse_simple_config_text(text)
-        return ctx.normalize_config(ctx.merge_simple_and_advanced_config(simple, advanced))
-    loaded = ctx.yaml.safe_load(text) or {}
-    if not isinstance(loaded, dict):
-        loaded = {}
-    return ctx.normalize_config(_deep_merge_config(ctx.copy.deepcopy(advanced), loaded))
+    simple = ctx.parse_basic_config_text(text)
+    return ctx.normalize_config(ctx.merge_basic_and_advanced_config(simple, advanced))
 
 
 def make_config_backup_path(now: ctx.Optional[ctx.datetime]=None) -> ctx.Path:
@@ -500,30 +484,82 @@ def make_config_backup_path(now: ctx.Optional[ctx.datetime]=None) -> ctx.Path:
     return ctx.CONFIG_PATH.with_name('{}-broken-{}{}'.format(ctx.CONFIG_PATH.stem, timestamp, ctx.CONFIG_PATH.suffix))
 
 
+def migrate_legacy_yaml_config() -> ctx.List[str]:
+    """One-time, NON-DESTRUCTIVE import: when a pre-1.3 config.yaml exists but the
+    new config.conf is missing or still a blank template, read the old config (and
+    config.advanced.yaml) and write the user's real settings into config.conf /
+    config.advanced.toml. It deliberately never moves, renames, or deletes any file
+    — bootstrap_config runs in tests and CLI commands against the real working dir,
+    so destructive side-effects here would mutate the repo (including the tracked
+    config.advanced.yaml) and the developer's own files. Best-effort; never raises.
+    Returns human-readable notices for the bootstrap warning channel."""
+    notices: ctx.List[str] = []
+    legacy_path = ctx.BASE_DIR / "config.yaml"
+    legacy_advanced_path = ctx.BASE_DIR / "config.advanced.yaml"
+    if not legacy_path.exists():
+        return notices
+    # If config.conf already holds a real account, the user has already moved to the
+    # new format — stay completely silent and touch nothing (idempotent).
+    if ctx.CONFIG_PATH.exists():
+        try:
+            existing = ctx.parse_basic_config_text(ctx.CONFIG_PATH.read_text(encoding='utf-8'))
+            if any(
+                ctx.has_real_credential(account.get('user'))
+                for account in existing.get('accounts', [])
+                if isinstance(account, dict)
+            ):
+                return notices
+        except Exception:
+            pass
+    try:
+        legacy_simple = ctx.parse_legacy_basic_config_text(legacy_path.read_text(encoding='utf-8'))
+        legacy_advanced: ctx.Dict[str, ctx.Any] = {}
+        if legacy_advanced_path.exists():
+            try:
+                loaded = ctx.yaml.safe_load(legacy_advanced_path.read_text(encoding='utf-8')) or {}
+                if isinstance(loaded, dict):
+                    legacy_advanced = loaded
+            except Exception:
+                legacy_advanced = {}
+        merged = ctx.normalize_config(ctx.merge_basic_and_advanced_config(legacy_simple, legacy_advanced))
+        simple, advanced = ctx.split_normalized_config(merged)
+        ctx.CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        ctx.CONFIG_PATH.write_text(ctx.render_basic_config(simple), encoding='utf-8')
+        ctx.write_advanced_config_file(advanced)
+        notices.append(
+            '已將舊版 config.yaml 的設定匯入新版 config.conf。日後請改編輯 config.conf；'
+            '確認無誤後可自行刪除舊的 config.yaml。'
+        )
+    except Exception as exc:
+        notices.append('偵測到舊版 config.yaml，但自動匯入失敗，已保留原檔未動：{}'.format(exc))
+    return notices
+
+
 def bootstrap_config(force: bool=False) -> ctx.Dict[str, ctx.Any]:
     if ctx.CONFIG_BOOTSTRAPPED and (not force):
         return ctx.CONFIG
     warnings: ctx.List[str] = []
+    warnings.extend(ctx.migrate_legacy_yaml_config())
     config = ctx.copy.deepcopy(ctx.DEFAULT_CONFIG)
     try:
         config = ctx.load_config()
-    except (*ctx.YAML_ERROR_TYPES, ValueError) as exc:
+    except Exception as exc:
         backup_path = None
         if ctx.CONFIG_PATH.exists():
             try:
                 backup_path = ctx.CONFIG_PATH.replace(ctx.make_config_backup_path())
             except OSError as backup_exc:
-                warnings.append('config.yaml 讀取失敗，且無法備份原始檔案: {}'.format(backup_exc))
+                warnings.append('config.conf 讀取失敗，且無法備份原始檔案: {}'.format(backup_exc))
         try:
             ctx.write_config_file(ctx.copy.deepcopy(ctx.DEFAULT_CONFIG))
             if backup_path is not None:
-                warnings.append('config.yaml 已損毀，已備份為 {}，並重建為預設設定。'.format(backup_path.name))
+                warnings.append('config.conf 已損毀，已備份為 {}，並重建為預設設定。'.format(backup_path.name))
             else:
-                warnings.append('config.yaml 已損毀，已重建為預設設定。')
+                warnings.append('config.conf 已損毀，已重建為預設設定。')
         except OSError as write_exc:
-            warnings.append('config.yaml 已損毀，且無法重建設定檔；本次將使用內建預設設定。{}'.format(' ({})'.format(write_exc)))
+            warnings.append('config.conf 已損毀，且無法重建設定檔；本次將使用內建預設設定。{}'.format(' ({})'.format(write_exc)))
     except OSError as exc:
-        warnings.append('無法讀取或建立 config.yaml，將使用內建預設設定；本次無法保存設定。 ({})'.format(exc))
+        warnings.append('無法讀取或建立 config.conf，將使用內建預設設定；本次無法保存設定。 ({})'.format(exc))
     if not config.get('config', {}).get('verify_ssl', True):
         warnings.append('警告: 已停用 TLS 憑證驗證 (`config.verify_ssl=false`)。')
     ctx.CONFIG.clear()
@@ -544,12 +580,11 @@ def save_config() -> bool:
         normalized = ctx.normalize_config(ctx.copy.deepcopy(ctx.CONFIG))
         simple, advanced = ctx.split_normalized_config(normalized)
         ctx.CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        ctx.CONFIG_PATH.write_text(ctx.render_simple_config(simple), encoding='utf-8')
+        ctx.CONFIG_PATH.write_text(ctx.render_basic_config(simple), encoding='utf-8')
         ctx.write_advanced_config_file(advanced)
     except OSError:
         return False
     return True
-
 
 def get_schedule_for_day(weekday: int) -> ctx.Dict[str, ctx.Any]:
     schedule = ctx.CONFIG['operating'].get(weekday)

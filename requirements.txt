@@ -2,6 +2,7 @@
 aiohttp>=3.9.5
 PyYAML>=6.0.2
 PyNaCl>=1.5.0
+tomli>=2.0.1; python_version < "3.11"  # config.advanced.toml reader on Python 3.10 (3.11+ uses stdlib tomllib)
 
 # Optional features live in extras (pip install -e .[<extra>]) and are not bundled
 # in the default Windows release zip:

@@ -49,12 +49,12 @@ class ReleaseChecklistTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             (root / EXPECTED_WINDOWS_ZIP).write_text("placeholder", encoding="utf-8")
-            (root / "config.yaml").write_text("user: should-not-ship", encoding="utf-8")
+            (root / "config.conf").write_text("user: should-not-ship", encoding="utf-8")
             (root / "state").mkdir()
             report = validate_release_artifact(root)
 
         self.assertEqual(report["status"], "fail")
-        self.assertIn("config.yaml", report["forbidden_names"])
+        self.assertIn("config.conf", report["forbidden_names"])
         self.assertIn("state", report["forbidden_names"])
 
     def test_validate_release_artifact_inspects_zip_member_names_safely(self) -> None:

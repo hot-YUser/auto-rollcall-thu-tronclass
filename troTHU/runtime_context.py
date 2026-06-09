@@ -785,8 +785,8 @@ else:
 
 PATH = BASE_DIR / "log"
 
-CONFIG_PATH = BASE_DIR / "config.yaml"
-CONFIG_ADVANCED_PATH = BASE_DIR / "config.advanced.yaml"
+CONFIG_PATH = BASE_DIR / "config.conf"
+CONFIG_ADVANCED_PATH = BASE_DIR / "config.advanced.toml"
 
 RUNTIME_CREDENTIALS = {"user": "", "passwd": ""}
 
@@ -866,6 +866,7 @@ _LEGACY_EXPORTS = {
     'bind_account': ('troTHU.cli_accounts', 'bind_account'),
     'binding_summary': ('troTHU.status_reports', 'binding_summary'),
     'bootstrap_config': ('troTHU.config_runtime', 'bootstrap_config'),
+    'migrate_legacy_yaml_config': ('troTHU.config_runtime', 'migrate_legacy_yaml_config'),
     'bot_discord_gateway_command': ('troTHU.cli_bot', 'bot_discord_gateway_command'),
     'bot_discord_schema_command': ('troTHU.cli_bot', 'bot_discord_schema_command'),
     'bot_discord_sync_command': ('troTHU.cli_bot', 'bot_discord_sync_command'),
@@ -991,7 +992,8 @@ _LEGACY_EXPORTS = {
     'print_pending_qr': ('troTHU.qr_runtime', 'print_pending_qr'),
     'print_qr_preview': ('troTHU.qr_runtime', 'print_qr_preview'),
     'print_status': ('troTHU.status_reports', 'print_status'),
-    'parse_simple_config_text': ('troTHU.simple_config', 'parse_simple_config_text'),
+    'parse_basic_config_text': ('troTHU.config_format', 'parse_basic_config_text'),
+    'parse_legacy_basic_config_text': ('troTHU.config_format', 'parse_legacy_basic_config_text'),
     'provider_block_message': ('troTHU.status_reports', 'provider_block_message'),
     'provider_guard_result': ('troTHU.status_reports', 'provider_guard_result'),
     'provider_is_daily_allowed': ('troTHU.status_reports', 'provider_is_daily_allowed'),
@@ -1033,7 +1035,10 @@ _LEGACY_EXPORTS = {
     'release_check_command': ('troTHU.cli_system', 'release_check_command'),
     'report_fatal_exception': ('troTHU.logging_runtime', 'report_fatal_exception'),
     'render_compact_config': ('troTHU.config_view', 'render_compact_config'),
-    'render_simple_config': ('troTHU.simple_config', 'render_simple_config'),
+    'render_basic_config': ('troTHU.config_format', 'render_basic_config'),
+    'parse_advanced_config_toml': ('troTHU.config_format', 'parse_advanced_config_toml'),
+    'render_advanced_config_toml': ('troTHU.config_format', 'render_advanced_config_toml'),
+    'default_advanced_config': ('troTHU.config_format', 'default_advanced_config'),
     'research_api_command': ('troTHU.cli_research', 'research_api_command'),
     'research_browser_capture_command': ('troTHU.cli_research', 'research_browser_capture_command'),
     'research_browser_check_command': ('troTHU.cli_research', 'research_browser_check_command'),
@@ -1046,10 +1051,10 @@ _LEGACY_EXPORTS = {
     'resolve_credentials': ('troTHU.config_runtime', 'resolve_credentials'),
     'resolve_teacher_credentials': ('troTHU.config_runtime', 'resolve_teacher_credentials'),
     'resolve_teacher_course_id': ('troTHU.qr_teacher_runtime', 'resolve_teacher_course_id'),
-    'merge_simple_and_advanced_config': ('troTHU.simple_config', 'merge_simple_and_advanced_config'),
-    'split_normalized_config': ('troTHU.simple_config', 'split_normalized_config'),
-    'is_simple_config_text': ('troTHU.simple_config', 'is_simple_config_text'),
-    'infer_single_account_now': ('troTHU.simple_config', 'infer_single_account_now'),
+    'merge_basic_and_advanced_config': ('troTHU.config_format', 'merge_basic_and_advanced_config'),
+    'merge_simple_and_advanced_config': ('troTHU.config_format', 'merge_basic_and_advanced_config'),
+    'split_normalized_config': ('troTHU.config_format', 'split_normalized_config'),
+    'infer_single_account_now': ('troTHU.config_format', 'infer_single_account_now'),
     'open_config_in_legacy_notepad': ('troTHU.config_editor', 'open_config_in_legacy_notepad'),
     'ensure_config_now_or_open_editor': ('troTHU.config_editor', 'ensure_config_now_or_open_editor'),
     'reload_config_after_editor': ('troTHU.config_editor', 'reload_config_after_editor'),

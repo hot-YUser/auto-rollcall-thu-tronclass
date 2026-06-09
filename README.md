@@ -4,7 +4,7 @@
 
 登入學校帳號後，它會在你設定的上課時段自動盯著課程，一偵測到點名就替你完成簽到——你不用一直盯著手機，也不用手忙腳亂找點名碼。
 
-> ⚠️ 請只在你自己有權限、且符合學校與課程規範的情況下使用。**不要把填好帳密的 `config.yaml`、cookie、`state/`、`log/` 傳給任何人。**
+> ⚠️ 請只在你自己有權限、且符合學校與課程規範的情況下使用。**不要把填好帳密的 `config.conf`、cookie、`state/`、`log/` 傳給任何人。**
 
 ## 致謝與來源
 
@@ -26,7 +26,7 @@
 
 **支援的學校：東海大學 (THU)、淡江大學 (TKU)。** 兩校都走同一套登入與點名流程，數字、雷達都完整可用。
 
-> 補充一個常見的誤會：TronClass 是一套被很多學校採用的校園系統，但**各校上架時都會自己取名**——在東海它叫「iLearn」、在淡江叫「iClass」、TronClass 公有雲官網則直接叫「TronClass」。名字不一樣，骨子裡卻是同一套 API；所以同一套登入＋點名流程，只要換掉網域和登入方式，就能套到不同學校。
+> 補充一個常見的誤會：TronClass 是一套被很多學校採用的校園系統，但**各校上架時都會自己取名**——在東海它叫「iLearn」、在淡江叫「iClass」、TronClass 公有雲官網則直接叫「TronClass」。名字不一樣，骨子裡卻是同一套 API；所以同一套登入＋點名流程，只要換掉網域 and 登入方式，就能套到不同學校。
 
 ---
 
@@ -38,7 +38,7 @@
 2. **整包解壓縮**到一個固定資料夾（不要在 zip 裡直接雙擊）。
 3. 進到資料夾，執行 `auto-rollcall-thu-tronclass.exe`。
 
-第一次啟動會在 exe 旁邊自動建立 `config.yaml`、`state/`、`log/` 三樣東西。程式一啟動就直接進入監控；**按任意鍵**就會用記事本打開 `config.yaml` 讓你填帳號密碼，存檔關掉記事本後它會自動重新讀取設定。
+第一次啟動會在 exe 旁邊自動建立 `config.conf`、`config.advanced.toml`、`state/`、`log/` 四樣東西。程式一啟動就直接進入監控；**按任意鍵**就會用記事本打開 `config.conf` 讓你填帳號密碼，存檔關掉記事本後它會自動重新讀取設定。
 
 ### 我想用原始碼跑（開發者）
 
@@ -49,7 +49,7 @@ python -m pip install -r requirements.txt
 python -m troTHU.tron
 ```
 
-就這樣。一樣是啟動即監控、按任意鍵用記事本開 `config.yaml`。
+就這樣。一樣是啟動即監控、按任意鍵用記事本開 `config.conf`。
 
 如果你要放在工作排程器或背景服務、不希望它監聽按鍵：
 
@@ -65,93 +65,103 @@ python -m troTHU.tron run --no-input
 
 九成的人會卡在這裡，所以講仔細一點。
 
-### 先說一個容易誤會的點
+### 新版格式特色（乾淨明瞭、不易出錯）
 
-`config.yaml` 雖然副檔名是 `.yaml`，但它**其實不是標準 YAML**，而是這個專案自己設計、給人手動編輯用的超簡單格式（是的，副檔名取得有點名不符實，我們自己也吐槽過）。所以：
+新版把設定拆成兩個檔，都不再使用容易改錯的 YAML：
 
-- 冒號後面**有沒有空格都可以**：`user:s123` 和 `user: s123` 都行。
-- 學校**大小寫不分**：`THU`、`thu`、`東海` 都認得。
-- 你**不需要**懂 YAML 縮排規則，照著下面的範例填就好。
+- **基本檔 `config.conf`**：為新手設計的純文字格式，放帳密與課表。
+- **進階檔 `config.advanced.toml`**：標準 TOML 格式，固定、嚴謹、不易出錯，放各種微調參數。
 
-一般使用者主要改四塊：`now`、`account`、`group`、`operating`。如果要啟用 QR 教師輔助，再填 `teacher`。其他進階設定都放在另一個檔 `config.advanced.yaml`，平常完全不用碰。
+`config.conf` 的容錯做得很寬鬆，**亂打空格、亂換行都盡量幫你救回來**：
 
-### `config.yaml` 範例與逐塊說明
+- **註解與說明**：以 `#` 開頭的行是註解，我們加上了豐富的中文說明。
+- **密碼安全**：註解只認整行（第一個字是 `#`），所以密碼中含 `#`、`:`、空格等符號都可以安心填寫，不會被當成註解或被切斷。
+- **超寬鬆解析**：`=` 或 `:` 當分隔都行、前後空白可有可無、空行隨便加；連全形符號（`：`、`＝`、`，`、`「」`）、`[grop]` 這種錯字、甚至忘了打中括號直接寫 `account` 都認得。
+- **基本檔沒設的進階選項**會自動套用安全預設值，所以新手通常只要碰 `config.conf`。
 
-```text
-now:(填帳號或 class A)
+一般使用者主要改五個區塊：`now`、`[account]`、`[group]`、`[operating]`，若要啟用 QR 教師輔助則加填 `[teacher]`。
 
-account:
-  user:(帳號1)
-  passwd:(密碼1)
-  school:THU
-
-  user:(帳號2)
-  passwd:(密碼2)
-  school:TKU
-
-teacher:
-  user:(教師帳號)
-  passwd:(教師密碼)
-  school:TRONCLASS
-  course:(留空自動偵測)
-
-group:
-  class:A
-    school:THU
-    user:(帳號1)
-
-operating:
-  0:
-    enable:true
-    range:
-    - 00:00 - 00:00
-```
-
-**`now`** — 現在要用哪個帳號。可以填某個帳號的學號（例如 `now:s1234567`），也可以填一個群組（例如 `now:class A`）。
-> 小撇步：如果你整份 `account` 只填了一個有效帳號，`now` 可以**留空**，程式會自動用那一個，不會逼你再填一次。
-
-**`account`** — 你的帳號清單，可以放很多組。每組三行：`user`（學號）、`passwd`（密碼）、`school`（`THU` 或 `TKU`）。
-
-**`teacher`** — （選用）QR 教師輔助帳號。`user` / `passwd` 是教師帳密，`school` 可填 `TRONCLASS`、`THU`、`TKU`；`course` 留空時會用 `/api/my-courses` 自動挑第一個課程，也可以手動填課程 ID。
-
-**`group`** — （進階／選用）把帳號分組。`class:A` 開一個叫 A 的群組，底下用 `user` 列出屬於這組的帳號。搭配 `now:class A` 一次套用整組設定。只有一個帳號的話這塊可以不用管。
-
-**`operating`** — 上課時段，也就是「什麼時候才需要自動盯點名」。
-- 星期是數字：**`0` = 星期日、`1` = 星期一 … `6` = 星期六**。
-- `enable:true` 代表這天啟用。
-- `range:` 底下用 `- 開始 - 結束` 列時段，**同一天可以列很多段**：
+### 基本設定 `config.conf` 範例與逐塊說明
 
 ```text
-operating:
-  1:
-    enable:true
-    range:
-    - 09:10 - 12:00
-    - 13:20 - 17:30
+# ===== 基本設定 config.conf =====（改完存檔關閉記事本即自動套用）
+# now：要用哪個帳號跑？填某帳號的 user，或填「class 群組名」。只有一個帳號可留空。
+now = 
+
+# [account] 你的帳號，要幾個就放幾塊。school 可填 THU / TKU / TRONCLASS
+[account]
+user = s1234567
+passwd = mypassword
+school = THU
+
+# [group]（選用）一人偵測、全員簽到。members 用逗號列出同組 user，再把上面 now 填成「class A」
+[group]
+class = A
+school = THU
+members = s1234567, s7654321
+
+# [teacher]（選用）QR 教師輔助帳號。course 留空會自動抓第一門課
+[teacher]
+user = teacher_account
+passwd = teacher_password
+school = TRONCLASS
+course = 
+
+# [operating] 上課時段：一天一塊；day 用 0=日 1=一 … 6=六；times 用逗號分隔多段
+[operating]
+day = 1
+enable = true
+times = 09:10-12:00, 13:20-17:30
 ```
 
-（上面是「星期一 09:10–12:00 和 13:20–17:30 都自動盯點名」。）
+**`now`** — 現在要用哪個帳號。可以填某個帳號的學號（例如 `now = s1234567`），也可以填一個群組（例如 `now = class A`）。
+> 小撇步：如果你整份 `config.conf` 只填了一個有效帳號，`now` 可以**留空**，程式會自動用那一個，不會逼你再填一次。
+
+**`[account]`** — 你的帳號區塊，要幾個帳號就自己複製多個區塊。每個區塊包含 `user`（學號/帳號）、`passwd`（密碼）與 `school`（學校，可填 `THU` / `TKU` / `TRONCLASS`）。也接受中文別名（例如 `帳號 = s1234567`、`密碼 = mypassword`、`學校 = 東海`）。
+
+**`[group]`** — （進階／選用）群組設定。群組功能可以「一人讀碼、全員簽到並確認 on_call_fine」。`class = A` 代表群組名稱為 A，`members` 用逗號列出該群組的成員帳號。
+
+**`[teacher]`** — （選用）QR 教師輔助帳號。`user` / `passwd` 是教師帳密，`school` 可填 `TRONCLASS`、`THU`、`TKU`；`course` 留空時會自動挑選第一個課程。
+
+**`[operating]`** — 上課時段，也就是「什麼時候才需要自動盯點名」。每一天用一個區塊設定：
+- `day`：**`0` = 星期日、`1` = 星期一 … `6` = 星期六**。
+- `enable`：`true` 代表這天啟用盯點名，`false` 代表不啟用。
+- `times`：用逗號分隔多個時段，時段格式為 `開始時間-結束時間`。例如 `times = 09:10-12:00, 13:20-17:30`。
 
 ### 改完設定後
 
 填好帳密、存檔、關掉記事本，程式就會自動重新讀取。如果你改了 `now`，它會清掉目前的登入狀態並切換到新帳號或新群組。
 
-填密碼那關如果你不想把明碼直接寫進 `config.yaml`，也可以改用環境變數、或安裝 `.[keyring]` 之後用系統金鑰圈保存（進階用法，見後面）。
+填密碼那關如果你不想把明碼直接寫進 `config.conf`，也可以改用環境變數、或安裝 `.[keyring]` 之後用系統金鑰圈保存（進階用法，見後面）。
 
 ### 常用設定指令
 
 ```bash
 python -m troTHU.tron config show       # 看目前讀到的設定
 python -m troTHU.tron config doctor      # 檢查設定有沒有問題
-python -m troTHU.tron config advanced    # 用記事本打開 config.advanced.yaml
-python -m troTHU.tron config compact --write   # 把舊版設定檔整理成新版兩檔（會先自動備份）
+python -m troTHU.tron config advanced    # 用記事本打開 config.advanced.toml
 ```
 
-`config.advanced.yaml` 是真正的 YAML，放時區、number/radar 細部調整、Bot 設定等。例如：
+`config.advanced.toml` 採用標準 **TOML** 格式，放時區、number/radar 細部調整、Bot 設定等。它會在第一次啟動時**自動產生，並列出所有可調整的項目與其預設值（每項都附中文說明）**，所以你不必去猜有哪些選項可以改——打開檔案照著改就好。不確定就別動；若不小心改壞（例如刪掉引號），這份進階設定會整個回到預設值，但完全不影響 `config.conf`。例如：
 
-```yaml
-time:
-  timezone: Asia/Taipei
+```toml
+# 時區設定
+[time]
+timezone = "Asia/Taipei"
+
+# 監控行為
+[monitor]
+# true = 一偵測到點名就立刻簽到，跳過「全班到課率達 15%」的保險
+ignore_attendance_rate_gate = false
+
+# 雷達點名參數
+[radar]
+# 雷達策略：empty_answer（空答案優先）或 global_wgs84（全球定位求解）
+strategy = "empty_answer"
+
+[radar.global]
+max_queries = 120
+standard_radii_meters = [10000.0, 3000.0, 1000.0, 300.0, 100.0]
 ```
 
 ---
@@ -206,7 +216,7 @@ python -m troTHU.tron bot serve --adapter generic
 ## 其他功能
 
 - **多帳號 / 群組**：一份設定管多個學號，用 `now` 一鍵切換（見上面 config 教學）。
-- **時區排程**：`config.advanced.yaml` 裡可設 IANA 時區（如 `Asia/Taipei`），每天可有多個時段。
+- **時區排程**：`config.advanced.toml` 裡可設 IANA 時區（如 `Asia/Taipei`），每天可有多個時段。
 - **本機唯讀面板**：`python -m troTHU.tron app serve --open` 會在 localhost 開一個唯讀的小面板，只能「看」狀態（不會送點名、不會匯入 cookie、不會改帳號）。
 - **環境自我檢查**：`python -m troTHU.tron doctor` 一鍵檢查環境、設定、登入來源是否正常。
 - **狀態快照**：`python -m troTHU.tron status --json` 印出目前本機狀態。
@@ -221,7 +231,7 @@ python -m troTHU.tron bot serve --adapter generic
 
 預設情況下，程式偵測到點名後**不會立刻送出**，而是先回查這堂課的簽到率，等到「全班到課率達 15%」（已經有 15% 的同學簽到）才出手。這是一道刻意設計的容錯保險：萬一老師只是手滑誤開、開了又馬上關掉，這種根本沒人簽的「假點名」就不會把你簽進去；等到班上開始有人陸續簽到、確認是真的在點名了，程式才動作。數字 / 雷達 / QR 三種都適用（QR 會在等待期間先用教師帳號把點名預備好，門檻一過立刻送出）。
 
-如果你不想要這道保險、希望一偵測到就立刻簽到，到 `config.advanced.yaml` 把 `monitor.ignore_attendance_rate_gate` 設成 `true` 即可（開發 / 排程場景也可以用 `python -m troTHU.tron run --ignore-attendance-rate-gate` 臨時關閉這一輪）。
+如果你不想要這道保險、希望一偵測到就立刻簽到，到 `config.advanced.toml` 把 `monitor.ignore_attendance_rate_gate` 設成 `true` 即可（開發 / 排程場景也可以用 `python -m troTHU.tron run --ignore-attendance-rate-gate` 臨時關閉這一輪）。
 
 ### 數字點名：點名碼其實藏在 API 回應裡
 
@@ -293,7 +303,7 @@ PUT {base}/api/rollcall/{rollcall_id}/answer?api_version=1.76
 GET {base}/api/rollcall/{rollcall_id}/lite   # 取得 beacon / 訊號等附帶資訊
 ```
 
-備援解法把「距離」當觀測量，用穩健最小平方法在 WGS84 上做多點定位反推教室座標，再不行則以無限棋盤格逐格覆蓋。雷達策略鏈為 **`empty_answer → global_wgs84`**（由 `config.advanced.yaml` 的 `radar.strategy` 選擇，預設 `empty_answer`）；全球定位求解器在 `troTHU/global_radar_solver.py`，是零數學套件依賴的純 Python 實作。
+備援解法把「距離」當觀測量，用穩健最小平方法在 WGS84 上做多點定位反推教室座標，再不行則以無限棋盤格逐格覆蓋。雷達策略鏈為 **`empty_answer → global_wgs84`**（由 `config.advanced.toml` 的 `radar.strategy` 選擇，預設 `empty_answer`）；全球定位求解器在 `troTHU/global_radar_solver.py`，是零數學套件依賴的純 Python 實作。
 
 ### QR 點名（教師輔助取得 data）
 

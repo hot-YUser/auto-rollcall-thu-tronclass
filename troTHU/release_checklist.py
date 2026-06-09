@@ -36,8 +36,8 @@ except ImportError:  # pragma: no cover
 
 
 FORBIDDEN_ARTIFACT_NAMES = (
-    "config.yaml",
-    "config.advanced.yaml",
+    "config.conf",
+    "config.advanced.toml",
     "state",
     "log",
     "cookies",
@@ -317,8 +317,8 @@ def build_release_build_plan(base_dir: Path, *, dist_dir: Path | None = None) ->
             "manual_review_dist_manifest",
         ],
         "forbidden_outputs": [
-            "config.yaml",
-            "config.advanced.yaml",
+            "config.conf",
+            "config.advanced.toml",
             "state_directory",
             "log_directory",
             "cookies",
@@ -356,7 +356,7 @@ def _readme_report(path: Path) -> Dict[str, Any]:
             severity="warn",
         ),
         _check("README monitor console quickstart", "run --no-input" in text and "按任意鍵" in text, "monitor console quickstart documented", severity="warn"),
-        _check("README config tutorial", "config.advanced.yaml" in text and "operating" in text, "config tutorial documented", severity="warn"),
+        _check("README config tutorial", "config.advanced.toml" in text and "operating" in text, "config tutorial documented", severity="warn"),
         _check("README bot docs", "HTTP Interactions" in text and "Telegram" in text, "bot entrypoints documented", severity="warn"),
         _check("README provider scope", "THU" in text and "TKU" in text, "THU/TKU provider scope documented", severity="warn"),
         _check("README qr teacher assist", "QR Code 點名" in text and "教師輔助" in text, "QR teacher assist documented", severity="warn"),

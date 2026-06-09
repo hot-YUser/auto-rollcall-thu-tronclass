@@ -18,16 +18,16 @@ class ConfigViewTest(unittest.TestCase):
     def test_compact_config_omits_default_heavy_sections(self) -> None:
         config = tron.normalize_config(copy.deepcopy(tron.DEFAULT_CONFIG))
         text = render_compact_config(config)
-        self.assertIn("now:", text)
-        self.assertIn("account:", text)
-        self.assertIn("group:", text)
-        self.assertIn("school:TKU", text)
-        self.assertIn("school:TRONCLASS", text)
-        self.assertNotIn("school:FJU", text)
+        self.assertIn("now = ", text)
+        self.assertIn("[account]", text)
+        self.assertIn("[group]", text)
+        self.assertIn("school = TKU", text)
+        self.assertIn("school = TRONCLASS", text)
+        self.assertNotIn("school = FJU", text)
         self.assertNotIn("LEGACY CONFIG", text)
         self.assertNotIn("user-agent", text)
         self.assertNotIn("final_grid_step_meters", text)
-        self.assertNotIn("research:", text)
+        self.assertNotIn("research", text)
 
     def test_advanced_override_is_preserved(self) -> None:
         config = tron.normalize_config(copy.deepcopy(tron.DEFAULT_CONFIG))
@@ -40,12 +40,12 @@ class ConfigViewTest(unittest.TestCase):
 
     def test_write_compact_config_backs_up_existing_file(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            path = Path(temp_dir) / "config.yaml"
-            path.write_text("account:\n  user: old\n", encoding="utf-8")
+            path = Path(temp_dir) / "config.conf"
+            path.write_text("[account]\nuser = old\n", encoding="utf-8")
             report = write_compact_config(path, tron.DEFAULT_CONFIG, backup_existing=True)
             self.assertEqual(report["status"], "ok")
             self.assertTrue(Path(report["backup_path"]).exists())
-            self.assertIn("now:", path.read_text(encoding="utf-8"))
+            self.assertIn("now = ", path.read_text(encoding="utf-8"))
 
     def test_summary_and_doctor_are_safe(self) -> None:
         config = tron.normalize_config(

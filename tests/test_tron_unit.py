@@ -82,6 +82,7 @@ class TronHelpersTest(unittest.TestCase):
         self.original_tron_teacher_user = os.environ.get("TRON_TEACHER_USER")
         self.original_tron_teacher_pass = os.environ.get("TRON_TEACHER_PASS")
         self.original_config_path = tron.CONFIG_PATH
+        self.original_config_advanced_path = tron.CONFIG_ADVANCED_PATH
         self.original_config_bootstrapped = tron.CONFIG_BOOTSTRAPPED
         self.original_bootstrap_warnings = list(tron.BOOTSTRAP_WARNINGS)
         self.original_last_login_result = tron.LAST_LOGIN_RESULT
@@ -93,6 +94,7 @@ class TronHelpersTest(unittest.TestCase):
         tron.RUNTIME_CREDENTIALS.clear()
         tron.RUNTIME_CREDENTIALS.update(copy.deepcopy(self.original_runtime_credentials))
         tron.CONFIG_PATH = self.original_config_path
+        tron.CONFIG_ADVANCED_PATH = self.original_config_advanced_path
         tron.CONFIG_BOOTSTRAPPED = self.original_config_bootstrapped
         tron.BOOTSTRAP_WARNINGS.clear()
         tron.BOOTSTRAP_WARNINGS.extend(self.original_bootstrap_warnings)
@@ -633,15 +635,16 @@ class TronHelpersTest(unittest.TestCase):
     def test_bootstrap_config_recovers_from_broken_yaml_and_rewrites_default(self) -> None:
         temp_dir = make_workspace_temp_dir()
         try:
-            tron.CONFIG_PATH = temp_dir / "config.yaml"
+            tron.CONFIG_PATH = temp_dir / "config.conf"
+            tron.CONFIG_ADVANCED_PATH = temp_dir / "config.advanced.toml"
             tron.CONFIG_PATH.write_text("placeholder", encoding="utf-8")
             tron.CONFIG_BOOTSTRAPPED = False
             tron.BOOTSTRAP_WARNINGS.clear()
 
-            with patch.object(tron.yaml, "safe_load", side_effect=ValueError("broken yaml")):
+            with patch.object(tron, "parse_basic_config_text", side_effect=ValueError("broken text")):
                 config = tron.bootstrap_config(force=True)
 
-            backups = list(temp_dir.glob("config-broken-*.yaml"))
+            backups = list(temp_dir.glob("config-broken-*.conf"))
             self.assertEqual(config["account"]["user"], "YOUR_STUDENT_ID")
             self.assertEqual(len(backups), 1)
             self.assertTrue(tron.CONFIG_PATH.exists())
@@ -652,13 +655,14 @@ class TronHelpersTest(unittest.TestCase):
     def test_bootstrap_config_falls_back_to_defaults_when_rewrite_fails(self) -> None:
         temp_dir = make_workspace_temp_dir()
         try:
-            tron.CONFIG_PATH = temp_dir / "config.yaml"
+            tron.CONFIG_PATH = temp_dir / "config.conf"
+            tron.CONFIG_ADVANCED_PATH = temp_dir / "config.advanced.toml"
             tron.CONFIG_PATH.write_text("placeholder", encoding="utf-8")
             tron.CONFIG_BOOTSTRAPPED = False
             tron.BOOTSTRAP_WARNINGS.clear()
 
             with (
-                patch.object(tron.yaml, "safe_load", side_effect=ValueError("broken yaml")),
+                patch.object(tron, "parse_basic_config_text", side_effect=ValueError("broken text")),
                 patch.object(tron, "write_config_file", side_effect=OSError("read-only")),
             ):
                 config = tron.bootstrap_config(force=True)

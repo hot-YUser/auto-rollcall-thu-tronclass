@@ -49,7 +49,7 @@ class PackageDiagnosticsTest(unittest.TestCase):
         self.assertIn("troTHU.global_radar_solver", report["hidden_imports"])
         self.assertIn("troTHU.radar_map_assist", report["hidden_imports"])
         self.assertIn("troTHU.telegram_adapter", report["hidden_imports"])
-        self.assertIn("troTHU.simple_config", report["hidden_imports"])
+        self.assertIn("troTHU.config_format", report["hidden_imports"])
         self.assertIn("troTHU.config_editor", report["hidden_imports"])
         self.assertIn("troTHU.cli_teacher", report["hidden_imports"])
         self.assertIn("troTHU.group_runtime", report["hidden_imports"])
@@ -77,7 +77,7 @@ class PackageDiagnosticsTest(unittest.TestCase):
         self.assertIn("troTHU.global_radar_solver", gaps)
         self.assertIn("troTHU.radar_map_assist", gaps)
         self.assertIn("troTHU.telegram_adapter", gaps)
-        self.assertIn("troTHU.simple_config", gaps)
+        self.assertIn("troTHU.config_format", gaps)
         self.assertIn("troTHU.config_editor", gaps)
         self.assertIn("troTHU.cli_teacher", gaps)
         self.assertIn("troTHU.group_runtime", gaps)
@@ -171,6 +171,7 @@ class PackageDiagnosticsTest(unittest.TestCase):
 
         for pattern in ("build/", "dist/", "state/", "log/", ".tmp-tests/", "__pycache__/", "其他專案參考/"):
             self.assertIn(pattern, gitignore)
-        self.assertIn("\n/config.yaml\n", "\n" + gitignore + "\n")
+        self.assertIn("\n/config.conf\n", "\n" + gitignore + "\n")
+        self.assertIn("\n/config.advanced.toml\n", "\n" + gitignore + "\n")
         for pattern in ("*.py text eol=lf", "*.md text eol=lf", "*.yaml text eol=lf", "*.spec text eol=lf"):
             self.assertIn(pattern, gitattributes)

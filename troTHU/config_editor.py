@@ -62,10 +62,10 @@ def ensure_config_now_or_open_editor(config_path: Path | None = None) -> ctx.Dic
     effective_now = effective_config_now_value(ctx.CONFIG)
     if effective_now:
         if not raw_now:
-            ctx.log_print("config.yaml 的 now 是空白；偵測到只有一個帳號，將直接使用 `{}`。".format(effective_now))
+            ctx.log_print("config.conf 的 now 是空白；偵測到只有一個帳號，將直接使用 `{}`。".format(effective_now))
             return {"ok": True, "status": "inferred_single_account", "now": "", "effective_now": effective_now}
         return {"ok": True, "status": "ready", "now": raw_now, "effective_now": effective_now}
-    ctx.log_print("config.yaml 的 now 目前是空的，將用舊版記事本開啟設定檔。")
+    ctx.log_print("config.conf 的 now 目前是空的，將用舊版記事本開啟設定檔。")
     opened = ctx.open_config_in_legacy_notepad(path, wait=True)
     if not opened.get("ok"):
         return opened
@@ -92,7 +92,7 @@ async def watch_any_key_to_edit_config(shutdown_event: ctx.asyncio.Event, sessio
             msvcrt.getwch()
         except Exception:
             pass
-        ctx.log_print("偵測到按鍵，開啟 config.yaml。關閉記事本後會重新載入設定。")
+        ctx.log_print("偵測到按鍵，開啟 config.conf。關閉記事本後會重新載入設定。")
         before = effective_config_now_value(ctx.CONFIG)
         with ctx.pause_status_line():
             opened = await ctx.asyncio.to_thread(ctx.open_config_in_legacy_notepad, ctx.CONFIG_PATH, wait=True)

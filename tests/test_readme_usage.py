@@ -29,7 +29,7 @@ class ReadmeUsageTest(unittest.TestCase):
         self.assertIn("## 設定檔教學", self.text)
         for key in ("now", "account", "teacher", "group", "operating"):
             self.assertIn(key, self.text)
-        self.assertIn("config.advanced.yaml", self.text)
+        self.assertIn("config.advanced.toml", self.text)
         self.assertIn("config show", self.text)
 
     def test_bot_principle_and_technical_sections_present(self) -> None:
@@ -43,7 +43,7 @@ class ReadmeUsageTest(unittest.TestCase):
         self.assertIn("/api/rollcall/", self.text)
 
     def test_safety_note_is_present(self) -> None:
-        self.assertIn("不要把填好帳密的 `config.yaml`", self.text)
+        self.assertIn("不要把填好帳密的 `config.conf`", self.text)
 
     def test_original_project_credits_are_present(self) -> None:
         self.assertIn("## 致謝與來源", self.text)

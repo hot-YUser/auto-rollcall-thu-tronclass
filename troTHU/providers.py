@@ -128,7 +128,7 @@ PROVIDERS: Dict[str, ProviderDefinition] = {
             local_scanner=True,
             direct_code_lookup=True,
         ),
-        notes="Primary supported provider. Kept compatible with the legacy config.yaml flow.",
+        notes="Primary supported provider. Kept compatible with the legacy config.conf flow.",
     ),
     "fju": ProviderDefinition(
         key="fju",

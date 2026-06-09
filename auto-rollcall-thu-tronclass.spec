@@ -91,7 +91,7 @@ HIDDEN_IMPORTS = sorted(
             "troTHU.rollcall_runtime",
             "troTHU.runtime_context",
             "troTHU.runtime_helpers",
-            "troTHU.simple_config",
+            "troTHU.config_format",
             "troTHU.group_runtime",
             "troTHU.status_reports",
             "troTHU.telegram_adapter",

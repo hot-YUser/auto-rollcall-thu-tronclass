@@ -142,7 +142,7 @@ def handle_account_command(args: ctx.argparse.Namespace) -> int:
         if ctx.save_config():
             print('Profile saved: {}'.format(profile.name))
             return 0
-        print('Failed to save config.yaml.')
+        print('Failed to save config.conf.')
         return 1
     if args.account_command == 'switch':
         try:

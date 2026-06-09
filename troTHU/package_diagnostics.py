@@ -12,8 +12,8 @@ PROJECT_RELEASE_LABEL = "1.3-alpha.2"
 SPEC_NAME = "auto-rollcall-thu-tronclass.spec"
 FORBIDDEN_BUNDLE_NAMES = (
     ".codex-worklog.md",
-    "config.yaml",
-    "config.advanced.yaml",
+    "config.conf",
+    "config.advanced.toml",
     "state",
     "log",
     "cookies",
@@ -319,11 +319,11 @@ def _git_hygiene_report(base_dir: Path) -> Dict[str, Any]:
         for pattern in REQUIRED_GITATTRIBUTES_PATTERNS
         if pattern not in attributes_text
     ]
-    config_ignored = "config.yaml" in ignore_lines or "/config.yaml" in ignore_lines
+    config_ignored = "config.conf" in ignore_lines or "/config.conf" in ignore_lines
     checks = [
         _check(".gitignore exists", gitignore.exists(), ".gitignore", severity="warn"),
         _check(".gitignore ignores runtime artifacts", not missing_ignore, "build/dist/state/log/reference projects ignored", severity="warn"),
-        _check("local config ignored", config_ignored, "config.yaml is ignored", severity="fail"),
+        _check("local config ignored", config_ignored, "config.conf is ignored", severity="fail"),
         _check(".gitattributes exists", gitattributes.exists(), ".gitattributes", severity="warn"),
         _check(".gitattributes normalizes text", not missing_attributes, "common text file types use LF", severity="warn"),
     ]

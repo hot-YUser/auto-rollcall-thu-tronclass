@@ -2084,7 +2084,7 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
             for call in status_print.call_args_list
             if "偵測到尚未登入" in call.args[0]
         ]
-        self.assertEqual(manual_notices, ["偵測到尚未登入。請按任意鍵編輯 config.yaml，填好帳號密碼後關閉記事本。"])
+        self.assertEqual(manual_notices, ["偵測到尚未登入。請按任意鍵編輯 config.conf，填好帳號密碼後關閉記事本。"])
 
     async def test_monitor_loop_auto_reauths_when_cookie_disappears_after_success(self) -> None:
         session = MagicMock()
@@ -2157,7 +2157,7 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
                 patch.object(tron.sys.stdout, "write") as write_mock,
                 patch.object(tron.sys.stdout, "flush") as flush_mock,
             ):
-                tron.status_print("尚未登入 (請按任意鍵開啟 config.yaml)")
+                tron.status_print("尚未登入 (請按任意鍵開啟 config.conf)")
                 tron.log_print("背景訊息")
                 tron.PROMPT_INPUT_ACTIVE = False
                 tron.flush_console_output()
@@ -2166,7 +2166,7 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
             tron.CONSOLE_DEFERRED_LINES[:] = previous_deferred
 
         self.assertEqual(tron.CONSOLE_DEFERRED_LINES, previous_deferred)
-        self.assertEqual(write_mock.call_args_list[0].args[0], "[監控] 尚未登入 (請按任意鍵開啟 config.yaml)\n")
+        self.assertEqual(write_mock.call_args_list[0].args[0], "[監控] 尚未登入 (請按任意鍵開啟 config.conf)\n")
         self.assertEqual(write_mock.call_args_list[1].args[0], "背景訊息\n")
         self.assertEqual(flush_mock.call_count, 3)
 

@@ -284,7 +284,7 @@ async def monitor_loop(
             delay = ctx.get_login_retry_delay(login_retry_attempt)
             next_login_retry_at = ctx.time.monotonic() + delay
             login_retry_attempt += 1
-            ctx.log_print('首次登入失敗，稍後會自動重試；也可按任意鍵用舊版記事本修改 config.yaml。')
+            ctx.log_print('首次登入失敗，稍後會自動重試；也可按任意鍵用舊版記事本修改 config.conf。')
         else:
             ctx.log_print('首次登入失敗，請按任意鍵用舊版記事本填寫 now、帳號與密碼。')
     error_cnt = 0
@@ -321,14 +321,13 @@ async def monitor_loop(
                     await ctx.sleep_or_shutdown(shutdown_event, 1)
                     continue
                 remaining = max(1, int(round(next_login_retry_at - now)))
-                notice_key = 'retry:{}'.format(login_retry_attempt)
-                if unauth_notice_state != notice_key:
-                    ctx.status_print('尚未登入，等待自動重試；若要修改設定，請按任意鍵編輯 config.yaml，關閉記事本後會重新載入。')
-                    unauth_notice_state = notice_key
+                if unauth_notice_state != 'retry:{}'.format(login_retry_attempt):
+                    ctx.status_print('尚未登入，等待自動重試；若要修改設定，請按任意鍵編輯 config.conf，關閉記事本後會重新載入。')
+                    unauth_notice_state = 'retry:{}'.format(login_retry_attempt)
                 await ctx.sleep_or_shutdown(shutdown_event, min(5.0, float(remaining)))
             else:
                 if unauth_notice_state != 'manual_config':
-                    ctx.status_print('偵測到尚未登入。請按任意鍵編輯 config.yaml，填好帳號密碼後關閉記事本。')
+                    ctx.status_print('偵測到尚未登入。請按任意鍵編輯 config.conf，填好帳號密碼後關閉記事本。')
                     unauth_notice_state = 'manual_config'
                 await ctx.sleep_or_shutdown(shutdown_event, 5)
             continue
@@ -591,9 +590,9 @@ async def monitor_loop(
                 delay = ctx.get_login_retry_delay(login_retry_attempt)
                 next_login_retry_at = ctx.time.monotonic() + delay
                 login_retry_attempt += 1
-                ctx.log_print('自動登入失敗，稍後會持續自動重試；也可按任意鍵開啟 config.yaml。')
+                ctx.log_print('自動登入失敗，稍後會持續自動重試；也可按任意鍵開啟 config.conf。')
             else:
-                ctx.log_print('自動登入失敗，請按任意鍵用舊版記事本填寫 config.yaml。')
+                ctx.log_print('自動登入失敗，請按任意鍵用舊版記事本填寫 config.conf。')
             error_cnt = 0
             continue
         except ctx.TronHttpError as exc:
@@ -672,12 +671,12 @@ async def app_main(
                     if await ctx.ensure_teacher_ready():
                         ctx.log_print('QR 教師帳號就緒。')
                     else:
-                        ctx.log_print('QR 點名功能未啟用：教師帳號登入失敗，請於 config.yaml 設定 teacher 帳號。')
+                        ctx.log_print('QR 點名功能未啟用：教師帳號登入失敗，請於 config.conf 設定 teacher 帳號。')
                 else:
                     ctx.TEACHER_READY = False
                     ctx.TEACHER_LOGIN_RESULT = ctx.LoginResult(status='missing_credentials', credential_source='missing')
                     ctx.update_monitor_status(teacher_state='failed', redraw=False)
-                    ctx.log_print('QR 點名功能未啟用：請於 config.yaml 設定 teacher 帳號。')
+                    ctx.log_print('QR 點名功能未啟用：請於 config.conf 設定 teacher 帳號。')
             except Exception as exc:
                 ctx.TEACHER_READY = False
                 ctx.TEACHER_LOGIN_RESULT = ctx.LoginResult(status='error', credential_source='runtime', error=ctx.normalize_text(exc))
@@ -725,15 +724,15 @@ def run_monitor_forever(*, no_input: bool=False, ignore_attendance_rate_gate: ct
         return 1
     if no_input:
         if not ctx.effective_config_now_value(ctx.CONFIG):
-            print('config.yaml 的 now 是空白；無輸入模式不會開啟記事本。若只有一個帳號可留空；多個帳號請先填寫 now。')
+            print('config.conf 的 now 是空白；無輸入模式不會開啟記事本。若只有一個帳號可留空；多個帳號請先填寫 now。')
             return 1
         print('啟動自動登入與點名監控程式（無輸入模式）...')
     else:
         editor_result = ctx.ensure_config_now_or_open_editor(ctx.CONFIG_PATH)
         if not editor_result.get('ok'):
-            print(editor_result.get('message') or 'config.yaml 尚未填寫 now，已停止監控。')
+            print(editor_result.get('message') or 'config.conf 尚未填寫 now，已停止監控。')
             return 1
-        print('啟動監控。此視窗只輸出事件；按任意鍵會用舊版記事本開啟 config.yaml。')
+        print('啟動監控。此視窗只輸出事件；按任意鍵會用舊版記事本開啟 config.conf。')
     ctx.time.sleep(1)
     restart_count = 0
     while True:

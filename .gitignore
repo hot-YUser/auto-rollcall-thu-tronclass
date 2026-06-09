@@ -31,7 +31,12 @@ tmp*/
 *.pem
 *.p12
 *.pfx
+/config.conf
+/config.advanced.toml
+# Legacy YAML config files (pre-1.3). Kept ignored so an orphaned filled-in
+# config.yaml from an older version can never be committed by accident.
 /config.yaml
+/config.advanced.yaml
 
 # Local runtime state. These may contain cookies, logs, validation records,
 # user-specific QR/session metadata, or other private diagnostics.
@@ -39,6 +44,9 @@ log/
 log_/
 state/
 cookies/
+config-full-backup-*.conf
+config-legacy-backup-*.conf
+config-broken-*.conf
 config-full-backup-*.yaml
 config-legacy-backup-*.yaml
 config-broken-*.yaml
