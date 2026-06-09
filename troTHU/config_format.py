@@ -134,6 +134,11 @@ def _strip_value(value: ctx.Any) -> str:
         return ""
     if text.startswith(PLACEHOLDER_PREFIXES) and text.endswith((")", "）")):
         return ""
+    # Example tokens from the friendly default template (AAAAA / **OOXX / the now
+    # hint …) are teaching placeholders only — treat them as blank so a still-example
+    # config is seen as "not configured yet" rather than a real account/password.
+    if text in ctx.EXAMPLE_PLACEHOLDER_VALUES:
+        return ""
     return text
 
 
@@ -238,7 +243,9 @@ def parse_basic_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
             cls = _strip_value(current_group.get("class"))
             school = _canonical_school(current_group.get("school", "thu"))
             members_str = _strip_value(current_group.get("members"))
-            users = _split_list(members_str)
+            # Drop the template's example members (AAAAA,BBBBB) — they are guidance,
+            # not real users, and have no matching account.
+            users = [user for user in _split_list(members_str) if user not in ctx.EXAMPLE_PLACEHOLDER_VALUES]
             if cls or users:
                 simple["groups"].append({
                     "class": cls,

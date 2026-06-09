@@ -723,15 +723,17 @@ def run_monitor_forever(*, no_input: bool=False, ignore_attendance_rate_gate: ct
         print(ctx.provider_block_message('monitor run'))
         return 1
     if no_input:
-        if not ctx.effective_config_now_value(ctx.CONFIG):
-            print('config.conf 的 now 是空白；無輸入模式不會開啟記事本。若只有一個帳號可留空；多個帳號請先填寫 now。')
+        if not ctx.config_is_ready_to_run():
+            print('config.conf 尚未填入可用的帳號密碼；無輸入模式不會開啟記事本，請先填好 config.conf 再啟動。')
             return 1
         print('啟動自動登入與點名監控程式（無輸入模式）...')
     else:
         editor_result = ctx.ensure_config_now_or_open_editor(ctx.CONFIG_PATH)
         if not editor_result.get('ok'):
-            print(editor_result.get('message') or 'config.conf 尚未填寫 now，已停止監控。')
-            return 1
+            # Still not configured after the one-time auto-open: do NOT exit. Fall
+            # through into the monitor, which keeps waiting and lets the user press
+            # any key to edit config.conf again.
+            print(editor_result.get('message') or '尚未偵測到可用帳密，將進入監控；按任意鍵可開啟 config.conf 編輯。')
         print('啟動監控。此視窗只輸出事件；按任意鍵會用舊版記事本開啟 config.conf。')
     ctx.time.sleep(1)
     restart_count = 0

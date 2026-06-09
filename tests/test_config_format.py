@@ -86,6 +86,18 @@ class ConfigFormatTest(unittest.TestCase):
         self.assertIn("now = ", rendered)
         self.assertIn("# now：要用哪個帳號跑？", rendered)
 
+    def test_default_template_parses_example_tokens_as_blank(self) -> None:
+        # The shipped template shows example values (AAAAA / **OOXX / TTTTT / the
+        # now-hint) as teaching guidance, but the parser must treat them as empty so
+        # an unedited config reads as "not configured yet".
+        parsed = tron.parse_basic_config_text(tron.DEFAULT_BASIC_CONFIG_TEMPLATE)
+        self.assertEqual(parsed["now"], "")
+        self.assertEqual(parsed["accounts"], [])
+        self.assertEqual(parsed["teacher"]["user"], "")
+        self.assertEqual(parsed["teacher"]["passwd"], "")
+        # The example group keeps its class label but drops the example members.
+        self.assertTrue(all(group["users"] == [] for group in parsed["groups"]))
+
     def test_blank_now_uses_only_real_account(self) -> None:
         parsed = tron.parse_basic_config_text(
             "now =\n[account]\nuser = SINGLE\npasswd = SECRET\nschool = THU\n"

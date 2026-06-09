@@ -595,6 +595,119 @@ PLACEHOLDER_CREDENTIAL_VALUES = {
     "您的密碼",
 }
 
+# Example tokens used inside the friendly default config.conf template. They are
+# shown verbatim as teaching guidance, but the parser (config_format._strip_value)
+# maps them to "" so a brand-new, still-example config is correctly seen as
+# "not configured yet" (triggers the startup auto-open) and is never used as a
+# real account/password. Matched against normalize_text() output (just .strip()),
+# so the now-hint is compared by its exact text.
+EXAMPLE_PLACEHOLDER_VALUES = {
+    "AAAAA",
+    "BBBBB",
+    "**OOXX",
+    "XXOO**",
+    "TTTTT",
+    "OO**XX",
+    "AAAAA 或 class A 或 「class A」 擇一",
+}
+
+# Friendly default written to config.conf on first run (config_runtime.ensure_config_exists).
+# Beginner-facing Traditional-Chinese teaching template: in-section comments, two
+# example accounts + one blank, an optional teacher block, two example groups, and
+# a per-weekday operating schedule. The example values above are intentional; they
+# parse to empty, so the program opens this file for editing until real credentials
+# are filled in.
+DEFAULT_BASIC_CONFIG_TEMPLATE = """# ===== 基本設定 config.conf =====（改完存檔關閉記事本即自動套用）
+# now：要用哪個帳號跑？填某帳號的 user，或填「class 群組名」。只有一個帳號可留空。
+now = AAAAA 或 class A 或 「class A」 擇一
+
+[account]
+# 你儲存的帳號，要幾個就放幾塊方便快速切換。school 可填 THU / TKU / TRONCLASS
+user = AAAAA
+passwd = **OOXX
+school = THU
+# 上面的 now 填了嗎？一定要記得把 user 名填上去！
+
+[account]
+# 你儲存的帳號，要幾個就放幾塊方便快速切換。school 可填 THU / TKU / TRONCLASS
+user = BBBBB
+passwd = XXOO**
+school = THU
+# 上面的 now 填了嗎？一定要記得把 user 名填上去！
+
+[account]
+# 你儲存的帳號，要幾個就放幾塊方便快速切換。school 可填 THU / TKU / TRONCLASS
+user =
+passwd =
+school =
+# 上面的 now 填了嗎？一定要記得把 user 名填上去！
+
+# 這裡可以繼續放更多 [account] ，自行複製
+
+[teacher]
+# （選用）QR 教師輔助帳號。course 留空會自動抓第一門課
+user = TTTTT
+passwd = OO**XX
+school = TRONCLASS
+course =
+
+[group]
+# （選用）第一人偵測、全員簽到。members 用逗號列出同組 user，再把上面 now 填成「class A」
+class = A
+school = THU
+members = AAAAA,BBBBB
+
+[group]
+# （選用）第一人偵測、全員簽到。members 用逗號列出同組 user，再把上面 now 填成「class B」
+class =
+school =
+members =
+
+# 這裡可以繼續放更多 [group] ，自行複製
+
+[operating]
+# 星期日上課時段；times 用逗號分隔多段
+day = 0
+enable = true
+times = 00:00-00:00
+
+[operating]
+# 星期一上課時段；times 用逗號分隔多段
+day = 1
+enable = true
+times = 00:00-00:00
+
+[operating]
+# 星期二上課時段；times 用逗號分隔多段
+day = 2
+enable = true
+times = 00:00-00:00
+
+[operating]
+# 星期三上課時段；times 用逗號分隔多段
+day = 3
+enable = true
+times = 00:00-00:00
+
+[operating]
+# 星期四上課時段；times 用逗號分隔多段
+day = 4
+enable = true
+times = 00:00-00:00
+
+[operating]
+# 星期五上課時段；times 用逗號分隔多段
+day = 5
+enable = true
+times = 00:00-00:00
+
+[operating]
+# 星期六上課時段；times 用逗號分隔多段
+day = 6
+enable = true
+times = 00:00-00:00
+"""
+
 DEFAULT_USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edge/136.0.0.0",
@@ -1057,6 +1170,7 @@ _LEGACY_EXPORTS = {
     'infer_single_account_now': ('troTHU.config_format', 'infer_single_account_now'),
     'open_config_in_legacy_notepad': ('troTHU.config_editor', 'open_config_in_legacy_notepad'),
     'ensure_config_now_or_open_editor': ('troTHU.config_editor', 'ensure_config_now_or_open_editor'),
+    'config_is_ready_to_run': ('troTHU.config_editor', 'config_is_ready_to_run'),
     'reload_config_after_editor': ('troTHU.config_editor', 'reload_config_after_editor'),
     'watch_any_key_to_edit_config': ('troTHU.config_editor', 'watch_any_key_to_edit_config'),
     'config_now_value': ('troTHU.config_editor', 'config_now_value'),

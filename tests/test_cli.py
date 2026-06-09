@@ -276,6 +276,27 @@ class TronCliSmokeTest(unittest.TestCase):
         self.assertEqual(result, 0)
         app_main.assert_called_once()
 
+    def test_run_interactive_falls_through_to_monitor_when_unconfigured(self) -> None:
+        # After the one-time auto-open, a still-unconfigured config must NOT exit the
+        # program; it falls through into the monitor so the user can press any key.
+        tron.CONFIG.clear()
+        tron.CONFIG.update(tron.normalize_config({"account": {"user": "", "passwd": ""}}))
+        with (
+            patch.object(tron, "bootstrap_config"),
+            patch.object(
+                tron,
+                "ensure_config_now_or_open_editor",
+                return_value={"ok": False, "status": "still_unconfigured", "message": "尚未偵測到可用帳密"},
+            ),
+            patch.object(tron.time, "sleep"),
+            patch.object(tron, "app_main", new=AsyncMock()) as app_main,
+            patch("builtins.print"),
+        ):
+            result = tron.main(["run"])
+
+        self.assertEqual(result, 0)
+        app_main.assert_called_once()
+
     def test_app_blueprint_text_command_dispatches(self) -> None:
         outputs = []
         with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):

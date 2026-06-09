@@ -465,7 +465,11 @@ def current_datetime(config: ctx.Any = None) -> ctx.datetime:
 
 def ensure_config_exists() -> None:
     if not ctx.CONFIG_PATH.exists():
-        ctx.write_config_file(ctx.copy.deepcopy(ctx.DEFAULT_CONFIG))
+        # First run: write the friendly beginner template verbatim (example values
+        # that parse to empty) instead of the bare rendered default, so the file the
+        # user first sees in Notepad is the guided one.
+        ctx.CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        ctx.CONFIG_PATH.write_text(ctx.DEFAULT_BASIC_CONFIG_TEMPLATE, encoding="utf-8")
     if not ctx.CONFIG_ADVANCED_PATH.exists():
         ctx.write_advanced_config_file({})
 
