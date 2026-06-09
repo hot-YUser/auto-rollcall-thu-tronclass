@@ -45,6 +45,13 @@ class ReadmeUsageTest(unittest.TestCase):
     def test_safety_note_is_present(self) -> None:
         self.assertIn("不要把填好帳密的 `config.yaml`", self.text)
 
+    def test_original_project_credits_are_present(self) -> None:
+        self.assertIn("## 致謝與來源", self.text)
+        self.assertIn("silvercow002/tronclass-script", self.text)
+        self.assertIn("https://github.com/silvercow002/tronclass-script", self.text)
+        self.assertIn("CREDITS.md", self.text)
+        self.assertIn("MIT License notice", self.text)
+
     def test_legacy_and_internal_terms_are_absent(self) -> None:
         # The hidden provider must never appear in the public README.
         self.assertNotIn("FJU", self.text)

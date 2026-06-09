@@ -6,6 +6,12 @@
 
 > ⚠️ 請只在你自己有權限、且符合學校與課程規範的情況下使用。**不要把填好帳密的 `config.yaml`、cookie、`state/`、`log/` 傳給任何人。**
 
+## 致謝與來源
+
+本專案 fork 自 [silvercow002/tronclass-script](https://github.com/silvercow002/tronclass-script)，並在此基礎上大幅延伸為支援 THU/TKU 使用情境的版本。
+
+完整來源、原作者 MIT License notice 與本專案授權說明請見 [CREDITS.md](CREDITS.md)。
+
 ---
 
 ## 這個工具可以幹嘛
@@ -352,5 +358,7 @@ python -m troTHU.tron release-build --dry-run --json
 ## 授權
 
 本專案以 GNU Affero General Public License v3.0 或更新版本（`AGPL-3.0-or-later`）授權。詳見 [LICENSE](LICENSE)。
+
+原始基礎架構來源與 MIT License notice 已保留於 [CREDITS.md](CREDITS.md)。
 
 如果你修改本專案並分發，或將修改版透過網路提供服務，請依 AGPL 條款提供對應原始碼。

@@ -1,9 +1,9 @@
 """Safe local release build runner.
 
 The builder is deliberately conservative: it only packages PyInstaller collect
-output plus public release notes/readme files, validates zip member names, and
-runs CLI smoke checks from a temporary extracted copy so generated runtime files
-cannot contaminate the artifact.
+output plus public release notes/readme/credits files, validates zip member
+names, and runs CLI smoke checks from a temporary extracted copy so generated
+runtime files cannot contaminate the artifact.
 """
 
 from __future__ import annotations
@@ -310,6 +310,7 @@ def package_release_artifact(
     artifact_path: Path,
     *,
     readme_path: Path,
+    credits_path: Path,
     notes_text: str,
 ) -> Dict[str, Any]:
     """Create the release zip from collect output and public docs only."""
@@ -323,6 +324,9 @@ def package_release_artifact(
     readme = Path(readme_path)
     if not readme.exists():
         raise ReleaseBuildError("missing_readme")
+    credits = Path(credits_path)
+    if not credits.exists():
+        raise ReleaseBuildError("missing_credits")
     artifact.parent.mkdir(parents=True, exist_ok=True)
     if artifact.exists():
         artifact.unlink()
@@ -337,8 +341,9 @@ def package_release_artifact(
             archive.write(child, member)
             file_count += 1
         archive.write(readme, "{}/README.md".format(ARTIFACT_ROOT))
+        archive.write(credits, "{}/CREDITS.md".format(ARTIFACT_ROOT))
         archive.writestr("{}/RELEASE_NOTES.txt".format(ARTIFACT_ROOT), notes_text)
-        file_count += 2
+        file_count += 3
     validation = validate_release_artifact(artifact)
     if validation.get("status") == "fail":
         try:
@@ -499,6 +504,7 @@ def run_release_build_pipeline(
             collect_dir,
             artifact_path,
             readme_path=base / "README.md",
+            credits_path=base / "CREDITS.md",
             notes_text=_release_notes_text(base),
         )
     except ReleaseBuildError as exc:
