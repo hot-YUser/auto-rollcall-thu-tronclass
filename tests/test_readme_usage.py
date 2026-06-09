@@ -20,7 +20,7 @@ class ReadmeUsageTest(unittest.TestCase):
 
     def test_getting_started_is_minimal(self) -> None:
         self.assertIn("## 怎麼開始用", self.text)
-        self.assertIn("pip install -r requirements.txt", self.text)
+        self.assertIn("pip install -e .", self.text)
         self.assertIn("python -m troTHU.tron", self.text)
         self.assertIn("run --no-input", self.text)
         self.assertIn("按任意鍵", self.text)
@@ -49,7 +49,7 @@ class ReadmeUsageTest(unittest.TestCase):
         self.assertIn("## 致謝與來源", self.text)
         self.assertIn("silvercow002/tronclass-script", self.text)
         self.assertIn("https://github.com/silvercow002/tronclass-script", self.text)
-        self.assertIn("CREDITS.md", self.text)
+        self.assertIn("致謝與來源 (Credits)", self.text)
         self.assertIn("MIT License notice", self.text)
 
     def test_legacy_and_internal_terms_are_absent(self) -> None:

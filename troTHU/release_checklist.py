@@ -299,7 +299,7 @@ def build_release_build_plan(base_dir: Path, *, dist_dir: Path | None = None) ->
         {
             "name": EXPECTED_WINDOWS_ZIP,
             "kind": "zip",
-            "contains": ["PyInstaller collect output", "README.md", CREDITS_FILE, "RELEASE_NOTES.txt"],
+            "contains": ["PyInstaller collect output", "README.md", "RELEASE_NOTES.txt"],
             "forbidden": list(FORBIDDEN_ARTIFACT_NAMES) + list(SMALL_BUNDLE_ARTIFACT_PARTS),
         }
     ]
@@ -361,14 +361,6 @@ def _readme_report(path: Path) -> Dict[str, Any]:
         _check("README provider scope", "THU" in text and "TKU" in text, "THU/TKU provider scope documented", severity="warn"),
         _check("README qr teacher assist", "QR Code 點名" in text and "教師輔助" in text, "QR teacher assist documented", severity="warn"),
         _check("README no stale stable-version advice", "建議優先使用上一個正式版" not in text and "v0.2.8" not in text, "no obsolete v0.2.8 recommendation", severity="warn"),
-    ]
-    return {"exists": path.exists(), "file": path.name, "checks": checks, "status": _overall_status(checks)}
-
-
-def _credits_report(path: Path) -> Dict[str, Any]:
-    text = _read_text(path)
-    checks = [
-        _check("credits exists", path.exists(), CREDITS_FILE, severity="warn"),
         _check("credits original repo", "silvercow002/tronclass-script" in text, "original repo documented", severity="warn"),
         _check("credits original author", "@silvercow002" in text or "github.com/silvercow002" in text, "original author documented", severity="warn"),
         _check("credits MIT notice", "MIT License" in text and "Copyright (c) 2025 silvercow02" in text, "original MIT notice preserved", severity="warn"),
@@ -377,13 +369,17 @@ def _credits_report(path: Path) -> Dict[str, Any]:
     return {"exists": path.exists(), "file": path.name, "checks": checks, "status": _overall_status(checks)}
 
 
+def _credits_report(path: Path) -> Dict[str, Any]:
+    return {"exists": False, "file": "CREDITS.md", "checks": [], "status": "ok"}
+
+
 def build_release_checklist(base_dir: Path, *, config: Mapping[str, Any] | None = None, dist_dir: Path | None = None) -> Dict[str, Any]:
     """Build a static release readiness report."""
     base = Path(base_dir)
     package = build_package_diagnostic_report(base, config=config)
     ci = _ci_report(base / ".github" / "workflows" / "ci.yml")
     readme = _readme_report(base / "README.md")
-    credits = _credits_report(base / CREDITS_FILE)
+    credits = _credits_report(base / "CREDITS.md")
     dist_path = Path(dist_dir) if dist_dir is not None else base / "dist"
     artifact = validate_release_artifact(dist_path, strict_optional=dist_dir is not None)
     build_plan = build_release_build_plan(base, dist_dir=dist_path)

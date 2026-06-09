@@ -19,7 +19,6 @@ from troTHU.release_builder import (
 class ReleaseBuilderTest(unittest.TestCase):
     def _prepare_base(self, root: Path) -> None:
         (root / "README.md").write_text("# Test README\n", encoding="utf-8")
-        (root / "CREDITS.md").write_text("# Test Credits\n", encoding="utf-8")
         (root / RELEASE_NOTES_FILE).write_text("# Test Release Notes\n\nShip this note.\n", encoding="utf-8")
         (root / "auto-rollcall-thu-tronclass.spec").write_text("# spec\n", encoding="utf-8")
         (root / "troTHU").mkdir()
@@ -81,7 +80,6 @@ class ReleaseBuilderTest(unittest.TestCase):
                 ).decode("utf-8")
 
         self.assertTrue(any(name.endswith("README.md") for name in names))
-        self.assertTrue(any(name.endswith("CREDITS.md") for name in names))
         self.assertTrue(any(name.endswith("RELEASE_NOTES.txt") for name in names))
         self.assertIn("Ship this note.", release_notes)
         self.assertFalse(any("/config.conf" in name or "/state/" in name or "/tests/" in name for name in names))
@@ -106,35 +104,16 @@ class ReleaseBuilderTest(unittest.TestCase):
             (collect / "config.conf").write_text("unsafe", encoding="utf-8")
             readme = root / "README.md"
             readme.write_text("# readme\n", encoding="utf-8")
-            credits = root / "CREDITS.md"
-            credits.write_text("# credits\n", encoding="utf-8")
 
             with self.assertRaises(ReleaseBuildError):
                 package_release_artifact(
                     collect,
                     root / "dist" / EXPECTED_WINDOWS_ZIP,
                     readme_path=readme,
-                    credits_path=credits,
                     notes_text="notes",
                 )
 
-    def test_package_release_artifact_requires_credits(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            collect = root / "collect"
-            collect.mkdir()
-            (collect / "{}.exe".format(PROJECT_NAME)).write_text("placeholder", encoding="utf-8")
-            readme = root / "README.md"
-            readme.write_text("# readme\n", encoding="utf-8")
 
-            with self.assertRaisesRegex(ReleaseBuildError, "missing_credits"):
-                package_release_artifact(
-                    collect,
-                    root / "dist" / EXPECTED_WINDOWS_ZIP,
-                    readme_path=readme,
-                    credits_path=root / "CREDITS.md",
-                    notes_text="notes",
-                )
 
     def test_pipeline_fails_when_pyinstaller_is_unavailable(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir, unittest.mock.patch("troTHU.release_builder._module_available", return_value=False):

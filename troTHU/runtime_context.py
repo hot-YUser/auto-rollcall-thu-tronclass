@@ -29,11 +29,11 @@ except ModuleNotFoundError:  # pragma: no cover - dependency-missing CLI fallbac
 
         class ClientSession:
             def __init__(self, *args, **kwargs) -> None:
-                raise RuntimeError("aiohttp is not installed. Run `pip install -r requirements.txt`.")
+                raise RuntimeError("aiohttp is not installed. Run `pip install -e .`.")
 
         class TCPConnector:
             def __init__(self, *args, **kwargs) -> None:
-                raise RuntimeError("aiohttp is not installed. Run `pip install -r requirements.txt`.")
+                raise RuntimeError("aiohttp is not installed. Run `pip install -e .`.")
 
     aiohttp = _MissingAiohttp()  # type: ignore
 try:

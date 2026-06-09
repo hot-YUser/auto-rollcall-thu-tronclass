@@ -21,7 +21,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: python -m pip install -r requirements.txt
+        run: python -m pip install -e .
 
       - name: Targeted smoke tests
         run: python -m unittest -v tests.test_app_shell tests.test_app_shell_dashboard tests.test_release_builder tests.test_release_checklist tests.test_readme_usage tests.test_cli tests.test_package_diagnostics

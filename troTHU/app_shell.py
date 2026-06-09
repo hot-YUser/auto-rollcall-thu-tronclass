@@ -305,7 +305,7 @@ def create_app_shell(
 ) -> Any:
     """Create a localhost companion shell app."""
     if web is None:  # pragma: no cover
-        raise RuntimeError("aiohttp.web is not installed. Run `pip install -r requirements.txt`.")
+        raise RuntimeError("aiohttp.web is not installed. Run `pip install -e .`.")
     app = web.Application()
 
     async def app_page(_request: Any) -> Any:
@@ -543,7 +543,7 @@ async def run_app_shell(
 ) -> None:
     """Run the optional companion shell until cancelled."""
     if web is None:  # pragma: no cover
-        raise RuntimeError("aiohttp.web is not installed. Run `pip install -r requirements.txt`.")
+        raise RuntimeError("aiohttp.web is not installed. Run `pip install -e .`.")
     token = secrets.token_urlsafe(18)
     token_expires_at = time.time() + max(1, int(token_ttl_seconds or 900))
     app = create_app_shell(config, token=token, token_expires_at=token_expires_at, **builder_kwargs)

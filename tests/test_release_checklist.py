@@ -29,11 +29,10 @@ class ReleaseChecklistTest(unittest.TestCase):
         self.assertIn("build_plan", report)
         self.assertIn("release-build_execute_builds_artifacts", report["notes"])
         readme_checks = {item["name"]: item["status"] for item in report["readme"]["checks"]}
-        credits_checks = {item["name"]: item["status"] for item in report["credits"]["checks"]}
         self.assertEqual(readme_checks["README no stale stable-version advice"], "ok")
         self.assertEqual(readme_checks["README monitor console quickstart"], "ok")
-        self.assertEqual(credits_checks["credits MIT notice"], "ok")
-        self.assertEqual(credits_checks["credits AGPL status"], "ok")
+        self.assertEqual(readme_checks["credits MIT notice"], "ok")
+        self.assertEqual(readme_checks["credits AGPL status"], "ok")
         self.assertNotIn("secret-token", encoded)
 
     def test_missing_dist_is_warning_not_failure(self) -> None:
@@ -104,7 +103,7 @@ class ReleaseChecklistTest(unittest.TestCase):
         self.assertFalse(plan["executes_build"])
         self.assertIn("python -m PyInstaller", "\n".join(plan["commands"]))
         self.assertIn(EXPECTED_WINDOWS_ZIP, encoded)
-        self.assertIn("CREDITS.md", encoded)
+        self.assertIn("README.md", encoded)
         self.assertNotIn("secret-token", encoded)
 
     def test_format_release_checklist_is_stable(self) -> None:

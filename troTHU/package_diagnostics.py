@@ -7,8 +7,8 @@ from typing import Any, Dict, Iterable, List, Mapping, Sequence
 
 
 PROJECT_NAME = "auto-rollcall-thu-tronclass"
-PROJECT_VERSION = "1.3a2"
-PROJECT_RELEASE_LABEL = "1.3-alpha.2"
+PROJECT_VERSION = "1.4a1"
+PROJECT_RELEASE_LABEL = "1.4-alpha.1"
 SPEC_NAME = "auto-rollcall-thu-tronclass.spec"
 FORBIDDEN_BUNDLE_NAMES = (
     ".codex-worklog.md",
@@ -239,6 +239,7 @@ def _pyproject_report(path: Path) -> Dict[str, Any]:
     scripts = project.get("scripts", {}) if isinstance(project, Mapping) else {}
     dependencies = project.get("dependencies", []) if isinstance(project, Mapping) else []
     optional = project.get("optional-dependencies", {}) if isinstance(project, Mapping) else {}
+    dependency_text = "\n".join(dependencies).lower()
     checks = [
         _check("pyproject exists", path.exists(), path.name, severity="fail"),
         _check("project name", project.get("name") == PROJECT_NAME, PROJECT_NAME, severity="fail"),
@@ -250,6 +251,9 @@ def _pyproject_report(path: Path) -> Dict[str, Any]:
             "{} entrypoint".format(PROJECT_NAME),
             severity="fail",
         ),
+        _check("aiohttp dependency", "aiohttp" in dependency_text, "aiohttp listed in pyproject.toml", severity="fail"),
+        _check("pyyaml dependency", "pyyaml" in dependency_text, "PyYAML listed in pyproject.toml", severity="fail"),
+        _check("pynacl dependency", "pynacl" in dependency_text, "PyNaCl listed in pyproject.toml", severity="warn"),
     ]
     return {
         "exists": path.exists(),
@@ -267,19 +271,11 @@ def _pyproject_report(path: Path) -> Dict[str, Any]:
 
 
 def _requirements_report(path: Path) -> Dict[str, Any]:
-    dependencies = _requirement_lines(path)
-    dependency_text = "\n".join(dependencies).lower()
-    checks = [
-        _check("requirements exists", path.exists(), path.name, severity="warn"),
-        _check("aiohttp dependency", "aiohttp" in dependency_text, "aiohttp listed", severity="fail"),
-        _check("pyyaml dependency", "pyyaml" in dependency_text, "PyYAML listed", severity="fail"),
-        _check("pynacl dependency", "pynacl" in dependency_text, "PyNaCl listed", severity="warn"),
-    ]
     return {
-        "exists": path.exists(),
+        "exists": False,
         "file": path.name,
-        "dependencies": dependencies,
-        "checks": checks,
+        "dependencies": [],
+        "checks": [],
     }
 
 

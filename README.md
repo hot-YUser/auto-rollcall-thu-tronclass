@@ -10,7 +10,7 @@
 
 本專案 fork 自 [silvercow002/tronclass-script](https://github.com/silvercow002/tronclass-script)，並在此基礎上大幅延伸為支援 THU/TKU 使用情境的版本。
 
-完整來源、原作者 MIT License notice 與本專案授權說明請見 [CREDITS.md](CREDITS.md)。
+完整來源、原作者 MIT License notice 與本專案授權說明已併入本文件末尾的「致謝與來源 (Credits)」一節。
 
 ---
 
@@ -34,7 +34,7 @@
 
 ### 我只是想用（Windows，最簡單）
 
-1. 到 Releases 下載 `THU_Auto_Rollcall-v1.3-alpha.1-windows-x64.zip`。
+1. 到 Releases 下載 `THU_Auto_Rollcall-v1.4-alpha.1-windows-x64.zip`。
 2. **整包解壓縮**到一個固定資料夾（不要在 zip 裡直接雙擊）。
 3. 進到資料夾，執行 `auto-rollcall-thu-tronclass.exe`。
 
@@ -45,7 +45,7 @@
 裝好相依套件就能直接跑，不用自己打包：
 
 ```bash
-python -m pip install -r requirements.txt
+python -m pip install -e .
 python -m troTHU.tron
 ```
 
@@ -367,7 +367,7 @@ python -m troTHU.tron release-build --dry-run --json
 
 ## 授權與使用者規範 (AGPL-3.0)
 
-本專案以 **GNU Affero General Public License v3.0 或更新版本** (`AGPL-3.0-or-later`) 授權。詳見 [LICENSE](LICENSE)，原始基礎架構來源與原 MIT 授權聲明已保留於 [CREDITS.md](CREDITS.md)。
+本專案以 **GNU Affero General Public License v3.0 或更新版本** (`AGPL-3.0-or-later`) 授權。詳見 [LICENSE](LICENSE)，原始基礎架構來源與原 MIT 授權聲明已併入本文件末尾的「致謝與來源 (Credits)」一節。
 
 ### 💡 簡單科普：從 MIT 轉為 AGPLv3 代表什麼？
 
@@ -383,4 +383,19 @@ python -m troTHU.tron release-build --dry-run --json
 ### 🤝 請大家潔身自愛、遵守規範
 
 開源社群的發展建立在彼此信任與尊重之上。請勿將此工具用於任何商業牟利、包裝販售之行為。若有自行修改、架設機器人服務或二次分發的需求，請務必自覺遵守 AGPLv3 條款，**主動附上您修改後的 GitHub 專案連結與原始碼**。大家潔身自愛，專案才能走得更遠。
+
+---
+
+# 致謝與來源 (Credits)
+
+## Original Project
+
+This project is a fork of [silvercow002/tronclass-script](https://github.com/silvercow002/tronclass-script).
+
+- Original author: [@silvercow002](https://github.com/silvercow002)
+- Original project: [silvercow002/tronclass-script](https://github.com/silvercow002/tronclass-script)
+- MIT License commit: [9a149d1c8470344ad3757893255bf11719782f3e](https://github.com/silvercow002/tronclass-script/commit/9a149d1c8470344ad3757893255bf11719782f3e)
+- Original MIT notice: `Copyright (c) 2025 silvercow02`
+
+Auto-Rollcall-thu-Tronclass keeps this original MIT notice and currently publishes the modified project under GNU Affero General Public License v3.0 or later (`AGPL-3.0-or-later`). The original MIT License notice is preserved at the bottom of the [LICENSE](LICENSE) file.
 

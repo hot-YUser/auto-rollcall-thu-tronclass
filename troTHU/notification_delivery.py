@@ -116,7 +116,7 @@ async def send_notification_request(
         try:
             import aiohttp
         except ModuleNotFoundError as exc:  # pragma: no cover - dependency-missing fallback
-            raise RuntimeError("aiohttp is not installed. Run `pip install -r requirements.txt`.") from exc
+            raise RuntimeError("aiohttp is not installed. Run `pip install -e .`.") from exc
         request_func = aiohttp.request
 
     request_kwargs: Dict[str, Any] = {
