@@ -8,7 +8,7 @@
 
 ## 致謝與來源
 
-本專案 fork 自 [silvercow002/tronclass-script](https://github.com/silvercow002/tronclass-script)，並在此基礎上大幅延伸為支援 THU/TKU 使用情境的版本。
+本專案 fork 自 fork 自 [silvercow002/tronclass-script](https://github.com/silvercow002/tronclass-script) 的專案 [hot-YUser/auto-rollcall-thu-tronclass](https://github.com/hot-YUser/auto-rollcall-thu-tronclass)，僅增加了支援東吳大學。
 
 完整來源、原作者 MIT License notice 與本專案授權說明請見 [CREDITS.md](CREDITS.md)。
 
