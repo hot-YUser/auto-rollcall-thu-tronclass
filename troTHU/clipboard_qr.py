@@ -14,6 +14,7 @@ Clipboard sources:
 Both backends are imported lazily and fully guarded: if unavailable (headless,
 missing optional deps) the reader simply returns "nothing found".
 """
+from __future__ import annotations
 
 import hashlib
 import tempfile
