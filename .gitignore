@@ -55,6 +55,7 @@ config-broken-*.yaml
 #   python -m troTHU.tron release-build --execute --json
 build/
 dist/
+*.egg-info/
 *.spec.tmp
 RELEASE_NOTES-v*.md
 

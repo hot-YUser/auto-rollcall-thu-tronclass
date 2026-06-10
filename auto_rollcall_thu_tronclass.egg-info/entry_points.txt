@@ -1,3 +1,0 @@
-[console_scripts]
-auto-rollcall-thu-tronclass = troTHU.tron:main
-trothu = troTHU.tron:main
