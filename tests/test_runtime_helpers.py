@@ -128,6 +128,31 @@ class RuntimeHelpersTest(unittest.TestCase):
         self.assertIn("QR教師✗", failed)
         self.assertIn("QR教師發起中", working)
 
+    def test_monitor_status_line_prepends_target_label_when_present(self) -> None:
+        now = runtime_helpers.datetime(2026, 1, 2, 14, 3, 27)
+
+        labelled = runtime_helpers.build_monitor_status_line(
+            {"phase": "monitoring", "check_count": 1, "detail": "目前無點名", "target_label": "群組A"},
+            now,
+        )
+        self.assertEqual(labelled, "群組A · 監控中 · 第 1 次 · 目前無點名")
+
+        # Absent/blank target_label must not add a segment (back-compat).
+        self.assertEqual(
+            runtime_helpers.build_monitor_status_line(
+                {"phase": "monitoring", "check_count": 1, "detail": "目前無點名"},
+                now,
+            ),
+            "監控中 · 第 1 次 · 目前無點名",
+        )
+        self.assertEqual(
+            runtime_helpers.build_monitor_status_line(
+                {"phase": "monitoring", "check_count": 1, "detail": "目前無點名", "target_label": ""},
+                now,
+            ),
+            "監控中 · 第 1 次 · 目前無點名",
+        )
+
     def test_rollcall_start_message_indents_multiline_detail(self) -> None:
         text = runtime_helpers.format_rollcall_start_message(
             "number",

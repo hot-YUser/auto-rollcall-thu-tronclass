@@ -107,8 +107,9 @@ def handle_account_command(args: ctx.argparse.Namespace) -> int:
     if args.account_command in (None, 'list'):
         active = ctx.get_active_profile(ctx.CONFIG)
         if getattr(args, 'json', False):
-            print(ctx.json_text({'active_profile': active.name, 'profiles': [{'name': profile.name, 'user': profile.user if ctx.has_real_credential(profile.user) else '', 'label': profile.label, 'credential': ctx.credential_report(profile.name), 'cookie': ctx.cookie_report(profile.name), 'runtime': ctx.account_runtime_summary(profile.name)} for profile in ctx.list_profiles(ctx.CONFIG)]}))
+            print(ctx.json_text({'active_profile': active.name, 'active_target': ctx.summarize_group_target(ctx.CONFIG), 'profiles': [{'name': profile.name, 'user': profile.user if ctx.has_real_credential(profile.user) else '', 'label': profile.label, 'credential': ctx.credential_report(profile.name), 'cookie': ctx.cookie_report(profile.name), 'runtime': ctx.account_runtime_summary(profile.name)} for profile in ctx.list_profiles(ctx.CONFIG)]}))
             return 0
+        print(ctx.describe_group_target(ctx.CONFIG))
         for profile in ctx.list_profiles(ctx.CONFIG):
             marker = '*' if profile.name == active.name else ' '
             password_state = 'config-password' if ctx.has_real_credential(profile.passwd) else 'no-config-password'

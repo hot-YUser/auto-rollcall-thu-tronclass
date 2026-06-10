@@ -546,6 +546,7 @@ MONITOR_STATUS: Dict[str, Any] = {
     "rollcall_status": "",
     "next_switch_at": None,
     "teacher_state": "off",
+    "target_label": "",
 }
 
 LAST_ROLLCALL_PROGRESS: Dict[str, Any] = {}
@@ -1177,6 +1178,10 @@ _LEGACY_EXPORTS = {
     'effective_config_now_value': ('troTHU.config_editor', 'effective_config_now_value'),
     'resolve_now_target': ('troTHU.group_runtime', 'resolve_now_target'),
     'build_group_execution_plan': ('troTHU.group_runtime', 'build_group_execution_plan'),
+    'summarize_group_target': ('troTHU.group_runtime', 'summarize_group_target'),
+    'describe_group_target': ('troTHU.group_runtime', 'describe_group_target'),
+    'format_group_fanout_summary': ('troTHU.group_runtime', 'format_group_fanout_summary'),
+    'group_status_label': ('troTHU.group_runtime', 'group_status_label'),
     'submit_group_qr': ('troTHU.group_runtime', 'submit_group_qr'),
     'submit_group_number': ('troTHU.group_runtime', 'submit_group_number'),
     'submit_group_radar': ('troTHU.group_runtime', 'submit_group_radar'),

@@ -226,8 +226,12 @@ async def handle_rollcall_decision(
                 group_result = await ctx.submit_group_number(found_code, rcid=rollcall_id, session=session, config=ctx.CONFIG)
                 if group_result.get('ok'):
                     ctx.log(event='group_number_fanout_planned', status=group_result.get('status', 'submitted'), rollcall_id=rollcall_id, rollcall_type='number', message='群組 number fan-out 簽到完成。', extra=group_result)
+                summary = ctx.format_group_fanout_summary(group_result, rollcall_type='number')
+                if summary:
+                    ctx.log_print(summary)
             except Exception as exc:
                 ctx.log(event='group_number_fanout_planned', status='failed', rollcall_id=rollcall_id, rollcall_type='number', message='群組 number fan-out 失敗。', error=exc)
+                ctx.log_print('群組 number fan-out 失敗：{}'.format(exc))
         return 'is_number'
     if selected_status == 'is_radar' and selected_rollcall is not None:
         ctx.reset_unsupported_rollcall_state()
@@ -253,8 +257,12 @@ async def handle_rollcall_decision(
                 group_result = await ctx.submit_group_radar(selected_rollcall, session=session, config=ctx.CONFIG)
                 if group_result.get('ok'):
                     ctx.log(event='group_radar_fanout_planned', status=group_result.get('status', 'submitted'), rollcall_id=rollcall_id, rollcall_type='radar', message='群組 radar fan-out 簽到完成。', extra=group_result)
+                summary = ctx.format_group_fanout_summary(group_result, rollcall_type='radar')
+                if summary:
+                    ctx.log_print(summary)
             except Exception as exc:
                 ctx.log(event='group_radar_fanout_planned', status='failed', rollcall_id=rollcall_id, rollcall_type='radar', message='群組 radar fan-out 失敗。', error=exc)
+                ctx.log_print('群組 radar fan-out 失敗：{}'.format(exc))
             return 'is_radar'
         return 'radar_failed'
     if selected_rollcall is not None:
@@ -289,8 +297,12 @@ async def handle_rollcall_decision(
                         group_result = await ctx.submit_group_qr(selected_rollcall, session=session, config=ctx.CONFIG)
                         if group_result.get('ok'):
                             ctx.log(event='group_qr_fanout_planned', status=group_result.get('status', 'submitted'), rollcall_id=qr_key, rollcall_type='qrcode', message='群組 qr fan-out 簽到完成。', extra=group_result)
+                        summary = ctx.format_group_fanout_summary(group_result, rollcall_type='qr')
+                        if summary:
+                            ctx.log_print(summary)
                     except Exception as exc:
                         ctx.log(event='group_qr_fanout_planned', status='failed', rollcall_id=qr_key, rollcall_type='qrcode', message='群組 qr fan-out 失敗。', error=exc)
+                        ctx.log_print('群組 qr fan-out 失敗：{}'.format(exc))
                     return 'is_qrcode'
             if not answered_automatically:
                 answered_automatically = await ctx.try_clipboard_qr_autosubmit(session, selected_rollcall)
@@ -300,8 +312,12 @@ async def handle_rollcall_decision(
                         group_result = await ctx.submit_group_qr(selected_rollcall, session=session, config=ctx.CONFIG)
                         if group_result.get('ok'):
                             ctx.log(event='group_qr_fanout_planned', status=group_result.get('status', 'submitted'), rollcall_id=qr_key, rollcall_type='qrcode', message='群組 qr fan-out 簽到完成。', extra=group_result)
+                        summary = ctx.format_group_fanout_summary(group_result, rollcall_type='qr')
+                        if summary:
+                            ctx.log_print(summary)
                     except Exception as exc:
                         ctx.log(event='group_qr_fanout_planned', status='failed', rollcall_id=qr_key, rollcall_type='qrcode', message='群組 qr fan-out 失敗。', error=exc)
+                        ctx.log_print('群組 qr fan-out 失敗：{}'.format(exc))
                     return 'is_qrcode'
         if not answered_automatically:
             await ctx.maybe_notify_unsupported_rollcall(selected_status, selected_rollcall, selected_message, selected_rollcall_type)

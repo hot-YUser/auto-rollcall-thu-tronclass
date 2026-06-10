@@ -805,6 +805,10 @@ def build_monitor_status_line(status: Any, now: Any) -> str:
     elif teacher_state == "working":
         parts.append("QR教師發起中")
 
+    target_label = normalize_text(status.get("target_label"))
+    if target_label:
+        parts.insert(0, target_label)
+
     return " · ".join(parts)
 
 

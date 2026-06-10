@@ -92,6 +92,119 @@ def build_group_execution_plan(config: ctx.Mapping[str, ctx.Any], target: ctx.Ma
     return {"ok": bool(monitor_user), "target": target, "monitor_user": monitor_user, "fanout_users": fanout, "accounts": [{"user": user, "school": school} for user in fanout], "skipped": skipped, "warnings": warnings}
 
 
+_SKIP_REASON_ZH = {
+    "account_not_found": "帳號不存在於 account 區塊",
+    "school_mismatch": "school 與群組不符",
+    "missing_password": "未設定密碼",
+}
+
+
+def _skip_reason_zh(reason: ctx.Any) -> str:
+    text = ctx.normalize_text(reason)
+    return _SKIP_REASON_ZH.get(text, text or "未知")
+
+
+def summarize_group_target(config: ctx.Mapping[str, ctx.Any] | None = None) -> ctx.Dict[str, ctx.Any]:
+    """Structured, display-ready view of the active ``now`` target.
+
+    Reuses :func:`resolve_now_target` + :func:`build_group_execution_plan` so the
+    monitor banner, ``status``/``account`` commands, and the live status line all
+    speak about the same resolved account/group. Pure (no I/O)."""
+    cfg = config if config is not None else ctx.CONFIG
+    target = resolve_now_target(cfg)
+    plan = build_group_execution_plan(cfg, target)
+    kind = ctx.normalize_text(target.get("kind"))
+    summary = {
+        "kind": kind,
+        "ok": bool(target.get("ok")),
+        "name": "",
+        "school": ctx.normalize_text(target.get("school")),
+        "members": list(plan.get("fanout_users", []) or []),
+        "monitor_user": ctx.normalize_text(plan.get("monitor_user")),
+        "fanout_count": len(plan.get("fanout_users", []) or []),
+        "skipped": list(plan.get("skipped", []) or []),
+        "warnings": list(plan.get("warnings", []) or []),
+        "reason": ctx.normalize_text(target.get("reason")),
+        "inferred": bool(target.get("inferred")),
+    }
+    if kind == "group":
+        summary["name"] = ctx.normalize_text(target.get("name"))
+    elif kind == "account":
+        summary["name"] = ctx.normalize_text(target.get("user"))
+    return summary
+
+
+def describe_group_target(config: ctx.Mapping[str, ctx.Any] | None = None) -> str:
+    """One-line Traditional-Chinese description of the active ``now`` target."""
+    summary = summarize_group_target(config)
+    kind = summary["kind"]
+    if kind == "group":
+        if not summary["ok"]:
+            return "目前監控對象：群組 {} 不存在於設定".format(summary["name"] or "?")
+        members = summary["members"]
+        line = "目前監控對象：群組 {}（school={}，成員 {} 人：{}）".format(
+            summary["name"] or "?",
+            summary["school"] or "thu",
+            len(members),
+            "、".join(members) if members else "無",
+        )
+        skipped = summary["skipped"]
+        if skipped:
+            skipped_desc = "、".join(
+                "{}（{}）".format(ctx.normalize_text(item.get("user")), _skip_reason_zh(item.get("reason")))
+                for item in skipped
+                if isinstance(item, dict)
+            )
+            line += "；略過 {} 人：{}".format(len(skipped), skipped_desc)
+        return line
+    if kind == "account":
+        if not summary["ok"]:
+            return "目前監控對象：帳號 {} 不存在於設定".format(summary["name"] or "?")
+        tag = "（單人，自動推斷）" if summary["inferred"] else "（單人）"
+        return "目前監控對象：帳號 {}{}".format(summary["name"] or "?", tag)
+    if summary["reason"] == "now_empty":
+        return "目前監控對象：尚未設定（now 為空）"
+    return "目前監控對象：尚未設定"
+
+
+def format_group_fanout_summary(group_result: ctx.Any, rollcall_type: str = "") -> str:
+    """Human-readable one-liner for a ``submit_group_*`` result.
+
+    Returns "" when the active target is not a group or when no fan-out member
+    actually ran (single-account / monitor-only), so single users are not spammed."""
+    if not isinstance(group_result, dict):
+        return ""
+    plan = group_result.get("plan") if isinstance(group_result.get("plan"), dict) else {}
+    target = plan.get("target") if isinstance(plan.get("target"), dict) else {}
+    if ctx.normalize_text(target.get("kind")) != "group":
+        return ""
+    results = group_result.get("results") or []
+    if not results:
+        return ""
+    total = len(results)
+    ok_count = sum(1 for item in results if isinstance(item, dict) and item.get("ok"))
+    name = ctx.normalize_text(target.get("name")) or "?"
+    type_label = ctx.normalize_text(rollcall_type)
+    type_part = " {}".format(type_label) if type_label else ""
+    if ok_count == total:
+        return "群組 {}{} 簽到：{}/{} 成員完成".format(name, type_part, ok_count, total)
+    return "群組 {}{} 簽到：{}/{} 成員完成（{} 失敗）".format(name, type_part, ok_count, total, total - ok_count)
+
+
+def group_status_label(config: ctx.Mapping[str, ctx.Any] | None = None) -> str:
+    """Short label for the live status line; "" when single-account/inferred/unset."""
+    cfg = config if config is not None else ctx.CONFIG
+    target = resolve_now_target(cfg)
+    if not target.get("ok"):
+        return ""
+    kind = ctx.normalize_text(target.get("kind"))
+    if kind == "group":
+        return "群組{}".format(ctx.normalize_text(target.get("name")))
+    if kind == "account" and not target.get("inferred"):
+        return "帳號{}".format(ctx.normalize_text(target.get("user")))
+    return ""
+
+
 async def _fanout(plan: ctx.Dict[str, ctx.Any], submit_one) -> ctx.List[ctx.Dict[str, ctx.Any]]:
     original = ctx.get_active_profile(ctx.CONFIG).name
     members = [u for u in plan.get("fanout_users", []) if u.lower() != plan.get("monitor_user", "").lower()]

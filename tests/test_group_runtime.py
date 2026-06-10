@@ -63,6 +63,102 @@ class GroupRuntimeTest(unittest.TestCase):
         self.assertEqual(target["school"], "fju")
 
 
+class GroupDisplayTest(unittest.TestCase):
+    def test_summarize_and_describe_group(self) -> None:
+        config = make_config()
+        summary = tron.summarize_group_target(config)
+        self.assertEqual(summary["kind"], "group")
+        self.assertTrue(summary["ok"])
+        self.assertEqual(summary["name"], "A")
+        self.assertEqual(summary["members"], ["user1", "user2"])
+        self.assertEqual(summary["monitor_user"], "user1")
+        self.assertEqual(summary["fanout_count"], 2)
+        self.assertEqual(len(summary["skipped"]), 2)
+
+        describe = tron.describe_group_target(config)
+        self.assertIn("群組 A", describe)
+        self.assertIn("成員 2 人", describe)
+        self.assertIn("user1", describe)
+        self.assertIn("user2", describe)
+        self.assertIn("略過 2 人", describe)
+
+        self.assertEqual(tron.group_status_label(config), "群組A")
+        # Passwords must never leak into display strings.
+        self.assertNotIn("pass1", describe)
+        self.assertNotIn("pass1", json.dumps(summary, ensure_ascii=False))
+
+    def test_describe_account_explicit_and_inferred(self) -> None:
+        explicit = tron.normalize_config(tron.merge_basic_and_advanced_config({
+            "now": "user1",
+            "accounts": [
+                {"user": "user1", "passwd": "pass1", "school": "thu"},
+                {"user": "user2", "passwd": "pass1", "school": "thu"},
+            ],
+            "groups": [],
+            "operating": {},
+        }, {}))
+        self.assertEqual(tron.summarize_group_target(explicit)["kind"], "account")
+        self.assertIn("帳號 user1", tron.describe_group_target(explicit))
+        self.assertEqual(tron.group_status_label(explicit), "帳號user1")
+
+        inferred = tron.normalize_config(tron.merge_basic_and_advanced_config({
+            "now": "",
+            "accounts": [{"user": "ONLY", "passwd": "PASS", "school": "fju"}],
+            "groups": [],
+            "operating": {},
+        }, {}))
+        self.assertIn("自動推斷", tron.describe_group_target(inferred))
+        # Inferred single account is not labelled on the live status line.
+        self.assertEqual(tron.group_status_label(inferred), "")
+
+    def test_describe_invalid_targets(self) -> None:
+        missing_group = tron.normalize_config(tron.merge_basic_and_advanced_config({
+            "now": "class Z",
+            "accounts": [{"user": "user1", "passwd": "pass1", "school": "thu"}],
+            "groups": [{"class": "A", "school": "thu", "users": ["user1"]}],
+            "operating": {},
+        }, {}))
+        self.assertFalse(tron.summarize_group_target(missing_group)["ok"])
+        self.assertIn("群組 Z 不存在", tron.describe_group_target(missing_group))
+        self.assertEqual(tron.group_status_label(missing_group), "")
+
+        empty_now = tron.normalize_config(tron.merge_basic_and_advanced_config({
+            "now": "",
+            "accounts": [
+                {"user": "user1", "passwd": "pass1", "school": "thu"},
+                {"user": "user2", "passwd": "pass1", "school": "thu"},
+            ],
+            "groups": [],
+            "operating": {},
+        }, {}))
+        self.assertIn("now 為空", tron.describe_group_target(empty_now))
+
+    def test_format_group_fanout_summary(self) -> None:
+        ok_result = {
+            "plan": {"target": {"kind": "group", "name": "A"}},
+            "results": [{"user": "user2", "ok": True}, {"user": "user5", "ok": True}],
+        }
+        self.assertEqual(
+            tron.format_group_fanout_summary(ok_result, rollcall_type="number"),
+            "群組 A number 簽到：2/2 成員完成",
+        )
+
+        partial = {
+            "plan": {"target": {"kind": "group", "name": "A"}},
+            "results": [{"user": "user2", "ok": True}, {"user": "user5", "ok": False}],
+        }
+        self.assertEqual(
+            tron.format_group_fanout_summary(partial, rollcall_type="radar"),
+            "群組 A radar 簽到：1/2 成員完成（1 失敗）",
+        )
+
+        # Single-account targets and empty fan-out stay silent.
+        account_result = {"plan": {"target": {"kind": "account"}}, "results": [{"user": "u", "ok": True}]}
+        self.assertEqual(tron.format_group_fanout_summary(account_result, rollcall_type="number"), "")
+        no_members = {"plan": {"target": {"kind": "group", "name": "A"}}, "results": []}
+        self.assertEqual(tron.format_group_fanout_summary(no_members, rollcall_type="number"), "")
+
+
 @unittest.skipUnless(aiohttp is not None and web is not None, "aiohttp.web is required")
 class GroupRuntimeIntegrationTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:

@@ -263,6 +263,7 @@ async def monitor_loop(
     startup_rollcall_flow_completed = False
     ctx.record_monitor_runtime('running')
     ctx.reset_monitor_status()
+    ctx.update_monitor_status(target_label=ctx.group_status_label(ctx.CONFIG), redraw=False)
     if ctx.teacher_assist_configured(ctx.CONFIG):
         ctx.update_monitor_status(teacher_state='ready' if ctx.TEACHER_READY else 'failed', redraw=False)
     else:
@@ -727,6 +728,7 @@ def run_monitor_forever(*, no_input: bool=False, ignore_attendance_rate_gate: ct
             print('config.conf 尚未填入可用的帳號密碼；無輸入模式不會開啟記事本，請先填好 config.conf 再啟動。')
             return 1
         print('啟動自動登入與點名監控程式（無輸入模式）...')
+        print(ctx.describe_group_target(ctx.CONFIG))
     else:
         editor_result = ctx.ensure_config_now_or_open_editor(ctx.CONFIG_PATH)
         if not editor_result.get('ok'):
@@ -735,6 +737,7 @@ def run_monitor_forever(*, no_input: bool=False, ignore_attendance_rate_gate: ct
             # any key to edit config.conf again.
             print(editor_result.get('message') or '尚未偵測到可用帳密，將進入監控；按任意鍵可開啟 config.conf 編輯。')
         print('啟動監控。此視窗只輸出事件；按任意鍵會用舊版記事本開啟 config.conf。')
+        print(ctx.describe_group_target(ctx.CONFIG))
     ctx.time.sleep(1)
     restart_count = 0
     while True:

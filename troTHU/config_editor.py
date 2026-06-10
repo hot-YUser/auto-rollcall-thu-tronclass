@@ -122,7 +122,9 @@ async def watch_any_key_to_edit_config(shutdown_event: ctx.asyncio.Event, sessio
         after = effective_config_now_value(ctx.CONFIG)
         ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status="transient_error", credential_source="config_reload")
         if after != before:
-            ctx.log_print("設定 now 已變更為 `{}`，將清除目前 session 並套用新設定。".format(display_config_now_value(after, ctx.CONFIG)))
+            ctx.log_print("設定 now 已變更為 `{}`，將清除目前 session 並套用新設定。\n{}".format(
+                display_config_now_value(after, ctx.CONFIG), ctx.describe_group_target(ctx.CONFIG)))
+            ctx.update_monitor_status(target_label=ctx.group_status_label(ctx.CONFIG), redraw=False)
             try:
                 if session is not None:
                     session.cookie_jar.clear()
