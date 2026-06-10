@@ -191,6 +191,26 @@ PROVIDERS: Dict[str, ProviderDefinition] = {
         ),
         notes="Public TronClass cloud tenant. Uses the shared TronClass APIs after an email/password login form POST.",
     ),
+    "scu": ProviderDefinition(
+        key="scu",
+        label="Soochow University TronClass",
+        base_url="https://tronclass.scu.edu.tw",
+        login_url="https://tronclass.scu.edu.tw/cas/login?ui_locales=zh-TW&service=https%3A//tronclass.scu.edu.tw/user/index&locale=zh_TW",
+        auth_flow="scu_cas",
+        status="ready",
+        support_level="ready",
+        capabilities=ProviderCapabilities(
+            number=True,
+            radar=True,
+            qrcode=True,
+            course_discovery=True,
+            teacher_rollcall=True,
+            manual_qr=True,
+            local_scanner=True,
+            direct_code_lookup=True,
+        ),
+        notes="Soochow University TronClass provider. Uses standard CAS login form extraction.",
+    ),
 }
 
 PROVIDER_ALIASES = {
@@ -215,6 +235,11 @@ PROVIDER_ALIASES = {
     "www.tronclass.com.tw": "tronclass",
     "官方": "tronclass",
     "官方站": "tronclass",
+    "scu": "scu",
+    "scu.edu": "scu",
+    "soochow": "scu",
+    "東吳": "scu",
+    "東吳大學": "scu",
 }
 
 
