@@ -1,6 +1,6 @@
 # Auto-Rollcall-thu-Tronclass
 
-**TronClass 校園點名系統的全自動點名工具｜支援東海 (THU)「iLearn」、淡江 (TKU)「iClass」 、東吳 (SCU)「TronClass」**
+**TronClass 校園點名系統的全自動點名工具｜支援東海 (THU)「iLearn」、淡江 (TKU)「iClass」、東吳 (SCU)「TronClass」**
 
 登入學校帳號後，它會在你設定的上課時段自動盯著課程，一偵測到點名就替你完成簽到——你不用一直盯著手機，也不用手忙腳亂找點名碼。
 
@@ -8,7 +8,7 @@
 
 ## 致謝與來源
 
-本專案 fork 自 [hot-YUser/auto-rollcall-thu-tronclass](https://github.com/hot-YUser/auto-rollcall-thu-tronclass)。
+本專案 fork 自 [silvercow002/tronclass-script](https://github.com/silvercow002/tronclass-script)，並在此基礎上大幅延伸為支援 THU/TKU/SCU 使用情境的版本。
 
 完整來源、原作者 MIT License notice 與本專案授權說明已併入本文件末尾的「致謝與來源 (Credits)」一節。
 
@@ -24,9 +24,9 @@
 
 關於 QR：學生端 API 不會提供 QR 的 `data` token，所以未設定教師帳號時，程式只會提示你貼上 QR 內容或嘗試剪貼簿輔助。教師輔助模式會使用你自備的教師帳號即時發起一場 QR 點名取得 `data`，再用學生帳號送出；教師登入失敗不會影響數字 / 雷達點名。
 
-**支援的學校：東海大學 (THU)、淡江大學 (TKU)、東吳大學 (SCU)。** 兩校都走同一套登入與點名流程，數字、雷達都完整可用。
+**支援的學校：東海大學 (THU)、淡江大學 (TKU)、東吳大學 (SCU)。** 三校都走同一套登入與點名流程，數字、雷達都完整可用。
 
-> 補充一個常見的誤會：TronClass 是一套被很多學校採用的校園系統，但**各校上架時都會自己取名**——在東海它叫「iLearn」、在淡江叫「iClass」、東吳大學和TronClass 公有雲官網則直接叫「TronClass」。名字不一樣，骨子裡卻是同一套 API；所以同一套登入＋點名流程，只要換掉網域 and 登入方式，就能套到不同學校。
+> 補充一個常見的誤會：TronClass 是一套被很多學校採用的校園系統，但**各校上架時都會自己取名**——在東海它叫「iLearn」、在淡江叫「iClass」、東吳大學和 TronClass 公有雲官網則直接叫「TronClass」。名字不一樣，骨子裡卻是同一套 API；所以同一套登入＋點名流程，只要換掉網域 and 登入方式，就能套到不同學校。
 
 ---
 
@@ -34,7 +34,11 @@
 
 ### 我只是想用（Windows，最簡單）
 
-目前我這個分支不支援用exe運行，敬請等待 [hot-YUser/auto-rollcall-thu-tronclass](https://github.com/hot-YUser/auto-rollcall-thu-tronclass) 更新！
+1. 到 Releases 下載 `THU_Auto_Rollcall-v1.4-alpha.2-windows-x64.zip`。
+2. **整包解壓縮**到一個固定資料夾（不要在 zip 裡直接雙擊）。
+3. 進到資料夾，執行 `auto-rollcall-thu-tronclass.exe`。
+
+第一次啟動會在 exe 旁邊自動建立 `config.conf`、`config.advanced.toml`、`state/`、`log/` 四樣東西。程式一啟動就直接進入監控；**按任意鍵**就會用記事本打開 `config.conf` 讓你填帳號密碼，存檔關掉記事本後它會自動重新讀取設定。
 
 ### 我想用原始碼跑（開發者）
 
