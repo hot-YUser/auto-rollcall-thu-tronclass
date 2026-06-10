@@ -54,476 +54,290 @@ except ModuleNotFoundError:  # pragma: no cover - dependency-missing CLI fallbac
 
     yaml = _MissingYaml()  # type: ignore
 
+# These three names are referenced directly (bare) inside this module, so they must
+# stay statically importable -- not only dynamically bound by the loader below.
 try:
-    from troTHU.account_store import (
-        clear_session_cookies,
-        cookie_cache_enabled,
-        cookie_path,
-        get_active_profile,
-        get_keyring_password,
-        keyring_available,
-        list_profiles,
-        load_session_cookies,
-        normalize_accounts_config,
-        normalize_profile_name,
-        remove_profile,
-        save_session_cookies,
-        set_keyring_password,
-        set_profile,
-        switch_profile,
-    )
-    from troTHU.account_runtime_store import (
-        load_runtime_state,
-        mark_check_result,
-        mark_login_result,
-        mark_monitor_state,
-        mark_profile_error,
-        runtime_profile_summary,
-        runtime_state_path,
-    )
-    from troTHU.adapter_bridge import (
-        AdapterBinding,
-        binding_key,
-        map_adapter_command,
-    )
-    from troTHU.app_blueprint import (
-        build_app_blueprint,
-        format_app_blueprint_summary,
-        validate_app_blueprint,
-    )
-    from troTHU.app_shell import run_app_shell
-    from troTHU.app_shell_polish import (
-        build_shell_action_catalog,
-        build_shell_drilldown,
-        build_shell_ui_model,
-    )
-    from troTHU.bot_runtime import normalize_admins_config
-    from troTHU.connection_probe import (
-        run_connection_probe,
-        sanitize_probe_url,
-    )
-    from troTHU.course_discovery import (
-        CourseDiscoveryError,
-        discover_courses,
-    )
-    from troTHU.local_scanner import run_scanner_server
-    from troTHU.notification_bus import dispatch_notification_event
-    from troTHU.notification_delivery import (
-        NotificationRequest,
-        NotificationSendError,
-        build_notification_requests as build_notification_requests_from_config,
-        normalize_telegram_bot_key,
-        send_notification_request,
-    )
-    from troTHU.observability import (
-        build_observability_snapshot,
-        classify_recent_events,
-        format_dashboard_snapshot,
-        format_log_summary,
-    )
-    from troTHU.package_diagnostics import build_package_diagnostic_report
-    from troTHU.pending_qr import (
-        DEFAULT_PENDING_QR_PROVIDER,
-        add_pending_qr,
-        list_pending_qr,
-        match_pending_qr,
-        remove_pending_qr,
-    )
-    from troTHU.qr_rollcall import (
-        QrCodeData,
-        answer_qr_rollcall,
-        parse_qr_payload,
-        parse_qr_payload_with_diagnostics,
-    )
-    from troTHU.number_rollcall import (
-        NumberAttemptStatus,
-        NumberCodeLookup,
-        classify_number_response,
-        coerce_number_code,
-        parse_number_code_payload,
-    )
-    from troTHU.providers import (
-        DEFAULT_PROVIDER,
-        get_provider,
-        list_all_providers,
-        list_supported_providers,
-        normalize_provider_config,
-        provider_support_report,
-        provider_registry_config,
-        tronclass_api_endpoints,
-    )
+    from troTHU.providers import provider_registry_config
     from troTHU.research_mode import normalize_research_mode_config
-    from troTHU.research_sandbox import (
-        ResearchCaptureError,
-        ResearchGateError,
-        append_research_capture,
-        build_browser_capture_metadata,
-        build_research_status,
-        capture_browser_target_metadata,
-        capture_research_api_target,
-        capture_rollcall_probe,
-        capture_student_rollcalls_probe,
-        ensure_research_allowed,
-    )
-    from troTHU.webview_sync import (
-        WebViewSyncError,
-        build_webview_cookie_preview,
-        build_webview_sync_status,
-        import_webview_cookies,
-        parse_webview_cookie_export,
-    )
-    from troTHU.debug_capture import append_debug_capture
-    from troTHU.radar_solver import (
-        DEFAULT_BOUNDARY_POINTS,
-        DistanceObservation,
-        GeoPoint,
-        GridCandidate,
-        RadarGeometryError,
-        build_probe_plan,
-        choose_fourth_probe,
-        final_candidate_points,
-        solve_position,
-        unbounded_grid_candidates,
-        unbounded_grid_offsets,
-    )
-    from troTHU.global_radar_solver import (
-        GlobalDistanceObservation,
-        GlobalRadarEstimate,
-        GlobalRadarSolverConfig,
-        global_anchor_points,
-        global_radar_solver_config_from_mapping,
-        should_request_supplement,
-        solve_global_radar,
-        standard_sample_points,
-        supplement_sample_points,
-        wgs84_direct_point,
-        wgs84_distance_meters,
-    )
-    from troTHU.radar_rollcall import (
-        build_radar_answer_payload,
-        build_radar_attempt_diagnostic,
-        parse_radar_lite_payload,
-    )
-    from troTHU.radar_map_assist import build_radar_map_assist
-    from troTHU.release_checklist import (
-        build_release_build_plan,
-        build_release_checklist,
-        format_release_checklist,
-    )
-    from troTHU.release_builder import (
-        format_release_build_summary,
-        run_release_build_pipeline,
-    )
-    from troTHU.discord_adapter import sync_discord_command_schema
-    from troTHU.discord_gateway import build_gateway_health, run_discord_gateway
-    from troTHU.tron_http import (
-        LOGIN_URL,
-        TRON,
-        LoginPageChangedError,
-        LoginRejectedError,
-        TronHttpClient,
-        TronHttpError,
-        UnauthorizedError,
-        UnexpectedResponseError,
-        default_endpoints,
-        endpoints_from_provider,
-        extract_login_form as extract_login_form_data,
-        has_session_cookie as has_session_cookie_data,
-    )
-    from troTHU.rollcall_models import (
-        AttendanceType,
-        NotificationEvent,
-        RollcallAction,
-        RollcallDecision,
-    )
-    from troTHU.rollcall_engine import (
-        classify_rollcall as engine_classify_rollcall,
-        decide_rollcall as engine_decide_rollcall,
-        select_rollcall as engine_select_rollcall,
-    )
-    from troTHU.runtime_helpers import (
-        BIG_DIGITS,
-        RadarCoordinateResult,
-        TIME_RANGE_PATTERN,
-        TransientCooldownDecision,
-        TransientCooldownPolicy,
-        TransientCooldownTracker,
-        build_monitor_status_line,
-        build_number_progress_message,
-        build_radar_signal,
-        coerce_bool,
-        coerce_positive_float,
-        coerce_positive_int,
-        display_width,
-        format_clock,
-        format_countdown,
-        format_found_code_banner,
-        format_hhmm,
-        format_radar_success_banner,
-        format_rollcall_start_message,
-        format_rollcall_success_banner,
-        format_success_banner_attendance_rate,
-        format_time_value,
-        is_within_any_schedule,
-        is_within_schedule,
-        make_payload_excerpt,
-        normalize_radar_boundary_points as runtime_normalize_radar_boundary_points,
-        normalize_schedule_range,
-        normalize_schedule_ranges,
-        normalize_text,
-        parse_radar_answer_result,
-        parse_schedule_range,
-        parse_schedule_ranges,
-        parse_time_value,
-        predict_schedule_change,
-        render_big_digits,
-        truncate_to_width,
-    )
-    from troTHU.ux_tools import (
-        check_item,
-        export_debug_bundle,
-        file_age_seconds,
-        human_age,
-        json_text,
-        render_check_items,
-        summarize_logs,
-        tail_log_records,
-    )
-except ImportError:
-    from account_store import (
-        clear_session_cookies,
-        cookie_cache_enabled,
-        cookie_path,
-        get_active_profile,
-        get_keyring_password,
-        keyring_available,
-        list_profiles,
-        load_session_cookies,
-        normalize_accounts_config,
-        normalize_profile_name,
-        remove_profile,
-        save_session_cookies,
-        set_keyring_password,
-        set_profile,
-        switch_profile,
-    )
-    from account_runtime_store import (
-        load_runtime_state,
-        mark_check_result,
-        mark_login_result,
-        mark_monitor_state,
-        mark_profile_error,
-        runtime_profile_summary,
-        runtime_state_path,
-    )
-    from adapter_bridge import (
-        AdapterBinding,
-        binding_key,
-        map_adapter_command,
-    )
-    from app_blueprint import (
-        build_app_blueprint,
-        format_app_blueprint_summary,
-        validate_app_blueprint,
-    )
-    from app_shell import run_app_shell
-    from app_shell_polish import (
-        build_shell_action_catalog,
-        build_shell_drilldown,
-        build_shell_ui_model,
-    )
-    from bot_runtime import normalize_admins_config
-    from connection_probe import (
-        run_connection_probe,
-        sanitize_probe_url,
-    )
-    from course_discovery import (
-        CourseDiscoveryError,
-        discover_courses,
-    )
-    from local_scanner import run_scanner_server
-    from notification_bus import dispatch_notification_event
-    from notification_delivery import (
-        NotificationRequest,
-        NotificationSendError,
-        build_notification_requests as build_notification_requests_from_config,
-        normalize_telegram_bot_key,
-        send_notification_request,
-    )
-    from observability import (
-        build_observability_snapshot,
-        classify_recent_events,
-        format_dashboard_snapshot,
-        format_log_summary,
-    )
-    from package_diagnostics import build_package_diagnostic_report
-    from pending_qr import (
-        DEFAULT_PENDING_QR_PROVIDER,
-        add_pending_qr,
-        list_pending_qr,
-        match_pending_qr,
-        remove_pending_qr,
-    )
-    from qr_rollcall import (
-        QrCodeData,
-        answer_qr_rollcall,
-        parse_qr_payload,
-        parse_qr_payload_with_diagnostics,
-    )
-    from number_rollcall import (
-        NumberAttemptStatus,
-        NumberCodeLookup,
-        classify_number_response,
-        coerce_number_code,
-        parse_number_code_payload,
-    )
-    from providers import (
-        DEFAULT_PROVIDER,
-        get_provider,
-        list_all_providers,
-        list_supported_providers,
-        normalize_provider_config,
-        provider_support_report,
-        provider_registry_config,
-        tronclass_api_endpoints,
-    )
+    from troTHU.radar_solver import DEFAULT_BOUNDARY_POINTS
+except ImportError:  # pragma: no cover - direct-script fallback
+    from providers import provider_registry_config
     from research_mode import normalize_research_mode_config
-    from research_sandbox import (
-        ResearchCaptureError,
-        ResearchGateError,
-        append_research_capture,
-        build_browser_capture_metadata,
-        build_research_status,
-        capture_browser_target_metadata,
-        capture_research_api_target,
-        capture_rollcall_probe,
-        capture_student_rollcalls_probe,
-        ensure_research_allowed,
-    )
-    from webview_sync import (
-        WebViewSyncError,
-        build_webview_cookie_preview,
-        build_webview_sync_status,
-        import_webview_cookies,
-        parse_webview_cookie_export,
-    )
-    from debug_capture import append_debug_capture
-    from radar_solver import (
-        DEFAULT_BOUNDARY_POINTS,
-        DistanceObservation,
-        GeoPoint,
-        GridCandidate,
-        RadarGeometryError,
-        build_probe_plan,
-        choose_fourth_probe,
-        final_candidate_points,
-        solve_position,
-        unbounded_grid_candidates,
-        unbounded_grid_offsets,
-    )
-    from global_radar_solver import (
-        GlobalDistanceObservation,
-        GlobalRadarEstimate,
-        GlobalRadarSolverConfig,
-        global_anchor_points,
-        global_radar_solver_config_from_mapping,
-        should_request_supplement,
-        solve_global_radar,
-        standard_sample_points,
-        supplement_sample_points,
-        wgs84_direct_point,
-        wgs84_distance_meters,
-    )
-    from radar_rollcall import (
-        build_radar_answer_payload,
-        build_radar_attempt_diagnostic,
-        parse_radar_lite_payload,
-    )
-    from radar_map_assist import build_radar_map_assist
-    from release_checklist import (
-        build_release_build_plan,
-        build_release_checklist,
-        format_release_checklist,
-    )
-    from release_builder import (
-        format_release_build_summary,
-        run_release_build_pipeline,
-    )
-    from discord_adapter import sync_discord_command_schema
-    from discord_gateway import build_gateway_health, run_discord_gateway
-    from tron_http import (
-        LOGIN_URL,
-        TRON,
-        LoginPageChangedError,
-        LoginRejectedError,
-        TronHttpClient,
-        TronHttpError,
-        UnauthorizedError,
-        UnexpectedResponseError,
-        default_endpoints,
-        endpoints_from_provider,
-        extract_login_form as extract_login_form_data,
-        has_session_cookie as has_session_cookie_data,
-    )
-    from rollcall_models import (
-        AttendanceType,
-        NotificationEvent,
-        RollcallAction,
-        RollcallDecision,
-    )
-    from rollcall_engine import (
-        classify_rollcall as engine_classify_rollcall,
-        decide_rollcall as engine_decide_rollcall,
-        select_rollcall as engine_select_rollcall,
-    )
-    from runtime_helpers import (
-        BIG_DIGITS,
-        RadarCoordinateResult,
-        TIME_RANGE_PATTERN,
-        TransientCooldownDecision,
-        TransientCooldownPolicy,
-        TransientCooldownTracker,
-        build_monitor_status_line,
-        build_number_progress_message,
-        build_radar_signal,
-        coerce_bool,
-        coerce_positive_float,
-        coerce_positive_int,
-        display_width,
-        format_clock,
-        format_countdown,
-        format_found_code_banner,
-        format_hhmm,
-        format_radar_success_banner,
-        format_rollcall_start_message,
-        format_rollcall_success_banner,
-        format_success_banner_attendance_rate,
-        format_time_value,
-        is_within_any_schedule,
-        is_within_schedule,
-        make_payload_excerpt,
-        normalize_radar_boundary_points as runtime_normalize_radar_boundary_points,
-        normalize_schedule_range,
-        normalize_schedule_ranges,
-        normalize_text,
-        parse_radar_answer_result,
-        parse_schedule_range,
-        parse_schedule_ranges,
-        parse_time_value,
-        predict_schedule_change,
-        render_big_digits,
-        truncate_to_width,
-    )
-    from ux_tools import (
-        check_item,
-        export_debug_bundle,
-        file_age_seconds,
-        human_age,
-        json_text,
-        render_check_items,
-        summarize_logs,
-        tail_log_records,
-    )
+    from radar_solver import DEFAULT_BOUNDARY_POINTS
+
+# Eager re-exports, data-driven to replace the previously duplicated
+# `try: from troTHU.X import (...)` / `except ImportError: from X import (...)` mirror
+# blocks (the same ~185 names were listed twice). Names are bound into this module's
+# globals at import time, preserving the original eager semantics and ordering, so
+# `ctx.NAME` keeps resolving from globals. PyInstaller bundling is driven by
+# HIDDEN_IMPORTS in the .spec file (not by these now-dynamic imports); the
+# troTHU.X -> bare X fallback mirrors the lazy resolver in __getattr__ below.
+_EAGER_REEXPORTS = {
+    "troTHU.account_store": (
+        "clear_session_cookies",
+        "cookie_cache_enabled",
+        "cookie_path",
+        "get_active_profile",
+        "get_keyring_password",
+        "keyring_available",
+        "list_profiles",
+        "load_session_cookies",
+        "normalize_accounts_config",
+        "normalize_profile_name",
+        "remove_profile",
+        "save_session_cookies",
+        "set_keyring_password",
+        "set_profile",
+        "switch_profile",
+    ),
+    "troTHU.account_runtime_store": (
+        "load_runtime_state",
+        "mark_check_result",
+        "mark_login_result",
+        "mark_monitor_state",
+        "mark_profile_error",
+        "runtime_profile_summary",
+        "runtime_state_path",
+    ),
+    "troTHU.adapter_bridge": (
+        "AdapterBinding",
+        "binding_key",
+        "map_adapter_command",
+    ),
+    "troTHU.app_blueprint": (
+        "build_app_blueprint",
+        "format_app_blueprint_summary",
+        "validate_app_blueprint",
+    ),
+    "troTHU.app_shell": (
+        "run_app_shell",
+    ),
+    "troTHU.app_shell_polish": (
+        "build_shell_action_catalog",
+        "build_shell_drilldown",
+        "build_shell_ui_model",
+    ),
+    "troTHU.bot_runtime": (
+        "normalize_admins_config",
+    ),
+    "troTHU.connection_probe": (
+        "run_connection_probe",
+        "sanitize_probe_url",
+    ),
+    "troTHU.course_discovery": (
+        "CourseDiscoveryError",
+        "discover_courses",
+    ),
+    "troTHU.local_scanner": (
+        "run_scanner_server",
+    ),
+    "troTHU.notification_bus": (
+        "dispatch_notification_event",
+    ),
+    "troTHU.notification_delivery": (
+        "NotificationRequest",
+        "NotificationSendError",
+        ("build_notification_requests", "build_notification_requests_from_config"),
+        "normalize_telegram_bot_key",
+        "send_notification_request",
+    ),
+    "troTHU.observability": (
+        "build_observability_snapshot",
+        "classify_recent_events",
+        "format_dashboard_snapshot",
+        "format_log_summary",
+    ),
+    "troTHU.package_diagnostics": (
+        "build_package_diagnostic_report",
+    ),
+    "troTHU.pending_qr": (
+        "DEFAULT_PENDING_QR_PROVIDER",
+        "add_pending_qr",
+        "list_pending_qr",
+        "match_pending_qr",
+        "remove_pending_qr",
+    ),
+    "troTHU.qr_rollcall": (
+        "QrCodeData",
+        "answer_qr_rollcall",
+        "parse_qr_payload",
+        "parse_qr_payload_with_diagnostics",
+    ),
+    "troTHU.number_rollcall": (
+        "NumberAttemptStatus",
+        "NumberCodeLookup",
+        "classify_number_response",
+        "coerce_number_code",
+        "parse_number_code_payload",
+    ),
+    "troTHU.providers": (
+        "DEFAULT_PROVIDER",
+        "get_provider",
+        "list_all_providers",
+        "list_supported_providers",
+        "normalize_provider_config",
+        "provider_support_report",
+        "tronclass_api_endpoints",
+    ),
+    "troTHU.research_sandbox": (
+        "ResearchCaptureError",
+        "ResearchGateError",
+        "append_research_capture",
+        "build_browser_capture_metadata",
+        "build_research_status",
+        "capture_browser_target_metadata",
+        "capture_research_api_target",
+        "capture_rollcall_probe",
+        "capture_student_rollcalls_probe",
+        "ensure_research_allowed",
+    ),
+    "troTHU.webview_sync": (
+        "WebViewSyncError",
+        "build_webview_cookie_preview",
+        "build_webview_sync_status",
+        "import_webview_cookies",
+        "parse_webview_cookie_export",
+    ),
+    "troTHU.debug_capture": (
+        "append_debug_capture",
+    ),
+    "troTHU.radar_solver": (
+        "DistanceObservation",
+        "GeoPoint",
+        "GridCandidate",
+        "RadarGeometryError",
+        "build_probe_plan",
+        "choose_fourth_probe",
+        "final_candidate_points",
+        "solve_position",
+        "unbounded_grid_candidates",
+        "unbounded_grid_offsets",
+    ),
+    "troTHU.global_radar_solver": (
+        "GlobalDistanceObservation",
+        "GlobalRadarEstimate",
+        "GlobalRadarSolverConfig",
+        "global_anchor_points",
+        "global_radar_solver_config_from_mapping",
+        "should_request_supplement",
+        "solve_global_radar",
+        "standard_sample_points",
+        "supplement_sample_points",
+        "wgs84_direct_point",
+        "wgs84_distance_meters",
+    ),
+    "troTHU.radar_rollcall": (
+        "build_radar_answer_payload",
+        "build_radar_attempt_diagnostic",
+        "parse_radar_lite_payload",
+    ),
+    "troTHU.radar_map_assist": (
+        "build_radar_map_assist",
+    ),
+    "troTHU.release_checklist": (
+        "build_release_build_plan",
+        "build_release_checklist",
+        "format_release_checklist",
+    ),
+    "troTHU.release_builder": (
+        "format_release_build_summary",
+        "run_release_build_pipeline",
+    ),
+    "troTHU.discord_adapter": (
+        "sync_discord_command_schema",
+    ),
+    "troTHU.discord_gateway": (
+        "build_gateway_health",
+        "run_discord_gateway",
+    ),
+    "troTHU.tron_http": (
+        "LOGIN_URL",
+        "TRON",
+        "LoginPageChangedError",
+        "LoginRejectedError",
+        "TronHttpClient",
+        "TronHttpError",
+        "UnauthorizedError",
+        "UnexpectedResponseError",
+        "default_endpoints",
+        "endpoints_from_provider",
+        ("extract_login_form", "extract_login_form_data"),
+        ("has_session_cookie", "has_session_cookie_data"),
+    ),
+    "troTHU.rollcall_models": (
+        "AttendanceType",
+        "NotificationEvent",
+        "RollcallAction",
+        "RollcallDecision",
+    ),
+    "troTHU.rollcall_engine": (
+        ("classify_rollcall", "engine_classify_rollcall"),
+        ("decide_rollcall", "engine_decide_rollcall"),
+        ("select_rollcall", "engine_select_rollcall"),
+    ),
+    "troTHU.runtime_helpers": (
+        "BIG_DIGITS",
+        "RadarCoordinateResult",
+        "TIME_RANGE_PATTERN",
+        "TransientCooldownDecision",
+        "TransientCooldownPolicy",
+        "TransientCooldownTracker",
+        "build_monitor_status_line",
+        "build_number_progress_message",
+        "build_radar_signal",
+        "coerce_bool",
+        "coerce_positive_float",
+        "coerce_positive_int",
+        "display_width",
+        "format_clock",
+        "format_countdown",
+        "format_found_code_banner",
+        "format_hhmm",
+        "format_radar_success_banner",
+        "format_rollcall_start_message",
+        "format_rollcall_success_banner",
+        "format_success_banner_attendance_rate",
+        "format_time_value",
+        "is_within_any_schedule",
+        "is_within_schedule",
+        "make_payload_excerpt",
+        ("normalize_radar_boundary_points", "runtime_normalize_radar_boundary_points"),
+        "normalize_schedule_range",
+        "normalize_schedule_ranges",
+        "normalize_text",
+        "parse_radar_answer_result",
+        "parse_schedule_range",
+        "parse_schedule_ranges",
+        "parse_time_value",
+        "predict_schedule_change",
+        "render_big_digits",
+        "truncate_to_width",
+    ),
+    "troTHU.ux_tools": (
+        "check_item",
+        "export_debug_bundle",
+        "file_age_seconds",
+        "human_age",
+        "json_text",
+        "render_check_items",
+        "summarize_logs",
+        "tail_log_records",
+    ),
+}
+
+
+def _install_eager_reexports() -> None:
+    for _module_name, _symbols in _EAGER_REEXPORTS.items():
+        try:
+            _module = importlib.import_module(_module_name)
+        except ImportError:  # pragma: no cover - direct-script fallback
+            _module = importlib.import_module(_module_name.removeprefix("troTHU."))
+        for _symbol in _symbols:
+            _attr, _alias = _symbol if isinstance(_symbol, tuple) else (_symbol, _symbol)
+            globals()[_alias] = getattr(_module, _attr)
+
+
+_install_eager_reexports()
 
 CURRENT_PROMPT = "切換學號 (輸入 exit 離開) > "
 
