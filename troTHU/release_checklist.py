@@ -346,7 +346,6 @@ def _ci_report(path: Path) -> Dict[str, Any]:
 
 def _readme_report(path: Path) -> Dict[str, Any]:
     text = _read_text(path)
-    lowered = text.lower()
     checks = [
         _check("README exists", path.exists(), path.name, severity="warn"),
         _check(

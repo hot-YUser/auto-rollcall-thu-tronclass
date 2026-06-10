@@ -160,7 +160,7 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
         config['account'] = account
     account.setdefault('user', ctx.DEFAULT_CONFIG['account']['user'])
     account.setdefault('passwd', ctx.DEFAULT_CONFIG['account']['passwd'])
-    accounts = ctx.normalize_accounts_config(config)
+    ctx.normalize_accounts_config(config)
     active_profile = ctx.get_active_profile(config)
     if not ctx.has_real_credential(account.get('user')) and ctx.has_real_credential(active_profile.user):
         account['user'] = active_profile.user
@@ -547,7 +547,7 @@ def bootstrap_config(force: bool=False) -> ctx.Dict[str, ctx.Any]:
     config = ctx.copy.deepcopy(ctx.DEFAULT_CONFIG)
     try:
         config = ctx.load_config()
-    except Exception as exc:
+    except Exception:
         backup_path = None
         if ctx.CONFIG_PATH.exists():
             try:

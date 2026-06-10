@@ -3,7 +3,6 @@ import json
 import unittest
 from unittest.mock import patch
 
-from troTHU.adapter_bridge import ControlCommand
 from troTHU.bot_runtime import BotRuntime, BotRuntimeHandlers
 from troTHU.discord_gateway import (
     OP_DISPATCH,
