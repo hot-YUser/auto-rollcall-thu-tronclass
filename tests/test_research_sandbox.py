@@ -17,7 +17,6 @@ from troTHU.research_sandbox import (
     ResearchGateError,
     append_research_capture,
     build_browser_capture_metadata,
-    build_research_status,
     capture_research_api_target,
     ensure_research_allowed,
     sanitize_research_value,
