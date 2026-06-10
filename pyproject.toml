@@ -39,7 +39,7 @@ keyring = ["keyring>=24"]
 packaging = ["PyInstaller>=6"]
 qr-image = ["opencv-python-headless>=4.9", "Pillow>=10"]
 browser = ["playwright>=1.44"]
-dev = ["PyInstaller>=6", "keyring>=24"]
+dev = ["PyInstaller>=6", "keyring>=24", "ruff>=0.15,<0.16"]
 
 [project.urls]
 Homepage = "https://github.com/hot-YUser/auto-rollcall-thu-tronclass"
@@ -53,3 +53,25 @@ auto-rollcall-thu-tronclass = "troTHU.tron:main"
 [tool.setuptools]
 packages = ["troTHU"]
 include-package-data = false
+
+[tool.ruff]
+# Match the project's minimum supported runtime (requires-python = ">=3.10").
+target-version = "py310"
+# Generated/local-only trees are gitignored; never lint them.
+extend-exclude = ["APP和網頁前端", "其他專案參考", "log", "state"]
+
+[tool.ruff.lint]
+# Conservative inaugural ruleset: ruff's sane default (E4/E7/E9 + F = pyflakes, which catches
+# unused imports/variables and undefined names), plus flake8-future-annotations (FA) and the
+# isort required-import rule (I002) that enforces `from __future__ import annotations` across the
+# runtime package so the inconsistency cannot drift back. We intentionally do NOT enable full
+# isort reordering (I001) or pyupgrade (UP) this round, to keep the diff focused and reviewable;
+# revisit those as a follow-up once this baseline is green in CI.
+extend-select = ["FA", "I002"]
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]
+
+[tool.ruff.lint.per-file-ignores]
+# The required-import policy targets the runtime package; the offline test suite doesn't need it.
+"tests/**" = ["I002"]
