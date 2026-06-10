@@ -75,3 +75,7 @@ required-imports = ["from __future__ import annotations"]
 [tool.ruff.lint.per-file-ignores]
 # The required-import policy targets the runtime package; the offline test suite doesn't need it.
 "tests/**" = ["I002"]
+# runtime_context.py is the re-export facade hub: it imports stdlib modules and symbols
+# purely to expose them as `ctx.<name>` for the rest of the package, so pyflakes'
+# "imported but unused" (F401) is the wrong signal for this file specifically.
+"troTHU/runtime_context.py" = ["F401"]
