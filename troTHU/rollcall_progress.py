@@ -9,6 +9,7 @@ This summarizes those into: class total, present count, how many answered, and
 (by matching the active profile's ``user_no``) whether *my own* check-in landed.
 Used to confirm a submission succeeded. Best-effort; never raises.
 """
+from __future__ import annotations
 
 import json
 from typing import Any, Dict, Mapping
