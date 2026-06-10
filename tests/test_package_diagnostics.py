@@ -28,7 +28,7 @@ class PackageDiagnosticsTest(unittest.TestCase):
         self.assertEqual(project["version"], PROJECT_VERSION)
         self.assertEqual(project["scripts"]["trothu"], "troTHU.tron:main")
         self.assertEqual(project["scripts"]["auto-rollcall-thu-tronclass"], "troTHU.tron:main")
-        self.assertIn("aiohttp>=3.9.5", project["dependencies"])
+        self.assertIn("aiohttp>=3.10.11", project["dependencies"])
         self.assertNotIn("textual>=8.2.0", project["dependencies"])
 
     def test_pyinstaller_spec_excludes_local_secrets_and_tracks_hidden_imports(self) -> None:

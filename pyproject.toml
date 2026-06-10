@@ -27,7 +27,9 @@ classifiers = [
   "Topic :: Internet :: WWW/HTTP",
 ]
 dependencies = [
-  "aiohttp>=3.9.5",
+  # aiohttp floor raised to a recent security baseline (3.10.x maintenance tail);
+  # PyYAML/PyNaCl are already at their latest published releases.
+  "aiohttp>=3.10.11",
   "PyYAML>=6.0.2",
   "PyNaCl>=1.5.0",
   # Reading config.advanced.toml: stdlib tomllib on 3.11+, tomli backport on 3.10.
