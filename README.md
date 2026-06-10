@@ -34,7 +34,7 @@
 
 ### 我只是想用（Windows，最簡單）
 
-1. 到 Releases 下載 `THU_Auto_Rollcall-v1.4-alpha.1-windows-x64.zip`。
+1. 到 Releases 下載 `THU_Auto_Rollcall-v1.4-alpha.2-windows-x64.zip`。
 2. **整包解壓縮**到一個固定資料夾（不要在 zip 裡直接雙擊）。
 3. 進到資料夾，執行 `auto-rollcall-thu-tronclass.exe`。
 
