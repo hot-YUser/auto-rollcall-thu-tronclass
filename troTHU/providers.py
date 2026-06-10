@@ -196,9 +196,8 @@ PROVIDERS: Dict[str, ProviderDefinition] = {
         label="Soochow University TronClass",
         base_url="https://tronclass.scu.edu.tw",
         login_url="https://tronclass.scu.edu.tw/cas/login?ui_locales=zh-TW&service=https%3A//tronclass.scu.edu.tw/user/index&locale=zh_TW",
-        auth_flow="scu_cas",
+        auth_flow="thu_cas",
         status="ready",
-        support_level="ready",
         capabilities=ProviderCapabilities(
             number=True,
             radar=True,

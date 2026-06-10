@@ -60,17 +60,22 @@ class ProviderConfigTest(unittest.TestCase):
         self.assertEqual(registry["available"]["tronclass"]["base_url"], "https://www.tronclass.com.tw")
         self.assertEqual(registry["available"]["tronclass"]["auth_flow"], "public_cloud_email")
         self.assertTrue(registry["available"]["tronclass"]["capabilities"]["course_discovery"])
+        self.assertTrue(registry["available"]["scu"]["ready"])
+        self.assertTrue(registry["available"]["scu"]["user_visible"])
+        self.assertEqual(registry["available"]["scu"]["auth_flow"], "thu_cas")
+        self.assertEqual(registry["available"]["scu"]["base_url"], "https://tronclass.scu.edu.tw")
+        self.assertTrue(registry["available"]["scu"]["capabilities"]["radar"])
 
     def test_supported_provider_registry_hides_fju_by_default(self) -> None:
         self.assertEqual(
             [provider.key for provider in list_supported_providers()],
-            ["thu", "tku", "tronclass"],
+            ["scu", "thu", "tku", "tronclass"],
         )
         self.assertEqual(
             [provider.key for provider in list_supported_providers(include_hidden=True)],
-            ["fju", "thu", "tku", "tronclass"],
+            ["fju", "scu", "thu", "tku", "tronclass"],
         )
-        self.assertEqual([provider.key for provider in list_all_providers()], ["fju", "thu", "tku", "tronclass"])
+        self.assertEqual([provider.key for provider in list_all_providers()], ["fju", "scu", "thu", "tku", "tronclass"])
 
     def test_tronclass_api_endpoint_builder_is_shared(self) -> None:
         endpoints = tronclass_api_endpoints("https://school.example/")
