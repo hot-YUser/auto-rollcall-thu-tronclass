@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import inspect
 from dataclasses import dataclass, field
-from typing import Any, Mapping, Optional, Tuple
+from typing import Any, Mapping, Tuple
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 try:  # pragma: no cover - exercised when aiohttp is installed

@@ -6,8 +6,7 @@ summaries. It does not submit radar answers or preserve raw backend payloads.
 
 from __future__ import annotations
 
-import math
-from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Sequence
 
 try:  # pragma: no cover - script execution fallback
     from troTHU.providers import DEFAULT_PROVIDER, get_provider, normalize_provider_config, provider_support_report

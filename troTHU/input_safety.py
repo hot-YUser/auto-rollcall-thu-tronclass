@@ -6,7 +6,7 @@ import contextlib
 import re
 import sys
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Mapping
+from typing import Any, Dict, List, Mapping
 
 
 SENSITIVE_FIELD_TYPES = {"password", "token", "secret"}

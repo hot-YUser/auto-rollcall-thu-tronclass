@@ -16,7 +16,7 @@ import time
 import webbrowser
 from html import escape
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Dict, Mapping
+from typing import Any, Callable, Dict, Mapping
 
 try:  # pragma: no cover - dependency fallback is exercised by CLI diagnostics
     from aiohttp import web
