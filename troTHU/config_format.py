@@ -162,6 +162,9 @@ def _canonical_school(value: ctx.Any) -> str:
         "www.tronclass.com.tw": "tronclass",
         "官方": "tronclass",
         "官方站": "tronclass",
+        "東吳": "scu",
+        "東吳大學": "scu",
+        "scu": "scu",
     }
     return aliases.get(school, school or "thu")
 
