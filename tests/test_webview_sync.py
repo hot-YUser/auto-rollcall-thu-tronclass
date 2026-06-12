@@ -200,32 +200,85 @@ class WebViewSyncTest(unittest.TestCase):
             self.assertTrue(result["saved"])
 
 
-class WebViewCookieValidationTest(unittest.IsolatedAsyncioTestCase):
-    async def test_manual_cookie_import_validation_success_and_failure(self) -> None:
+class ThreadedFakeServer:
+    def __init__(self) -> None:
+        self.server = None
+        self.loop = None
+        self.thread = None
+        self.base_url = ""
+
+    def start(self) -> None:
+        import asyncio
+        import threading
+        self.loop = asyncio.new_event_loop()
+        self.thread = threading.Thread(target=self._run_loop, daemon=True)
+        self.thread.start()
+        
+        future = asyncio.run_coroutine_threadsafe(self._start_server(), self.loop)
+        self.server = future.result(timeout=5.0)
+        self.base_url = self.server.base_url
+
+    def _run_loop(self) -> None:
+        import asyncio
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_forever()
+
+    async def _start_server(self) -> Any:
         from tests.fake_tron_server import FakeTronServer
+        server = FakeTronServer()
+        await server.start()
+        return server
+
+    def stop(self) -> None:
+        import asyncio
+        if self.loop:
+            asyncio.run_coroutine_threadsafe(self._stop_server(), self.loop).result()
+            self.loop.call_soon_threadsafe(self.loop.stop)
+            self.thread.join(timeout=5.0)
+
+    async def _stop_server(self) -> None:
+        if self.server:
+            await self.server.close()
+
+
+class WebViewCookieValidationTest(unittest.TestCase):
+    def test_manual_cookie_import_validation_success_and_failure(self) -> None:
         from troTHU.webview_sync import import_webview_cookies, parse_webview_cookie_export, WebViewSyncError
 
-        async with FakeTronServer() as server:
+        server = ThreadedFakeServer()
+        server.start()
+        try:
             provider_config = {
                 "key": "custom_manual",
                 "base_url": server.base_url,
-                "login_url": server.login_url,
+                "login_url": server.base_url + "/login",
                 "auth_flow": "manual_cookie_only",
                 "session_cookie_domain": "127.0.0.1",
             }
+            # Valid session cookie matches FakeTronServer.session_cookie
             records_valid = parse_webview_cookie_export(
-                [{"name": "session", "value": server.session_cookie, "domain": "127.0.0.1", "path": "/"}]
+                [{"name": "session", "value": "local-test-session", "domain": "127.0.0.1", "path": "/"}]
             )
             records_invalid = parse_webview_cookie_export(
                 [{"name": "session", "value": "bad-session-cookie", "domain": "127.0.0.1", "path": "/"}]
             )
+
+            config_valid = {
+                "webview": {
+                    "cookie_sync": {
+                        "enabled": True,
+                        "allow_cookie_import": True,
+                        "allow_experimental_provider": True,
+                    }
+                }
+            }
 
             with tempfile.TemporaryDirectory() as temp_dir:
                 result = import_webview_cookies(
                     Path(temp_dir),
                     "default",
                     records_valid,
-                    config={"webview": {"enabled": True, "allow_cookie_import": True, "allow_experimental_provider": True}},
+                    config=config_valid,
                     provider=provider_config,
                     save=True,
                 )
@@ -236,11 +289,13 @@ class WebViewCookieValidationTest(unittest.IsolatedAsyncioTestCase):
                         Path(temp_dir),
                         "default",
                         records_invalid,
-                        config={"webview": {"enabled": True, "allow_cookie_import": True, "allow_experimental_provider": True}},
+                        config=config_valid,
                         provider=provider_config,
                         save=True,
                     )
                 self.assertEqual(blocked.exception.reason, "api_validation_failed")
+        finally:
+            server.stop()
 
 
 if __name__ == "__main__":
