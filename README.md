@@ -337,7 +337,55 @@ PUT {teacher_base}/api/rollcall/{teacher_rollcall_id}/stop_qr_rollcall
 - `troTHU/tron_http.py`：端點驅動的 HTTP client；`fetch_login_form` / `submit_login` 會依 `auth_flow` 委派給對應的 login adapter。
 - `troTHU/auth_runtime.py`：與學校無關的登入主流程（cookie 還原、送出、API session 驗證、瀏覽器後備、各種狀態與提示）。
 
-> 想自己加一所學校？三條路（沿用既有流程 → 加一筆 / 寫一個 adapter / 純 cookie 匯入）的完整步驟見 [docs/adding-a-school.md](docs/adding-a-school.md)。
+### 新增一所學校（給開發者）
+
+「多學校系統」刻意設計成新增學校的成本極低，依登入方式分三條路：
+
+**途徑一：沿用既有登入流程（最常見）。** 新學校登入頁若與東海 CAS（`thu_cas`）、淡江 SSO、公有雲 email 其中一種相同，有兩種作法：
+
+- *永久新增（適合送 PR）*：在 `troTHU/providers.py` 的 `PROVIDERS` 加一筆 `ProviderDefinition`，並在 `PROVIDER_ALIASES` 補上中英文別名。
+  ```python
+  "scu": ProviderDefinition(
+      key="scu",
+      label="Soochow University TronClass",
+      base_url="https://tronclass.scu.edu.tw",
+      login_url="https://tronclass.scu.edu.tw/cas/login?...",
+      auth_flow="thu_cas",
+      capabilities=ProviderCapabilities(number=True, radar=True, qrcode=True, ...),
+  ),
+  ```
+- *純設定檔新增（本機擴充、完全不動程式碼）*：在 `config.advanced.toml` 加一個區塊，再於 `config.conf` 把 `school` 填成同一個名字，所有 API 端點會自動推導。
+  ```toml
+  [provider.available.my_school]
+  base_url = "https://tronclass.my-school.edu.tw"
+  auth_flow = "thu_cas"
+  ```
+  ```conf
+  school = my_school
+  ```
+
+**途徑二：全新登入頁面（寫一個 Adapter）。** 該校若有獨特的 SSO 流程（像淡江 `tku_sso_browser`），在 `troTHU/login_adapters.py` 繼承 `LoginAdapter` 實作 `fetch_login_form` / `submit_login`，以 `auth_flow` 為鍵註冊進 `_adapters_by_flow`，再把 provider 的 `auth_flow` 指到它。登入狀態判讀、錯誤提示、session 驗證、瀏覽器後備都已統一，不必再碰。
+
+```python
+class MySchoolLoginAdapter(LoginAdapter):
+    auth_flow = "my_school_sso"
+    prefers_browser_assisted_login = True   # 必要時呼叫瀏覽器輔助
+    requires_api_session_validation = True  # 登入後是否驗證 API session
+
+    async def fetch_login_form(self, client) -> LoginForm: ...
+    async def submit_login(self, client, form, username, password) -> LoginOutcome: ...
+```
+
+**途徑三：純 Cookie 匯入（免寫任何登入邏輯）。** 想直接從瀏覽器讀 cookie、跳過密碼登入：把該校 `auth_flow` 設成 `manual_cookie_only`，啟用進階設定的 `webview`，再用指令匯入。系統會在匯入當下與每次執行時自動向該校 API 驗證 session，確保 cookie 有效、不怕靜默過期。
+
+```toml
+[provider.available.scu]
+base_url = "https://tronclass.scu.edu.tw"
+auth_flow = "manual_cookie_only"
+```
+```bash
+python -m troTHU.tron webview import --input <cookie-json-path> --save
+```
 
 ### 安裝選用功能（原始碼）
 
