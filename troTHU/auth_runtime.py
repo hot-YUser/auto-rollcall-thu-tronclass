@@ -466,9 +466,25 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
     if ctx.provider_requires_manual_cookie_login():
         active_profile = ctx.get_active_profile(ctx.CONFIG)
         if ctx.has_session_cookie(session):
-            result = ctx.LoginResult(status='success', credential_source='manual_cookie', user=active_profile.user)
-            ctx.LAST_LOGIN_RESULT = result
-            return ctx.record_login_runtime(result)
+            client = ctx.create_tron_http_client(session, request_ssl=ctx.get_ssl_request_setting())
+            try:
+                await ctx.validate_login_api_session(client)
+                result = ctx.LoginResult(status='success', credential_source='manual_cookie', user=active_profile.user)
+                ctx.LAST_LOGIN_RESULT = result
+                return ctx.record_login_runtime(result)
+            except (ctx.TronHttpError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError, ctx.ssl.SSLError) as exc:
+                try:
+                    session.cookie_jar.clear()
+                except Exception:
+                    pass
+                ctx.log(
+                    event='login_failure',
+                    status='missing_session',
+                    message='Manual cookie API session validation failed.',
+                    error=exc,
+                    extra={'provider': ctx.get_active_provider_key(), 'user': active_profile.user},
+                )
+                ctx.log_print('手動 Cookie API 驗證失敗。')
         result = ctx.LoginResult(status='manual_cookie_required', credential_source='manual_cookie', user=active_profile.user)
         ctx.log(
             event='login_skipped',
