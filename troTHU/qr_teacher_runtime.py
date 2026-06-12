@@ -68,14 +68,22 @@ def _teacher_login_result(status: str, source: str, user: str = "", final_url: s
 
 
 def _teacher_requires_api_validation(endpoints) -> bool:
+    # Mirror the student-side predicate: union the legacy auth_flow set with the
+    # login-adapter registry so a new school's adapter automatically participates
+    # and the teacher path stays consistent with student login.
     auth_flow = ctx.normalize_text(getattr(endpoints, "auth_flow", "")).lower()
-    return auth_flow in {
+    requires = auth_flow in {
         "public_cloud_email",
         "browser_sso",
         "oidc_browser",
         "sso_browser",
         "tku_sso_browser",
     }
+    try:
+        requires = requires or ctx.get_login_adapter(auth_flow).requires_api_session_validation
+    except Exception:
+        pass
+    return requires
 
 
 async def teacher_login(session, endpoints):

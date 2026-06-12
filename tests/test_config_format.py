@@ -275,6 +275,31 @@ class ConfigFormatTest(unittest.TestCase):
         self.assertEqual(config["provider"]["available"]["custom_school"]["base_url"], "https://custom.tronclass.com.tw")
 
 
+class AdvancedProviderRenderTest(unittest.TestCase):
+    def test_render_does_not_dump_builtin_registry(self) -> None:
+        toml = tron.render_advanced_config_toml(tron.default_advanced_config())
+        # The full built-in registry must never be written into advanced config
+        # (staleness guard: persisted built-ins would shadow future registry fixes).
+        self.assertNotIn("[provider.available.thu]", toml)
+        self.assertNotIn("[provider.available.scu]", toml)
+        self.assertNotIn("ilearn.thu.edu.tw", toml)
+        # ...but the section stays documented with a commented worked example.
+        self.assertIn("provider.available.my_school", toml)
+
+    def test_custom_school_override_round_trips_without_builtins(self) -> None:
+        parsed = tron.parse_basic_config_text(
+            "now = X1\n[account]\nuser = X1\npasswd = P1\nschool = my_school\n"
+        )
+        advanced = {"provider": {"available": {"my_school": {
+            "base_url": "https://lms.my.edu", "auth_flow": "thu_cas",
+        }}}}
+        config = tron.normalize_config(tron.merge_basic_and_advanced_config(parsed, advanced))
+        _simple, advanced_out = tron.split_normalized_config(config)
+        available = advanced_out.get("provider", {}).get("available", {})
+        self.assertIn("my_school", available)   # custom school is persisted
+        self.assertNotIn("thu", available)      # built-ins are not
+        self.assertNotIn("scu", available)
+
 
 class LegacyConfigMigrationTest(unittest.TestCase):
     def setUp(self) -> None:

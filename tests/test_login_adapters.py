@@ -1,8 +1,6 @@
 import unittest
 from troTHU.login_adapters import (
     get_login_adapter,
-    login_adapters_by_flow,
-    LoginAdapter,
     CasLoginAdapter,
     TkuSsoLoginAdapter,
     PublicCloudEmailLoginAdapter,
@@ -49,3 +47,43 @@ class LoginAdaptersTest(unittest.TestCase):
         self.assertTrue(manual.requires_api_session_validation)
         self.assertTrue(manual.requires_manual_cookie_login)
         self.assertFalse(manual.requires_password)
+
+    def test_manual_cookie_adapter_degrades_gracefully(self) -> None:
+        # If ever called directly, the manual-cookie adapter must raise a handled
+        # exception (LoginPageChangedError), not an uncaught NotImplementedError
+        # that would crash the monitor loop.
+        import asyncio
+        from troTHU.tron_http import LoginPageChangedError
+        manual = get_login_adapter("manual_cookie_only")
+        with self.assertRaises(LoginPageChangedError):
+            asyncio.run(manual.fetch_login_form(None))
+        with self.assertRaises(LoginPageChangedError):
+            asyncio.run(manual.submit_login(None, None, "u", "p"))
+
+
+class AuthPredicateBackCompatTest(unittest.TestCase):
+    """browser_sso / oidc_browser / sso_browser have no dedicated adapter, so the
+    adapter-derived auth predicates must still honour the legacy auth-flow sets
+    (regression guard for the back-compat union)."""
+
+    def _predicate_with_flow(self, auth_flow: str, fn_name: str) -> bool:
+        import copy
+        import troTHU.tron as tron
+        original = copy.deepcopy(tron.CONFIG)
+        try:
+            tron.CONFIG["provider"] = {
+                "current": "x",
+                "available": {"x": {"base_url": "https://x.example.edu", "auth_flow": auth_flow}},
+            }
+            return getattr(tron, fn_name)()
+        finally:
+            tron.CONFIG.clear()
+            tron.CONFIG.update(original)
+
+    def test_legacy_browser_flows_still_prefer_browser_and_validate(self) -> None:
+        for flow in ("browser_sso", "oidc_browser", "sso_browser"):
+            self.assertTrue(self._predicate_with_flow(flow, "provider_prefers_browser_assisted_login"), flow)
+            self.assertTrue(self._predicate_with_flow(flow, "provider_requires_api_session_validation"), flow)
+
+    def test_thu_cas_does_not_prefer_browser(self) -> None:
+        self.assertFalse(self._predicate_with_flow("thu_cas", "provider_prefers_browser_assisted_login"))

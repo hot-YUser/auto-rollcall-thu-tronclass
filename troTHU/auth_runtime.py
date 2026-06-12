@@ -120,11 +120,12 @@ def provider_requires_manual_cookie_login() -> bool:
     except Exception:
         provider = {}
     auth_flow = ctx.normalize_text(provider.get('auth_flow') if isinstance(provider, dict) else '').lower()
+    requires = auth_flow == 'manual_cookie_only'
     try:
-        adapter = ctx.get_login_adapter(auth_flow)
-        return adapter.requires_manual_cookie_login
+        requires = requires or ctx.get_login_adapter(auth_flow).requires_manual_cookie_login
     except Exception:
-        return auth_flow == 'manual_cookie_only'
+        pass
+    return requires
 
 
 def provider_prefers_browser_assisted_login() -> bool:
@@ -133,11 +134,12 @@ def provider_prefers_browser_assisted_login() -> bool:
     except Exception:
         provider = {}
     auth_flow = ctx.normalize_text(provider.get('auth_flow') if isinstance(provider, dict) else '').lower()
+    prefers = auth_flow in BROWSER_ASSIST_AUTH_FLOWS
     try:
-        adapter = ctx.get_login_adapter(auth_flow)
-        return adapter.prefers_browser_assisted_login
+        prefers = prefers or ctx.get_login_adapter(auth_flow).prefers_browser_assisted_login
     except Exception:
-        return auth_flow in BROWSER_ASSIST_AUTH_FLOWS
+        pass
+    return prefers
 
 
 def provider_requires_api_session_validation() -> bool:
@@ -146,11 +148,12 @@ def provider_requires_api_session_validation() -> bool:
     except Exception:
         provider = {}
     auth_flow = ctx.normalize_text(provider.get('auth_flow') if isinstance(provider, dict) else '').lower()
+    requires = auth_flow in API_VALIDATED_AUTH_FLOWS or ctx.provider_prefers_browser_assisted_login()
     try:
-        adapter = ctx.get_login_adapter(auth_flow)
-        return adapter.requires_api_session_validation
+        requires = requires or ctx.get_login_adapter(auth_flow).requires_api_session_validation
     except Exception:
-        return auth_flow in API_VALIDATED_AUTH_FLOWS or ctx.provider_prefers_browser_assisted_login()
+        pass
+    return requires
 
 
 def get_browser_assisted_login_config() -> ctx.Dict[str, ctx.Any]:

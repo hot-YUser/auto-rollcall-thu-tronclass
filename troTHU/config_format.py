@@ -558,7 +558,7 @@ def parse_legacy_basic_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
 # Advanced-config sections (everything that is NOT basic account/group/teacher/
 # operating). Order here is the order they appear in the generated TOML file.
 ADVANCED_SECTION_KEYS = (
-    "time", "session", "provider", "monitor", "auth", "ux", "local_ui", "webview",
+    "time", "session", "monitor", "auth", "ux", "local_ui", "webview",
     "integrations", "notifications", "config", "number", "radar", "research",
 )
 
@@ -580,6 +580,40 @@ def _deep_merge_dict(base: ctx.Mapping[str, ctx.Any], overlay: ctx.Mapping[str, 
             result[key] = _deep_merge_dict(result[key], value)
         else:
             result[key] = ctx.copy.deepcopy(value)
+    return result
+
+
+def _provider_advanced_overrides(provider_cfg: ctx.Any) -> ctx.Dict[str, ctx.Any]:
+    """Return only the parts of a provider config worth persisting to advanced
+    config: ``allow_experimental`` when on, plus ``available`` entries that are
+    custom schools or that genuinely differ from the built-in registry. Built-in
+    providers at their default values are deliberately NOT written, so a future
+    registry fix (base_url / login_url / auth_flow …) can never be silently
+    shadowed by a stale saved config — the class of routing bug behind the SCU
+    issue. ``current`` is omitted on purpose: it is derived from the account's
+    school in ``merge_basic_and_advanced_config``."""
+    if not isinstance(provider_cfg, ctx.Mapping):
+        return {}
+    result: ctx.Dict[str, ctx.Any] = {}
+    if ctx.coerce_bool(provider_cfg.get("allow_experimental"), False):
+        result["allow_experimental"] = True
+    available = provider_cfg.get("available")
+    if isinstance(available, ctx.Mapping):
+        try:
+            builtin_keys = {p.key for p in ctx.list_all_providers()}
+        except Exception:
+            builtin_keys = set()
+        custom: ctx.Dict[str, ctx.Any] = {}
+        for key, value in available.items():
+            if key in builtin_keys:
+                try:
+                    if value == ctx.get_provider(key).to_config():
+                        continue  # built-in at its default value → never persist
+                except Exception:
+                    pass
+            custom[key] = ctx.copy.deepcopy(value)
+        if custom:
+            result["available"] = custom
     return result
 
 
@@ -675,10 +709,8 @@ _ADVANCED_COMMENTS = {
     "time.timezone": "IANA 時區名稱，例如 Asia/Taipei",
     "session": "登入 session 快取",
     "session.cache_cookies": "true = 記住登入，下次免重新登入",
-    "provider": "學校與 API 網址設定對照區",
-    "provider.current": "預設使用的學校（基本設定未指定時）",
+    "provider": "學校與 API 網址覆寫（內建學校不必填，自訂學校才需要）",
     "provider.allow_experimental": "是否啟用實驗性學校",
-    "provider.available.scu.auth_flow": "登入驗證流程（喜歡直接讀 cookie 者可填 manual_cookie_only）",
     "monitor": "監控行為",
     "monitor.ignore_attendance_rate_gate": "true = 一偵測到點名就立刻簽到，跳過「全班到課率達 15%」的保險",
     "auth": "登入方式",
@@ -756,6 +788,9 @@ def render_advanced_config_toml(config: ctx.Mapping[str, ctx.Any] | None = None)
     control at its default value, with any overrides from ``config`` applied on
     top. This is what makes the advanced file self-documenting for beginners."""
     full = _deep_merge_dict(default_advanced_config(), config or {})
+    # Never dump the built-in provider registry into the file; only a trimmed
+    # delta is persisted, rendered separately as a commented section below.
+    provider_overrides = _provider_advanced_overrides(full.pop("provider", None))
     lines = [
         "# ===== 進階設定 config.advanced.toml =====",
         "# TOML 格式：固定、嚴謹、不易出錯。下面列出所有可調整的項目，數值都是預設值，",
@@ -763,7 +798,25 @@ def render_advanced_config_toml(config: ctx.Mapping[str, ctx.Any] | None = None)
         "# 但完全不影響你的基本設定 config.conf。",
     ]
     _emit_toml_table("", full, lines)
+    _append_provider_advanced_section(lines, provider_overrides)
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _append_provider_advanced_section(lines: ctx.List[str], overrides: ctx.Mapping[str, ctx.Any]) -> None:
+    """Emit a compact, commented [provider] section: a worked example of how to
+    add a school the built-in list doesn't cover (or read cookies directly),
+    followed by any real overrides the user actually set. The full built-in
+    registry is intentionally never written here."""
+    lines.append("")
+    lines.append("# " + _ADVANCED_COMMENTS["provider"])
+    lines.append("# 一般情況下，學校由 config.conf 的 school 決定，這裡不用填。")
+    lines.append("# 要新增「內建清單沒有的學校」或自訂網址，照下面範例加一個區塊")
+    lines.append("#（區塊名 my_school 即 config.conf 的 school 值）：")
+    lines.append('#   [provider.available.my_school]')
+    lines.append('#   base_url = "https://tronclass.my-school.edu.tw"')
+    lines.append('#   auth_flow = "thu_cas"   # 想直接讀瀏覽器 cookie 免密碼登入可填 manual_cookie_only')
+    if overrides:
+        _emit_toml_table("provider", dict(overrides), lines)
 
 
 def _simple_target_account(simple: ctx.Mapping[str, ctx.Any]) -> ctx.Dict[str, str]:
@@ -920,14 +973,11 @@ def split_normalized_config(config: ctx.Mapping[str, ctx.Any]) -> ctx.Tuple[ctx.
         if key in ctx.DEFAULT_CONFIG and value == ctx.DEFAULT_CONFIG.get(key):
             continue
         advanced[key] = ctx.copy.deepcopy(value)
-    provider = advanced.get("provider")
-    if isinstance(provider, dict):
-        provider.pop("current", None)
-        provider.pop("requested", None)
-        provider.pop("fallback_reason", None)
-        default_provider = ctx.copy.deepcopy(ctx.DEFAULT_CONFIG.get("provider", {}))
-        if isinstance(default_provider, dict):
-            default_provider.pop("current", None)
-        if not provider or provider == default_provider:
-            advanced.pop("provider", None)
+    # Persist only the provider delta (custom/overridden schools), never the
+    # full built-in registry — see _provider_advanced_overrides.
+    provider_overrides = _provider_advanced_overrides(advanced.get("provider"))
+    if provider_overrides:
+        advanced["provider"] = provider_overrides
+    else:
+        advanced.pop("provider", None)
     return simple, advanced

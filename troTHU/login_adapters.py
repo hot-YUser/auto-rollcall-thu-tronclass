@@ -1,7 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
-import troTHU.runtime_context as ctx
+from typing import Dict, Any
 import troTHU.tron_http as tron_http
 
 class LoginAdapter(ABC):
@@ -35,7 +34,7 @@ class LoginAdapter(ABC):
             **post_kwargs,
             **client.request_kwargs(),
         ) as resp:
-            html_text = await resp.text()
+            await resp.text()
             final_url = str(resp.url)
 
         if client.endpoints.session_cookie_domain == tron_http.DEFAULT_ENDPOINTS.session_cookie_domain:
@@ -164,7 +163,10 @@ class ManualCookieLoginAdapter(LoginAdapter):
     requires_password = False
 
     async def fetch_login_form(self, client: tron_http.TronHttpClient) -> tron_http.LoginForm:
-        raise NotImplementedError("Manual cookie login does not support fetching a login form.")
+        # Never reached in the normal flow: login() short-circuits manual-cookie
+        # providers before building a client. Degrade into the handled
+        # changed-page branch rather than an uncaught error if called directly.
+        raise tron_http.LoginPageChangedError("manual cookie only: no password login form")
 
     async def submit_login(
         self,
@@ -173,7 +175,7 @@ class ManualCookieLoginAdapter(LoginAdapter):
         username: str,
         password: str,
     ) -> tron_http.LoginOutcome:
-        raise NotImplementedError("Manual cookie login does not support submitting credentials.")
+        raise tron_http.LoginPageChangedError("manual cookie only: credential submission unsupported")
 
 
 _adapters_by_flow: Dict[str, LoginAdapter] = {
