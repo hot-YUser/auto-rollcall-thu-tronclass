@@ -254,6 +254,27 @@ class ConfigFormatTest(unittest.TestCase):
         self.assertEqual(config["provider"]["current"], "scu")
         self.assertEqual(tron.get_provider("scu").base_url, "https://tronclass.scu.edu.tw")
 
+    def test_synthetic_provider_account_routing(self) -> None:
+        parsed = tron.parse_basic_config_text(
+            "now = X1\n[account]\nuser = X1\npasswd = P1\nschool = custom_school\n"
+        )
+        advanced = {
+            "provider": {
+                "available": {
+                    "custom_school": {
+                        "base_url": "https://custom.tronclass.com.tw",
+                        "auth_flow": "thu_cas",
+                    }
+                }
+            }
+        }
+        config = tron.normalize_config(tron.merge_basic_and_advanced_config(parsed, advanced))
+
+        self.assertEqual(config["account"]["user"], "X1")
+        self.assertEqual(config["provider"]["current"], "custom_school")
+        self.assertEqual(config["provider"]["available"]["custom_school"]["base_url"], "https://custom.tronclass.com.tw")
+
+
 
 class LegacyConfigMigrationTest(unittest.TestCase):
     def setUp(self) -> None:

@@ -177,6 +177,13 @@ def _profile_school(profile: ctx.Mapping[str, ctx.Any], default: str = "thu") ->
         available_providers = {provider.key for provider in ctx.list_all_providers()}
     except Exception:
         available_providers = {"thu", "tku", "fju", "tronclass", "scu"}
+    try:
+        cfg_available = ctx.CONFIG.get("provider", {}).get("available", {})
+        if isinstance(cfg_available, ctx.Mapping):
+            for k in cfg_available:
+                available_providers.add(k)
+    except Exception:
+        pass
     for key in ("school", "label"):
         val = profile.get(key)
         if not val or not str(val).strip():
@@ -551,7 +558,7 @@ def parse_legacy_basic_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
 # Advanced-config sections (everything that is NOT basic account/group/teacher/
 # operating). Order here is the order they appear in the generated TOML file.
 ADVANCED_SECTION_KEYS = (
-    "time", "session", "monitor", "auth", "ux", "local_ui", "webview",
+    "time", "session", "provider", "monitor", "auth", "ux", "local_ui", "webview",
     "integrations", "notifications", "config", "number", "radar", "research",
 )
 
@@ -668,6 +675,10 @@ _ADVANCED_COMMENTS = {
     "time.timezone": "IANA 時區名稱，例如 Asia/Taipei",
     "session": "登入 session 快取",
     "session.cache_cookies": "true = 記住登入，下次免重新登入",
+    "provider": "學校與 API 網址設定對照區",
+    "provider.current": "預設使用的學校（基本設定未指定時）",
+    "provider.allow_experimental": "是否啟用實驗性學校",
+    "provider.available.scu.auth_flow": "登入驗證流程（喜歡直接讀 cookie 者可填 manual_cookie_only）",
     "monitor": "監控行為",
     "monitor.ignore_attendance_rate_gate": "true = 一偵測到點名就立刻簽到，跳過「全班到課率達 15%」的保險",
     "auth": "登入方式",

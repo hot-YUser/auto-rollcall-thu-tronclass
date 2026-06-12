@@ -1,5 +1,6 @@
 import copy
 import unittest
+import unittest.mock
 
 import aiohttp
 from yarl import URL
@@ -349,3 +350,41 @@ class ResearchModeConfigTest(unittest.TestCase):
                 self.assertTrue(result["ok"])
                 self.assertEqual(result["answers"][0]["rollcall_id"], "77")
                 self.assertEqual(result["answers"][0]["body"]["data"], "synthetic-qr-data")
+
+
+class CustomProviderTest(unittest.TestCase):
+    def test_synthetic_provider_normalization(self) -> None:
+        raw = {
+            "current": "ncu",
+            "available": {
+                "ncu": {
+                    "base_url": "https://portal.ncu.edu.tw",
+                    "auth_flow": "thu_cas",
+                }
+            }
+        }
+        normalized = normalize_provider_config(raw)
+        self.assertEqual(normalized["current"], "ncu")
+        self.assertEqual(normalized["fallback_reason"], "")
+        ncu_config = normalized["available"]["ncu"]
+        self.assertEqual(ncu_config["base_url"], "https://portal.ncu.edu.tw")
+        self.assertEqual(ncu_config["auth_flow"], "thu_cas")
+        self.assertEqual(ncu_config["login_url"], "https://portal.ncu.edu.tw/login")
+        self.assertIn("/api/radar/rollcalls", ncu_config["rollcalls_url"])
+        self.assertIn("/api/current-semester-info", ncu_config["current_semester_url"])
+        self.assertIn("/api/my-courses", ncu_config["courses_url"])
+
+    def test_synthetic_provider_without_base_url_fallback(self) -> None:
+        raw = {
+            "current": "nonexistent",
+            "available": {
+                "nonexistent": {
+                    "auth_flow": "thu_cas",
+                }
+            }
+        }
+        normalized = normalize_provider_config(raw)
+        self.assertEqual(normalized["current"], DEFAULT_PROVIDER)
+        self.assertEqual(normalized["fallback_reason"], "unknown_provider")
+        self.assertNotIn("nonexistent", normalized["available"])
+

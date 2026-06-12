@@ -342,18 +342,58 @@ def normalize_provider_config(value: Any) -> Dict[str, Any]:
     requested = raw_config.get("current", raw_config.get("name", raw_config.get("school", "")))
     requested_key = normalize_provider_name(requested)
     current = normalize_provider_name(requested)
-    fallback_reason = ""
-    if current not in PROVIDERS:
-        fallback_reason = "unknown_provider"
-        current = DEFAULT_PROVIDER
 
     available = raw_config.get("available")
     if not isinstance(available, Mapping):
         available = {}
 
+    all_keys = set(PROVIDERS.keys())
+    for key, override in available.items():
+        if isinstance(override, Mapping) and "base_url" in override:
+            all_keys.add(key)
+
+    fallback_reason = ""
+    if current not in all_keys:
+        fallback_reason = "unknown_provider"
+        current = DEFAULT_PROVIDER
+
     merged_available: Dict[str, Dict[str, Any]] = {}
-    for key, provider in sorted(PROVIDERS.items()):
-        merged = provider.to_config()
+    for key in sorted(all_keys):
+        if key in PROVIDERS:
+            merged = PROVIDERS[key].to_config()
+        else:
+            base_url = ""
+            override = available.get(key)
+            if isinstance(override, Mapping):
+                base_url = str(override.get("base_url") or "").strip()
+            endpoints = tronclass_api_endpoints(base_url)
+            merged = {
+                "key": key,
+                "label": key.upper(),
+                "base_url": base_url,
+                "login_url": base_url + "/login" if base_url else "",
+                "rollcalls_url": endpoints["rollcalls_url"],
+                "current_semester_url": endpoints["current_semester_url"],
+                "courses_url": endpoints["courses_url"],
+                "auth_flow": "thu_cas",
+                "status": "ready",
+                "support_level": "ready",
+                "ready": True,
+                "daily_ready": True,
+                "user_visible": True,
+                "capabilities": ProviderCapabilities(
+                    number=True,
+                    radar=True,
+                    qrcode=True,
+                    course_discovery=True,
+                    teacher_rollcall=True,
+                    manual_qr=True,
+                    local_scanner=True,
+                    direct_code_lookup=True,
+                ).to_dict(),
+                "notes": "Custom configured provider.",
+            }
+
         override = available.get(key)
         if isinstance(override, Mapping):
             if "base_url" in override:
@@ -362,7 +402,10 @@ def normalize_provider_config(value: Any) -> Dict[str, Any]:
                 merged["rollcalls_url"] = endpoints["rollcalls_url"]
                 merged["current_semester_url"] = endpoints["current_semester_url"]
                 merged["courses_url"] = endpoints["courses_url"]
+                if key not in PROVIDERS:
+                    merged["login_url"] = merged["base_url"] + "/login" if merged["base_url"] else ""
             for override_key in (
+                "label",
                 "login_url",
                 "rollcalls_url",
                 "current_semester_url",
