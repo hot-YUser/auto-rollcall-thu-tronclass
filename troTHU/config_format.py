@@ -170,9 +170,19 @@ def _canonical_school(value: ctx.Any) -> str:
 
 
 def _profile_school(profile: ctx.Mapping[str, ctx.Any], default: str = "thu") -> str:
+    # Validate against the live provider registry (single source of truth) so a
+    # newly added provider like scu can never silently fall back to the default
+    # again — the bug that routed Soochow (東吳) configs to thu.
+    try:
+        available_providers = {provider.key for provider in ctx.list_all_providers()}
+    except Exception:
+        available_providers = {"thu", "tku", "fju", "tronclass", "scu"}
     for key in ("school", "label"):
-        school = _canonical_school(profile.get(key))
-        if school in {"thu", "tku", "fju", "tronclass"}:
+        val = profile.get(key)
+        if not val or not str(val).strip():
+            continue
+        school = _canonical_school(val)
+        if school in available_providers:
             return school
     return default
 
@@ -597,7 +607,7 @@ def render_basic_config(simple_dict: ctx.Mapping[str, ctx.Any] | None = None) ->
 
     for index, account in enumerate(accounts, start=1):
         lines.extend([
-            "# [account] 你的帳號，要幾個就放幾塊。school 可填 THU / TKU / TRONCLASS",
+            "# [account] 你的帳號，要幾個就放幾塊。school 可填 THU / TKU / TRONCLASS / SCU（東吳請填 SCU，不要填 TRONCLASS）",
             "[account]",
             "user = {}".format(account.get("user") or ""),
             "passwd = {}".format(account.get("passwd") or ""),

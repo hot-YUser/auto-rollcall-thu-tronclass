@@ -235,6 +235,25 @@ class ConfigFormatTest(unittest.TestCase):
         self.assertTrue(parsed["operating"][1]["enable"])
         self.assertEqual(parsed["operating"][1]["ranges"], [["09:10", "12:00"], ["13:20", "17:30"]])
 
+    def test_profile_school_preserves_scu(self) -> None:
+        from troTHU.config_format import _profile_school
+        self.assertEqual(_profile_school({"school": "scu"}), "scu")
+        self.assertEqual(_profile_school({"school": "\u6771\u5433"}), "scu")
+        self.assertEqual(_profile_school({"label": "\u6771\u5433\u5927\u5b78"}), "scu")
+
+    def test_scu_account_routes_to_soochow_tenant(self) -> None:
+        # A Soochow (\u6771\u5433) student must reach their own tenant, not silently fall
+        # back to thu (the old _profile_school bug). Verify the whole chain:
+        # parse \u2192 _profile_school \u2192 provider["current"] \u2192 the scu base_url.
+        parsed = tron.parse_basic_config_text(
+            "now = X1\n[account]\nuser = X1\npasswd = P1\nschool = \u6771\u5433\n"
+        )
+        config = tron.normalize_config(tron.merge_basic_and_advanced_config(parsed, {}))
+
+        self.assertEqual(config["account"]["user"], "X1")
+        self.assertEqual(config["provider"]["current"], "scu")
+        self.assertEqual(tron.get_provider("scu").base_url, "https://tronclass.scu.edu.tw")
+
 
 class LegacyConfigMigrationTest(unittest.TestCase):
     def setUp(self) -> None:
