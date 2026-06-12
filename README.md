@@ -88,7 +88,7 @@ python -m troTHU.tron run --no-input
 # now：要用哪個帳號跑？填某帳號的 user，或填「class 群組名」。只有一個帳號可留空。
 now = 
 
-# [account] 你的帳號，要幾個就放幾塊。school 可填 THU / TKU / TRONCLASS / SCU
+# [account] 你的帳號，要幾個就放幾塊。school 可填 THU / TKU / TRONCLASS / SCU（東吳請填 SCU，不要填 TRONCLASS）
 [account]
 user = s1234567
 passwd = mypassword
@@ -117,7 +117,7 @@ times = 09:10-12:00, 13:20-17:30
 **`now`** — 現在要用哪個帳號。可以填某個帳號的學號（例如 `now = s1234567`），也可以填一個群組（例如 `now = class A`）。
 > 小撇步：如果你整份 `config.conf` 只填了一個有效帳號，`now` 可以**留空**，程式會自動用那一個，不會逼你再填一次。
 
-**`[account]`** — 你的帳號區塊，要幾個帳號就自己複製多個區塊。每個區塊包含 `user`（學號/帳號）、`passwd`（密碼）與 `school`（學校，可填 `THU` / `TKU` / `TRONCLASS`）。也接受中文別名（例如 `帳號 = s1234567`、`密碼 = mypassword`、`學校 = 東海`）。
+**`[account]`** — 你的帳號區塊，要幾個帳號就自己複製多個區塊。每個區塊包含 `user`（學號/帳號）、`passwd`（密碼）與 `school`（學校，可填 `THU` / `TKU` / `TRONCLASS` / `SCU`；東吳請填 `SCU`，別填 `TRONCLASS`）。也接受中文別名（例如 `帳號 = s1234567`、`密碼 = mypassword`、`學校 = 東海`）。
 
 **`[group]`** — （進階／選用）群組設定。群組功能可以「一人讀碼、全員簽到並確認 on_call_fine」。`class = A` 代表群組名稱為 A，`members` 用逗號列出該群組的成員帳號。
 
@@ -332,8 +332,12 @@ PUT {teacher_base}/api/rollcall/{teacher_rollcall_id}/stop_qr_rollcall
 - `troTHU/monitor_runtime.py`：預設的監控主迴圈（登入 → 依排程 → 偵測點名 → 分流）。
 - `troTHU/number_runtime.py`、`troTHU/radar_runtime.py`：兩種點名的實作核心（上面的 API 就在這裡）；雷達的全球定位求解器另放在 `troTHU/global_radar_solver.py`（純 Python WGS84 多點定位）。
 - `troTHU/qr_runtime.py`、`troTHU/qr_teacher_runtime.py`：QR 手動 / 剪貼簿送出與教師帳號輔助流程。
-- `troTHU/providers.py`：支援的學校登錄表（base URL、登入流程、能力旗標），加新學校從這裡開始。
-- `troTHU/tron_http.py`：端點驅動的 HTTP client 與登入流程（THU CAS / TKU SSO / 公有雲 email 登入）。
+- `troTHU/providers.py`：支援的學校登錄表（base URL、`auth_flow`、能力旗標）。沿用既有登入流程的新學校，從這裡加一筆即可，甚至可純用 `config.advanced.toml` 的 `[provider.available.<校名>]` 定義，完全不必改程式。
+- `troTHU/login_adapters.py`：以 `auth_flow` 為鍵的「登入頁 adapter」登錄表（CAS / TKU SSO / 公有雲 email / 純 cookie 匯入）。有獨特登入頁的新學校，只需新增一個 adapter；登入狀態判讀、錯誤提示、session 驗證等共用流程都已統一，不必再碰。
+- `troTHU/tron_http.py`：端點驅動的 HTTP client；`fetch_login_form` / `submit_login` 會依 `auth_flow` 委派給對應的 login adapter。
+- `troTHU/auth_runtime.py`：與學校無關的登入主流程（cookie 還原、送出、API session 驗證、瀏覽器後備、各種狀態與提示）。
+
+> 想自己加一所學校？三條路（沿用既有流程 → 加一筆 / 寫一個 adapter / 純 cookie 匯入）的完整步驟見 [docs/adding-a-school.md](docs/adding-a-school.md)。
 
 ### 安裝選用功能（原始碼）
 
