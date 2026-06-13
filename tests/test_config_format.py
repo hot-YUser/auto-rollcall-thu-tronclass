@@ -274,6 +274,20 @@ class ConfigFormatTest(unittest.TestCase):
         self.assertEqual(config["provider"]["current"], "custom_school")
         self.assertEqual(config["provider"]["available"]["custom_school"]["base_url"], "https://custom.tronclass.com.tw")
 
+    def test_url_school_routes_to_interactive_browser_end_to_end(self) -> None:
+        # Regression: a base URL pasted into `school` must survive parse -> merge
+        # (the original URL is otherwise lost when collapsed to the url_<host> key)
+        # and synthesize an interactive_browser provider — NOT fall back to thu.
+        parsed = tron.parse_basic_config_text(
+            "now = X1\n[account]\nuser = X1\npasswd = P1\nschool = https://iclass.demo.edu.tw/user/index#/\n"
+        )
+        config = tron.normalize_config(tron.merge_basic_and_advanced_config(parsed, {}))
+        cur = config["provider"]["current"]
+        self.assertEqual(cur, "url_iclass_demo_edu_tw")
+        prov = config["provider"]["available"][cur]
+        self.assertEqual(prov["auth_flow"], "interactive_browser")
+        self.assertEqual(prov["base_url"], "https://iclass.demo.edu.tw")
+
 
 class AdvancedProviderRenderTest(unittest.TestCase):
     def test_render_does_not_dump_builtin_registry(self) -> None:

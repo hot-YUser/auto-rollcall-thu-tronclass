@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_submodules, collect_all, collect_data_files
 
 
 APP_NAME = "auto-rollcall-thu-tronclass"
@@ -111,16 +111,12 @@ HIDDEN_IMPORTS = sorted(
 EXCLUDES = [
     "aiohttp.pytest_plugin",
     "cv2",
-    "greenlet",
     "keyring",
     "keyrings",
     "mypy",
     "numpy",
     "PIL",
     "Pillow",
-    "playwright",
-    "playwright.async_api",
-    "pyee",
     "pyzbar",
     "pydantic",
     "pydantic_core",
@@ -129,12 +125,32 @@ EXCLUDES = [
     "tests",
 ]
 
+playwright_datas, playwright_binaries, playwright_hiddenimports = collect_all("playwright")
+playwright_datas_extra = collect_data_files("playwright", include_py_files=True)
+
+combined_datas = DATAS + playwright_datas + playwright_datas_extra
+combined_binaries = playwright_binaries
+combined_hiddenimports = sorted(
+    set(
+        HIDDEN_IMPORTS
+        + playwright_hiddenimports
+        + [
+            "playwright",
+            "playwright.async_api",
+            "playwright._impl._driver",
+            "greenlet",
+            "pyee",
+            "troTHU.browser_install",
+        ]
+    )
+)
+
 a = Analysis(
     [str(ENTRYPOINT)],
     pathex=[str(ROOT)],
-    binaries=[],
-    datas=DATAS,
-    hiddenimports=HIDDEN_IMPORTS,
+    binaries=combined_binaries,
+    datas=combined_datas,
+    hiddenimports=combined_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

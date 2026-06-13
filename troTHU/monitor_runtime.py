@@ -636,6 +636,7 @@ async def app_main(
     external_shutdown_event: ctx.Any=None,
     ignore_attendance_rate_gate: ctx.Optional[bool]=None,
 ) -> None:
+    ctx.INPUT_ENABLED = input_enabled
     ctx.bootstrap_config()
     shutdown_event = external_shutdown_event or ctx.asyncio.Event()
     for warning in ctx.consume_bootstrap_warnings():
@@ -652,6 +653,9 @@ async def app_main(
                 if ctx.cookie_cache_enabled(ctx.CONFIG) and ctx.load_session_cookies(session, ctx.BASE_DIR, active_profile.name):
                     ctx.COOKIE_CACHE_RESTORED = True
                     ctx.log_print('已載入 {} 的 cookie 快取。'.format(active_profile.name))
+                    c_status = ctx.cookie_cache_status(ctx.BASE_DIR, active_profile.name)
+                    if c_status.get("near_expiry"):
+                        ctx.log_print('【提示】Cookie 快取即將過期，可能需要重新登入。')
             except Exception as exc:
                 ctx.log(event='session_cookie_cache', status='failed', message='cookie 快取載入失敗。', error=exc)
             try:

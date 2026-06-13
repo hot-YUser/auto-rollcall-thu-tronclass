@@ -331,6 +331,55 @@ def provider_support_report(provider: Any, allow_experimental: bool = False) -> 
     }
 
 
+def extract_host(t: str) -> str:
+    t = str(t or "").strip()
+    if not t:
+        return ""
+    if not (t.startswith("http://") or t.startswith("https://")):
+        t = "https://" + t
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(t)
+        host = parsed.hostname or ""
+        return host.lower().strip()
+    except Exception:
+        return ""
+
+
+def normalize_base_url(text: str) -> tuple[str, str]:
+    text_clean = str(text or "").strip()
+    if not text_clean:
+        return ("plain", "")
+    normalized_key = text_clean.lower()
+    if normalized_key in PROVIDER_ALIASES:
+        return ("alias", PROVIDER_ALIASES[normalized_key])
+    if normalized_key in PROVIDERS:
+        return ("alias", normalized_key)
+    host = extract_host(text_clean)
+    if host:
+        for key, p in PROVIDERS.items():
+            p_host = extract_host(p.base_url)
+            if p_host and host == p_host:
+                return ("alias", key)
+    if ("." in host and not host.endswith(".")) or text_clean.startswith("http://") or text_clean.startswith("https://"):
+        return ("url", f"https://{host}")
+    return ("plain", text_clean)
+
+
+def derive_url_provider_key(text: str) -> str:
+    """Stable, filesystem-safe synthetic provider key for a pasted base URL, e.g.
+    'https://iclass.demo.edu.tw/login' -> 'url_iclass_demo_edu_tw'. Returns '' when
+    the text is not URL-form. Single source of truth for this derivation so the
+    config parser, the merge step, and the cookie-cache profile name all agree."""
+    kind, result = normalize_base_url(text)
+    if kind != "url":
+        return ""
+    host = extract_host(result) or result
+    host_clean = host.replace(".", "_").replace("-", "_").replace(":", "_").replace("/", "_").lower().strip()
+    host_clean = "".join(c for c in host_clean if c.isalnum() or c == "_")
+    return "url_{}".format(host_clean) if host_clean else ""
+
+
 def normalize_provider_config(value: Any) -> Dict[str, Any]:
     if isinstance(value, str):
         raw_config: Dict[str, Any] = {"current": value}
@@ -375,7 +424,7 @@ def normalize_provider_config(value: Any) -> Dict[str, Any]:
                 "rollcalls_url": endpoints["rollcalls_url"],
                 "current_semester_url": endpoints["current_semester_url"],
                 "courses_url": endpoints["courses_url"],
-                "auth_flow": "thu_cas",
+                "auth_flow": "interactive_browser" if key.startswith("url_") else "thu_cas",
                 "status": "ready",
                 "support_level": "ready",
                 "ready": True,

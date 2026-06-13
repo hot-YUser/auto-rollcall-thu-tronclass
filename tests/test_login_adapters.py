@@ -5,6 +5,7 @@ from troTHU.login_adapters import (
     TkuSsoLoginAdapter,
     PublicCloudEmailLoginAdapter,
     ManualCookieLoginAdapter,
+    InteractiveBrowserLoginAdapter,
 )
 
 class LoginAdaptersTest(unittest.TestCase):
@@ -13,6 +14,7 @@ class LoginAdaptersTest(unittest.TestCase):
         self.assertIsInstance(get_login_adapter("tku_sso_browser"), TkuSsoLoginAdapter)
         self.assertIsInstance(get_login_adapter("public_cloud_email"), PublicCloudEmailLoginAdapter)
         self.assertIsInstance(get_login_adapter("manual_cookie_only"), ManualCookieLoginAdapter)
+        self.assertIsInstance(get_login_adapter("interactive_browser"), InteractiveBrowserLoginAdapter)
 
     def test_unknown_flow_falls_back_to_cas(self) -> None:
         self.assertIsInstance(get_login_adapter("unknown_flow"), CasLoginAdapter)
@@ -29,7 +31,7 @@ class LoginAdaptersTest(unittest.TestCase):
 
         tku = get_login_adapter("tku_sso_browser")
         self.assertEqual(tku.auth_flow, "tku_sso_browser")
-        self.assertTrue(tku.prefers_browser_assisted_login)
+        self.assertFalse(tku.prefers_browser_assisted_login)
         self.assertTrue(tku.requires_api_session_validation)
         self.assertFalse(tku.requires_manual_cookie_login)
         self.assertTrue(tku.requires_password)
@@ -48,10 +50,14 @@ class LoginAdaptersTest(unittest.TestCase):
         self.assertTrue(manual.requires_manual_cookie_login)
         self.assertFalse(manual.requires_password)
 
+        ib = get_login_adapter("interactive_browser")
+        self.assertEqual(ib.auth_flow, "interactive_browser")
+        self.assertFalse(ib.prefers_browser_assisted_login)
+        self.assertTrue(ib.requires_api_session_validation)
+        self.assertFalse(ib.requires_manual_cookie_login)
+        self.assertFalse(ib.requires_password)
+
     def test_manual_cookie_adapter_degrades_gracefully(self) -> None:
-        # If ever called directly, the manual-cookie adapter must raise a handled
-        # exception (LoginPageChangedError), not an uncaught NotImplementedError
-        # that would crash the monitor loop.
         import asyncio
         from troTHU.tron_http import LoginPageChangedError
         manual = get_login_adapter("manual_cookie_only")
@@ -59,6 +65,15 @@ class LoginAdaptersTest(unittest.TestCase):
             asyncio.run(manual.fetch_login_form(None))
         with self.assertRaises(LoginPageChangedError):
             asyncio.run(manual.submit_login(None, None, "u", "p"))
+
+    def test_interactive_browser_adapter_degrades_gracefully(self) -> None:
+        import asyncio
+        from troTHU.tron_http import LoginPageChangedError
+        ib = get_login_adapter("interactive_browser")
+        with self.assertRaises(LoginPageChangedError):
+            asyncio.run(ib.fetch_login_form(None))
+        with self.assertRaises(LoginPageChangedError):
+            asyncio.run(ib.submit_login(None, None, "u", "p"))
 
 
 class AuthPredicateBackCompatTest(unittest.TestCase):

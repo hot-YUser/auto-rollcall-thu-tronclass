@@ -413,7 +413,7 @@ python -m troTHU.tron release-build --dry-run --json
 
 - **QR 教師輔助需要可登入且可發起點名的教師帳號**；未設定或登入失敗時，只保留手動貼上 / 剪貼簿輔助。
 - **Telegram 只做單向通知**，不接收指令。
-- 預設的 Windows zip 是精簡包，不內建 Playwright、keyring、QR 影像解碼等選用功能；需要的話請用原始碼安裝對應 extras。
+- 預設的 Windows zip 內建 Playwright 登入輔助套件（瀏覽器二進位檔於首次使用時按需自動下載）；keyring、QR 影像解碼等其他選用功能則不內建，需要的話請用原始碼安裝對應 extras。
 
 ---
 

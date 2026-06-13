@@ -59,7 +59,7 @@ class PackageDiagnosticsTest(unittest.TestCase):
         self.assertIn("troTHU.teacher_rollcall", report["hidden_imports"])
         self.assertIn("troTHU.qr_teacher_runtime", report["hidden_imports"])
         self.assertIn("troTHU.webview_sync", report["hidden_imports"])
-        self.assertIn("playwright", report["excludes"])
+        self.assertNotIn("playwright", report["excludes"])
         self.assertIn("keyring", report["excludes"])
         self.assertIn("cv2", report["excludes"])
         self.assertEqual(report["missing_small_bundle_excludes"], [])

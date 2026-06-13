@@ -106,7 +106,6 @@ BROWSER_ASSIST_AUTH_FLOWS = {
     'browser_sso',
     'oidc_browser',
     'sso_browser',
-    'tku_sso_browser',
 }
 
 API_VALIDATED_AUTH_FLOWS = {
@@ -126,6 +125,15 @@ def provider_requires_manual_cookie_login() -> bool:
     except Exception:
         pass
     return requires
+
+
+def provider_requires_interactive_browser_login() -> bool:
+    try:
+        provider = ctx.get_active_provider_config()
+    except Exception:
+        provider = {}
+    auth_flow = ctx.normalize_text(provider.get('auth_flow') if isinstance(provider, dict) else '').lower()
+    return auth_flow == 'interactive_browser'
 
 
 def provider_prefers_browser_assisted_login() -> bool:
@@ -164,6 +172,9 @@ def get_browser_assisted_login_config() -> ctx.Dict[str, ctx.Any]:
         'enabled': ctx.coerce_bool(browser_config.get('enabled', default['enabled']), default['enabled']),
         'headless': ctx.coerce_bool(browser_config.get('headless', default['headless']), default['headless']),
         'timeout_ms': min(180000, ctx.coerce_positive_int(browser_config.get('timeout_ms', default['timeout_ms']), default['timeout_ms'], minimum=5000)),
+        'interactive_timeout_ms': ctx.coerce_positive_int(browser_config.get('interactive_timeout_ms', default['interactive_timeout_ms']), default['interactive_timeout_ms'], minimum=5000),
+        'allow_browser_download': ctx.coerce_bool(browser_config.get('allow_browser_download', default['allow_browser_download']), default['allow_browser_download']),
+        'interactive_poll_interval_ms': ctx.coerce_positive_int(browser_config.get('interactive_poll_interval_ms', default['interactive_poll_interval_ms']), default['interactive_poll_interval_ms'], minimum=100),
     }
 
 
@@ -300,6 +311,9 @@ async def browser_assisted_login(session: ctx.aiohttp.ClientSession, *, user: st
         return ctx.LoginResult(status='browser_assist_unavailable', credential_source=credential_source, user=user, error=ctx.normalize_text(exc))
 
     endpoints = ctx.get_active_http_endpoints()
+    # Pin PLAYWRIGHT_BROWSERS_PATH before the driver spawns so launch finds the
+    # browser in state/browser (where the bundled exe downloads it).
+    ctx.apply_browsers_path_env()
     browser = None
     try:
         async with async_playwright() as playwright:
@@ -343,6 +357,17 @@ async def browser_assisted_login(session: ctx.aiohttp.ClientSession, *, user: st
             pass
         return ctx.LoginResult(status='browser_assist_failed', credential_source=credential_source, user=user, error=ctx.normalize_text(exc))
 
+    return _finalize_browser_cookies(session, cookies, final_url, user, credential_source)
+
+
+def _finalize_browser_cookies(
+    session: ctx.aiohttp.ClientSession,
+    cookies: list[dict],
+    final_url: str,
+    user: str,
+    credential_source: str,
+    label_prefix: str = 'browser_assist',
+) -> ctx.LoginResult:
     session.cookie_jar.clear()
     for cookie in cookies:
         name = ctx.normalize_text(cookie.get('name'))
@@ -362,7 +387,131 @@ async def browser_assisted_login(session: ctx.aiohttp.ClientSession, *, user: st
             ctx.save_session_cookies(session, ctx.BASE_DIR, active_profile.name)
     except Exception as exc:
         ctx.log(event='session_cookie_cache', status='failed', message='Browser-assisted login succeeded, but cookie cache save failed.', error=exc)
-    return ctx.LoginResult(status='success', credential_source='browser_assist:{}'.format(credential_source), user=user, final_url=final_url)
+    return ctx.LoginResult(status='success', credential_source='{}:{}'.format(label_prefix, credential_source), user=user, final_url=final_url)
+
+
+def _has_playwright_session_cookie(cookies: list[dict], expected_host: str) -> bool:
+    expected_host = str(expected_host or "").strip().lower()
+    for cookie in cookies:
+        name = cookie.get("name")
+        domain = str(cookie.get("domain") or "").strip().lower()
+        if name == "session":
+            if not expected_host or expected_host in domain or not domain:
+                return True
+    return False
+
+
+async def interactive_browser_login(
+    session: ctx.aiohttp.ClientSession,
+    *,
+    user: str,
+    credential_source: str,
+) -> ctx.LoginResult:
+    config = ctx.get_browser_assisted_login_config()
+    if not ctx.browser_assisted_login_available():
+        return ctx.LoginResult(status='browser_assist_unavailable', credential_source=credential_source, user=user)
+
+    # Pin PLAYWRIGHT_BROWSERS_PATH BEFORE the driver spawns (install + __aenter__),
+    # otherwise the already-running driver ignores it and launch looks in the
+    # default path instead of where the browser was installed (state/browser).
+    ctx.apply_browsers_path_env()
+    try:
+        await ctx.ensure_browser_binary_installed()
+    except Exception as exc:
+        return ctx.LoginResult(
+            status='browser_assist_failed',
+            credential_source=credential_source,
+            user=user,
+            error='Failed to install Playwright browser binaries: {}'.format(exc)
+        )
+        
+    try:
+        from playwright.async_api import async_playwright
+    except Exception as exc:
+        return ctx.LoginResult(status='browser_assist_unavailable', credential_source=credential_source, user=user, error=ctx.normalize_text(exc))
+        
+    endpoints = ctx.get_active_http_endpoints()
+    expected_host = _browser_assisted_expected_host(endpoints)
+    
+    timeout_ms = int(config.get('interactive_timeout_ms', 300000))
+    poll_interval_ms = int(config.get('interactive_poll_interval_ms', 1000))
+    
+    ctx.log_print('已開啟手動登入瀏覽器，請在瀏覽器視窗中完成登入...')
+    
+    browser = None
+    playwright_mgr = None
+    try:
+        playwright_mgr = async_playwright()
+        playwright = await playwright_mgr.__aenter__()
+        
+        browser_user_agent = _session_user_agent(session) or ctx.random_ua()
+        _set_session_user_agent(session, browser_user_agent)
+
+        browser = await playwright.chromium.launch(headless=False)
+        context = await browser.new_context(user_agent=browser_user_agent)
+        page = await context.new_page()
+        
+        await page.goto(str(endpoints.login_url), wait_until='domcontentloaded')
+        
+        import asyncio
+        start_time = asyncio.get_event_loop().time()
+        success_cookies = None
+        final_url = str(page.url)
+        
+        while True:
+            if page.is_closed() or not browser.is_connected():
+                return ctx.LoginResult(status='browser_interactive_cancelled', credential_source=credential_source, user=user)
+                
+            elapsed_ms = (asyncio.get_event_loop().time() - start_time) * 1000
+            if elapsed_ms >= timeout_ms:
+                return ctx.LoginResult(status='browser_interactive_timeout', credential_source=credential_source, user=user)
+                
+            try:
+                cookies = await context.cookies()
+            except Exception:
+                return ctx.LoginResult(status='browser_interactive_cancelled', credential_source=credential_source, user=user)
+                
+            if _has_playwright_session_cookie(cookies, expected_host):
+                session.cookie_jar.clear()
+                for cookie in cookies:
+                    name = ctx.normalize_text(cookie.get('name'))
+                    value = ctx.normalize_text(cookie.get('value'))
+                    if name and value:
+                        response_url = _browser_cookie_response_url(cookie, str(page.url))
+                        if response_url is not None:
+                            session.cookie_jar.update_cookies({name: value}, response_url=response_url)
+                        else:
+                            session.cookie_jar.update_cookies({name: value})
+                client = ctx.create_tron_http_client(session, request_ssl=ctx.get_ssl_request_setting())
+                try:
+                    await ctx.validate_login_api_session(client)
+                    success_cookies = cookies
+                    final_url = str(page.url)
+                    break
+                except Exception:
+                    session.cookie_jar.clear()
+                    
+            await asyncio.sleep(poll_interval_ms / 1000.0)
+            
+        await browser.close()
+        browser = None
+        await playwright_mgr.__aexit__(None, None, None)
+        playwright_mgr = None
+        
+        return _finalize_browser_cookies(session, success_cookies, final_url, user, credential_source, label_prefix='interactive_browser')
+        
+    except Exception as exc:
+        try:
+            if browser is not None:
+                await browser.close()
+        except Exception:
+            pass
+        try:
+            if playwright_mgr is not None:
+                await playwright_mgr.__aexit__(None, None, None)
+        except Exception:
+            pass
+        return ctx.LoginResult(status='browser_assist_failed', credential_source=credential_source, user=user, error=ctx.normalize_text(exc))
 
 
 def extract_login_form(html_text: str, base_url: str=ctx.LOGIN_URL) -> ctx.Tuple[str, ctx.Dict[str, str]]:
@@ -497,6 +646,33 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
         )
         ctx.LAST_LOGIN_RESULT = result
         return ctx.record_login_runtime(result)
+    if ctx.provider_requires_interactive_browser_login():
+        active_profile = ctx.get_active_profile(ctx.CONFIG)
+        if ctx.cookie_cache_enabled(ctx.CONFIG):
+            ctx.load_session_cookies(session, ctx.BASE_DIR, active_profile.name)
+        if ctx.has_session_cookie(session):
+            client = ctx.create_tron_http_client(session, request_ssl=ctx.get_ssl_request_setting())
+            try:
+                await ctx.validate_login_api_session(client)
+                result = ctx.LoginResult(status='success', credential_source='interactive_browser', user=active_profile.user)
+                ctx.LAST_LOGIN_RESULT = result
+                return ctx.record_login_runtime(result)
+            except (ctx.TronHttpError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError, ctx.ssl.SSLError) as exc:
+                try:
+                    session.cookie_jar.clear()
+                except Exception:
+                    pass
+                ctx.log(
+                    event='login_failure',
+                    status='missing_session',
+                    message='Interactive browser cached cookie API session validation failed.',
+                    error=exc,
+                    extra={'provider': ctx.get_active_provider_key(), 'user': active_profile.user},
+                )
+                ctx.log_print('互動瀏覽器快取 Cookie API 驗證失敗，需要重新登入。')
+        result = await ctx.interactive_browser_login(session, user=active_profile.user, credential_source='config')
+        ctx.LAST_LOGIN_RESULT = result
+        return ctx.record_login_runtime(result)
     user, passwd, credential_source = ctx.resolve_credentials()
     if not ctx.has_real_credential(user) or not ctx.has_real_credential(passwd):
         ctx.log(event='login_failure', status='missing_credentials', message='尚未設定可用帳號密碼。', extra={'credential_source': credential_source})
@@ -529,7 +705,7 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
                 ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='login_page_changed', credential_source=credential_source, user=user, error=ctx.normalize_text(exc))
                 return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
             except ctx.LoginRejectedError as exc:
-                if ctx.provider_prefers_browser_assisted_login():
+                if ctx.should_try_browser_assisted_login():
                     return await ctx.fallback_to_browser_assisted_login(
                         session,
                         user=user,
@@ -547,7 +723,7 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
                     ssl_fallback_attempted = True
                     ctx.enable_insecure_ssl_fallback(exc)
                     continue
-                if ctx.provider_prefers_browser_assisted_login():
+                if ctx.should_try_browser_assisted_login():
                     return await ctx.fallback_to_browser_assisted_login(
                         session,
                         user=user,

@@ -190,16 +190,46 @@ def save_session_cookies(session: Any, base_dir: Path, profile_name: str) -> boo
     path = cookie_path(base_dir, profile_name)
     path.parent.mkdir(parents=True, exist_ok=True)
     records = []
+    
+    import time
+    import http.cookiejar
+    saved_at = int(time.time())
+    
     for cookie in getattr(session, "cookie_jar", []):
+        expires_epoch = None
+        if hasattr(cookie, "get"):
+            max_age = cookie.get("max-age")
+            if max_age:
+                try:
+                    expires_epoch = saved_at + int(max_age)
+                except Exception:
+                    pass
+            if expires_epoch is None:
+                expires_str = cookie.get("expires")
+                if expires_str:
+                    try:
+                        expires_epoch = http.cookiejar.http2time(expires_str)
+                    except Exception:
+                        pass
+                        
         records.append(
             {
                 "key": getattr(cookie, "key", ""),
                 "value": getattr(cookie, "value", ""),
                 "domain": cookie.get("domain", "") if hasattr(cookie, "get") else "",
                 "path": cookie.get("path", "/") if hasattr(cookie, "get") else "/",
+                "expires": expires_epoch,
+                "secure": bool(cookie.get("secure")) if hasattr(cookie, "get") else False,
+                "httponly": bool(cookie.get("httponly")) if hasattr(cookie, "get") else False,
+                "samesite": str(cookie.get("samesite") or "") if hasattr(cookie, "get") else "",
             }
         )
-    path.write_text(json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8")
+    output = {
+        "version": 2,
+        "saved_at": saved_at,
+        "cookies": records
+    }
+    path.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
     return True
 
 
@@ -208,19 +238,163 @@ def load_session_cookies(session: Any, base_dir: Path, profile_name: str) -> boo
     if not path.exists():
         return False
     try:
-        records = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return False
-    if not isinstance(records, list):
+        
+    cookies = []
+    if isinstance(data, list):
+        cookies = data
+    elif isinstance(data, dict) and data.get("version") == 2:
+        cookies = data.get("cookies", [])
+    else:
         return False
-    for record in records:
+        
+    if not isinstance(cookies, list):
+        return False
+        
+    try:
+        from yarl import URL
+    except Exception:
+        URL = None
+        
+    import time
+    from http.cookies import SimpleCookie
+    import email.utils
+    
+    now_epoch = time.time()
+    
+    for record in cookies:
         if not isinstance(record, dict):
             continue
         key = str(record.get("key", "") or "")
         value = str(record.get("value", "") or "")
-        if key:
-            session.cookie_jar.update_cookies({key: value})
+        if not key:
+            continue
+            
+        expires = record.get("expires")
+        if expires is not None:
+            try:
+                if float(expires) < now_epoch:
+                    continue
+            except Exception:
+                pass
+                
+        domain = record.get("domain", "")
+        path_str = record.get("path", "/")
+        
+        domain_clean = str(domain or "").strip().lstrip(".")
+        path_clean = str(path_str or "").strip()
+        if not path_clean.startswith("/"):
+            path_clean = "/" + path_clean
+            
+        response_url = None
+        if domain_clean and URL is not None:
+            try:
+                response_url = URL(f"https://{domain_clean}{path_clean}")
+            except Exception:
+                pass
+                
+        c = SimpleCookie()
+        c[key] = value
+        
+        if domain:
+            c[key]["domain"] = domain
+        if path_str:
+            c[key]["path"] = path_str
+        if expires is not None:
+            try:
+                c[key]["expires"] = email.utils.formatdate(float(expires), usegmt=True)
+            except Exception:
+                pass
+        if record.get("secure"):
+            c[key]["secure"] = True
+        if record.get("httponly"):
+            c[key]["httponly"] = True
+        samesite = record.get("samesite")
+        if samesite:
+            c[key]["samesite"] = samesite
+            
+        try:
+            if response_url is not None:
+                session.cookie_jar.update_cookies(c, response_url=response_url)
+            else:
+                session.cookie_jar.update_cookies(c)
+        except Exception:
+            try:
+                session.cookie_jar.update_cookies({key: value})
+            except Exception:
+                pass
     return True
+
+
+def cookie_cache_status(base_dir: Path, profile_name: str) -> Dict[str, Any]:
+    path = cookie_path(base_dir, profile_name)
+    if not path.exists():
+        return {
+            "restored": False,
+            "has_session": False,
+            "expired": False,
+            "near_expiry": False,
+            "expires_at": None,
+        }
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {
+            "restored": False,
+            "has_session": False,
+            "expired": False,
+            "near_expiry": False,
+            "expires_at": None,
+        }
+
+    cookies = []
+    if isinstance(data, list):
+        cookies = data
+    elif isinstance(data, dict) and data.get("version") == 2:
+        cookies = data.get("cookies", [])
+    else:
+        return {
+            "restored": False,
+            "has_session": False,
+            "expired": False,
+            "near_expiry": False,
+            "expires_at": None,
+        }
+
+    import time
+    now = time.time()
+    session_cookies = [c for c in cookies if isinstance(c, dict) and c.get("key") == "session"]
+    has_session = len(session_cookies) > 0
+
+    expired = False
+    near_expiry = False
+    expires_at = None
+
+    if has_session:
+        has_expires = [c for c in session_cookies if c.get("expires") is not None]
+        if has_expires:
+            expired = all(float(c["expires"]) < now for c in has_expires)
+            active_expires = [float(c["expires"]) for c in has_expires if float(c["expires"]) >= now]
+            if active_expires:
+                expires_at = min(active_expires)
+                if expires_at < now + 86400:
+                    near_expiry = True
+            else:
+                expires_at = min(float(c["expires"]) for c in has_expires)
+        else:
+            expired = False
+            near_expiry = False
+            expires_at = None
+
+    return {
+        "restored": True,
+        "has_session": has_session,
+        "expired": expired,
+        "near_expiry": near_expiry,
+        "expires_at": expires_at,
+    }
 
 
 def clear_session_cookies(base_dir: Path, profile_name: str) -> bool:

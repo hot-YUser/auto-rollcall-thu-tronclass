@@ -688,7 +688,7 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
                     },
                     "auth": {
                         "browser_assisted_login": {
-                            "enabled": False,
+                            "enabled": True,
                             "headless": True,
                             "timeout_ms": 5000,
                         }
@@ -807,7 +807,7 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         session.cookie_jar = MagicMock()
         session.cookie_jar.clear = MagicMock()
         tron.CONFIG["provider"]["current"] = "tku"
-        tron.CONFIG["auth"]["browser_assisted_login"]["enabled"] = False
+        tron.CONFIG["auth"]["browser_assisted_login"]["enabled"] = True
         tron.CONFIG["account"]["user"] = "user1"
         tron.CONFIG["account"]["passwd"] = "pass1"
         client = MagicMock()
@@ -843,9 +843,9 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
 
         status = tron.browser_assisted_login_status()
 
-        self.assertTrue(status["enabled"])
+        self.assertFalse(status["enabled"])
         self.assertFalse(status["configured_enabled"])
-        self.assertTrue(status["auto_for_provider"])
+        self.assertFalse(status["auto_for_provider"])
 
     def test_thu_browser_assisted_login_status_remains_config_opt_in(self) -> None:
         tron.CONFIG["provider"]["current"] = "thu"

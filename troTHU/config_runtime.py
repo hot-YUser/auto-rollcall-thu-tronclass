@@ -193,6 +193,9 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
     browser_login['enabled'] = ctx.coerce_bool(browser_login.get('enabled', default_browser_login['enabled']), default_browser_login['enabled'])
     browser_login['headless'] = ctx.coerce_bool(browser_login.get('headless', default_browser_login['headless']), default_browser_login['headless'])
     browser_login['timeout_ms'] = min(180000, ctx.coerce_positive_int(browser_login.get('timeout_ms', default_browser_login['timeout_ms']), default_browser_login['timeout_ms'], minimum=5000))
+    browser_login['interactive_timeout_ms'] = ctx.coerce_positive_int(browser_login.get('interactive_timeout_ms', default_browser_login['interactive_timeout_ms']), default_browser_login['interactive_timeout_ms'], minimum=5000)
+    browser_login['allow_browser_download'] = ctx.coerce_bool(browser_login.get('allow_browser_download', default_browser_login['allow_browser_download']), default_browser_login['allow_browser_download'])
+    browser_login['interactive_poll_interval_ms'] = ctx.coerce_positive_int(browser_login.get('interactive_poll_interval_ms', default_browser_login['interactive_poll_interval_ms']), default_browser_login['interactive_poll_interval_ms'], minimum=100)
     ux_config = config.setdefault('ux', {})
     if not isinstance(ux_config, dict):
         ux_config = {}

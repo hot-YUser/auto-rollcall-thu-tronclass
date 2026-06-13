@@ -388,3 +388,26 @@ class CustomProviderTest(unittest.TestCase):
         self.assertEqual(normalized["fallback_reason"], "unknown_provider")
         self.assertNotIn("nonexistent", normalized["available"])
 
+    def test_normalize_base_url(self) -> None:
+        from troTHU.providers import normalize_base_url
+        self.assertEqual(normalize_base_url("東吳大學"), ("alias", "scu"))
+        self.assertEqual(normalize_base_url("https://tronclass.scu.edu.tw/user/index"), ("alias", "scu"))
+        self.assertEqual(normalize_base_url("iclass-demo.edu.tw"), ("url", "https://iclass-demo.edu.tw"))
+        self.assertEqual(normalize_base_url("https://iclass-demo.edu.tw/login"), ("url", "https://iclass-demo.edu.tw"))
+        self.assertEqual(normalize_base_url("thuu"), ("plain", "thuu"))
+        self.assertEqual(normalize_base_url(""), ("plain", ""))
+
+    def test_synthetic_provider_for_custom_url_uses_interactive_browser(self) -> None:
+        raw = {
+            "current": "url_iclass_demo_edu_tw",
+            "available": {
+                "url_iclass_demo_edu_tw": {
+                    "base_url": "https://iclass-demo.edu.tw",
+                }
+            }
+        }
+        normalized = normalize_provider_config(raw)
+        self.assertEqual(normalized["current"], "url_iclass_demo_edu_tw")
+        provider = normalized["available"]["url_iclass_demo_edu_tw"]
+        self.assertEqual(provider["auth_flow"], "interactive_browser")
+

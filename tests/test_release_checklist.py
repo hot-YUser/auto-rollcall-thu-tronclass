@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+import unittest.mock
 import zipfile
 from pathlib import Path
 
@@ -75,12 +76,12 @@ class ReleaseChecklistTest(unittest.TestCase):
             artifact = root / EXPECTED_WINDOWS_ZIP
             with zipfile.ZipFile(artifact, "w") as archive:
                 archive.writestr("THU_Auto_Rollcall.exe", "placeholder")
-                archive.writestr("_internal/playwright/driver/node.exe", "do-not-ship")
+                archive.writestr("_internal/cv2/__init__.py", "do-not-ship")
                 archive.writestr("_internal/keyring/__init__.py", "do-not-ship")
             report = validate_release_artifact(artifact)
 
         self.assertEqual(report["status"], "fail")
-        self.assertIn("playwright", report["optional_bundle_names"])
+        self.assertIn("cv2", report["optional_bundle_names"])
         self.assertIn("keyring", report["optional_bundle_names"])
 
     def test_build_release_artifact_manifest_lists_names_hashes_and_sizes(self) -> None:

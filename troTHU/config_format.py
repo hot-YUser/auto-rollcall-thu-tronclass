@@ -143,7 +143,15 @@ def _strip_value(value: ctx.Any) -> str:
 
 
 def _canonical_school(value: ctx.Any) -> str:
-    school = _strip_value(value).lower()
+    school_str = _strip_value(value)
+    if not school_str:
+        return "thu"
+    kind, result = ctx.normalize_base_url(school_str)
+    if kind == "alias":
+        return result
+    if kind == "url":
+        return ctx.derive_url_provider_key(school_str)
+    school = school_str.lower()
     aliases = {
         "東海": "thu",
         "東海大學": "thu",
@@ -169,10 +177,20 @@ def _canonical_school(value: ctx.Any) -> str:
     return aliases.get(school, school or "thu")
 
 
+def _assign_school(entry: ctx.Dict[str, ctx.Any], raw_value: ctx.Any) -> None:
+    """Set entry['school'] to the canonical key and, when the value is a pasted base
+    URL, also stash the original base_url. The URL is otherwise lost once collapsed
+    to the url_<host> key, leaving merge unable to build the synthesized
+    interactive-browser provider (it would silently fall back to thu)."""
+    entry["school"] = _canonical_school(raw_value)
+    kind, base = ctx.normalize_base_url(_strip_value(raw_value))
+    if kind == "url":
+        entry["base_url"] = base
+    else:
+        entry.pop("base_url", None)
+
+
 def _profile_school(profile: ctx.Mapping[str, ctx.Any], default: str = "thu") -> str:
-    # Validate against the live provider registry (single source of truth) so a
-    # newly added provider like scu can never silently fall back to the default
-    # again — the bug that routed Soochow (東吳) configs to thu.
     try:
         available_providers = {provider.key for provider in ctx.list_all_providers()}
     except Exception:
@@ -189,7 +207,7 @@ def _profile_school(profile: ctx.Mapping[str, ctx.Any], default: str = "thu") ->
         if not val or not str(val).strip():
             continue
         school = _canonical_school(val)
-        if school in available_providers:
+        if school in available_providers or school.startswith("url_"):
             return school
     return default
 
@@ -248,13 +266,10 @@ def parse_basic_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
         if current_account:
             user = _strip_value(current_account.get("user"))
             passwd = _strip_value(current_account.get("passwd"))
-            school = _canonical_school(current_account.get("school", "thu"))
             if user or passwd:
-                simple["accounts"].append({
-                    "user": user,
-                    "passwd": passwd,
-                    "school": school
-                })
+                entry = {"user": user, "passwd": passwd}
+                _assign_school(entry, current_account.get("school", "thu"))
+                simple["accounts"].append(entry)
             current_account = {}
 
     def finish_group() -> None:
@@ -373,7 +388,7 @@ def parse_basic_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
     finish_current_section()
 
     if "school" in simple["teacher"]:
-        simple["teacher"]["school"] = _canonical_school(simple["teacher"]["school"])
+        _assign_school(simple["teacher"], simple["teacher"]["school"])
 
     for day in range(7):
         entry = simple["operating"].setdefault(day, {"enable": True, "range": ["00:00", "00:00"]})
@@ -417,7 +432,7 @@ def parse_legacy_basic_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
         if current_account is None:
             return
         if any(current_account.get(key) for key in ("user", "passwd", "school")):
-            current_account["school"] = _canonical_school(current_account.get("school"))
+            _assign_school(current_account, current_account.get("school"))
             simple["accounts"].append(current_account)
         current_account = None
 
@@ -490,7 +505,7 @@ def parse_legacy_basic_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
             if key in {"passwd", "password"}:
                 current_account["passwd"] = value
             elif key == "school":
-                current_account["school"] = _canonical_school(value)
+                current_account["school"] = value  # raw; canonicalized in finish_account so base_url survives
             continue
         if section == "teacher":
             teacher = simple.setdefault("teacher", {"user": "", "passwd": "", "school": "tronclass", "course": ""})
@@ -502,7 +517,7 @@ def parse_legacy_basic_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
             elif key in {"passwd", "password"}:
                 teacher["passwd"] = value
             elif key == "school":
-                teacher["school"] = _canonical_school(value)
+                _assign_school(teacher, value)
             elif key in {"course", "course_id", "courseid"}:
                 teacher["course"] = value
             continue
@@ -715,6 +730,9 @@ _ADVANCED_COMMENTS = {
     "monitor.ignore_attendance_rate_gate": "true = 一偵測到點名就立刻簽到，跳過「全班到課率達 15%」的保險",
     "auth": "登入方式",
     "auth.browser_assisted_login": "瀏覽器輔助登入（需安裝 .[browser]）",
+    "auth.browser_assisted_login.interactive_timeout_ms": "互動登入寬鬆逾時毫秒數（預設 300000，即 5 分鐘）",
+    "auth.browser_assisted_login.allow_browser_download": "是否允許在缺少瀏覽器二進位檔時自動下載（預設 false）",
+    "auth.browser_assisted_login.interactive_poll_interval_ms": "輪詢檢查是否登入成功的間隔毫秒數（預設 1000）",
     "ux": "介面與暫存行為",
     "local_ui": "本機 QR 掃描器網頁服務的位址與連接埠",
     "webview": "WebView / cookie 匯入（實驗性，預設關閉）",
@@ -886,7 +904,37 @@ def merge_basic_and_advanced_config(simple: ctx.Mapping[str, ctx.Any], advanced:
         profiles.setdefault("unset", {"user": "", "passwd": "", "label": "", "school": account["school"] or "thu"})
         current = "unset"
     config["accounts"] = {"current": current, "profiles": profiles}
+    url_providers = {}
+    def collect_url_school(entry):
+        if not isinstance(entry, dict):
+            return
+        school = str(entry.get("school") or "").strip()
+        if not school:
+            return
+        base = entry.get("base_url")
+        if school.startswith("url_") and base:
+            # base_url captured by _assign_school at parse time (the URL is gone
+            # from the canonical key) — this is the normal config.conf path.
+            url_providers[school] = str(base)
+            return
+        # Fallback: a raw URL still sitting in school (hand-built simple dicts).
+        kind, res = ctx.normalize_base_url(school)
+        if kind == "url":
+            key = ctx.derive_url_provider_key(school)
+            if key:
+                url_providers[key] = res
+    for item in simple.get("accounts", []) or []:
+        collect_url_school(item)
+    collect_url_school(teacher_source)
     provider = dict(config.get("provider", {})) if isinstance(config.get("provider"), dict) else {}
+    provider_available = dict(provider.get("available", {}))
+    for key, base_url in url_providers.items():
+        if key not in provider_available:
+            provider_available[key] = {
+                "base_url": base_url,
+                "auth_flow": "interactive_browser",
+            }
+    provider["available"] = provider_available
     provider["current"] = account["school"] or provider.get("current") or "thu"
     config["provider"] = provider
     operating: ctx.Dict[int, ctx.Any] = {}

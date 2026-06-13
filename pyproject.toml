@@ -38,10 +38,10 @@ dependencies = [
 
 [project.optional-dependencies]
 keyring = ["keyring>=24"]
-packaging = ["PyInstaller>=6"]
+packaging = ["PyInstaller>=6", "playwright>=1.44"]
 qr-image = ["opencv-python-headless>=4.9", "Pillow>=10"]
 browser = ["playwright>=1.44"]
-dev = ["PyInstaller>=6", "keyring>=24", "ruff>=0.15,<0.16"]
+dev = ["PyInstaller>=6", "keyring>=24", "ruff>=0.15,<0.16", "playwright>=1.44"]
 
 [project.urls]
 Homepage = "https://github.com/hot-YUser/auto-rollcall-thu-tronclass"

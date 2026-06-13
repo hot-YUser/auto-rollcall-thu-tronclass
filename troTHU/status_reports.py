@@ -102,8 +102,14 @@ def cookie_report(profile_name: str) -> ctx.Dict[str, ctx.Any]:
     if path.exists():
         try:
             data = ctx.json.loads(path.read_text(encoding='utf-8'))
-            valid = isinstance(data, list)
-            record_count = len(data) if isinstance(data, list) else 0
+            if isinstance(data, list):
+                valid = True
+                record_count = len(data)
+            elif isinstance(data, dict) and data.get("version") == 2:
+                valid = True
+                record_count = len(data.get("cookies", []))
+            else:
+                valid = False
         except (OSError, ValueError):
             valid = False
     return {'enabled': ctx.cookie_cache_enabled(ctx.CONFIG), 'path': str(path), 'exists': path.exists(), 'valid': valid, 'record_count': record_count, 'age_seconds': age_seconds, 'age': ctx.human_age(age_seconds)}
@@ -247,6 +253,20 @@ def doctor_report(network_probe: ctx.Optional[ctx.Mapping[str, ctx.Any]]=None) -
     teacher_assist = ctx.teacher_assist_report()
     packaging = ctx.build_package_diagnostic_report(ctx.BASE_DIR, config=ctx.CONFIG)
     checks = [ctx.check_item('provider', bool(provider_support.get('daily_ready')), '{} ({}) support: {}'.format(provider.get('key'), provider.get('label'), provider_support.get('support_level', provider.get('status'))), severity='warn'), ctx.check_item('provider fallback', not bool(provider.get('fallback_reason')), 'requested {} -> active {}'.format(provider.get('requested', provider.get('key')), provider.get('key')), severity='warn'), ctx.check_item('provider support level', provider_support.get('support_level') == 'ready', 'provider user-level support is ready', severity='warn'), ctx.check_item('config', ctx.CONFIG_PATH.exists(), str(ctx.CONFIG_PATH), severity='fail'), ctx.check_item('timezone', bool(ctx.get_config_timezone_name()), 'IANA timezone: {}'.format(ctx.get_config_timezone_name()), severity='fail'), ctx.check_item('yaml', ctx.module_available('yaml'), 'PyYAML importable', severity='fail'), ctx.check_item('aiohttp', ctx.module_available('aiohttp'), 'aiohttp importable', severity='fail'), ctx.check_item('aiohttp.web', ctx.module_available('aiohttp.web'), 'needed for local QR scanner', severity='warn'), ctx.check_item('playwright', (not browser_login.get('enabled')) or bool(browser_login.get('playwright_available')), 'browser-assisted login {}'.format('available' if browser_login.get('playwright_available') else 'disabled/unavailable'), severity='warn'), ctx.check_item('keyring', ctx.keyring_available(), 'optional password store', severity='warn'), ctx.check_item('active profile user', bool(credential.get('user_configured')), 'profile {} has a user'.format(active.name), severity='fail'), ctx.check_item('credential', credential.get('effective_source') != 'missing', 'effective source: {}'.format(credential.get('effective_source')), severity='warn'), ctx.check_item('QR teacher assist', bool(teacher_assist.get('configured')), 'configured={} login={} course_source={}'.format(teacher_assist.get('configured'), teacher_assist.get('login', {}).get('status'), teacher_assist.get('course_source')), severity='warn'), ctx.check_item('cookie cache', not cookie['exists'] or bool(cookie['valid']), 'file: {} age: {}'.format(cookie['path'], cookie['age']), severity='warn'), ctx.check_item('verify_ssl', ctx.get_verify_ssl(), 'TLS verification should stay enabled', severity='warn'), ctx.check_item('course discovery', bool(ctx.course_discovery_report()['current_semester_endpoint']) and bool(ctx.course_discovery_report()['courses_endpoint']), 'read-only course endpoints configured', severity='warn'), ctx.check_item('research mode', not bool(research.get('enabled')), 'disabled for daily automation' if not bool(research.get('enabled')) else 'enabled; use only for explicit capture/API exploration', severity='warn'), ctx.check_item('log directory', ctx.PATH.exists() or ctx.os.access(str(ctx.BASE_DIR), ctx.os.W_OK), str(ctx.PATH), severity='warn')]
+    c_status = ctx.cookie_cache_status(ctx.BASE_DIR, active.name)
+    if c_status.get("restored"):
+        if c_status.get("expired"):
+            checks.append(ctx.check_item('cookie cache status', False, 'cookie cache is expired', severity='warn'))
+        elif c_status.get("near_expiry"):
+            exp_time = ""
+            if c_status.get("expires_at") is not None:
+                import datetime
+                try:
+                    dt = datetime.datetime.fromtimestamp(c_status["expires_at"], datetime.timezone.utc).astimezone()
+                    exp_time = " (expires at {})".format(dt.strftime("%Y-%m-%d %H:%M:%S"))
+                except Exception:
+                    pass
+            checks.append(ctx.check_item('cookie cache status', True, 'cookie cache is near expiry{}'.format(exp_time), severity='warn'))
     group_summary = ctx.summarize_group_target(ctx.CONFIG)
     group_ok = bool(group_summary.get('ok')) and not group_summary.get('skipped')
     checks.append(ctx.check_item('group target', group_ok, ctx.describe_group_target(ctx.CONFIG), severity='warn'))

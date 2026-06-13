@@ -43,10 +43,6 @@ REQUIRED_RUNTIME_MODULES = (
     "nacl",
 )
 SMALL_BUNDLE_SPEC_EXCLUDES = (
-    "playwright",
-    "playwright.async_api",
-    "greenlet",
-    "pyee",
     "keyring",
     "keyrings",
     "cv2",
@@ -56,9 +52,6 @@ SMALL_BUNDLE_SPEC_EXCLUDES = (
     "pyzbar",
 )
 SMALL_BUNDLE_ARTIFACT_PARTS = (
-    "playwright",
-    "greenlet",
-    "pyee",
     "keyring",
     "keyrings",
     "cv2",

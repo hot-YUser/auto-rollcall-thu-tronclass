@@ -65,7 +65,7 @@ class CasLoginAdapter(LoginAdapter):
 
 class TkuSsoLoginAdapter(LoginAdapter):
     auth_flow = "tku_sso_browser"
-    prefers_browser_assisted_login = True
+    prefers_browser_assisted_login = False
     requires_api_session_validation = True
     requires_manual_cookie_login = False
     requires_password = True
@@ -178,11 +178,32 @@ class ManualCookieLoginAdapter(LoginAdapter):
         raise tron_http.LoginPageChangedError("manual cookie only: credential submission unsupported")
 
 
+class InteractiveBrowserLoginAdapter(LoginAdapter):
+    auth_flow = "interactive_browser"
+    prefers_browser_assisted_login = False
+    requires_api_session_validation = True
+    requires_manual_cookie_login = False
+    requires_password = False
+
+    async def fetch_login_form(self, client: tron_http.TronHttpClient) -> tron_http.LoginForm:
+        raise tron_http.LoginPageChangedError("interactive browser login: no password login form")
+
+    async def submit_login(
+        self,
+        client: tron_http.TronHttpClient,
+        form: tron_http.LoginForm,
+        username: str,
+        password: str,
+    ) -> tron_http.LoginOutcome:
+        raise tron_http.LoginPageChangedError("interactive browser login: credential submission unsupported")
+
+
 _adapters_by_flow: Dict[str, LoginAdapter] = {
     "thu_cas": CasLoginAdapter(),
     "tku_sso_browser": TkuSsoLoginAdapter(),
     "public_cloud_email": PublicCloudEmailLoginAdapter(),
     "manual_cookie_only": ManualCookieLoginAdapter(),
+    "interactive_browser": InteractiveBrowserLoginAdapter(),
 }
 
 login_adapters_by_flow = _adapters_by_flow
