@@ -1,4 +1,6 @@
+import importlib.util
 import os
+import sys
 import unittest
 import tempfile
 from pathlib import Path
@@ -35,13 +37,15 @@ class BrowserInstallTest(unittest.TestCase):
             
             self.assertFalse(browser_binary_present())
             
-            chrome_dir = temp_path / "chromium-1234" / "chrome-win"
+            chrome_dir = temp_path / "chromium-1234" / "chrome-bin"
             chrome_dir.mkdir(parents=True, exist_ok=True)
-            chrome_file = chrome_dir / "chrome.exe"
-            chrome_file.touch()
-            
+            # browser_binary_present() globs chrome.exe on Windows, chrome elsewhere.
+            exe_name = "chrome.exe" if sys.platform.startswith("win") else "chrome"
+            (chrome_dir / exe_name).touch()
+
             self.assertTrue(browser_binary_present())
 
+    @unittest.skipUnless(importlib.util.find_spec("playwright") is not None, "playwright not installed (bundled only in the exe; CI runs base deps)")
     @patch("troTHU.browser_install.browser_binary_present", return_value=False)
     @patch("asyncio.create_subprocess_exec")
     @patch("playwright._impl._driver.compute_driver_executable", return_value="fake_driver.exe")
