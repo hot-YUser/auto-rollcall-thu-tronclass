@@ -566,7 +566,7 @@ DEFAULT_CONFIG = {
             "headless": True,
             "timeout_ms": 45000,
             "interactive_timeout_ms": 300000,
-            "allow_browser_download": False,
+            "allow_browser_download": True,
             "interactive_poll_interval_ms": 1000,
         },
     },
@@ -766,7 +766,17 @@ class LoginResult:
 
     @property
     def should_auto_retry(self) -> bool:
-        return self.status in {"missing_session", "transient_error"}
+        return self.status in {
+            "missing_session",
+            "transient_error",
+            # Browser-login flows back off (10/30/60/300s) instead of the 1s
+            # fast-fail spam when the browser is missing / cancelled / timed out.
+            "browser_assist_failed",
+            "browser_assist_unavailable",
+            "browser_assist_missing_session",
+            "browser_interactive_cancelled",
+            "browser_interactive_timeout",
+        }
 
 LAST_LOGIN_RESULT = LoginResult(status="missing_credentials", credential_source="missing")
 

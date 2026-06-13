@@ -43,34 +43,43 @@ class BrowserInstallTest(unittest.TestCase):
             self.assertTrue(browser_binary_present())
 
     @patch("troTHU.browser_install.browser_binary_present", return_value=False)
-    @patch("troTHU.browser_install.is_interactive", return_value=True)
-    @patch("sys.stdin.readline", return_value="\n")
     @patch("asyncio.create_subprocess_exec")
     @patch("playwright._impl._driver.compute_driver_executable", return_value="fake_driver.exe")
-    def test_ensure_browser_binary_installed(self, mock_driver, mock_sub, mock_readline, mock_interactive, mock_present) -> None:
+    def test_ensure_browser_binary_auto_downloads(self, mock_driver, mock_sub, mock_present) -> None:
+        # No stdin prompt any more: when allowed (default) it downloads directly
+        # with progress, so it can't conflict with the keypress watcher.
         mock_process = MagicMock()
         mock_process.stdout.readline = AsyncMock(side_effect=[b"downloading", b"extracting", b""])
         mock_process.wait = AsyncMock()
         mock_process.returncode = 0
         mock_sub.return_value = mock_process
-        
+
         from troTHU import tron
         original_config = tron.CONFIG.copy()
         try:
-            tron.CONFIG["auth"] = {
-                "browser_assisted_login": {
-                    "allow_browser_download": True
-                }
-            }
-            
+            tron.CONFIG["auth"] = {"browser_assisted_login": {"allow_browser_download": True}}
             import asyncio
             asyncio.run(ensure_browser_binary_installed())
-            
             mock_sub.assert_called_once()
             args = mock_sub.call_args[0]
             self.assertIn("fake_driver.exe", args)
             self.assertIn("install", args)
             self.assertIn("chromium", args)
+        finally:
+            tron.CONFIG.clear()
+            tron.CONFIG.update(original_config)
+
+    @patch("troTHU.browser_install.browser_binary_present", return_value=False)
+    @patch("asyncio.create_subprocess_exec")
+    def test_ensure_skips_download_when_disabled(self, mock_sub, mock_present) -> None:
+        from troTHU import tron
+        original_config = tron.CONFIG.copy()
+        try:
+            tron.CONFIG["auth"] = {"browser_assisted_login": {"allow_browser_download": False}}
+            import asyncio
+            with self.assertRaises(RuntimeError):
+                asyncio.run(ensure_browser_binary_installed())
+            mock_sub.assert_not_called()
         finally:
             tron.CONFIG.clear()
             tron.CONFIG.update(original_config)

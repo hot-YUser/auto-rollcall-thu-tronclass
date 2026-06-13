@@ -731,7 +731,7 @@ _ADVANCED_COMMENTS = {
     "auth": "登入方式",
     "auth.browser_assisted_login": "瀏覽器輔助登入（需安裝 .[browser]）",
     "auth.browser_assisted_login.interactive_timeout_ms": "互動登入寬鬆逾時毫秒數（預設 300000，即 5 分鐘）",
-    "auth.browser_assisted_login.allow_browser_download": "是否允許在缺少瀏覽器二進位檔時自動下載（預設 false）",
+    "auth.browser_assisted_login.allow_browser_download": "缺少瀏覽器二進位檔時是否自動下載 Chromium（約 150MB，預設 true；設 false 則不自動下載）",
     "auth.browser_assisted_login.interactive_poll_interval_ms": "輪詢檢查是否登入成功的間隔毫秒數（預設 1000）",
     "ux": "介面與暫存行為",
     "local_ui": "本機 QR 掃描器網頁服務的位址與連接埠",

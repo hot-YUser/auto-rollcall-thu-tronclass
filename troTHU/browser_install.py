@@ -54,86 +54,64 @@ def browser_binary_present() -> bool:
     return False
 
 
-def is_interactive() -> bool:
-    input_enabled = getattr(ctx, "INPUT_ENABLED", None)
-    if input_enabled is not None:
-        return bool(input_enabled)
-    try:
-        return sys.stdin is not None and sys.stdin.isatty()
-    except Exception:
-        return False
-
-
 async def ensure_browser_binary_installed() -> None:
+    """Download the Chromium binary on first use (the package + node driver are
+    already bundled). Auto-downloads with progress when allowed — no interactive
+    stdin prompt, because the monitor's msvcrt "press any key to edit config"
+    watcher owns the console and would intercept it. Configuring a URL school is
+    treated as consent; set auth.browser_assisted_login.allow_browser_download =
+    false to opt out."""
     apply_browsers_path_env()
     if browser_binary_present():
         return
-        
+
     config = ctx.get_browser_assisted_login_config()
-    allow_download = bool(config.get('allow_browser_download', False))
-    
-    if not allow_download:
+    if not bool(config.get("allow_browser_download", True)):
         raise RuntimeError(
-            "Playwright browser binary not found. To download and install Chromium automatically (~150MB), "
-            "set `auth.browser_assisted_login.allow_browser_download = true` in config.advanced.toml."
+            "browser_download_disabled: 缺少 Chromium 瀏覽器，且 "
+            "auth.browser_assisted_login.allow_browser_download = false。"
+            "請改為 true，或手動執行 playwright install chromium。"
         )
-        
-    if not is_interactive():
-        raise RuntimeError("browser_download_required")
-        
-    ctx.log_print("【提示】未偵測到 Playwright 瀏覽器二進位檔。")
-    ctx.log_print("準備下載並安裝 Chromium 瀏覽器（大小約 150MB，下載完成後會自動解壓）。")
-    ctx.log_print("請按 Enter 鍵同意下載安裝，或按 Ctrl+C 取消：")
-    
-    try:
-        import asyncio
-        await asyncio.get_event_loop().run_in_executor(None, sys.stdin.readline)
-    except KeyboardInterrupt:
-        raise RuntimeError("User cancelled browser download.")
-    except Exception as exc:
-        raise RuntimeError("Failed to read user confirmation: {}".format(exc))
-        
-    ctx.log_print("開始安裝 Playwright Chromium...")
-    
+
+    ctx.log_print("【瀏覽器登入】首次使用需下載 Chromium（約 150MB），開始下載，請稍候…")
+
+    import asyncio
     from playwright._impl._driver import compute_driver_executable, get_driver_env
-    
+
     driver = compute_driver_executable()
-    if isinstance(driver, (tuple, list)):
-        cmd = list(driver)
-    else:
-        cmd = [driver]
-        
+    cmd = list(driver) if isinstance(driver, (tuple, list)) else [driver]
     cmd.extend(["install", "chromium"])
-    
+
     env = get_driver_env()
-    browsers_path = playwright_browsers_path()
-    env["PLAYWRIGHT_BROWSERS_PATH"] = str(browsers_path)
-    
+    env["PLAYWRIGHT_BROWSERS_PATH"] = str(playwright_browsers_path())
+
     try:
         process = await asyncio.create_subprocess_exec(
             *cmd,
             env=env,
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT
+            stderr=subprocess.STDOUT,
         )
+        last = ""
         while True:
             line_bytes = await process.stdout.readline()
             if not line_bytes:
                 break
             line_str = line_bytes.decode("utf-8", errors="replace").strip()
-            if line_str:
-                if "downloading" in line_str.lower():
-                    ctx.log_print("正在下載 Chromium 瀏覽器...")
-                elif "extracting" in line_str.lower():
-                    ctx.log_print("正在解壓縮 Chromium 瀏覽器...")
-                else:
-                    ctx.log_print(f"[Playwright] {line_str}")
-                    
+            if not line_str:
+                continue
+            low = line_str.lower()
+            if "download" in low and last != "downloading":
+                ctx.log_print("【瀏覽器登入】正在下載 Chromium…")
+                last = "downloading"
+            elif "extract" in low and last != "extracting":
+                ctx.log_print("【瀏覽器登入】正在解壓縮…")
+                last = "extracting"
+            else:
+                ctx.log_print("[Playwright] {}".format(line_str))
         await process.wait()
         if process.returncode != 0:
-            raise RuntimeError("Playwright install command failed with exit code {}".format(process.returncode))
-            
-        ctx.log_print("Playwright Chromium 安裝成功！")
-        
+            raise RuntimeError("playwright install chromium 失敗（exit {}）".format(process.returncode))
+        ctx.log_print("【瀏覽器登入】Chromium 安裝完成。")
     except Exception as exc:
-        raise RuntimeError("Playwright installation failed: {}".format(exc))
+        raise RuntimeError("Chromium 下載/安裝失敗：{}".format(exc))

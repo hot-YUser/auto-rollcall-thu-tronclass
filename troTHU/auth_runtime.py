@@ -409,6 +409,7 @@ async def interactive_browser_login(
 ) -> ctx.LoginResult:
     config = ctx.get_browser_assisted_login_config()
     if not ctx.browser_assisted_login_available():
+        ctx.log_print('瀏覽器登入需要 Playwright，但此執行環境未內建；請改用打包版 exe，或安裝 .[browser] 後再試。')
         return ctx.LoginResult(status='browser_assist_unavailable', credential_source=credential_source, user=user)
 
     # Pin PLAYWRIGHT_BROWSERS_PATH BEFORE the driver spawns (install + __aenter__),
@@ -418,11 +419,12 @@ async def interactive_browser_login(
     try:
         await ctx.ensure_browser_binary_installed()
     except Exception as exc:
+        ctx.log_print('瀏覽器準備失敗：{}'.format(ctx.normalize_text(exc)))
         return ctx.LoginResult(
             status='browser_assist_failed',
             credential_source=credential_source,
             user=user,
-            error='Failed to install Playwright browser binaries: {}'.format(exc)
+            error='Failed to prepare Playwright browser: {}'.format(exc)
         )
         
     try:
