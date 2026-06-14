@@ -16,11 +16,27 @@ login); this module never logs either.
 from __future__ import annotations
 
 import importlib.util
+import os
+import shutil
+from pathlib import Path
 from typing import Any, Dict
+
+try:  # pragma: no cover - package import path
+    import troTHU.runtime_context as ctx
+except ImportError:  # pragma: no cover - direct script fallback
+    import runtime_context as ctx  # type: ignore
 
 _OCR_SINGLETON: Any = None
 _OCR_INIT_FAILED = False
 _CURRENT_RANGE: str = ""
+
+# Default ddddocr OCR model. The compiled stack (onnxruntime/cv2/numpy/PIL) is
+# bundled, but this ~14MB model is downloaded on first use so the release isn't
+# carrying model weights it may never need. ddddocr's default loader reads it
+# from its own package dir, so we just place it there. sha256 pins integrity.
+_MODEL_NAME = "common_old.onnx"
+_MODEL_URL = "https://github.com/hot-YUser/auto-rollcall-thu-tronclass/releases/download/v1.5-alpha.1/common_old.onnx"
+_MODEL_SHA256 = "b8f2ad9cbc1f2e3922a6cb9459e30824e7e2467f3fb4fd61420640e34ea0bf68"
 
 
 class OcrUnavailableError(RuntimeError):
@@ -33,6 +49,63 @@ def ddddocr_available() -> bool:
         return importlib.util.find_spec("ddddocr") is not None
     except (ImportError, AttributeError, ValueError):
         return False
+
+
+def _model_cache_path() -> Path:
+    """Persistent location for the downloaded model (survives across runs)."""
+    try:
+        base = Path(ctx.BASE_DIR) / "state" / "ocr"
+        base.mkdir(parents=True, exist_ok=True)
+        return base / _MODEL_NAME
+    except Exception:
+        local = os.environ.get("LOCALAPPDATA")
+        root = Path(local) / "auto-rollcall-thu-tronclass" / "ocr" if local else Path.home() / ".cache" / "trothu-ocr"
+        root.mkdir(parents=True, exist_ok=True)
+        return root / _MODEL_NAME
+
+
+def _download_model(dest: Path) -> None:
+    import hashlib
+    import urllib.request
+
+    tmp = dest.with_suffix(dest.suffix + ".part")
+    try:
+        ctx.log_print("【OCR】首次使用需下載驗證碼辨識模型（約 14MB）…")
+        with urllib.request.urlopen(_MODEL_URL, timeout=120) as resp, open(tmp, "wb") as f:
+            shutil.copyfileobj(resp, f)
+        if hashlib.sha256(tmp.read_bytes()).hexdigest() != _MODEL_SHA256:
+            raise OcrUnavailableError("OCR 模型雜湊不符，下載可能損毀。")
+        os.replace(tmp, dest)
+        ctx.log_print("【OCR】模型下載完成。")
+    except OcrUnavailableError:
+        tmp.unlink(missing_ok=True)
+        raise
+    except Exception as exc:
+        tmp.unlink(missing_ok=True)
+        raise OcrUnavailableError("OCR 模型下載失敗：{}".format(exc)) from exc
+
+
+def _ensure_default_model() -> None:
+    """Make ddddocr's default model present in its package dir, downloading it
+    once into a persistent cache if the bundle shipped without it (the exe does;
+    a `pip install .[ocr]` source tree already has it)."""
+    import ddddocr  # type: ignore
+
+    pkg_file = getattr(ddddocr, "__file__", None)
+    if not pkg_file:  # e.g. a test fake module — nothing to place
+        return
+    target = Path(pkg_file).parent / _MODEL_NAME
+    if target.exists():
+        return
+    cache = _model_cache_path()
+    if not cache.exists():
+        _download_model(cache)
+    try:
+        # ponytail: copy into the (frozen-exe temp) package dir each launch — it's
+        # where ddddocr's default loader looks; the persistent cache avoids re-download.
+        shutil.copyfile(cache, target)
+    except OSError as exc:
+        raise OcrUnavailableError("OCR 模型就緒失敗：{}".format(exc)) from exc
 
 
 def get_ocr_engine() -> Any:
@@ -52,6 +125,7 @@ def get_ocr_engine() -> Any:
     except Exception as exc:  # pragma: no cover - depends on optional install
         _OCR_INIT_FAILED = True
         raise OcrUnavailableError("找不到 ddddocr，請執行 pip install -e .[ocr] 後重試。") from exc
+    _ensure_default_model()
     try:
         engine = ddddocr.DdddOcr(show_ad=False)
     except Exception as exc:  # pragma: no cover - depends on optional install

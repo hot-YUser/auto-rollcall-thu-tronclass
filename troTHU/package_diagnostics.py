@@ -7,8 +7,8 @@ from typing import Any, Dict, Iterable, List, Mapping, Sequence
 
 
 PROJECT_NAME = "auto-rollcall-thu-tronclass"
-PROJECT_VERSION = "1.4a6"
-PROJECT_RELEASE_LABEL = "1.4-alpha.6"
+PROJECT_VERSION = "1.5a1"
+PROJECT_RELEASE_LABEL = "1.5-alpha.1"
 SPEC_NAME = "auto-rollcall-thu-tronclass.spec"
 FORBIDDEN_BUNDLE_NAMES = (
     ".codex-worklog.md",
@@ -42,28 +42,18 @@ REQUIRED_RUNTIME_MODULES = (
     "yaml",
     "nacl",
 )
+# cv2/numpy/PIL/ddddocr/onnxruntime are bundled now (FJU OCR captcha login needs
+# them in-process), so they are no longer "small bundle" excludes. keyring and
+# pyzbar stay optional/excluded.
 SMALL_BUNDLE_SPEC_EXCLUDES = (
     "keyring",
     "keyrings",
-    "cv2",
-    "numpy",
-    "PIL",
-    "Pillow",
     "pyzbar",
-    "ddddocr",
-    "onnxruntime",
 )
 SMALL_BUNDLE_ARTIFACT_PARTS = (
     "keyring",
     "keyrings",
-    "cv2",
-    "numpy",
-    "PIL",
-    "Pillow",
     "pyzbar",
-    "opencv_python_headless",
-    "ddddocr",
-    "onnxruntime",
 )
 OPTIONAL_RUNTIME_MODULES = (
     "keyring",

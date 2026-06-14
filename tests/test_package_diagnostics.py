@@ -61,7 +61,7 @@ class PackageDiagnosticsTest(unittest.TestCase):
         self.assertIn("troTHU.webview_sync", report["hidden_imports"])
         self.assertNotIn("playwright", report["excludes"])
         self.assertIn("keyring", report["excludes"])
-        self.assertIn("cv2", report["excludes"])
+        self.assertNotIn("cv2", report["excludes"])  # bundled now for FJU OCR captcha login
         self.assertEqual(report["missing_small_bundle_excludes"], [])
         self.assertEqual(report["hidden_import_gaps"], [])
 

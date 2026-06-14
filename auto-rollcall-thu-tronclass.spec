@@ -111,15 +111,9 @@ HIDDEN_IMPORTS = sorted(
 
 EXCLUDES = [
     "aiohttp.pytest_plugin",
-    "cv2",
-    "ddddocr",
     "keyring",
     "keyrings",
     "mypy",
-    "numpy",
-    "onnxruntime",
-    "PIL",
-    "Pillow",
     "pyzbar",
     "pydantic",
     "pydantic_core",
@@ -131,12 +125,22 @@ EXCLUDES = [
 playwright_datas, playwright_binaries, playwright_hiddenimports = collect_all("playwright")
 playwright_datas_extra = collect_data_files("playwright", include_py_files=True)
 
-combined_datas = DATAS + playwright_datas + playwright_datas_extra
-combined_binaries = playwright_binaries
+# OCR captcha login (FJU): bundle the compiled stack (ddddocr needs cv2 at import),
+# but NOT ddddocr's bundled *.onnx model weights — common_old.onnx is downloaded on
+# first use by troTHU.ocr_captcha. onnxruntime/cv2 ship their native DLLs via collect_all.
+onnx_datas, onnx_binaries, onnx_hiddenimports = collect_all("onnxruntime")
+cv2_datas, cv2_binaries, cv2_hiddenimports = collect_all("cv2")
+ddddocr_datas = [d for d in collect_data_files("ddddocr") if not str(d[0]).lower().endswith(".onnx")]
+
+combined_datas = DATAS + playwright_datas + playwright_datas_extra + onnx_datas + cv2_datas + ddddocr_datas
+combined_binaries = playwright_binaries + onnx_binaries + cv2_binaries
 combined_hiddenimports = sorted(
     set(
         HIDDEN_IMPORTS
         + playwright_hiddenimports
+        + onnx_hiddenimports
+        + cv2_hiddenimports
+        + safe_collect_submodules("ddddocr")
         + [
             "playwright",
             "playwright.async_api",
@@ -144,6 +148,12 @@ combined_hiddenimports = sorted(
             "greenlet",
             "pyee",
             "troTHU.browser_install",
+            "troTHU.ocr_captcha",
+            "ddddocr",
+            "onnxruntime",
+            "cv2",
+            "numpy",
+            "PIL",
         ]
     )
 )

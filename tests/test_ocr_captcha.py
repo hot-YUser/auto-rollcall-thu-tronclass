@@ -5,9 +5,12 @@ injected into sys.modules so the suite stays offline and fast whether or not the
 `ocr` extra is installed.
 """
 import importlib.machinery
+import io
 import sys
+import tempfile
 import types
 import unittest
+from pathlib import Path
 from unittest import mock
 
 import troTHU.ocr_captcha as ocr_captcha
@@ -114,6 +117,77 @@ class OcrCaptchaUnavailableTest(unittest.TestCase):
         with mock.patch.dict(sys.modules, {"ddddocr": None}):
             with self.assertRaises(ocr_captcha.OcrUnavailableError):
                 ocr_captcha.get_ocr_engine()
+
+
+class OcrModelDownloadTest(unittest.TestCase):
+    def setUp(self) -> None:
+        _reset_module_state()
+        self._saved = sys.modules.get("ddddocr")
+
+    def tearDown(self) -> None:
+        if self._saved is not None:
+            sys.modules["ddddocr"] = self._saved
+        else:
+            sys.modules.pop("ddddocr", None)
+        _reset_module_state()
+
+    def _fake_ddddocr_in(self, d: Path) -> Path:
+        pkg = d / "ddddocr"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text("")
+        fake = types.ModuleType("ddddocr")
+        fake.__file__ = str(pkg / "__init__.py")
+        sys.modules["ddddocr"] = fake
+        return pkg
+
+    def test_places_model_from_cache_without_download(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            pkg = self._fake_ddddocr_in(Path(d))
+            cache = Path(d) / "cache" / ocr_captcha._MODEL_NAME
+            cache.parent.mkdir()
+            cache.write_bytes(b"MODELDATA")
+            with mock.patch.object(ocr_captcha, "_model_cache_path", return_value=cache), \
+                 mock.patch.object(ocr_captcha, "_download_model") as dl:
+                ocr_captcha._ensure_default_model()
+                dl.assert_not_called()
+            self.assertEqual((pkg / ocr_captcha._MODEL_NAME).read_bytes(), b"MODELDATA")
+
+    def test_downloads_when_cache_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            pkg = self._fake_ddddocr_in(Path(d))
+            cache = Path(d) / "cache" / ocr_captcha._MODEL_NAME
+
+            def fake_dl(dest: Path) -> None:
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_bytes(b"DL")
+
+            with mock.patch.object(ocr_captcha, "_model_cache_path", return_value=cache), \
+                 mock.patch.object(ocr_captcha, "_download_model", side_effect=fake_dl) as dl:
+                ocr_captcha._ensure_default_model()
+                dl.assert_called_once()
+            self.assertEqual((pkg / ocr_captcha._MODEL_NAME).read_bytes(), b"DL")
+
+    def test_noop_when_target_present(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            pkg = self._fake_ddddocr_in(Path(d))
+            (pkg / ocr_captcha._MODEL_NAME).write_bytes(b"already")
+            with mock.patch.object(ocr_captcha, "_download_model") as dl:
+                ocr_captcha._ensure_default_model()
+                dl.assert_not_called()
+
+    def test_download_rejects_bad_hash(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            dest = Path(d) / ocr_captcha._MODEL_NAME
+
+            class _Resp:
+                def __enter__(self): return io.BytesIO(b"corrupt")
+                def __exit__(self, *a): return False
+
+            with mock.patch("urllib.request.urlopen", return_value=_Resp()), \
+                 mock.patch.object(ocr_captcha.ctx, "log_print"):
+                with self.assertRaises(ocr_captcha.OcrUnavailableError):
+                    ocr_captcha._download_model(dest)
+            self.assertFalse(dest.exists())
 
 
 if __name__ == "__main__":
