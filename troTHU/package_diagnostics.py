@@ -42,18 +42,33 @@ REQUIRED_RUNTIME_MODULES = (
     "yaml",
     "nacl",
 )
-# cv2/numpy/PIL/ddddocr/onnxruntime are bundled now (FJU OCR captcha login needs
-# them in-process), so they are no longer "small bundle" excludes. keyring and
-# pyzbar stay optional/excluded.
+# The heavy OCR stack and the Playwright node driver are NOT in the lean default
+# exe — they live in the downloadable add-on bundle. So they must be excluded from
+# the spec and absent from the main artifact. (driver/node.exe is matched as a path
+# part; the add-on zip is validated separately with strict_optional=False.)
 SMALL_BUNDLE_SPEC_EXCLUDES = (
     "keyring",
     "keyrings",
+    "cv2",
+    "numpy",
+    "PIL",
+    "Pillow",
     "pyzbar",
+    "ddddocr",
+    "onnxruntime",
 )
 SMALL_BUNDLE_ARTIFACT_PARTS = (
     "keyring",
     "keyrings",
+    "cv2",
+    "numpy",
+    "PIL",
+    "Pillow",
     "pyzbar",
+    "opencv_python_headless",
+    "ddddocr",
+    "onnxruntime",
+    "node.exe",
 )
 OPTIONAL_RUNTIME_MODULES = (
     "keyring",

@@ -11,9 +11,43 @@ from troTHU.release_builder import (
     RELEASE_NOTES_FILE,
     ReleaseBuildError,
     build_release_build_preflight,
+    package_addon_bundle,
     package_release_artifact,
     run_release_build_pipeline,
 )
+
+
+class AddonBundleTest(unittest.TestCase):
+    def test_package_addon_bundle_zips_sidecar_and_node(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            sidecar = root / "fju-ocr"
+            (sidecar / "_internal" / "ddddocr").mkdir(parents=True)
+            (sidecar / "fju-ocr.exe").write_text("exe")
+            # The add-on legitimately carries the OCR model/stack — must NOT be rejected.
+            (sidecar / "_internal" / "ddddocr" / "common_old.onnx").write_text("model")
+            node = root / "node.exe"
+            node.write_text("node")
+            artifact = root / "addons.zip"
+
+            report = package_addon_bundle(sidecar, artifact, node_exe=node)
+
+            self.assertEqual(report["status"], "ok")
+            self.assertTrue(report["node_included"])
+            with zipfile.ZipFile(artifact) as archive:
+                names = archive.namelist()
+            self.assertTrue(any(n.endswith("fju-ocr/fju-ocr.exe") for n in names))
+            self.assertTrue(any(n.endswith("/node.exe") for n in names))
+
+    def test_package_addon_bundle_rejects_secrets(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            sidecar = root / "fju-ocr"
+            sidecar.mkdir()
+            (sidecar / "fju-ocr.exe").write_text("exe")
+            (sidecar / "config.conf").write_text("secret")  # must be refused
+            with self.assertRaises(ReleaseBuildError):
+                package_addon_bundle(sidecar, root / "addons.zip", node_exe=None)
 
 
 class ReleaseBuilderTest(unittest.TestCase):

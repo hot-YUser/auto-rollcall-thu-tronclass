@@ -29,6 +29,7 @@ HIDDEN_IMPORTS = sorted(
         [
             "troTHU.account_store",
             "troTHU.account_runtime_store",
+            "troTHU.addon_runtime",
             "troTHU.adapter_bridge",
             "troTHU.adapter_server",
             "troTHU.auth_runtime",
@@ -73,6 +74,7 @@ HIDDEN_IMPORTS = sorted(
             "troTHU.notification_bus",
             "troTHU.observability",
             "troTHU.ocr_captcha",
+            "troTHU.ocr_sidecar",
             "troTHU.package_diagnostics",
             "troTHU.pending_qr",
             "troTHU.providers",
@@ -109,11 +111,20 @@ HIDDEN_IMPORTS = sorted(
     )
 )
 
+# The heavy OCR stack (ddddocr/onnxruntime/cv2/numpy/PIL) is NOT bundled — it lives
+# in the downloadable add-on bundle as the `fju-ocr` sidecar (see fju-ocr.spec /
+# troTHU/addon_runtime.py). Keeping the default exe lean.
 EXCLUDES = [
     "aiohttp.pytest_plugin",
+    "cv2",
+    "ddddocr",
     "keyring",
     "keyrings",
     "mypy",
+    "numpy",
+    "onnxruntime",
+    "PIL",
+    "Pillow",
     "pyzbar",
     "pydantic",
     "pydantic_core",
@@ -125,22 +136,18 @@ EXCLUDES = [
 playwright_datas, playwright_binaries, playwright_hiddenimports = collect_all("playwright")
 playwright_datas_extra = collect_data_files("playwright", include_py_files=True)
 
-# OCR captcha login (FJU): bundle the compiled stack (ddddocr needs cv2 at import),
-# but NOT ddddocr's bundled *.onnx model weights — common_old.onnx is downloaded on
-# first use by troTHU.ocr_captcha. onnxruntime/cv2 ship their native DLLs via collect_all.
-onnx_datas, onnx_binaries, onnx_hiddenimports = collect_all("onnxruntime")
-cv2_datas, cv2_binaries, cv2_hiddenimports = collect_all("cv2")
-ddddocr_datas = [d for d in collect_data_files("ddddocr") if not str(d[0]).lower().endswith(".onnx")]
+# Strip the 92MB node driver (driver/node.exe) — it's the bulk of playwright and is
+# downloaded in the add-on bundle; browser_install sets PLAYWRIGHT_NODEJS_PATH to it.
+# The small driver/package/ (cli.js) stays, since playwright resolves it package-relative.
+def _strip_node(entries):
+    return [e for e in entries if not str(e[1]).replace("\\", "/").endswith("driver/node.exe")]
 
-combined_datas = DATAS + playwright_datas + playwright_datas_extra + onnx_datas + cv2_datas + ddddocr_datas
-combined_binaries = playwright_binaries + onnx_binaries + cv2_binaries
+combined_datas = DATAS + _strip_node(playwright_datas) + _strip_node(playwright_datas_extra)
+combined_binaries = _strip_node(playwright_binaries)
 combined_hiddenimports = sorted(
     set(
         HIDDEN_IMPORTS
         + playwright_hiddenimports
-        + onnx_hiddenimports
-        + cv2_hiddenimports
-        + safe_collect_submodules("ddddocr")
         + [
             "playwright",
             "playwright.async_api",
@@ -148,12 +155,9 @@ combined_hiddenimports = sorted(
             "greenlet",
             "pyee",
             "troTHU.browser_install",
+            "troTHU.addon_runtime",
             "troTHU.ocr_captcha",
-            "ddddocr",
-            "onnxruntime",
-            "cv2",
-            "numpy",
-            "PIL",
+            "troTHU.ocr_sidecar",
         ]
     )
 )

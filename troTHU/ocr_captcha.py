@@ -1,134 +1,78 @@
-"""Local, offline OCR for login image captchas (opt-in `ocr` extra).
+"""Local, offline OCR for login image captchas.
 
 Some TronClass tenants gate their login form behind a static text/number image
-captcha (e.g. Fu Jen / FJU's Apereo CAS, a 4-digit numeric `captcha.jpg`). This
-module wraps `ddddocr` (https://github.com/sml2h3/ddddocr) so a login adapter
-can solve such a captcha without any operator input.
+captcha (e.g. Fu Jen / FJU's Apereo CAS, a 4-digit numeric `captcha.jpg`).
 
-`ddddocr` (onnxruntime + a bundled model, ~100MB installed) is intentionally an
-*optional* dependency: it is imported lazily and the whole module degrades to
-"unavailable" when it is not installed, so the default small release keeps
-working and FJU simply falls back to manual-cookie / browser-assisted login.
+Two backends, picked automatically:
+- **in-process** `ddddocr` — used when the optional `ocr` extra is installed
+  (`pip install -e .[ocr]`), e.g. source checkouts. Carries its own model.
+- **sidecar** — the lean default exe does NOT bundle the heavy OCR stack
+  (onnxruntime/cv2/...). Instead a standalone `fju-ocr` executable lives in the
+  downloadable add-on bundle (see `addon_runtime`); we shell out to it.
 
-The raw captcha bytes and the solved text are sensitive (they authenticate a
-login); this module never logs either.
+If neither is available the module degrades to "unavailable" and FJU falls back
+to manual-cookie / browser-assisted login. The raw captcha bytes and the solved
+text are sensitive (they authenticate a login); this module never logs either.
 """
 from __future__ import annotations
 
 import importlib.util
-import os
-import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any, Dict
-
-try:  # pragma: no cover - package import path
-    import troTHU.runtime_context as ctx
-except ImportError:  # pragma: no cover - direct script fallback
-    import runtime_context as ctx  # type: ignore
 
 _OCR_SINGLETON: Any = None
 _OCR_INIT_FAILED = False
 _CURRENT_RANGE: str = ""
 
-# Default ddddocr OCR model. The compiled stack (onnxruntime/cv2/numpy/PIL) is
-# bundled, but this ~14MB model is downloaded on first use so the release isn't
-# carrying model weights it may never need. ddddocr's default loader reads it
-# from its own package dir, so we just place it there. sha256 pins integrity.
-_MODEL_NAME = "common_old.onnx"
-_MODEL_URL = "https://github.com/hot-YUser/auto-rollcall-thu-tronclass/releases/download/v1.5-alpha.1/common_old.onnx"
-_MODEL_SHA256 = "b8f2ad9cbc1f2e3922a6cb9459e30824e7e2467f3fb4fd61420640e34ea0bf68"
-
 
 class OcrUnavailableError(RuntimeError):
-    """Raised when ddddocr cannot be imported or its engine cannot start."""
+    """Raised when no OCR backend (in-process ddddocr nor sidecar) can run."""
 
 
-def ddddocr_available() -> bool:
-    """True if the optional `ddddocr` package is importable (no engine load)."""
+def _inprocess_importable() -> bool:
     try:
         return importlib.util.find_spec("ddddocr") is not None
     except (ImportError, AttributeError, ValueError):
         return False
 
 
-def _model_cache_path() -> Path:
-    """Persistent location for the downloaded model (survives across runs)."""
+def ddddocr_available() -> bool:
+    """True if captcha OCR can run — in-process ddddocr OR a usable sidecar.
+
+    Kept as the single gate the manual-cookie fallback predicate consults
+    (`auth_runtime.provider_requires_manual_cookie_login`): when this is False,
+    FJU degrades to manual-cookie login.
+    """
+    if _inprocess_importable():
+        return True
     try:
-        base = Path(ctx.BASE_DIR) / "state" / "ocr"
-        base.mkdir(parents=True, exist_ok=True)
-        return base / _MODEL_NAME
+        import troTHU.addon_runtime as addon
+        return addon.ocr_sidecar_available()
     except Exception:
-        local = os.environ.get("LOCALAPPDATA")
-        root = Path(local) / "auto-rollcall-thu-tronclass" / "ocr" if local else Path.home() / ".cache" / "trothu-ocr"
-        root.mkdir(parents=True, exist_ok=True)
-        return root / _MODEL_NAME
-
-
-def _download_model(dest: Path) -> None:
-    import hashlib
-    import urllib.request
-
-    tmp = dest.with_suffix(dest.suffix + ".part")
-    try:
-        ctx.log_print("【OCR】首次使用需下載驗證碼辨識模型（約 14MB）…")
-        with urllib.request.urlopen(_MODEL_URL, timeout=120) as resp, open(tmp, "wb") as f:
-            shutil.copyfileobj(resp, f)
-        if hashlib.sha256(tmp.read_bytes()).hexdigest() != _MODEL_SHA256:
-            raise OcrUnavailableError("OCR 模型雜湊不符，下載可能損毀。")
-        os.replace(tmp, dest)
-        ctx.log_print("【OCR】模型下載完成。")
-    except OcrUnavailableError:
-        tmp.unlink(missing_ok=True)
-        raise
-    except Exception as exc:
-        tmp.unlink(missing_ok=True)
-        raise OcrUnavailableError("OCR 模型下載失敗：{}".format(exc)) from exc
-
-
-def _ensure_default_model() -> None:
-    """Make ddddocr's default model present in its package dir, downloading it
-    once into a persistent cache if the bundle shipped without it (the exe does;
-    a `pip install .[ocr]` source tree already has it)."""
-    import ddddocr  # type: ignore
-
-    pkg_file = getattr(ddddocr, "__file__", None)
-    if not pkg_file:  # e.g. a test fake module — nothing to place
-        return
-    target = Path(pkg_file).parent / _MODEL_NAME
-    if target.exists():
-        return
-    cache = _model_cache_path()
-    if not cache.exists():
-        _download_model(cache)
-    try:
-        # ponytail: copy into the (frozen-exe temp) package dir each launch — it's
-        # where ddddocr's default loader looks; the persistent cache avoids re-download.
-        shutil.copyfile(cache, target)
-    except OSError as exc:
-        raise OcrUnavailableError("OCR 模型就緒失敗：{}".format(exc)) from exc
+        return False
 
 
 def get_ocr_engine() -> Any:
-    """Lazily build and cache a single shared ddddocr engine.
+    """Lazily build and cache a single shared in-process ddddocr engine.
 
-    The onnx model load is heavy (~tens of MB), so the engine is a module-level
-    singleton — never rebuilt per captcha. Raises OcrUnavailableError when the
-    optional dependency is missing or the engine fails to initialise.
+    The onnx model load is heavy, so the engine is a module-level singleton.
+    Raises OcrUnavailableError when ddddocr is not importable in this process.
     """
     global _OCR_SINGLETON, _OCR_INIT_FAILED
     if _OCR_SINGLETON is not None:
         return _OCR_SINGLETON
     if _OCR_INIT_FAILED:
-        raise OcrUnavailableError("ddddocr 先前初始化失敗；請確認已安裝 pip install -e .[ocr]。")
+        raise OcrUnavailableError("ddddocr 先前初始化失敗。")
     try:
         import ddddocr  # type: ignore
-    except Exception as exc:  # pragma: no cover - depends on optional install
+    except Exception as exc:
         _OCR_INIT_FAILED = True
         raise OcrUnavailableError("找不到 ddddocr，請執行 pip install -e .[ocr] 後重試。") from exc
-    _ensure_default_model()
     try:
         engine = ddddocr.DdddOcr(show_ad=False)
-    except Exception as exc:  # pragma: no cover - depends on optional install
+    except Exception as exc:
         _OCR_INIT_FAILED = True
         raise OcrUnavailableError("ddddocr 引擎初始化失敗：{}".format(exc)) from exc
     _OCR_SINGLETON = engine
@@ -145,15 +89,15 @@ def _ensure_range(engine: Any, charset: str) -> None:
             pass
 
 
-def solve_captcha(image_bytes: bytes, charset: str | None = None) -> str:
-    """Recognise an image captcha and return the normalised text.
+def _normalize(text: str, charset: str | None) -> str:
+    text = str(text or "").strip()
+    if charset:
+        allowed = set(charset)
+        text = "".join(ch for ch in text if ch in allowed)
+    return text
 
-    `charset`, when given, both restricts the model's output alphabet (via
-    ddddocr.set_ranges) and filters the result to that alphabet — a big accuracy
-    win for fixed-alphabet captchas (e.g. digits only). A recognition failure
-    returns "" (treated as a retryable miss by the caller); only a missing/broken
-    engine raises (OcrUnavailableError).
-    """
+
+def _solve_inprocess(image_bytes: bytes, charset: str | None) -> str:
     engine = get_ocr_engine()
     if charset:
         _ensure_range(engine, charset)
@@ -161,17 +105,59 @@ def solve_captcha(image_bytes: bytes, charset: str | None = None) -> str:
         raw = engine.classification(image_bytes)
     except Exception:
         return ""
-    text = str(raw or "").strip()
-    if charset:
-        allowed = set(charset)
-        text = "".join(ch for ch in text if ch in allowed)
-    return text
+    return _normalize(raw, charset)
+
+
+def _solve_via_sidecar(image_bytes: bytes, charset: str | None) -> str:
+    import troTHU.addon_runtime as addon
+
+    try:
+        exe = addon.ocr_sidecar_path()  # ensures the add-on bundle is downloaded/extracted
+    except Exception as exc:
+        raise OcrUnavailableError("OCR sidecar 無法取得：{}".format(exc)) from exc
+    tmp = Path(tempfile.gettempdir()) / "trothu_captcha_in.bin"
+    tmp.write_bytes(image_bytes)
+    try:
+        proc = subprocess.run(
+            [str(exe), str(tmp), charset or ""],
+            capture_output=True,
+            timeout=60,
+        )
+    except Exception as exc:
+        raise OcrUnavailableError("OCR sidecar 執行失敗：{}".format(exc)) from exc
+    finally:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+    if proc.returncode != 0:
+        return ""  # treat as a retryable miss
+    return _normalize(proc.stdout.decode("utf-8", "replace"), charset)
+
+
+def solve_captcha(image_bytes: bytes, charset: str | None = None) -> str:
+    """Recognise an image captcha, returning the normalised text.
+
+    Prefers in-process ddddocr; otherwise shells out to the downloaded sidecar.
+    A recognition miss returns "" (retryable by the caller); only a wholly
+    unavailable backend raises OcrUnavailableError.
+    """
+    if _inprocess_importable():
+        return _solve_inprocess(image_bytes, charset)
+    return _solve_via_sidecar(image_bytes, charset)
 
 
 def ocr_captcha_status() -> Dict[str, Any]:
-    """Small status dict for `doctor` — availability and whether a model is loaded."""
+    """Small status dict for `doctor`."""
+    sidecar = False
+    try:
+        import troTHU.addon_runtime as addon
+        sidecar = addon.ocr_sidecar_available()
+    except Exception:
+        pass
     return {
         "available": ddddocr_available(),
+        "backend": "in-process" if _inprocess_importable() else ("sidecar" if sidecar else "none"),
         "engine_loaded": _OCR_SINGLETON is not None,
         "init_failed": _OCR_INIT_FAILED,
     }

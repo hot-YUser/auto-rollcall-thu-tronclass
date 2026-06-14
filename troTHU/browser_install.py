@@ -39,6 +39,33 @@ def apply_browsers_path_env() -> None:
         os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(playwright_browsers_path())
     except Exception:
         pass
+    # If the node driver was already downloaded (lean exe), point playwright at it.
+    try:
+        import troTHU.addon_runtime as addon
+        node = addon.downloaded_node_path()
+        if node:
+            os.environ["PLAYWRIGHT_NODEJS_PATH"] = str(node)
+    except Exception:
+        pass
+
+
+def ensure_playwright_node() -> None:
+    """Ensure the Playwright node driver is available, downloading the add-on
+    bundle if the (lean) exe shipped without it. No-op when a bundled node
+    driver already exists (source install / unstripped build)."""
+    from playwright._impl._driver import compute_driver_executable
+
+    try:
+        node = compute_driver_executable()[0]  # honors PLAYWRIGHT_NODEJS_PATH if set
+        if node and os.path.exists(node):
+            return
+    except Exception:
+        pass
+    import troTHU.addon_runtime as addon
+    node_path = addon.playwright_node_path()
+    if not node_path or not node_path.exists():
+        raise RuntimeError("playwright_node_unavailable: 無法取得 Playwright node driver。")
+    os.environ["PLAYWRIGHT_NODEJS_PATH"] = str(node_path)
 
 
 def browser_binary_present() -> bool:
@@ -99,6 +126,9 @@ async def ensure_browser_binary_installed() -> None:
             "auth.browser_assisted_login.allow_browser_download = false。"
             "請改為 true，或手動執行 playwright install chromium。"
         )
+
+    # Lean exe ships without the node driver — fetch it (in the add-on bundle) first.
+    ensure_playwright_node()
 
     ctx.log_print("【瀏覽器登入】首次使用需下載 Chromium（約 150MB），開始下載，請稍候…")
 

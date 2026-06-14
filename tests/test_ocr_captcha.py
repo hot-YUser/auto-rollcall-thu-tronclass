@@ -5,9 +5,7 @@ injected into sys.modules so the suite stays offline and fast whether or not the
 `ocr` extra is installed.
 """
 import importlib.machinery
-import io
 import sys
-import tempfile
 import types
 import unittest
 from pathlib import Path
@@ -99,7 +97,9 @@ class OcrCaptchaTest(unittest.TestCase):
         self.assertTrue(status["engine_loaded"])
 
 
-class OcrCaptchaUnavailableTest(unittest.TestCase):
+class OcrAvailabilityTest(unittest.TestCase):
+    """Availability spans two backends: in-process ddddocr OR a downloadable sidecar."""
+
     def setUp(self) -> None:
         _reset_module_state()
         self._saved = sys.modules.pop("ddddocr", None)
@@ -109,8 +109,16 @@ class OcrCaptchaUnavailableTest(unittest.TestCase):
             sys.modules["ddddocr"] = self._saved
         _reset_module_state()
 
-    def test_available_false_when_module_missing(self) -> None:
-        with mock.patch.object(ocr_captcha.importlib.util, "find_spec", return_value=None):
+    def test_available_via_sidecar_when_no_inprocess_but_download_allowed(self) -> None:
+        import troTHU.addon_runtime as addon
+        with mock.patch.object(ocr_captcha.importlib.util, "find_spec", return_value=None), \
+             mock.patch.object(addon, "ocr_sidecar_available", return_value=True):
+            self.assertTrue(ocr_captcha.ddddocr_available())
+
+    def test_unavailable_when_no_inprocess_and_no_sidecar(self) -> None:
+        import troTHU.addon_runtime as addon
+        with mock.patch.object(ocr_captcha.importlib.util, "find_spec", return_value=None), \
+             mock.patch.object(addon, "ocr_sidecar_available", return_value=False):
             self.assertFalse(ocr_captcha.ddddocr_available())
 
     def test_get_engine_raises_when_missing(self) -> None:
@@ -119,75 +127,40 @@ class OcrCaptchaUnavailableTest(unittest.TestCase):
                 ocr_captcha.get_ocr_engine()
 
 
-class OcrModelDownloadTest(unittest.TestCase):
+class OcrSidecarBackendTest(unittest.TestCase):
+    """When ddddocr isn't importable, solve_captcha shells out to the sidecar."""
+
     def setUp(self) -> None:
         _reset_module_state()
-        self._saved = sys.modules.get("ddddocr")
+        self._saved = sys.modules.pop("ddddocr", None)
 
     def tearDown(self) -> None:
         if self._saved is not None:
             sys.modules["ddddocr"] = self._saved
-        else:
-            sys.modules.pop("ddddocr", None)
         _reset_module_state()
 
-    def _fake_ddddocr_in(self, d: Path) -> Path:
-        pkg = d / "ddddocr"
-        pkg.mkdir()
-        (pkg / "__init__.py").write_text("")
-        fake = types.ModuleType("ddddocr")
-        fake.__file__ = str(pkg / "__init__.py")
-        sys.modules["ddddocr"] = fake
-        return pkg
+    def test_solve_uses_sidecar_and_filters(self) -> None:
+        import troTHU.addon_runtime as addon
+        with mock.patch.object(ocr_captcha.importlib.util, "find_spec", return_value=None), \
+             mock.patch.object(addon, "ocr_sidecar_path", return_value=Path("fju-ocr.exe")), \
+             mock.patch("subprocess.run") as run:
+            run.return_value = types.SimpleNamespace(returncode=0, stdout=b" 12a34 ")
+            self.assertEqual(ocr_captcha.solve_captcha(b"img", charset="0123456789"), "1234")
 
-    def test_places_model_from_cache_without_download(self) -> None:
-        with tempfile.TemporaryDirectory() as d:
-            pkg = self._fake_ddddocr_in(Path(d))
-            cache = Path(d) / "cache" / ocr_captcha._MODEL_NAME
-            cache.parent.mkdir()
-            cache.write_bytes(b"MODELDATA")
-            with mock.patch.object(ocr_captcha, "_model_cache_path", return_value=cache), \
-                 mock.patch.object(ocr_captcha, "_download_model") as dl:
-                ocr_captcha._ensure_default_model()
-                dl.assert_not_called()
-            self.assertEqual((pkg / ocr_captcha._MODEL_NAME).read_bytes(), b"MODELDATA")
+    def test_sidecar_nonzero_is_retryable_miss(self) -> None:
+        import troTHU.addon_runtime as addon
+        with mock.patch.object(ocr_captcha.importlib.util, "find_spec", return_value=None), \
+             mock.patch.object(addon, "ocr_sidecar_path", return_value=Path("fju-ocr.exe")), \
+             mock.patch("subprocess.run") as run:
+            run.return_value = types.SimpleNamespace(returncode=1, stdout=b"")
+            self.assertEqual(ocr_captcha.solve_captcha(b"img", charset="0123456789"), "")
 
-    def test_downloads_when_cache_missing(self) -> None:
-        with tempfile.TemporaryDirectory() as d:
-            pkg = self._fake_ddddocr_in(Path(d))
-            cache = Path(d) / "cache" / ocr_captcha._MODEL_NAME
-
-            def fake_dl(dest: Path) -> None:
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                dest.write_bytes(b"DL")
-
-            with mock.patch.object(ocr_captcha, "_model_cache_path", return_value=cache), \
-                 mock.patch.object(ocr_captcha, "_download_model", side_effect=fake_dl) as dl:
-                ocr_captcha._ensure_default_model()
-                dl.assert_called_once()
-            self.assertEqual((pkg / ocr_captcha._MODEL_NAME).read_bytes(), b"DL")
-
-    def test_noop_when_target_present(self) -> None:
-        with tempfile.TemporaryDirectory() as d:
-            pkg = self._fake_ddddocr_in(Path(d))
-            (pkg / ocr_captcha._MODEL_NAME).write_bytes(b"already")
-            with mock.patch.object(ocr_captcha, "_download_model") as dl:
-                ocr_captcha._ensure_default_model()
-                dl.assert_not_called()
-
-    def test_download_rejects_bad_hash(self) -> None:
-        with tempfile.TemporaryDirectory() as d:
-            dest = Path(d) / ocr_captcha._MODEL_NAME
-
-            class _Resp:
-                def __enter__(self): return io.BytesIO(b"corrupt")
-                def __exit__(self, *a): return False
-
-            with mock.patch("urllib.request.urlopen", return_value=_Resp()), \
-                 mock.patch.object(ocr_captcha.ctx, "log_print"):
-                with self.assertRaises(ocr_captcha.OcrUnavailableError):
-                    ocr_captcha._download_model(dest)
-            self.assertFalse(dest.exists())
+    def test_sidecar_unobtainable_raises_ocr_unavailable(self) -> None:
+        import troTHU.addon_runtime as addon
+        with mock.patch.object(ocr_captcha.importlib.util, "find_spec", return_value=None), \
+             mock.patch.object(addon, "ocr_sidecar_path", side_effect=addon.AddonUnavailableError("nope")):
+            with self.assertRaises(ocr_captcha.OcrUnavailableError):
+                ocr_captcha.solve_captcha(b"img", charset="0123456789")
 
 
 if __name__ == "__main__":

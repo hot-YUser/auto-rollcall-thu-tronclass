@@ -46,10 +46,11 @@ class BrowserInstallTest(unittest.TestCase):
             self.assertTrue(browser_binary_present())
 
     @unittest.skipUnless(importlib.util.find_spec("playwright") is not None, "playwright not installed (bundled only in the exe; CI runs base deps)")
+    @patch("troTHU.browser_install.ensure_playwright_node")
     @patch("troTHU.browser_install.browser_binary_present", return_value=False)
     @patch("asyncio.create_subprocess_exec")
     @patch("playwright._impl._driver.compute_driver_executable", return_value="fake_driver.exe")
-    def test_ensure_browser_binary_auto_downloads(self, mock_driver, mock_sub, mock_present) -> None:
+    def test_ensure_browser_binary_auto_downloads(self, mock_driver, mock_sub, mock_present, mock_node) -> None:
         # No stdin prompt any more: when allowed (default) it downloads directly
         # with progress, so it can't conflict with the keypress watcher.
         mock_process = MagicMock()
