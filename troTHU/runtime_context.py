@@ -436,24 +436,28 @@ EXAMPLE_PLACEHOLDER_VALUES = {
 # are filled in.
 DEFAULT_BASIC_CONFIG_TEMPLATE = """# ===== 基本設定 config.conf =====（改完存檔關閉記事本即自動套用）
 # now：要用哪個帳號跑？填某帳號的 user，或填「class 群組名」。只有一個帳號可留空。
+#       也可填學校網址（如 https://tronclass.你的學校.edu.tw）→ 改用手動瀏覽器登入，免填帳密。
 now = AAAAA 或 class A 或 「class A」 擇一
 
 [account]
-# 你儲存的帳號，要幾個就放幾塊方便快速切換。school 可填 THU / TKU / TRONCLASS / SCU（東吳請填 SCU，不要填 TRONCLASS）
+# 你儲存的帳號，要幾個就放幾塊方便快速切換。
+# school 填代號＝自動登入：THU / TKU / TRONCLASS / SCU（東吳請填 SCU，不要填 TRONCLASS）；填學校網址＝手動瀏覽器登入（passwd 可留空）
 user = AAAAA
 passwd = **OOXX
 school = THU
 # 上面的 now 填了嗎？一定要記得把 user 名填上去！
 
 [account]
-# 你儲存的帳號，要幾個就放幾塊方便快速切換。school 可填 THU / TKU / TRONCLASS / SCU（東吳請填 SCU，不要填 TRONCLASS）
+# 你儲存的帳號，要幾個就放幾塊方便快速切換。
+# school 填代號＝自動登入：THU / TKU / TRONCLASS / SCU（東吳請填 SCU，不要填 TRONCLASS）；填學校網址＝手動瀏覽器登入（passwd 可留空）
 user = BBBBB
 passwd = XXOO**
 school = THU
 # 上面的 now 填了嗎？一定要記得把 user 名填上去！
 
 [account]
-# 你儲存的帳號，要幾個就放幾塊方便快速切換。school 可填 THU / TKU / TRONCLASS / SCU（東吳請填 SCU，不要填 TRONCLASS）
+# 你儲存的帳號，要幾個就放幾塊方便快速切換。
+# school 填代號＝自動登入：THU / TKU / TRONCLASS / SCU（東吳請填 SCU，不要填 TRONCLASS）；填學校網址＝手動瀏覽器登入（passwd 可留空）
 user =
 passwd =
 school =

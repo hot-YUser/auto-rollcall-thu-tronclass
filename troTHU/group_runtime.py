@@ -46,6 +46,10 @@ def resolve_now_target(config: ctx.Mapping[str, ctx.Any]) -> ctx.Dict[str, ctx.A
             if ctx.normalize_text(group.get("class")).lower() == class_name.lower():
                 return {"ok": True, "kind": "group", "name": class_name, "school": _school(group.get("school")), "users": list(group.get("users", []))}
         return {"ok": False, "kind": "group", "reason": "group_not_found", "name": class_name}
+    now_kind, now_base = ctx.normalize_base_url(now)
+    if now_kind == "url":
+        # now = a URL -> manual browser login to that site (no account needed).
+        return {"ok": True, "kind": "url", "user": "", "school": ctx.derive_url_provider_key(now), "base_url": now_base}
     for account in accounts:
         if ctx.normalize_text(account.get("user")).lower() == now.lower():
             return {"ok": True, "kind": "account", "user": ctx.normalize_text(account.get("user")), "school": _school(account.get("school"))}
@@ -63,6 +67,9 @@ def build_group_execution_plan(config: ctx.Mapping[str, ctx.Any], target: ctx.Ma
     warnings = []
     if not target.get("ok"):
         return {"ok": False, "target": target, "monitor_user": "", "fanout_users": [], "accounts": [], "skipped": [], "warnings": [target.get("reason", "target_invalid")]}
+    if target.get("kind") == "url":
+        # Interactive browser login: single, credential-less, no fan-out.
+        return {"ok": True, "target": target, "monitor_user": "", "fanout_users": [], "accounts": [], "skipped": [], "warnings": []}
     if target.get("kind") == "account":
         user = ctx.normalize_text(target.get("user"))
         return {"ok": True, "target": target, "monitor_user": user, "fanout_users": [user], "accounts": [{"user": user, "school": _school(target.get("school"))}], "skipped": [], "warnings": []}
@@ -131,6 +138,8 @@ def summarize_group_target(config: ctx.Mapping[str, ctx.Any] | None = None) -> c
         summary["name"] = ctx.normalize_text(target.get("name"))
     elif kind == "account":
         summary["name"] = ctx.normalize_text(target.get("user"))
+    elif kind == "url":
+        summary["name"] = ctx.normalize_text(target.get("base_url"))
     return summary
 
 
@@ -157,6 +166,8 @@ def describe_group_target(config: ctx.Mapping[str, ctx.Any] | None = None) -> st
             )
             line += "；略過 {} 人：{}".format(len(skipped), skipped_desc)
         return line
+    if kind == "url":
+        return "目前監控對象：手動瀏覽器登入（{}）".format(summary["name"] or "?")
     if kind == "account":
         if not summary["ok"]:
             return "目前監控對象：帳號 {} 不存在於設定".format(summary["name"] or "?")
@@ -200,6 +211,8 @@ def group_status_label(config: ctx.Mapping[str, ctx.Any] | None = None) -> str:
     kind = ctx.normalize_text(target.get("kind"))
     if kind == "group":
         return "群組{}".format(ctx.normalize_text(target.get("name")))
+    if kind == "url":
+        return "手動登入"
     if kind == "account" and not target.get("inferred"):
         return "帳號{}".format(ctx.normalize_text(target.get("user")))
     return ""

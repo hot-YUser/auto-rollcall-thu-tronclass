@@ -657,13 +657,14 @@ def render_basic_config(simple_dict: ctx.Mapping[str, ctx.Any] | None = None) ->
     lines = [
         "# ===== 基本設定 config.conf =====（改完存檔關閉記事本即自動套用）",
         "# now：要用哪個帳號跑？填某帳號的 user，或填「class 群組名」。只有一個帳號可留空。",
+        "#       也可填學校網址（如 https://tronclass.你的學校.edu.tw）→ 改用手動瀏覽器登入，免填帳密。",
         "now = {}".format(simple.get("now") or ""),
         ""
     ]
 
     for index, account in enumerate(accounts, start=1):
         lines.extend([
-            "# [account] 你的帳號，要幾個就放幾塊。school 可填 THU / TKU / TRONCLASS / SCU（東吳請填 SCU，不要填 TRONCLASS）",
+            "# [account] 你的帳號，要幾個就放幾塊。school 填代號＝自動登入：THU / TKU / TRONCLASS / SCU（東吳請填 SCU，不要填 TRONCLASS）；填學校網址＝手動瀏覽器登入（passwd 可留空）",
             "[account]",
             "user = {}".format(account.get("user") or ""),
             "passwd = {}".format(account.get("passwd") or ""),

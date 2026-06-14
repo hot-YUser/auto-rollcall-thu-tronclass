@@ -111,6 +111,27 @@ class GroupDisplayTest(unittest.TestCase):
         # Inferred single account is not labelled on the live status line.
         self.assertEqual(tron.group_status_label(inferred), "")
 
+    def test_describe_url_now_is_manual_login(self) -> None:
+        # Regression: now = a bare URL must read as manual browser login, NOT
+        # as a phantom missing account ("帳號 <URL> 不存在於設定").
+        config = tron.normalize_config(tron.merge_basic_and_advanced_config({
+            "now": "https://ilearn.thu.edu.tw/user/index",
+            "accounts": [],
+            "groups": [],
+            "operating": {},
+        }, {}))
+        target = tron.resolve_now_target(config)
+        self.assertTrue(target["ok"])
+        self.assertEqual(target["kind"], "url")
+
+        summary = tron.summarize_group_target(config)
+        self.assertEqual(summary["kind"], "url")
+
+        describe = tron.describe_group_target(config)
+        self.assertIn("手動瀏覽器登入", describe)
+        self.assertNotIn("不存在於設定", describe)
+        self.assertEqual(tron.group_status_label(config), "手動登入")
+
     def test_describe_invalid_targets(self) -> None:
         missing_group = tron.normalize_config(tron.merge_basic_and_advanced_config({
             "now": "class Z",
