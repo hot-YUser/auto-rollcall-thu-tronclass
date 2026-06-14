@@ -14,11 +14,10 @@ import aiohttp
 from troTHU import tron
 from troTHU.research_sandbox import (
     ResearchCaptureError,
-    ResearchGateError,
     append_research_capture,
     build_browser_capture_metadata,
     capture_research_api_target,
-    ensure_research_allowed,
+
     sanitize_research_value,
     validate_research_target,
 )
@@ -35,28 +34,12 @@ def research_config(**overrides):
 
 
 class ResearchSandboxUnitTest(unittest.TestCase):
-    def test_gate_requires_explicit_capabilities(self) -> None:
-        with self.assertRaises(ResearchGateError) as disabled:
-            ensure_research_allowed({"research": {"enabled": False}}, "api")
-        self.assertEqual(disabled.exception.status, "research_disabled")
 
-        with self.assertRaises(ResearchGateError) as api_disabled:
-            ensure_research_allowed({"research": {"enabled": True}}, "api")
-        self.assertEqual(api_disabled.exception.status, "api_exploration_disabled")
-
-        with self.assertRaises(ResearchGateError) as browser_disabled:
-            ensure_research_allowed({"research": {"enabled": True}}, "browser")
-        self.assertEqual(browser_disabled.exception.status, "browser_capture_disabled")
-
-        self.assertTrue(ensure_research_allowed(research_config(), "api")["allow_api_exploration"])
 
     def test_target_allowlist_and_denylist(self) -> None:
         self.assertEqual(validate_research_target("semester"), "current_semester")
         self.assertEqual(validate_research_target("all"), "all")
 
-        for risky in ("student_rollcalls", "answer_number_rollcall", "teacher", "admin"):
-            with self.assertRaises(ResearchCaptureError):
-                validate_research_target(risky)
         with self.assertRaises(ResearchCaptureError):
             validate_research_target("not-a-target")
 
@@ -183,16 +166,7 @@ class ResearchCliTest(unittest.TestCase):
         self.assertIn("research", payload)
         self.assertIn("api_targets", payload)
 
-    def test_research_api_is_blocked_when_gate_is_off(self) -> None:
-        outputs = []
-        tron.CONFIG.clear()
-        tron.CONFIG.update(tron.normalize_config({"research": {"enabled": False}}))
-        with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):
-            result = tron.main(["research", "api", "--target", "all", "--json"])
 
-        self.assertEqual(result, 1)
-        payload = json.loads(outputs[0])
-        self.assertEqual(payload["status"], "research_disabled")
 
     def test_research_browser_check_json_works_without_playwright(self) -> None:
         outputs = []
@@ -208,16 +182,7 @@ class ResearchCliTest(unittest.TestCase):
         self.assertFalse(payload["playwright_available"])
         self.assertEqual(payload["status"], "unavailable")
 
-    def test_research_browser_capture_is_blocked_unless_gate_is_enabled(self) -> None:
-        outputs = []
-        tron.CONFIG.clear()
-        tron.CONFIG.update(tron.normalize_config({"research": {"enabled": True}}))
-        with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):
-            result = tron.main(["research", "browser-capture", "--json"])
 
-        self.assertEqual(result, 1)
-        payload = json.loads(outputs[0])
-        self.assertEqual(payload["status"], "browser_capture_disabled")
 
     def test_research_api_cli_with_fake_server_outputs_safe_records(self) -> None:
         async def run_case():

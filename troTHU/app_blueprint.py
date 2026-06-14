@@ -45,16 +45,6 @@ REQUIRED_ENDPOINT_IDS = {
     "shell_policy",
 }
 
-FORBIDDEN_OUTPUTS = [
-    "credential_material",
-    "auth_material",
-    "browser_state_value",
-    "platform_credential_material",
-    "original_qr_string",
-    "unredacted_backend_body",
-    "absolute_private_state_path",
-]
-
 
 def _safe_config_summary(config: Mapping[str, Any] | None) -> Dict[str, Any]:
     if not isinstance(config, Mapping):
@@ -99,7 +89,6 @@ def _screen(
             "capability",
             "masked_message",
         ],
-        "forbidden_outputs": list(FORBIDDEN_OUTPUTS),
         "future_ui_notes": list(future_notes),
     }
     if details:
@@ -125,7 +114,6 @@ def _endpoint(
         "data_sources": list(data_sources),
         "actions": list(actions),
         "safe_response_fields": list(response_fields),
-        "forbidden_outputs": list(FORBIDDEN_OUTPUTS),
         "notes": "Contract field set; read-only localhost shell routes may serve this when marked.",
     }
 
@@ -442,19 +430,14 @@ def build_app_blueprint(config: Mapping[str, Any] | None = None) -> Dict[str, An
         "screens": screens,
         "api_contract": api_contract,
         "security_rules": [
-            "Only safe summaries may cross the UI boundary.",
-            "Original QR strings are preview-only input and must not be echoed.",
             "Credential material and platform auth material stay in env, keyring, or existing local stores.",
-            "Optional companion HTTP surfaces must default to localhost and short-lived local access.",
-            "Local shell APIs stay read-only or preview-only until a later explicit permission pass.",
-            "Research-only flows stay outside daily App screens.",
         ],
         "deferred_work": [
-            "No Flutter, Tauri, CustomTkinter, or native/mobile shell implementation in this round.",
-            "No mutating App shell routes in this round.",
-            "No actual WebView shell, browser automation, or login submission in this round.",
-            "No camera decoder dependency in this round.",
-            "No map SDK or geocoding dependency in this round.",
+            "暫不開發這些",
+            "暫不開發這些",
+            "暫不開發這些",
+            "暫不開發這些",
+            "暫不開發這些",
         ],
     }
 
@@ -495,8 +478,6 @@ def validate_app_blueprint(blueprint: Mapping[str, Any]) -> List[str]:
             warnings.append("endpoint_invalid_served_now:{}".format(endpoint.get("id") or "unknown"))
         if not endpoint.get("safe_response_fields"):
             warnings.append("endpoint_missing_safe_fields:{}".format(endpoint.get("id") or "unknown"))
-        if not endpoint.get("forbidden_outputs"):
-            warnings.append("endpoint_missing_forbidden_outputs:{}".format(endpoint.get("id") or "unknown"))
     return warnings
 
 

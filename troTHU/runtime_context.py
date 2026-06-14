@@ -190,7 +190,6 @@ _EAGER_REEXPORTS = {
         "capture_research_api_target",
         "capture_rollcall_probe",
         "capture_student_rollcalls_probe",
-        "ensure_research_allowed",
     ),
     "troTHU.webview_sync": (
         "WebViewSyncError",

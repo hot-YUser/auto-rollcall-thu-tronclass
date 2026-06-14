@@ -44,7 +44,7 @@ browser = ["playwright>=1.44"]
 # Local offline OCR for login image captchas (e.g. FJU CAS). Heavy (onnxruntime
 # + bundled model, ~100MB) and intentionally excluded from the small release.
 ocr = ["ddddocr>=1.6"]
-dev = ["PyInstaller>=6", "keyring>=24", "ruff>=0.15,<0.16", "playwright>=1.44"]
+dev = ["PyInstaller>=6", "keyring>=24", "ruff>=0.15", "playwright>=1.44"]
 
 [project.urls]
 Homepage = "https://github.com/hot-YUser/auto-rollcall-thu-tronclass"

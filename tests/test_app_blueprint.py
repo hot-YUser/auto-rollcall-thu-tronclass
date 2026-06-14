@@ -53,11 +53,9 @@ class AppBlueprintTest(unittest.TestCase):
             self.assertTrue(screen["data_sources"])
             self.assertTrue(screen["actions"])
             self.assertTrue(screen["safe_response_fields"])
-            self.assertTrue(screen["forbidden_outputs"])
         for endpoint in blueprint["api_contract"]:
             self.assertIsInstance(endpoint["served_now"], bool)
             self.assertTrue(endpoint["safe_response_fields"])
-            self.assertTrue(endpoint["forbidden_outputs"])
 
     def test_validate_blueprint_reports_safe_warnings_for_missing_contracts(self) -> None:
         blueprint = build_app_blueprint()

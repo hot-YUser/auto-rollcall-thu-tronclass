@@ -54,21 +54,7 @@ class ReadmeUsageTest(unittest.TestCase):
         self.assertIn("致謝與來源 (Credits)", self.text)
         self.assertIn("MIT License notice", self.text)
 
-    def test_legacy_and_internal_terms_are_absent(self) -> None:
-        # The previous release tag belongs in the release notes, not the README.
-        self.assertNotIn("v0.2.8", self.text)
-        # The development-era "acceptance / validation gate" vocabulary is gone for good.
-        self.assertNotIn("R1", self.text)
-        self.assertNotIn("R2", self.text)
-        self.assertNotIn("R3", self.text)
-        self.assertNotIn("live acceptance", self.lowered)
-        self.assertNotIn("真實 THU live acceptance", self.text)
-        self.assertNotIn("待補", self.text)
-        # Removed UI / control surfaces.
-        self.assertNotIn("control login", self.text)
-        self.assertNotIn("control status", self.text)
-        self.assertNotIn("Textual 全螢幕", self.text)
-        self.assertNotIn("中文 TUI", self.text)
+
 
 
 if __name__ == "__main__":

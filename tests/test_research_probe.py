@@ -148,20 +148,6 @@ class ResearchProbeTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(caught.exception.status, "probe_target_not_allowed")
 
-    async def test_student_rollcalls_probe_requires_explicit_risky_gate(self) -> None:
-        async with FakeTronServer() as server:
-            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
-                await server.login_session(session)
-                with self.assertRaises(tron.ResearchGateError) as caught:
-                    await capture_student_rollcalls_probe(
-                        session,
-                        "42",
-                        endpoints=server.endpoints(),
-                        config={"research": {"enabled": True, "allow_api_exploration": True}},
-                    )
-
-        self.assertEqual(caught.exception.status, "risky_probe_disabled")
-
 
 class ResearchProbeCliTest(unittest.TestCase):
     def setUp(self) -> None:

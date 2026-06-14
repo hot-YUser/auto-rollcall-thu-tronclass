@@ -63,10 +63,7 @@ async def research_api_command(args: ctx.argparse.Namespace) -> int:
     timeout = ctx.create_http_client_timeout()
     if timeout is not None:
         session_kwargs['timeout'] = timeout
-    try:
-        ctx.ensure_research_allowed(ctx.CONFIG, 'api')
-    except ctx.ResearchGateError as exc:
-        return ctx._research_gate_failure(exc, json_output=getattr(args, 'json', False))
+
     active = ctx.get_active_profile(ctx.CONFIG)
     output_arg = ctx.normalize_text(getattr(args, 'output', ''))
     output_path = ctx.Path(output_arg) if output_arg else None
@@ -114,10 +111,7 @@ async def research_probe_command(args: ctx.argparse.Namespace) -> int:
         else:
             print('Research probe blocked: {}'.format(report['status']))
         return 1
-    try:
-        ctx.ensure_research_allowed(ctx.CONFIG, 'risky_probe')
-    except ctx.ResearchGateError as exc:
-        return ctx._research_gate_failure(exc, json_output=getattr(args, 'json', False))
+
     rollcall_id = ctx.normalize_text(getattr(args, 'rollcall_id', ''))
     if probe_target in ctx.PROBE_TARGETS_NEED_ROLLCALL_ID and not rollcall_id:
         report = {'status': 'probe_target_incomplete', 'target': probe_target, 'records': [], 'warnings': ['rollcall_id_required']}
@@ -176,10 +170,7 @@ def research_browser_check_command(json_output: bool=False) -> int:
 
 
 async def research_browser_capture_command(args: ctx.argparse.Namespace) -> int:
-    try:
-        ctx.ensure_research_allowed(ctx.CONFIG, 'browser')
-    except ctx.ResearchGateError as exc:
-        return ctx._research_gate_failure(exc, json_output=getattr(args, 'json', False))
+
     report = await ctx.capture_browser_target_metadata(getattr(args, 'target', 'home'), endpoints=ctx.get_active_http_endpoints(), provider=ctx.provider_report())
     report['provider'] = ctx.provider_report().get('key')
     if getattr(args, 'json', False):

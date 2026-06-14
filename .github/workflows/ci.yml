@@ -27,7 +27,7 @@ jobs:
         # Fail fast on lint before the heavier install + test steps.
         # Keep this pin in sync with pyproject.toml [project.optional-dependencies].dev.
         run: |
-          python -m pip install "ruff>=0.15,<0.16"
+          python -m pip install "ruff>=0.15"
           python -m ruff check troTHU tests
 
       - name: Install dependencies

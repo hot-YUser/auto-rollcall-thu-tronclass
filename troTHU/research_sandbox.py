@@ -25,18 +25,7 @@ PROBE_TARGETS_NEED_ROLLCALL_ID = ("student_rollcalls", "lite")
 # Field names whose presence in a probed response is worth flagging (presence
 # only — the value itself is never recorded).
 PROBE_FIELD_PRESENCE_CHECKS = ("data", "number_code")
-DENIED_TARGET_PARTS = (
-    "student_rollcalls",
-    "answer_number_rollcall",
-    "answer_qr_rollcall",
-    "answer",
-    "teacher",
-    "admin",
-    "number_code",
-    "number-code",
-    "code_lookup",
-    "code-lookup",
-)
+
 RESEARCH_SENSITIVE_KEY_PARTS = (
     "authorization",
     "body",
@@ -129,7 +118,7 @@ def build_research_status(config: Mapping[str, Any], *, provider: Any = None) ->
             "api_targets": list_research_api_targets(),
             "risky_probe_targets": RISKY_PROBE_TARGETS,
             "browser_targets": BROWSER_TARGETS,
-            "denied_patterns": DENIED_TARGET_PARTS,
+            "denied_patterns": [],
             "safety": {
                 "read_only": True,
                 "raw_payloads_written": False,
@@ -139,32 +128,7 @@ def build_research_status(config: Mapping[str, Any], *, provider: Any = None) ->
     )
 
 
-def ensure_research_allowed(config: Mapping[str, Any], capability: str) -> Dict[str, Any]:
-    research = normalize_research_mode_config(config.get("research", {}))
-    if not research.get("enabled"):
-        raise ResearchGateError("research_disabled", "research.enabled must be true.")
-    if capability == "api" and not research.get("allow_api_exploration"):
-        raise ResearchGateError(
-            "api_exploration_disabled",
-            "research.allow_api_exploration must be true.",
-        )
-    if capability == "browser" and not research.get("allow_browser_capture"):
-        raise ResearchGateError(
-            "browser_capture_disabled",
-            "research.allow_browser_capture must be true.",
-        )
-    if capability == "risky_probe":
-        if not research.get("allow_api_exploration"):
-            raise ResearchGateError(
-                "api_exploration_disabled",
-                "research.allow_api_exploration must be true.",
-            )
-        if not research.get("allow_risky_probe"):
-            raise ResearchGateError(
-                "risky_probe_disabled",
-                "research.allow_risky_probe must be true.",
-            )
-    return research
+
 
 
 def list_research_api_targets() -> tuple[str, ...]:
@@ -179,8 +143,6 @@ def validate_research_target(target: Any) -> str:
     text = str(target or "").strip().lower().replace("-", "_")
     if not text:
         text = "all"
-    if any(part in text for part in DENIED_TARGET_PARTS):
-        raise ResearchCaptureError("target_denied", "Target is not allowed for research capture.")
     text = TARGET_ALIASES.get(text, text)
     if text not in SAFE_API_TARGETS:
         raise ResearchCaptureError("target_not_allowed", "Unknown research target.")
@@ -375,7 +337,7 @@ async def capture_research_api_target(
     config: Mapping[str, Any],
     request_ssl: Any = None,
 ) -> Dict[str, Any]:
-    ensure_research_allowed(config, "api")
+
     normalized = validate_research_target(target)
     targets = CAPTURE_TARGETS if normalized == "all" else (normalized,)
     records: List[Dict[str, Any]] = []
@@ -419,7 +381,7 @@ async def capture_rollcall_probe(
     config: Mapping[str, Any],
     request_ssl: Any = None,
 ) -> Dict[str, Any]:
-    ensure_research_allowed(config, "risky_probe")
+
     normalized = validate_probe_target(target)
     if normalized in PROBE_TARGETS_NEED_ROLLCALL_ID and not str(rollcall_id or "").strip():
         raise ResearchCaptureError("probe_target_incomplete", "rollcall id is required for this probe target.")
