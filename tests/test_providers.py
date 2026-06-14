@@ -39,20 +39,20 @@ class ProviderConfigTest(unittest.TestCase):
         self.assertEqual(get_provider("www.tronclass.com.tw").key, "tronclass")
         self.assertEqual(get_provider("not-a-provider").key, DEFAULT_PROVIDER)
 
-    def test_registry_keeps_fju_hidden_and_tku_tronclass_visible(self) -> None:
+    def test_registry_marks_fju_visible_with_ocr_captcha_flow(self) -> None:
         registry = provider_registry_config()
 
         self.assertEqual(registry["current"], "thu")
         self.assertFalse(registry["allow_experimental"])
         self.assertTrue(registry["available"]["thu"]["ready"])
         self.assertTrue(registry["available"]["fju"]["ready"])
-        self.assertFalse(registry["available"]["fju"]["user_visible"])
+        self.assertTrue(registry["available"]["fju"]["user_visible"])
         self.assertTrue(registry["available"]["tku"]["ready"])
         self.assertTrue(registry["available"]["tku"]["user_visible"])
         self.assertTrue(registry["available"]["tronclass"]["ready"])
         self.assertTrue(registry["available"]["tronclass"]["user_visible"])
         self.assertEqual(registry["available"]["fju"]["support_level"], "ready")
-        self.assertEqual(registry["available"]["fju"]["auth_flow"], "manual_cookie_only")
+        self.assertEqual(registry["available"]["fju"]["auth_flow"], "fju_ocr_captcha")
         self.assertTrue(registry["available"]["fju"]["capabilities"]["radar"])
         self.assertEqual(registry["available"]["tku"]["support_level"], "ready")
         self.assertEqual(registry["available"]["tku"]["base_url"], "https://iclass.tku.edu.tw")
@@ -67,10 +67,10 @@ class ProviderConfigTest(unittest.TestCase):
         self.assertEqual(registry["available"]["scu"]["base_url"], "https://tronclass.scu.edu.tw")
         self.assertTrue(registry["available"]["scu"]["capabilities"]["radar"])
 
-    def test_supported_provider_registry_hides_fju_by_default(self) -> None:
+    def test_supported_provider_registry_lists_fju_as_visible(self) -> None:
         self.assertEqual(
             [provider.key for provider in list_supported_providers()],
-            ["scu", "thu", "tku", "tronclass"],
+            ["fju", "scu", "thu", "tku", "tronclass"],
         )
         self.assertEqual(
             [provider.key for provider in list_supported_providers(include_hidden=True)],
@@ -131,7 +131,7 @@ class ProviderConfigTest(unittest.TestCase):
 
         self.assertEqual(blocked["support_level"], "ready")
         self.assertTrue(blocked["daily_ready"])
-        self.assertFalse(blocked["user_visible"])
+        self.assertTrue(blocked["user_visible"])
         self.assertTrue(blocked["capabilities"]["radar"])
         self.assertTrue(allowed["daily_ready"])
         self.assertTrue(allowed["endpoint_configured"]["base_url"])
@@ -252,7 +252,11 @@ class ResearchModeConfigTest(unittest.TestCase):
                 self._configure_provider_for_fake_server(provider_key, server)
                 async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
                     self._seed_cookie_for_manual_provider(provider_key, server, session)
-                    login_result = await tron.login(session)
+                    # These exercise the shared TronClass runtime via each provider's
+                    # endpoints with an authenticated session; FJU is seeded a cookie and
+                    # must use the manual-cookie path (not the OCR captcha login here).
+                    with unittest.mock.patch.object(tron, "ddddocr_available", return_value=False):
+                        login_result = await tron.login(session)
                     self.assertTrue(login_result.ok)
                     client = tron.create_tron_http_client(session)
                     result = await tron.discover_courses(
@@ -275,7 +279,11 @@ class ResearchModeConfigTest(unittest.TestCase):
                 self._configure_provider_for_fake_server(provider_key, server)
                 async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
                     self._seed_cookie_for_manual_provider(provider_key, server, session)
-                    login_result = await tron.login(session)
+                    # These exercise the shared TronClass runtime via each provider's
+                    # endpoints with an authenticated session; FJU is seeded a cookie and
+                    # must use the manual-cookie path (not the OCR captcha login here).
+                    with unittest.mock.patch.object(tron, "ddddocr_available", return_value=False):
+                        login_result = await tron.login(session)
                     self.assertTrue(login_result.ok)
                     with (
                         unittest.mock.patch.object(tron, "NUMBER_CODE_LIMIT", 1),
@@ -299,7 +307,11 @@ class ResearchModeConfigTest(unittest.TestCase):
                 self._configure_provider_for_fake_server(provider_key, server)
                 async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
                     self._seed_cookie_for_manual_provider(provider_key, server, session)
-                    login_result = await tron.login(session)
+                    # These exercise the shared TronClass runtime via each provider's
+                    # endpoints with an authenticated session; FJU is seeded a cookie and
+                    # must use the manual-cookie path (not the OCR captcha login here).
+                    with unittest.mock.patch.object(tron, "ddddocr_available", return_value=False):
+                        login_result = await tron.login(session)
                     self.assertTrue(login_result.ok)
                     with (
                         unittest.mock.patch.object(tron, "mes", unittest.mock.AsyncMock()),

@@ -14,9 +14,11 @@ class ReadmeUsageTest(unittest.TestCase):
         self.assertIn("雷達點名", self.text)
         self.assertIn("QR Code 點名", self.text)
         self.assertIn("教師輔助", self.text)
-        # Supported schools shown up front.
+        # Supported schools shown up front (FJU is now a first-line native provider).
         self.assertIn("THU", self.text)
         self.assertIn("TKU", self.text)
+        self.assertIn("SCU", self.text)
+        self.assertIn("FJU", self.text)
 
     def test_getting_started_is_minimal(self) -> None:
         self.assertIn("## 怎麼開始用", self.text)
@@ -53,9 +55,6 @@ class ReadmeUsageTest(unittest.TestCase):
         self.assertIn("MIT License notice", self.text)
 
     def test_legacy_and_internal_terms_are_absent(self) -> None:
-        # The hidden provider must never appear in the public README.
-        self.assertNotIn("FJU", self.text)
-        self.assertNotIn("fju", self.lowered)
         # The previous release tag belongs in the release notes, not the README.
         self.assertNotIn("v0.2.8", self.text)
         # The development-era "acceptance / validation gate" vocabulary is gone for good.

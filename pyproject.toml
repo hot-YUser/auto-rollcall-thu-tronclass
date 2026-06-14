@@ -41,6 +41,9 @@ keyring = ["keyring>=24"]
 packaging = ["PyInstaller>=6", "playwright>=1.44"]
 qr-image = ["opencv-python-headless>=4.9", "Pillow>=10"]
 browser = ["playwright>=1.44"]
+# Local offline OCR for login image captchas (e.g. FJU CAS). Heavy (onnxruntime
+# + bundled model, ~100MB) and intentionally excluded from the small release.
+ocr = ["ddddocr>=1.6"]
 dev = ["PyInstaller>=6", "keyring>=24", "ruff>=0.15,<0.16", "playwright>=1.44"]
 
 [project.urls]

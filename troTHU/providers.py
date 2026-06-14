@@ -136,10 +136,9 @@ PROVIDERS: Dict[str, ProviderDefinition] = {
         label="Fu Jen Catholic University TronClass",
         base_url="https://elearn2.fju.edu.tw",
         login_url="https://elearn2.fju.edu.tw/login",
-        auth_flow="manual_cookie_only",
+        auth_flow="fju_ocr_captcha",
         status="ready",
         support_level="ready",
-        user_visible=False,
         capabilities=ProviderCapabilities(
             number=True,
             radar=True,
@@ -150,7 +149,7 @@ PROVIDERS: Dict[str, ProviderDefinition] = {
             local_scanner=True,
             direct_code_lookup=True,
         ),
-        notes="Hidden from default user-facing provider lists. FJU login is manual-cookie-only; authenticated TronClass API flows share the common runtime.",
+        notes="Fu Jen CAS login adds a 4-digit numeric image captcha solved locally via the optional 'ocr' extra (ddddocr). Without that extra it falls back to manual-cookie login. Authenticated TronClass API flows share the common runtime.",
     ),
     "tku": ProviderDefinition(
         key="tku",

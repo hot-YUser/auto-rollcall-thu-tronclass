@@ -114,6 +114,20 @@ PUBLIC_CLOUD_ORG_ID_PATTERN = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 
+# --- FJU (Fu Jen Catholic University) CAS captcha login --------------------
+# elearn2.fju.edu.tw is an Apereo CAS tenant whose login form (id="fm1", parsed
+# fine by extract_login_form) adds a 4-digit numeric image captcha served at
+# captcha.jpg (relative to /cas/, bound to JSESSIONID). Verified by live login.
+# The submit is an ordinary form-encoded CAS POST; only the captcha field and
+# the OCR-solve-with-retry differ from the shared thu_cas flow. CAS "lt" login
+# tickets are single-use, so on a failed POST the adapter re-parses the freshly
+# rendered form from the response body before retrying.
+FJU_CAPTCHA_IMAGE_NAME = "captcha.jpg"
+FJU_CAPTCHA_FIELD = "captcha"
+FJU_CAPTCHA_CHARSET = "0123456789"
+FJU_CAPTCHA_LENGTH = 4
+FJU_MAX_CAPTCHA_ATTEMPTS = 4
+
 
 class TronHttpError(Exception):
     """Base class for TronClass HTTP-layer errors."""
@@ -458,6 +472,22 @@ class TronHttpClient:
         if "vidcode" in fields and not fields["vidcode"]:
             fields["vidcode"] = await self._fetch_tku_image_validate_code(form.action_url)
         return LoginForm(action_url=form.action_url, fields=fields)
+
+    async def fetch_captcha_image(self, captcha_url: str) -> bytes:
+        """GET a login captcha image in the current session and return its bytes.
+
+        Used by image-captcha login adapters (e.g. FJU CAS). The image is bound
+        to the session cookie set when the login form was fetched, so this must
+        run on the same client/session. Raises LoginPageChangedError on a bad or
+        empty response so the caller can fall back to browser/manual login.
+        """
+        async with self.session.get(captcha_url, **self.request_kwargs()) as resp:
+            if resp.status != 200:
+                raise LoginPageChangedError("驗證碼圖片回應 HTTP {}。".format(resp.status))
+            data = await resp.read()
+        if not data:
+            raise LoginPageChangedError("驗證碼圖片內容為空。")
+        return data
 
     async def _follow_tku_login_redirects(
         self,

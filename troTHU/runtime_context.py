@@ -892,6 +892,8 @@ _LEGACY_EXPORTS = {
     'get_http_timeout_seconds': ('troTHU.auth_runtime', 'get_http_timeout_seconds'),
     'get_login_adapter': ('troTHU.login_adapters', 'get_login_adapter'),
     'get_login_retry_delay': ('troTHU.auth_runtime', 'get_login_retry_delay'),
+    'ddddocr_available': ('troTHU.ocr_captcha', 'ddddocr_available'),
+    'ocr_captcha_status': ('troTHU.ocr_captcha', 'ocr_captcha_status'),
     'get_notification_timeout_seconds': ('troTHU.auth_runtime', 'get_notification_timeout_seconds'),
     'get_number_config': ('troTHU.config_runtime', 'get_number_config'),
     'get_poll_interval': ('troTHU.config_runtime', 'get_poll_interval'),

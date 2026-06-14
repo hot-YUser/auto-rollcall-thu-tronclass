@@ -248,6 +248,7 @@ def doctor_report(network_probe: ctx.Optional[ctx.Mapping[str, ctx.Any]]=None) -
     provider_support = provider.get('support', {})
     research = ctx.research_report()
     browser_login = ctx.browser_assisted_login_status()
+    ocr_captcha = ctx.ocr_captcha_status()
     credential = ctx.credential_report(active.name)
     cookie = ctx.cookie_report(active.name)
     teacher_assist = ctx.teacher_assist_report()
@@ -267,6 +268,8 @@ def doctor_report(network_probe: ctx.Optional[ctx.Mapping[str, ctx.Any]]=None) -
                 except Exception:
                     pass
             checks.append(ctx.check_item('cookie cache status', True, 'cookie cache is near expiry{}'.format(exp_time), severity='warn'))
+    if provider.get('auth_flow') == 'fju_ocr_captcha':
+        checks.append(ctx.check_item('ocr captcha', bool(ocr_captcha.get('available')), 'ddddocr {}'.format('available' if ocr_captcha.get('available') else "not installed — FJU falls back to manual-cookie login (pip install -e '.[ocr]')"), severity='warn'))
     group_summary = ctx.summarize_group_target(ctx.CONFIG)
     group_ok = bool(group_summary.get('ok')) and not group_summary.get('skipped')
     checks.append(ctx.check_item('group target', group_ok, ctx.describe_group_target(ctx.CONFIG), severity='warn'))
@@ -281,7 +284,7 @@ def doctor_report(network_probe: ctx.Optional[ctx.Mapping[str, ctx.Any]]=None) -
     probe = dict(network_probe or {"enabled": False, "status": "disabled"})
     if probe.get("enabled") and probe.get("status") == "fail" and status == "ok":
         status = "warn"
-    return {'status': status, 'base_dir': str(ctx.BASE_DIR), 'config_path': str(ctx.CONFIG_PATH), 'provider': provider, 'provider_support': provider_support, 'active_profile': active.name, 'checks': checks, 'time': {'timezone': ctx.get_config_timezone_name(), 'now': ctx.current_datetime().isoformat(timespec='seconds')}, 'http_timeout': ctx.get_http_timeout_seconds(), 'notification_timeout': ctx.get_notification_timeout_seconds(), 'cookie': cookie, 'notifications': ctx.notification_report(), 'integrations': ctx.integration_report(), 'research': research, 'browser_assisted_login': browser_login, 'course_discovery': ctx.course_discovery_report(), 'teacher_assist': teacher_assist, 'network_probe': probe, 'config_warnings': list(getattr(ctx, 'CONFIG_WARNINGS', [])), 'packaging': packaging}
+    return {'status': status, 'base_dir': str(ctx.BASE_DIR), 'config_path': str(ctx.CONFIG_PATH), 'provider': provider, 'provider_support': provider_support, 'active_profile': active.name, 'checks': checks, 'time': {'timezone': ctx.get_config_timezone_name(), 'now': ctx.current_datetime().isoformat(timespec='seconds')}, 'http_timeout': ctx.get_http_timeout_seconds(), 'notification_timeout': ctx.get_notification_timeout_seconds(), 'cookie': cookie, 'notifications': ctx.notification_report(), 'integrations': ctx.integration_report(), 'research': research, 'browser_assisted_login': browser_login, 'ocr_captcha': ocr_captcha, 'course_discovery': ctx.course_discovery_report(), 'teacher_assist': teacher_assist, 'network_probe': probe, 'config_warnings': list(getattr(ctx, 'CONFIG_WARNINGS', [])), 'packaging': packaging}
 
 
 def print_status(json_output: bool=False) -> None:

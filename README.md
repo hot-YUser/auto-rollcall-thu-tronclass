@@ -1,6 +1,6 @@
 # Auto-Rollcall-thu-Tronclass
 
-**TronClass 校園點名系統的全自動點名工具｜支援東海 (THU)「iLearn」、淡江 (TKU)「iClass」、東吳 (SCU)「TronClass」**
+**TronClass 校園點名系統的全自動點名工具｜支援東海 (THU)「iLearn」、淡江 (TKU)「iClass」、東吳 (SCU)「TronClass」、輔仁 (FJU)「TronClass」**
 
 登入學校帳號後，它會在你設定的上課時段自動盯著課程，一偵測到點名就替你完成簽到——你不用一直盯著手機，也不用手忙腳亂找點名碼。
 
@@ -8,7 +8,7 @@
 
 ## 致謝與來源
 
-本專案 fork 自 [silvercow002/tronclass-script](https://github.com/silvercow002/tronclass-script)，並在此基礎上大幅延伸為支援 THU/TKU/SCU 使用情境的版本。
+本專案 fork 自 [silvercow002/tronclass-script](https://github.com/silvercow002/tronclass-script)，並在此基礎上大幅延伸為支援 THU/TKU/SCU/FJU 使用情境的版本。
 
 完整來源、原作者 MIT License notice 與本專案授權說明已併入本文件末尾的「致謝與來源 (Credits)」一節。
 
@@ -24,7 +24,9 @@
 
 關於 QR：學生端 API 不會提供 QR 的 `data` token，所以未設定教師帳號時，程式只會提示你貼上 QR 內容或嘗試剪貼簿輔助。教師輔助模式會使用你自備的教師帳號即時發起一場 QR 點名取得 `data`，再用學生帳號送出；教師登入失敗不會影響數字 / 雷達點名。
 
-**內建支援的學校：東海大學 (THU)、淡江大學 (TKU)、東吳大學 (SCU)，以及 TronClass 公有雲官網。** 這幾所只要填「學校代號」就會自動登入，數字、雷達都完整可用。
+**內建支援的學校：東海大學 (THU)、淡江大學 (TKU)、東吳大學 (SCU)、輔仁大學 (FJU)，以及 TronClass 公有雲官網。** 這幾所只要填「學校代號」就會自動登入，數字、雷達都完整可用。
+
+> 🔢 **輔仁 (FJU) 的登入頁有 4 碼數字圖形驗證碼**：程式用本地離線 OCR 自動辨識（需安裝選用套件 `pip install -e .[ocr]`）。若沒安裝該套件，FJU 會自動退回「手動瀏覽器登入」一次後沿用 cookie，其餘點名功能完全相同。
 
 > 🆕 **你的學校不在上面清單裡？也能用——把網址貼進設定就行。** 只要你的學校同樣是 TronClass 系統（網址長得像 `https://tronclass.你的學校.edu.tw` 或 `https://ilearn.…`、`https://iclass.…`），把那個網址填進設定，程式就會幫你開一個瀏覽器視窗、讓你像平常一樣手動登入，登入成功後它就接手自動盯點名。**不必把密碼寫進設定檔**，也不必會寫程式。詳見下面〈設定檔教學〉的「我的學校不在清單裡？」一節。
 
@@ -92,7 +94,7 @@ python -m troTHU.tron run --no-input
 now = 
 
 # [account] 你的帳號，要幾個就放幾塊。
-#   school 填學校代號就自動登入：THU / TKU / TRONCLASS / SCU（東吳請填 SCU，不要填 TRONCLASS）。
+#   school 填學校代號就自動登入：THU / TKU / TRONCLASS / SCU / FJU（東吳請填 SCU，不要填 TRONCLASS）。
 #   school 也可以填學校「網址」→ 改用手動瀏覽器登入，passwd 可留空（你會在跳出的瀏覽器裡自己登）。
 [account]
 user = s1234567
@@ -123,7 +125,7 @@ times = 09:10-12:00, 13:20-17:30
 > 小撇步：如果你整份 `config.conf` 只填了一個有效帳號，`now` 可以**留空**，程式會自動用那一個，不會逼你再填一次。
 
 **`[account]`** — 你的帳號區塊，要幾個帳號就自己複製多個區塊。每個區塊包含 `user`（學號/帳號）、`passwd`（密碼）與 `school`（學校）。`school` 有兩種填法：
-- **填學校代號 → 自動登入**：`THU` / `TKU` / `TRONCLASS` / `SCU`（東吳請填 `SCU`，別填 `TRONCLASS`）。這時程式用你填的 `user` + `passwd` 自動登入，全程零操作。也接受中文別名（例如 `帳號 = s1234567`、`密碼 = mypassword`、`學校 = 東海`）。
+- **填學校代號 → 自動登入**：`THU` / `TKU` / `TRONCLASS` / `SCU` / `FJU`（東吳請填 `SCU`，別填 `TRONCLASS`）。這時程式用你填的 `user` + `passwd` 自動登入，全程零操作。也接受中文別名（例如 `帳號 = s1234567`、`密碼 = mypassword`、`學校 = 東海` 或 `學校 = 輔仁`）。輔仁 (FJU) 另需 `pip install -e .[ocr]` 以自動辨識登入驗證碼（未安裝則退回手動瀏覽器登入）。
 - **填學校網址 → 手動瀏覽器登入**：`school = https://tronclass.你的學校.edu.tw`。這時 `passwd` 可以留空，程式會開一個瀏覽器視窗讓你自己登（見下一節）。
 
 **`[group]`** — （進階／選用）群組設定。群組功能可以「一人讀碼、全員簽到並確認 on_call_fine」。`class = A` 代表群組名稱為 A，`members` 用逗號列出該群組的成員帳號。

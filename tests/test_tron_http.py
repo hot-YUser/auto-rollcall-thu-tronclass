@@ -563,7 +563,7 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.status, "missing_credentials")
         log_print.assert_called_once()
 
-    async def test_fju_manual_cookie_provider_skips_password_login_without_cookie(self) -> None:
+    async def test_fju_without_ocr_extra_falls_back_to_manual_cookie(self) -> None:
         session = MagicMock()
         session.cookie_jar = MagicMock()
         tron.CONFIG.clear()
@@ -577,6 +577,7 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         )
 
         with (
+            patch.object(tron, "ddddocr_available", return_value=False),
             patch.object(tron, "has_session_cookie", return_value=False),
             patch.object(tron, "TronHttpClient") as client_factory,
             patch.object(tron, "browser_assisted_login", AsyncMock()) as browser_login,
@@ -2520,6 +2521,123 @@ class TronNumberRollcallTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(found, "NA")
         banner.assert_not_called()
+
+
+FJU_FAIL_FORM_HTML = (
+    '<form id="fm1" action="/cas/login;jsessionid=B?service=x" method="post">'
+    '<input name="username" value="">'
+    '<input name="password" value="">'
+    '<input name="captcha" value="">'
+    '<input type="hidden" name="lt" value="LT-2">'
+    '<input type="hidden" name="execution" value="e1s1">'
+    '<input type="hidden" name="_eventId" value="submit">'
+    "</form>"
+)
+
+
+class FjuOcrLoginAdapterTest(unittest.IsolatedAsyncioTestCase):
+    def _client(self, session):
+        endpoints = tron_http.TronHttpEndpoints(
+            base_url="https://elearn2.fju.edu.tw",
+            login_url="https://elearn2.fju.edu.tw/login",
+            session_cookie_domain="elearn2.fju.edu.tw",
+            auth_flow="fju_ocr_captcha",
+        )
+        return tron_http.TronHttpClient(session, endpoints=endpoints)
+
+    def _form(self):
+        return tron_http.LoginForm(
+            action_url="https://elearn2.fju.edu.tw/cas/login;jsessionid=A?service=x",
+            fields={
+                "username": "",
+                "password": "",
+                "captcha": "",
+                "lt": "LT-1",
+                "execution": "e1s1",
+                "_eventId": "submit",
+            },
+        )
+
+    async def test_retries_captcha_then_succeeds(self) -> None:
+        from troTHU.login_adapters import FjuOcrLoginAdapter
+        import troTHU.ocr_captcha as ocr_captcha
+
+        session = MagicMock()
+        captcha = make_response(status=200)
+        captcha.read = AsyncMock(return_value=b"\xff\xd8\xffjpeg")
+        session.get = MagicMock(return_value=make_context_manager(captcha))
+        fail = make_response(status=200, url="https://elearn2.fju.edu.tw/cas/login", text=FJU_FAIL_FORM_HTML)
+        ok = make_response(status=200, url="https://elearn2.fju.edu.tw/")
+        session.post = MagicMock(side_effect=[make_context_manager(fail), make_context_manager(ok)])
+        client = self._client(session)
+
+        with (
+            patch.object(ocr_captcha, "ddddocr_available", return_value=True),
+            patch.object(ocr_captcha, "solve_captcha", side_effect=["9999", "1234"]),
+            patch.object(tron_http, "has_session_cookie", side_effect=[False, True]),
+        ):
+            outcome = await FjuOcrLoginAdapter().submit_login(client, self._form(), "u", "p")
+
+        self.assertTrue(outcome.has_session)
+        self.assertEqual(session.post.call_count, 2)
+        second_post_data = session.post.call_args_list[1].kwargs["data"]
+        self.assertEqual(second_post_data["captcha"], "1234")
+        self.assertEqual(second_post_data["lt"], "LT-2")  # used the fresh ticket from the failed response
+
+    async def test_raises_changed_page_when_ddddocr_unavailable(self) -> None:
+        from troTHU.login_adapters import FjuOcrLoginAdapter
+        import troTHU.ocr_captcha as ocr_captcha
+
+        session = MagicMock()
+        client = self._client(session)
+        with patch.object(ocr_captcha, "ddddocr_available", return_value=False):
+            with self.assertRaises(tron_http.LoginPageChangedError):
+                await FjuOcrLoginAdapter().submit_login(client, self._form(), "u", "p")
+        session.post.assert_not_called()
+
+    async def test_rejects_after_exhausting_attempts(self) -> None:
+        from troTHU.login_adapters import FjuOcrLoginAdapter
+        import troTHU.ocr_captcha as ocr_captcha
+
+        session = MagicMock()
+        captcha = make_response(status=200)
+        captcha.read = AsyncMock(return_value=b"jpeg")
+        session.get = MagicMock(return_value=make_context_manager(captcha))
+        fail = make_response(status=200, url="https://elearn2.fju.edu.tw/cas/login", text=FJU_FAIL_FORM_HTML)
+        session.post = MagicMock(return_value=make_context_manager(fail))
+        client = self._client(session)
+
+        with (
+            patch.object(ocr_captcha, "ddddocr_available", return_value=True),
+            patch.object(ocr_captcha, "solve_captcha", return_value="0000"),
+            patch.object(tron_http, "has_session_cookie", return_value=False),
+        ):
+            with self.assertRaises(tron_http.LoginRejectedError):
+                await FjuOcrLoginAdapter().submit_login(client, self._form(), "u", "p")
+        self.assertEqual(session.post.call_count, tron_http.FJU_MAX_CAPTCHA_ATTEMPTS)
+
+    async def test_low_confidence_read_is_retried_without_posting(self) -> None:
+        from troTHU.login_adapters import FjuOcrLoginAdapter
+        import troTHU.ocr_captcha as ocr_captcha
+
+        session = MagicMock()
+        captcha = make_response(status=200)
+        captcha.read = AsyncMock(return_value=b"jpeg")
+        session.get = MagicMock(return_value=make_context_manager(captcha))
+        ok = make_response(status=200, url="https://elearn2.fju.edu.tw/")
+        session.post = MagicMock(return_value=make_context_manager(ok))
+        client = self._client(session)
+
+        with (
+            patch.object(ocr_captcha, "ddddocr_available", return_value=True),
+            patch.object(ocr_captcha, "solve_captcha", side_effect=["12", "1234"]),
+            patch.object(tron_http, "has_session_cookie", return_value=True),
+        ):
+            outcome = await FjuOcrLoginAdapter().submit_login(client, self._form(), "u", "p")
+
+        self.assertTrue(outcome.has_session)
+        self.assertEqual(session.post.call_count, 1)  # the too-short read never POSTed
+        self.assertEqual(session.get.call_count, 2)  # but it did fetch a fresh captcha
 
 
 if __name__ == "__main__":

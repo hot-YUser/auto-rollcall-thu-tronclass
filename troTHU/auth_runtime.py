@@ -119,6 +119,11 @@ def provider_requires_manual_cookie_login() -> bool:
     except Exception:
         provider = {}
     auth_flow = ctx.normalize_text(provider.get('auth_flow') if isinstance(provider, dict) else '').lower()
+    # FJU's OCR captcha login degrades to today's manual-cookie behaviour when the
+    # optional ddddocr engine is unavailable, so the provider still works out of the
+    # box (e.g. the small default release) without a hard failure.
+    if auth_flow == 'fju_ocr_captcha' and not ctx.ddddocr_available():
+        return True
     requires = auth_flow == 'manual_cookie_only'
     try:
         requires = requires or ctx.get_login_adapter(auth_flow).requires_manual_cookie_login

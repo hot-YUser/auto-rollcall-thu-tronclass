@@ -50,6 +50,8 @@ SMALL_BUNDLE_SPEC_EXCLUDES = (
     "PIL",
     "Pillow",
     "pyzbar",
+    "ddddocr",
+    "onnxruntime",
 )
 SMALL_BUNDLE_ARTIFACT_PARTS = (
     "keyring",
@@ -60,6 +62,8 @@ SMALL_BUNDLE_ARTIFACT_PARTS = (
     "Pillow",
     "pyzbar",
     "opencv_python_headless",
+    "ddddocr",
+    "onnxruntime",
 )
 OPTIONAL_RUNTIME_MODULES = (
     "keyring",

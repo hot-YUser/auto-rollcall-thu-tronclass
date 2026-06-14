@@ -6,6 +6,7 @@ from troTHU.login_adapters import (
     PublicCloudEmailLoginAdapter,
     ManualCookieLoginAdapter,
     InteractiveBrowserLoginAdapter,
+    FjuOcrLoginAdapter,
 )
 
 class LoginAdaptersTest(unittest.TestCase):
@@ -15,6 +16,7 @@ class LoginAdaptersTest(unittest.TestCase):
         self.assertIsInstance(get_login_adapter("public_cloud_email"), PublicCloudEmailLoginAdapter)
         self.assertIsInstance(get_login_adapter("manual_cookie_only"), ManualCookieLoginAdapter)
         self.assertIsInstance(get_login_adapter("interactive_browser"), InteractiveBrowserLoginAdapter)
+        self.assertIsInstance(get_login_adapter("fju_ocr_captcha"), FjuOcrLoginAdapter)
 
     def test_unknown_flow_falls_back_to_cas(self) -> None:
         self.assertIsInstance(get_login_adapter("unknown_flow"), CasLoginAdapter)
@@ -56,6 +58,13 @@ class LoginAdaptersTest(unittest.TestCase):
         self.assertTrue(ib.requires_api_session_validation)
         self.assertFalse(ib.requires_manual_cookie_login)
         self.assertFalse(ib.requires_password)
+
+        fju = get_login_adapter("fju_ocr_captcha")
+        self.assertEqual(fju.auth_flow, "fju_ocr_captcha")
+        self.assertFalse(fju.prefers_browser_assisted_login)
+        self.assertTrue(fju.requires_api_session_validation)
+        self.assertFalse(fju.requires_manual_cookie_login)
+        self.assertTrue(fju.requires_password)
 
     def test_manual_cookie_adapter_degrades_gracefully(self) -> None:
         import asyncio
@@ -102,3 +111,15 @@ class AuthPredicateBackCompatTest(unittest.TestCase):
 
     def test_thu_cas_does_not_prefer_browser(self) -> None:
         self.assertFalse(self._predicate_with_flow("thu_cas", "provider_prefers_browser_assisted_login"))
+
+    def test_fju_ocr_flow_falls_back_to_manual_cookie_only_without_ddddocr(self) -> None:
+        import unittest.mock as mock
+        import troTHU.tron as tron
+        with mock.patch.object(tron, "ddddocr_available", return_value=False):
+            self.assertTrue(
+                self._predicate_with_flow("fju_ocr_captcha", "provider_requires_manual_cookie_login")
+            )
+        with mock.patch.object(tron, "ddddocr_available", return_value=True):
+            self.assertFalse(
+                self._predicate_with_flow("fju_ocr_captcha", "provider_requires_manual_cookie_login")
+            )
