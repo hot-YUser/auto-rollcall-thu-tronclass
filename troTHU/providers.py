@@ -350,19 +350,18 @@ def normalize_base_url(text: str) -> tuple[str, str]:
     text_clean = str(text or "").strip()
     if not text_clean:
         return ("plain", "")
+    host = extract_host(text_clean)
+    # A pasted URL / dotted host ALWAYS means "open a browser and log in
+    # manually" — even when the host belongs to a school we support via API.
+    # "Typing a URL = manual login" is intentional; only a bare short name/key
+    # (THU / TKU / SCU / TRONCLASS / 東吳 …) routes to automatic API login.
+    if text_clean.startswith(("http://", "https://")) or ("." in host and not host.endswith(".")):
+        return ("url", "https://{}".format(host))
     normalized_key = text_clean.lower()
     if normalized_key in PROVIDER_ALIASES:
         return ("alias", PROVIDER_ALIASES[normalized_key])
     if normalized_key in PROVIDERS:
         return ("alias", normalized_key)
-    host = extract_host(text_clean)
-    if host:
-        for key, p in PROVIDERS.items():
-            p_host = extract_host(p.base_url)
-            if p_host and host == p_host:
-                return ("alias", key)
-    if ("." in host and not host.endswith(".")) or text_clean.startswith("http://") or text_clean.startswith("https://"):
-        return ("url", f"https://{host}")
     return ("plain", text_clean)
 
 

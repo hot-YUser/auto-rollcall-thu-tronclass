@@ -288,6 +288,31 @@ class ConfigFormatTest(unittest.TestCase):
         self.assertEqual(prov["auth_flow"], "interactive_browser")
         self.assertEqual(prov["base_url"], "https://iclass.demo.edu.tw")
 
+    def test_now_url_triggers_interactive_browser_without_account(self) -> None:
+        # `now = <URL>` (no matching [account]) -> credential-less interactive_browser.
+        parsed = tron.parse_basic_config_text("now = https://lms.example.edu.tw/login\n")
+        config = tron.normalize_config(tron.merge_basic_and_advanced_config(parsed, {}))
+        cur = config["provider"]["current"]
+        self.assertEqual(cur, "url_lms_example_edu_tw")
+        self.assertEqual(config["provider"]["available"][cur]["auth_flow"], "interactive_browser")
+        self.assertEqual(config["provider"]["available"][cur]["base_url"], "https://lms.example.edu.tw")
+        self.assertEqual(config["account"]["user"], "")
+
+    def test_interactive_provider_is_ready_without_password(self) -> None:
+        # config_is_ready_to_run must not demand a password for interactive login.
+        import copy
+        from troTHU.config_editor import config_is_ready_to_run
+        original = copy.deepcopy(tron.CONFIG)
+        try:
+            cfg = tron.normalize_config(tron.merge_basic_and_advanced_config(
+                tron.parse_basic_config_text("now = https://lms.example.edu.tw\n"), {}))
+            tron.CONFIG.clear()
+            tron.CONFIG.update(cfg)
+            self.assertTrue(config_is_ready_to_run())
+        finally:
+            tron.CONFIG.clear()
+            tron.CONFIG.update(original)
+
 
 class AdvancedProviderRenderTest(unittest.TestCase):
     def test_render_does_not_dump_builtin_registry(self) -> None:

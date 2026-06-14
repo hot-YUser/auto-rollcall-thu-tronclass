@@ -53,7 +53,8 @@ class BrowserInstallTest(unittest.TestCase):
         # No stdin prompt any more: when allowed (default) it downloads directly
         # with progress, so it can't conflict with the keypress watcher.
         mock_process = MagicMock()
-        mock_process.stdout.readline = AsyncMock(side_effect=[b"downloading", b"extracting", b""])
+        # Output is consumed in chunks now (the \r progress bar has no newlines).
+        mock_process.stdout.read = AsyncMock(side_effect=[b"Downloading 50%", b""])
         mock_process.wait = AsyncMock()
         mock_process.returncode = 0
         mock_sub.return_value = mock_process
@@ -69,6 +70,7 @@ class BrowserInstallTest(unittest.TestCase):
             self.assertIn("fake_driver.exe", args)
             self.assertIn("install", args)
             self.assertIn("chromium", args)
+            self.assertIn("--no-shell", args)
         finally:
             tron.CONFIG.clear()
             tron.CONFIG.update(original_config)

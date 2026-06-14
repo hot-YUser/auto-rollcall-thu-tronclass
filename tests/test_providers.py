@@ -391,7 +391,10 @@ class CustomProviderTest(unittest.TestCase):
     def test_normalize_base_url(self) -> None:
         from troTHU.providers import normalize_base_url
         self.assertEqual(normalize_base_url("東吳大學"), ("alias", "scu"))
-        self.assertEqual(normalize_base_url("https://tronclass.scu.edu.tw/user/index"), ("alias", "scu"))
+        self.assertEqual(normalize_base_url("SCU"), ("alias", "scu"))
+        # A pasted URL / domain is ALWAYS manual login, even for an API-adapted school.
+        self.assertEqual(normalize_base_url("https://tronclass.scu.edu.tw/user/index"), ("url", "https://tronclass.scu.edu.tw"))
+        self.assertEqual(normalize_base_url("tronclass.com.tw"), ("url", "https://tronclass.com.tw"))
         self.assertEqual(normalize_base_url("iclass-demo.edu.tw"), ("url", "https://iclass-demo.edu.tw"))
         self.assertEqual(normalize_base_url("https://iclass-demo.edu.tw/login"), ("url", "https://iclass-demo.edu.tw"))
         self.assertEqual(normalize_base_url("thuu"), ("plain", "thuu"))

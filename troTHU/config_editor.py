@@ -59,10 +59,16 @@ def reload_config_after_editor() -> ctx.Dict[str, ctx.Any]:
 def config_is_ready_to_run() -> bool:
     """True when a real (user, password) can be resolved to log in with.
 
-    Mirrors auth_runtime.login's missing-credentials guard
-    (has_real_credential of both user and password) so the startup check and the
-    monitor loop agree on what "configured" means. Blank, placeholder, or the
-    friendly template's example credentials all resolve to "not ready"."""
+    Interactive-browser providers (a URL school, or now=URL) need NO config
+    password — the user types credentials in the browser — so they are always
+    "ready". Otherwise mirror auth_runtime.login's missing-credentials guard
+    (real user AND password); blank, placeholder, or still-example credentials
+    resolve to "not ready"."""
+    try:
+        if ctx.provider_requires_interactive_browser_login():
+            return True
+    except Exception:
+        pass
     user, passwd, _ = ctx.resolve_credentials()
     return ctx.has_real_credential(user) and ctx.has_real_credential(passwd)
 

@@ -875,6 +875,19 @@ def _simple_target_account(simple: ctx.Mapping[str, ctx.Any]) -> ctx.Dict[str, s
 def merge_basic_and_advanced_config(simple: ctx.Mapping[str, ctx.Any], advanced: ctx.Mapping[str, ctx.Any] | None = None) -> ctx.Dict[str, ctx.Any]:
     config = ctx.copy.deepcopy(dict(advanced or {}))
     account = _simple_target_account(simple)
+    # `now = <a URL>` is an explicit "open a browser and log into this site"
+    # shortcut: override the active account to a credential-less interactive
+    # provider, even with no matching [account] block.
+    now_url_key = None
+    now_url_base = None
+    now_raw = _strip_value(simple.get("now"))
+    if now_raw:
+        _now_kind, _now_base = ctx.normalize_base_url(now_raw)
+        if _now_kind == "url":
+            now_url_key = ctx.derive_url_provider_key(now_raw)
+            if now_url_key:
+                now_url_base = _now_base
+                account = {"user": "", "passwd": "", "school": now_url_key}
     config["account"] = {"user": account["user"], "passwd": account["passwd"]}
     teacher_source = simple.get("teacher") if isinstance(simple.get("teacher"), dict) else {}
     config["teacher"] = {
@@ -926,6 +939,8 @@ def merge_basic_and_advanced_config(simple: ctx.Mapping[str, ctx.Any], advanced:
     for item in simple.get("accounts", []) or []:
         collect_url_school(item)
     collect_url_school(teacher_source)
+    if now_url_key and now_url_base:
+        url_providers[now_url_key] = now_url_base
     provider = dict(config.get("provider", {})) if isinstance(config.get("provider"), dict) else {}
     provider_available = dict(provider.get("available", {}))
     for key, base_url in url_providers.items():
