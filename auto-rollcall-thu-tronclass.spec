@@ -140,7 +140,9 @@ playwright_datas_extra = collect_data_files("playwright", include_py_files=True)
 # downloaded in the add-on bundle; browser_install sets PLAYWRIGHT_NODEJS_PATH to it.
 # The small driver/package/ (cli.js) stays, since playwright resolves it package-relative.
 def _strip_node(entries):
-    return [e for e in entries if not str(e[1]).replace("\\", "/").endswith("driver/node.exe")]
+    # Match the source filename (collect_all puts node.exe in entry[0]; the dest in
+    # entry[1] may be just the "playwright/driver" directory).
+    return [e for e in entries if str(e[0]).replace("\\", "/").rsplit("/", 1)[-1].lower() != "node.exe"]
 
 combined_datas = DATAS + _strip_node(playwright_datas) + _strip_node(playwright_datas_extra)
 combined_binaries = _strip_node(playwright_binaries)
@@ -175,6 +177,11 @@ a = Analysis(
     noarchive=False,
     optimize=0,
 )
+# node.exe is re-added by PyInstaller's bundled playwright hook (not just collect_all),
+# so strip it from the final TOCs here — this is the authoritative removal of the 92MB
+# driver. driver/package (cli.js) stays; browser_install downloads node.exe on demand.
+a.datas = [t for t in a.datas if not str(t[0]).replace("\\", "/").lower().endswith("node.exe")]
+a.binaries = [t for t in a.binaries if not str(t[0]).replace("\\", "/").lower().endswith("node.exe")]
 pyz = PYZ(a.pure)
 
 exe = EXE(
