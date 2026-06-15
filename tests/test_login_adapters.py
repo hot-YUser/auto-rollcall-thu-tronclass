@@ -3,6 +3,7 @@ from troTHU.login_adapters import (
     get_login_adapter,
     CasLoginAdapter,
     CasApiValidatedLoginAdapter,
+    KeycloakOcrCaptchaLoginAdapter,
     TkuSsoLoginAdapter,
     PublicCloudEmailLoginAdapter,
     ManualCookieLoginAdapter,
@@ -20,6 +21,7 @@ class LoginAdaptersTest(unittest.TestCase):
         self.assertIsInstance(get_login_adapter("interactive_browser"), InteractiveBrowserLoginAdapter)
         self.assertIsInstance(get_login_adapter("fju_ocr_captcha"), FjuOcrLoginAdapter)
         self.assertIsInstance(get_login_adapter("cas_ocr_captcha"), FjuOcrLoginAdapter)
+        self.assertIsInstance(get_login_adapter("keycloak_ocr_captcha"), KeycloakOcrCaptchaLoginAdapter)
 
     def test_unknown_flow_falls_back_to_cas(self) -> None:
         self.assertIsInstance(get_login_adapter("unknown_flow"), CasLoginAdapter)
@@ -40,6 +42,12 @@ class LoginAdaptersTest(unittest.TestCase):
         self.assertTrue(cas_validated.requires_api_session_validation)
         self.assertFalse(cas_validated.requires_manual_cookie_login)
         self.assertTrue(cas_validated.requires_password)
+
+        kc = get_login_adapter("keycloak_ocr_captcha")
+        self.assertEqual(kc.auth_flow, "keycloak_ocr_captcha")
+        self.assertTrue(kc.requires_api_session_validation)
+        self.assertFalse(kc.requires_manual_cookie_login)
+        self.assertTrue(kc.requires_password)
 
         tku = get_login_adapter("tku_sso_browser")
         self.assertEqual(tku.auth_flow, "tku_sso_browser")
@@ -93,6 +101,46 @@ class LoginAdaptersTest(unittest.TestCase):
             asyncio.run(ib.fetch_login_form(None))
         with self.assertRaises(LoginPageChangedError):
             asyncio.run(ib.submit_login(None, None, "u", "p"))
+
+
+class KeycloakCaptchaHelperTest(unittest.TestCase):
+    def test_captcha_url_derivation(self) -> None:
+        from troTHU.login_adapters import _keycloak_captcha_url
+        # login-actions form action -> realm captcha endpoint (with /auth prefix)
+        self.assertEqual(
+            _keycloak_captcha_url(
+                "https://tcidentity.asia.edu.tw/auth/realms/asia/login-actions/authenticate?execution=x"
+            ),
+            "https://tcidentity.asia.edu.tw/auth/realms/asia/captcha/code",
+        )
+        # newer Keycloak without /auth prefix
+        self.assertEqual(
+            _keycloak_captcha_url("https://id.example.edu/realms/foo/login-actions/authenticate?e=1"),
+            "https://id.example.edu/realms/foo/captcha/code",
+        )
+        # non-Keycloak action -> empty (caller raises)
+        self.assertEqual(_keycloak_captcha_url("https://x.edu/cas/login"), "")
+
+    def test_fetch_keycloak_captcha_parses_data_uri(self) -> None:
+        import asyncio
+        import base64
+        from unittest.mock import MagicMock, AsyncMock
+        from troTHU.login_adapters import _fetch_keycloak_captcha
+
+        png = base64.b64encode(b"\x89PNG\r\n\x1a\nFAKEIMAGEDATA").decode()
+        resp = MagicMock()
+        resp.status = 200
+        resp.json = AsyncMock(return_value={"image": "data:image/png;base64," + png, "key": "uuid-123"})
+        cm = MagicMock()
+        cm.__aenter__ = AsyncMock(return_value=resp)
+        cm.__aexit__ = AsyncMock(return_value=None)
+        client = MagicMock()
+        client.session.get.return_value = cm
+        client.request_kwargs.return_value = {}
+
+        image_bytes, key = asyncio.run(_fetch_keycloak_captcha(client, "https://x/realms/r/captcha/code"))
+        self.assertTrue(image_bytes.startswith(b"\x89PNG"))
+        self.assertEqual(key, "uuid-123")
 
 
 class AuthPredicateBackCompatTest(unittest.TestCase):

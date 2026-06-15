@@ -424,6 +424,9 @@ PUT {teacher_base}/api/rollcall/{teacher_rollcall_id}/stop_qr_rollcall
     captcha_charset = "0123456789abcdefghijklmnopqrstuvwxyz"  # 預設僅 0-9
     captcha_length = 5                                        # 預設 4
     ```
+  - `keycloak_ocr_captcha`：Keycloak（WeJoy／智園 `tw-common` 佈景）登入頁的驗證碼——它不是靜態
+    `captcha.jpg`，而是 JS 打 `GET /auth/realms/<realm>/captcha/code` 拿 JSON `{image, key}`，送出時要同時
+    帶 `captchaCode`（OCR 結果）與 `captchaKey`（回傳的 key）。本程式已自動處理（亞洲、馬偕、虎尾屬此類）。
   - `public_cloud_email`：TronClass 原生 email／密碼登入、沒有外部 CAS（像公有雲官網、澳門鏡湖）。
   - 若某校 `/login` 不會乾淨轉跳到登入表單（少數同網域學校只在 `/cas/login` 提供表單），在區塊內把 `login_url` 指明即可。
 

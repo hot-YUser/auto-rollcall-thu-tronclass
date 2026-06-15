@@ -1,8 +1,44 @@
 from __future__ import annotations
+import base64
+import re
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 from urllib.parse import urljoin
 import troTHU.tron_http as tron_http
+
+
+def _keycloak_captcha_url(action_url: str) -> str:
+    """Derive the JSON captcha endpoint from a Keycloak login-actions form action.
+
+    e.g. https://tcidentity.asia.edu.tw/auth/realms/asia/login-actions/authenticate?...
+      -> https://tcidentity.asia.edu.tw/auth/realms/asia/captcha/code
+    Works with or without the legacy /auth path prefix. Returns "" if not derivable.
+    """
+    match = re.search(r"^(.*?/realms/[^/]+)/", str(action_url or ""))
+    if not match:
+        return ""
+    return match.group(1) + tron_http.KEYCLOAK_CAPTCHA_ENDPOINT_SUFFIX
+
+
+async def _fetch_keycloak_captcha(client: tron_http.TronHttpClient, url: str) -> Tuple[bytes, str]:
+    """GET the Keycloak captcha JSON {image: data-URI, key} in-session; return (image_bytes, key)."""
+    async with client.session.get(
+        url,
+        headers={"X-Requested-With": "XMLHttpRequest", "Accept": "application/json"},
+        **client.request_kwargs(),
+    ) as resp:
+        if resp.status != 200:
+            raise tron_http.LoginPageChangedError("Keycloak 驗證碼端點回應 HTTP {}。".format(resp.status))
+        data = await resp.json(content_type=None)
+    image = str((data or {}).get("image", ""))
+    key = str((data or {}).get("key", ""))
+    if not image.startswith("data:image") or "," not in image or not key:
+        raise tron_http.LoginPageChangedError("Keycloak 驗證碼回應格式非預期。")
+    try:
+        image_bytes = base64.b64decode(image.split(",", 1)[1])
+    except Exception as exc:
+        raise tron_http.LoginPageChangedError("Keycloak 驗證碼影像解碼失敗。") from exc
+    return image_bytes, key
 
 
 def _adapter_has_session(client: tron_http.TronHttpClient) -> bool:
@@ -324,9 +360,83 @@ class FjuOcrLoginAdapter(LoginAdapter):
         )
 
 
+class KeycloakOcrCaptchaLoginAdapter(CasLoginAdapter):
+    """Keycloak (WeJoy/TronClass 'tw-common' theme) CAS login whose form adds a JS-
+    loaded image captcha — verified live on 亞洲/馬偕/虎尾. Unlike FJU's static
+    captcha.jpg, the image and a one-time key come from
+    GET /auth/realms/<realm>/captcha/code as JSON {image: data-URI, key}; the page
+    fills a hidden `captchaKey` and the user types `captchaCode`. So submit_login OCRs
+    the data-URI image and POSTs captchaCode (OCR) + captchaKey (returned key) with the
+    credentials. Retries against a freshly rendered form on a miss (single-use tokens),
+    and degrades like FJU when ddddocr is unavailable.
+    """
+
+    auth_flow = "keycloak_ocr_captcha"
+    requires_api_session_validation = True
+    requires_password = True
+
+    async def submit_login(
+        self,
+        client: tron_http.TronHttpClient,
+        form: tron_http.LoginForm,
+        username: str,
+        password: str,
+    ) -> tron_http.LoginOutcome:
+        import troTHU.ocr_captcha as ocr_captcha
+
+        if not ocr_captcha.ddddocr_available():
+            raise tron_http.LoginPageChangedError(
+                "Keycloak 圖形驗證碼登入需要 OCR 套件；請安裝 pip install -e .[ocr]，或改用瀏覽器／手動 cookie 登入。"
+            )
+
+        current_form = form
+        for _ in range(tron_http.KEYCLOAK_CAPTCHA_MAX_ATTEMPTS):
+            captcha_url = _keycloak_captcha_url(current_form.action_url)
+            if not captcha_url:
+                raise tron_http.LoginPageChangedError("無法從 Keycloak 登入表單推導驗證碼端點。")
+            image_bytes, key = await _fetch_keycloak_captcha(client, captcha_url)
+            try:
+                code = ocr_captcha.solve_captcha(image_bytes, charset=tron_http.KEYCLOAK_CAPTCHA_CHARSET)
+            except ocr_captcha.OcrUnavailableError as exc:
+                raise tron_http.LoginPageChangedError(str(exc)) from exc
+
+            if len(code) != tron_http.KEYCLOAK_CAPTCHA_LENGTH:
+                continue  # low-confidence read; fetch a fresh captcha and retry
+
+            form_data = dict(current_form.fields)
+            form_data.update(
+                {
+                    current_form.username_field: username,
+                    current_form.password_field: password,
+                    tron_http.KEYCLOAK_CAPTCHA_CODE_FIELD: code,
+                    tron_http.KEYCLOAK_CAPTCHA_KEY_FIELD: key,
+                }
+            )
+            async with client.session.post(
+                current_form.action_url,
+                data=form_data,
+                **client.request_kwargs(),
+            ) as resp:
+                body = await resp.text()
+                final_url = str(resp.url)
+
+            if _adapter_has_session(client) and "login" not in final_url.lower():
+                return tron_http.LoginOutcome(final_url=final_url, has_session=True)
+
+            try:
+                current_form = tron_http.extract_login_form(body, final_url)
+            except tron_http.LoginPageChangedError:
+                break
+
+        raise tron_http.LoginRejectedError(
+            "登入失敗，請檢查帳號或密碼是否正確（或圖形驗證碼辨識連續失敗）。"
+        )
+
+
 _adapters_by_flow: Dict[str, LoginAdapter] = {
     "thu_cas": CasLoginAdapter(),
     "cas_api_validated": CasApiValidatedLoginAdapter(),
+    "keycloak_ocr_captcha": KeycloakOcrCaptchaLoginAdapter(),
     "tku_sso_browser": TkuSsoLoginAdapter(),
     "public_cloud_email": PublicCloudEmailLoginAdapter(),
     "manual_cookie_only": ManualCookieLoginAdapter(),

@@ -161,8 +161,11 @@ class ProviderConfigTest(unittest.TestCase):
         self.assertIn("/api/radar/rollcalls", pu.rollcalls_url)
         # NOU only serves its CAS form at /cas/login, not /login
         self.assertEqual(get_provider("nou").login_url, "https://tronclass.nou.edu.tw/cas/login")
-        # captcha school routes to the generic OCR flow; email-login school to public cloud
-        self.assertEqual(get_provider("ntou").auth_flow, "cas_ocr_captcha")
+        # captcha schools route to the right OCR flow; email-login school to public cloud
+        self.assertEqual(get_provider("ntou").auth_flow, "cas_ocr_captcha")  # Apereo captcha.jpg
+        self.assertEqual(get_provider("asia").auth_flow, "keycloak_ocr_captcha")  # Keycloak JSON captcha
+        self.assertEqual(get_provider("nfu").auth_flow, "keycloak_ocr_captcha")
+        self.assertEqual(get_provider("mkc").auth_flow, "keycloak_ocr_captcha")
         self.assertEqual(get_provider("kwnc").auth_flow, "public_cloud_email")
         # Chinese aliases resolve to the right key
         self.assertEqual(get_provider("靜宜大學").key, "pu")

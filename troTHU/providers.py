@@ -240,7 +240,7 @@ _STANDARD_CAPS = ProviderCapabilities(
 
 # (key, label, base_url, auth_flow, login_url_override | None)
 _TRONCLASS_SCHOOLS = [
-    ("asia", "Asia University TronClass", "https://tronclass.asia.edu.tw", "cas_api_validated", None),
+    ("asia", "Asia University TronClass", "https://tronclass.asia.edu.tw", "keycloak_ocr_captcha", None),
     ("au", "Aletheia University TronClass", "https://tronclass.au.edu.tw", "cas_api_validated", None),
     ("aeust", "Oriental Institute of Technology TronClass", "https://elearning.aeust.edu.tw", "cas_api_validated", None),
     ("cgust", "Chang Gung University of Science and Technology TronClass", "https://tronclass.cgust.edu.tw", "cas_api_validated", None),
@@ -252,12 +252,12 @@ _TRONCLASS_SCHOOLS = [
     ("dyu", "Da-Yeh University TronClass", "https://tronclass.dyu.edu.tw", "cas_api_validated", None),
     ("hk", "Hungkuang University TronClass", "https://tronclass.hk.edu.tw", "cas_api_validated", None),
     ("hwu", "Hsing Wu University TronClass", "https://iclass.hwu.edu.tw", "cas_api_validated", None),
-    ("mkc", "MacKay Junior College of Medicine, Nursing and Management TronClass", "https://tronclass.mkc.edu.tw", "cas_api_validated", None),
+    ("mkc", "MacKay Junior College of Medicine, Nursing and Management TronClass", "https://tronclass.mkc.edu.tw", "keycloak_ocr_captcha", None),
     ("must", "Minghsin University of Science and Technology TronClass", "https://tronclass.must.edu.tw", "cas_api_validated", None),
     ("nanya", "Nanya Institute of Technology TronClass", "https://tronclass.nanya.edu.tw", "cas_api_validated", None),
     ("ncue", "National Changhua University of Education TronClass", "https://tronclass.ncue.edu.tw", "cas_api_validated", None),
     ("ncut", "National Chin-Yi University of Technology TronClass", "https://tronclass.ncut.edu.tw", "cas_api_validated", None),
-    ("nfu", "National Formosa University TronClass", "https://ulearn.nfu.edu.tw", "cas_api_validated", None),
+    ("nfu", "National Formosa University TronClass", "https://ulearn.nfu.edu.tw", "keycloak_ocr_captcha", None),
     ("nou", "National Open University TronClass", "https://tronclass.nou.edu.tw", "cas_api_validated", "https://tronclass.nou.edu.tw/cas/login"),
     ("nsysu", "National Sun Yat-sen University TronClass", "https://elearn.nsysu.edu.tw", "cas_api_validated", None),
     ("ntou", "National Taiwan Ocean University TronClass", "https://tronclass.ntou.edu.tw", "cas_ocr_captcha", None),

@@ -128,6 +128,20 @@ FJU_CAPTCHA_CHARSET = "0123456789"
 FJU_CAPTCHA_LENGTH = 4
 FJU_MAX_CAPTCHA_ATTEMPTS = 4
 
+# --- Keycloak (WeJoy/TronClass "tw-common" theme) JSON captcha -------------
+# Some Keycloak tenants (verified live 2026-06: 亞洲 Asia, 馬偕 MacKay, 虎尾 NFU) gate
+# the CAS login form behind a captcha loaded by JS, NOT a static captcha.jpg. The page
+# calls getCaptchaCode(realm) -> GET /auth/realms/<realm>/captcha/code which returns
+# {"image": "data:image/png;base64,...", "key": "<uuid>"}; it sets a hidden `captchaKey`
+# and the user types `captchaCode`. The image is 4-char alphanumeric. The submit must
+# carry BOTH captchaCode (the OCR result) and captchaKey (the returned key).
+KEYCLOAK_CAPTCHA_ENDPOINT_SUFFIX = "/captcha/code"
+KEYCLOAK_CAPTCHA_CODE_FIELD = "captchaCode"
+KEYCLOAK_CAPTCHA_KEY_FIELD = "captchaKey"
+KEYCLOAK_CAPTCHA_CHARSET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+KEYCLOAK_CAPTCHA_LENGTH = 4
+KEYCLOAK_CAPTCHA_MAX_ATTEMPTS = 5
+
 
 class TronHttpError(Exception):
     """Base class for TronClass HTTP-layer errors."""
