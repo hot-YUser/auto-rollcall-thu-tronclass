@@ -440,7 +440,7 @@ now = AAAAA 或 class A 或 「class A」 擇一
 
 [account]
 # 你儲存的帳號，要幾個就放幾塊方便快速切換。
-# school 填代號＝自動登入：THU / TKU / TRONCLASS / SCU（東吳請填 SCU，不要填 TRONCLASS）；填學校網址＝手動瀏覽器登入（passwd 可留空）
+# school 填代號＝自動登入：THU / TKU / TRONCLASS / SCU / FJU；填學校網址＝手動瀏覽器登入（passwd 可留空）
 user = AAAAA
 passwd = **OOXX
 school = THU
@@ -448,7 +448,7 @@ school = THU
 
 [account]
 # 你儲存的帳號，要幾個就放幾塊方便快速切換。
-# school 填代號＝自動登入：THU / TKU / TRONCLASS / SCU（東吳請填 SCU，不要填 TRONCLASS）；填學校網址＝手動瀏覽器登入（passwd 可留空）
+# school 填代號＝自動登入：THU / TKU / TRONCLASS / SCU / FJU；填學校網址＝手動瀏覽器登入（passwd 可留空）
 user = BBBBB
 passwd = XXOO**
 school = THU
@@ -456,7 +456,7 @@ school = THU
 
 [account]
 # 你儲存的帳號，要幾個就放幾塊方便快速切換。
-# school 填代號＝自動登入：THU / TKU / TRONCLASS / SCU（東吳請填 SCU，不要填 TRONCLASS）；填學校網址＝手動瀏覽器登入（passwd 可留空）
+# school 填代號＝自動登入：THU / TKU / TRONCLASS / SCU / FJU；填學校網址＝手動瀏覽器登入（passwd 可留空）
 user =
 passwd =
 school =

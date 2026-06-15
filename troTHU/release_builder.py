@@ -61,7 +61,8 @@ LATEST_BUILD_REPORT = Path("state") / "release" / "latest_release_build.json"
 # node driver, kept out of the lean main exe and downloaded on demand.
 SIDECAR_SPEC_NAME = "fju-ocr.spec"
 SIDECAR_NAME = "fju-ocr"
-ADDON_ROOT = "THU_Auto_Rollcall-addons-v{}-windows-x64".format(PROJECT_RELEASE_LABEL)
+# Short, distinct from the main program zip so users grab the right file.
+ADDON_ROOT = "addons-v{}-win".format(PROJECT_VERSION)
 ADDON_ARTIFACT = ADDON_ROOT + ".zip"
 
 
@@ -280,16 +281,26 @@ def build_release_build_preflight(
         "python -m troTHU.tron release-check --dist dist --json",
     ]
     pyinstaller_available = _module_available("PyInstaller")
+    release_notes_present = (base / RELEASE_NOTES_FILE).is_file()
+    warnings = []
+    if not pyinstaller_available:
+        warnings.append("pyinstaller_unavailable_for_execute")
+    if not release_notes_present:
+        warnings.append("missing_release_notes")
     return {
         "version": "release-build-v1",
         "project": {"name": PROJECT_NAME, "version": PROJECT_VERSION},
         "execute": False,
         "pyinstaller_available": pyinstaller_available,
+        "release_notes_present": release_notes_present,
+        "release_notes_file": RELEASE_NOTES_FILE,
+        "self_cleans_dist": True,
         "artifact": {
             "name": EXPECTED_WINDOWS_ZIP,
             "path": _rel(artifact_path, base),
             "collect_dir": _rel(collect_dir, base),
             "root": ARTIFACT_ROOT,
+            "addon_name": ADDON_ARTIFACT,
         },
         "directories": {
             "dist": dist_path.name if dist_path.parent == base else dist_path.name,
@@ -306,8 +317,8 @@ def build_release_build_preflight(
             "does_not_upload_artifact": True,
             "does_not_call_tronclass_or_bot_platforms": True,
         },
-        "status": "ok" if pyinstaller_available else "warn",
-        "warnings": [] if pyinstaller_available else ["pyinstaller_unavailable_for_execute"],
+        "status": "ok" if (pyinstaller_available and release_notes_present) else "warn",
+        "warnings": warnings,
     }
 
 
@@ -532,6 +543,21 @@ def run_release_build_pipeline(
         report["reason"] = "pyinstaller_unavailable"
         _write_latest_build_report(base, report)
         return report
+    # Fail fast on a missing/empty release-notes file — before the long build,
+    # not after PyInstaller when packaging would discover it.
+    notes_file = base / RELEASE_NOTES_FILE
+    try:
+        notes_ok = notes_file.is_file() and bool(notes_file.read_text(encoding="utf-8").strip())
+    except OSError:
+        notes_ok = False
+    if not notes_ok:
+        report["status"] = "fail"
+        report["reason"] = "missing_release_notes"
+        _write_latest_build_report(base, report)
+        return report
+    # Self-clean: a stale dist/ makes the mid-pipeline release-check fail; start fresh.
+    shutil.rmtree(dist_path, ignore_errors=True)
+    shutil.rmtree(work_path, ignore_errors=True)
     work_path.mkdir(parents=True, exist_ok=True)
     dist_path.mkdir(parents=True, exist_ok=True)
 

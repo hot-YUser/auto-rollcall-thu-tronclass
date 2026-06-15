@@ -38,9 +38,13 @@
 
 ### 我只是想用（Windows，最簡單）
 
-1. 到 Releases 下載 `THU_Auto_Rollcall-v1.5-alpha.1-windows-x64.zip`。
+1. 到 Releases，**只下載主程式這一個檔**：**`THU_Auto_Rollcall-v1.5-alpha.2-windows-x64.zip`**。
 2. **整包解壓縮**到一個固定資料夾（不要在 zip 裡直接雙擊）。
 3. 進到資料夾，執行 `auto-rollcall-thu-tronclass.exe`。
+
+> 📌 **下載哪個檔？** Releases 頁面會有兩個壓縮檔，請認清：
+> - ✅ **主程式（要下載這個）**：`THU_Auto_Rollcall-v1.5-alpha.2-windows-x64.zip` —— 解壓後執行裡面的 exe。
+> - ➕ **附加元件（通常不用手動下載）**：`addons-v1.5a2-win.zip` —— 只有「輔大 FJU 辨識驗證碼」或「手動瀏覽器登入」會用到，程式**需要時會自動下載**。**它不是程式本體、不要直接執行**；只有在自動下載失敗（如網路受限）時，才手動下載它、放到 exe 旁邊或 `state\addons\` 即可（程式會自動採用，不再重抓）。
 
 第一次啟動會在 exe 旁邊自動建立 `config.conf`、`config.advanced.toml`、`state/`、`log/` 四樣東西。程式一啟動就直接進入監控；**按任意鍵**就會用記事本打開 `config.conf` 讓你填帳號密碼，存檔關掉記事本後它會自動重新讀取設定。
 
@@ -94,7 +98,7 @@ python -m troTHU.tron run --no-input
 now = 
 
 # [account] 你的帳號，要幾個就放幾塊。
-#   school 填學校代號就自動登入：THU / TKU / TRONCLASS / SCU / FJU（東吳請填 SCU，不要填 TRONCLASS）。
+#   school 填學校代號就自動登入：THU / TKU / TRONCLASS / SCU / FJU。
 #   school 也可以填學校「網址」→ 改用手動瀏覽器登入，passwd 可留空（你會在跳出的瀏覽器裡自己登）。
 [account]
 user = s1234567
@@ -125,7 +129,7 @@ times = 09:10-12:00, 13:20-17:30
 > 小撇步：如果你整份 `config.conf` 只填了一個有效帳號，`now` 可以**留空**，程式會自動用那一個，不會逼你再填一次。
 
 **`[account]`** — 你的帳號區塊，要幾個帳號就自己複製多個區塊。每個區塊包含 `user`（學號/帳號）、`passwd`（密碼）與 `school`（學校）。`school` 有兩種填法：
-- **填學校代號 → 自動登入**：`THU` / `TKU` / `TRONCLASS` / `SCU` / `FJU`（東吳請填 `SCU`，別填 `TRONCLASS`）。這時程式用你填的 `user` + `passwd` 自動登入，全程零操作。也接受中文別名（例如 `帳號 = s1234567`、`密碼 = mypassword`、`學校 = 東海` 或 `學校 = 輔仁`）。輔仁 (FJU) 的登入驗證碼由 OCR 自動辨識（打包版首次用到時自動下載附加元件；原始碼安裝用 `pip install -e .[ocr]`）。
+- **填學校代號 → 自動登入**：`THU` / `TKU` / `TRONCLASS` / `SCU` / `FJU`。這時程式用你填的 `user` + `passwd` 自動登入，全程零操作。也接受中文別名（例如 `帳號 = s1234567`、`密碼 = mypassword`、`學校 = 東海` 或 `學校 = 輔仁`）。輔仁 (FJU) 的登入驗證碼由 OCR 自動辨識（打包版首次用到時自動下載附加元件；原始碼安裝用 `pip install -e .[ocr]`）。
 - **填學校網址 → 手動瀏覽器登入**：`school = https://tronclass.你的學校.edu.tw`。這時 `passwd` 可以留空，程式會開一個瀏覽器視窗讓你自己登（見下一節）。
 
 **`[group]`** — （進階／選用）群組設定。群組功能可以「一人讀碼、全員簽到並確認 on_call_fine」。`class = A` 代表群組名稱為 A，`members` 用逗號列出該群組的成員帳號。

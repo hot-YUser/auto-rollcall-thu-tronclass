@@ -1,29 +1,32 @@
-"""On-demand download of the single optional add-on bundle.
+"""On-demand acquisition of the single optional add-on bundle.
 
 The lean default exe ships without the heavy optional pieces. They live in ONE
-downloadable zip (this round; the shape is a small list so more can be added
-later without rework):
+zip (this round; the shape is small so more can be added later):
   - ``fju-ocr/``  — standalone OCR captcha sidecar (ddddocr + model + onnxruntime
-    + headless opencv), invoked out-of-process by ``ocr_captcha``.
+    + opencv), invoked out-of-process by ``ocr_captcha``.
   - ``node.exe``  — the Playwright node driver (~92MB), the part stripped from the
     exe; ``browser_install`` points ``PLAYWRIGHT_NODEJS_PATH`` at it.
 
-Download mirrors ``browser_install`` (writable ``state/addons`` with LOCALAPPDATA
-fallback) and reuses the ``allow_browser_download`` consent gate. The source URL
-is derived from the release label but overridable via ``TROTHU_ADDON_URL`` so a
-user can self-host / point at a local file if the GitHub asset ever disappears.
+Acquisition order (``ensure_addons``): an already-extracted cache; else a
+pre-placed bundle (matching zip or extracted folder) found next to the exe, in
+the current directory, or under ``state`` — copied/extracted, no download; else a
+download (with status-line progress) from the project's GitHub release. The URL
+is overridable via ``TROTHU_ADDON_URL`` (self-host / local file) if the asset ever
+disappears.
 
 ponytail: integrity = HTTPS + the project's own GitHub release (same trust model
-as `playwright install`). Add a pinned sha256 / signed manifest if supply-chain
+as `playwright install`); a pre-placed bundle is validated by content (must carry
+fju-ocr + node.exe) before it's trusted. Add a pinned sha256 if supply-chain
 hardening is ever needed.
 """
 from __future__ import annotations
 
 import os
 import shutil
+import sys
 import zipfile
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 try:  # pragma: no cover - package import path
     import troTHU.runtime_context as ctx
@@ -54,9 +57,11 @@ def addon_cache_dir() -> Path:
 
 
 def bundle_name() -> str:
-    from troTHU.package_diagnostics import PROJECT_RELEASE_LABEL
+    """Short, distinct zip name (e.g. ``addons-v1.5a2-win.zip``) so users can't
+    confuse it with the main ``THU_Auto_Rollcall-…`` program download."""
+    from troTHU.package_diagnostics import PROJECT_VERSION
 
-    return "THU_Auto_Rollcall-addons-v{}-windows-x64.zip".format(PROJECT_RELEASE_LABEL)
+    return "addons-v{}-win.zip".format(PROJECT_VERSION)
 
 
 def bundle_url() -> str:
@@ -89,8 +94,32 @@ def _download(url: str, dest: Path) -> None:
         if "://" not in url and Path(url).exists():
             shutil.copyfile(url, tmp)
         else:
-            with urllib.request.urlopen(url, timeout=300) as resp, open(tmp, "wb") as f:
-                shutil.copyfileobj(resp, f)
+            try:
+                interactive = bool(ctx.console_is_interactive())
+            except Exception:
+                interactive = False
+            with urllib.request.urlopen(url, timeout=300) as resp:
+                total = 0
+                headers = getattr(resp, "headers", None)
+                if headers is not None:
+                    try:
+                        total = int(headers.get("Content-Length") or 0)
+                    except (TypeError, ValueError):
+                        total = 0
+                read = 0
+                last_pct = -1
+                with open(tmp, "wb") as f:
+                    while True:
+                        chunk = resp.read(262144)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        read += len(chunk)
+                        if interactive and total > 0:
+                            pct = int(read * 100 / total)
+                            if 0 <= pct <= 100 and pct != last_pct:
+                                last_pct = pct
+                                ctx.status_print("下載附加元件… {}%".format(pct))
         os.replace(tmp, dest)
         ctx.log_print("【附加元件】下載完成。")
     except Exception as exc:
@@ -101,30 +130,6 @@ def _download(url: str, dest: Path) -> None:
         raise AddonUnavailableError("附加元件下載失敗：{}".format(exc)) from exc
 
 
-def ensure_addons() -> Path:
-    """Ensure the add-on bundle is downloaded and extracted; return the extract dir."""
-    extract = _extract_dir()
-    marker = extract / ".extracted"
-    if marker.exists():
-        return extract
-    if not addon_download_allowed():
-        raise AddonUnavailableError(
-            "附加元件下載已停用（auth.browser_assisted_login.allow_browser_download=false）。"
-        )
-    zip_path = addon_cache_dir() / "bundle.zip"
-    _download(bundle_url(), zip_path)
-    try:
-        if extract.exists():
-            shutil.rmtree(extract, ignore_errors=True)
-        extract.mkdir(parents=True, exist_ok=True)
-        with zipfile.ZipFile(zip_path) as archive:
-            archive.extractall(extract)
-        marker.write_text("ok", encoding="utf-8")
-    except Exception as exc:
-        raise AddonUnavailableError("附加元件解壓失敗：{}".format(exc)) from exc
-    return extract
-
-
 def _find(extract: Path, *names: str) -> Optional[Path]:
     for name in names:
         hits = [p for p in extract.rglob(name) if p.is_file()]
@@ -133,15 +138,129 @@ def _find(extract: Path, *names: str) -> Optional[Path]:
     return None
 
 
+def _zip_is_valid(zip_path: Path) -> bool:
+    """A pre-placed zip is trusted only if it carries both the sidecar and node."""
+    try:
+        with zipfile.ZipFile(zip_path) as archive:
+            names = [n.replace("\\", "/").lower() for n in archive.namelist()]
+    except Exception:
+        return False
+    has_ocr = any(n.rsplit("/", 1)[-1] in ("fju-ocr.exe", "fju-ocr") for n in names)
+    has_node = any(n.rsplit("/", 1)[-1] == "node.exe" for n in names)
+    return has_ocr and has_node
+
+
+def _dir_is_valid(folder: Path) -> bool:
+    return _find(folder, "fju-ocr.exe", "fju-ocr") is not None and _find(folder, "node.exe", "node") is not None
+
+
+def _candidate_dirs() -> List[Path]:
+    """Where a user may have pre-placed the bundle: next to the exe, in the current
+    directory, or under state — so it can be reused without re-downloading."""
+    dirs: List[Path] = []
+    try:
+        if getattr(sys, "frozen", False):
+            dirs.append(Path(sys.executable).parent)
+    except Exception:
+        pass
+    for getter in (lambda: Path(ctx.BASE_DIR), Path.cwd, addon_cache_dir, lambda: addon_cache_dir().parent):
+        try:
+            dirs.append(getter())
+        except Exception:
+            pass
+    seen = set()
+    out: List[Path] = []
+    for d in dirs:
+        try:
+            key = str(d.resolve()).lower()
+        except Exception:
+            key = str(d).lower()
+        if key not in seen:
+            seen.add(key)
+            out.append(d)
+    return out
+
+
+def _reset_extract() -> Path:
+    extract = _extract_dir()
+    if extract.exists():
+        shutil.rmtree(extract, ignore_errors=True)
+    extract.mkdir(parents=True, exist_ok=True)
+    return extract
+
+
+def _adopt_zip(zip_path: Path) -> Path:
+    extract = _reset_extract()
+    with zipfile.ZipFile(zip_path) as archive:
+        archive.extractall(extract)
+    (extract / ".extracted").write_text("ok", encoding="utf-8")
+    return extract
+
+
+def _adopt_dir(src_dir: Path) -> Path:
+    extract = _extract_dir()
+    if extract.exists():
+        shutil.rmtree(extract, ignore_errors=True)
+    shutil.copytree(src_dir, extract)
+    (extract / ".extracted").write_text("ok", encoding="utf-8")
+    return extract
+
+
+def _find_preplaced() -> Optional[Path]:
+    """A valid, version-matching bundle the user dropped next to the exe / in cwd /
+    under state — as an extracted folder or a zip. Returns the source path or None."""
+    name = bundle_name()
+    root = name[:-4] if name.lower().endswith(".zip") else name
+    for d in _candidate_dirs():
+        try:
+            folder = d / root
+            if folder.is_dir() and _dir_is_valid(folder):
+                return folder
+            for zname in (name, "addons.zip"):
+                zpath = d / zname
+                if zpath.is_file() and _zip_is_valid(zpath):
+                    return zpath
+        except Exception:
+            continue
+    return None
+
+
+def ensure_addons() -> Path:
+    """Ensure the add-on bundle is available and extracted; return the extract dir.
+
+    Cache hit -> pre-placed bundle (copy/extract, no download) -> download.
+    """
+    extract = _extract_dir()
+    if (extract / ".extracted").exists():
+        return extract
+
+    source = _find_preplaced()
+    if source is not None:
+        return _adopt_dir(source) if source.is_dir() else _adopt_zip(source)
+
+    if not addon_download_allowed():
+        raise AddonUnavailableError(
+            "附加元件下載已停用（auth.browser_assisted_login.allow_browser_download=false）。"
+        )
+    zip_path = addon_cache_dir() / "bundle.zip"
+    _download(bundle_url(), zip_path)
+    try:
+        return _adopt_zip(zip_path)
+    except Exception as exc:
+        raise AddonUnavailableError("附加元件解壓失敗：{}".format(exc)) from exc
+
+
 def ocr_sidecar_available() -> bool:
-    """True if the OCR sidecar is already extracted, or downloading it is allowed."""
+    """True if the OCR sidecar is already extracted, pre-placed, or downloadable."""
     if _find(_extract_dir(), "fju-ocr.exe", "fju-ocr"):
+        return True
+    if _find_preplaced() is not None:
         return True
     return addon_download_allowed()
 
 
 def ocr_sidecar_path() -> Path:
-    """Path to the OCR sidecar executable, downloading the bundle if needed."""
+    """Path to the OCR sidecar executable, acquiring the bundle if needed."""
     exe = _find(ensure_addons(), "fju-ocr.exe", "fju-ocr")
     if not exe:
         raise AddonUnavailableError("附加元件包內找不到 OCR sidecar。")
@@ -149,12 +268,12 @@ def ocr_sidecar_path() -> Path:
 
 
 def downloaded_node_path() -> Optional[Path]:
-    """Path to the node driver IF the bundle is already extracted (no download)."""
+    """Path to the node driver IF the bundle is already extracted (no acquisition)."""
     return _find(_extract_dir(), "node.exe", "node")
 
 
 def playwright_node_path() -> Optional[Path]:
-    """Path to the Playwright node driver, downloading the bundle if needed."""
+    """Path to the Playwright node driver, acquiring the bundle if needed."""
     try:
         return _find(ensure_addons(), "node.exe", "node")
     except Exception:

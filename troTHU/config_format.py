@@ -664,7 +664,7 @@ def render_basic_config(simple_dict: ctx.Mapping[str, ctx.Any] | None = None) ->
 
     for index, account in enumerate(accounts, start=1):
         lines.extend([
-            "# [account] 你的帳號，要幾個就放幾塊。school 填代號＝自動登入：THU / TKU / TRONCLASS / SCU（東吳請填 SCU，不要填 TRONCLASS）；填學校網址＝手動瀏覽器登入（passwd 可留空）",
+            "# [account] 你的帳號，要幾個就放幾塊。school 填代號＝自動登入：THU / TKU / TRONCLASS / SCU / FJU；填學校網址＝手動瀏覽器登入（passwd 可留空）",
             "[account]",
             "user = {}".format(account.get("user") or ""),
             "passwd = {}".format(account.get("passwd") or ""),
