@@ -27,6 +27,10 @@ for pkg in ("ddddocr", "onnxruntime", "cv2", "numpy", "PIL"):
         pass
 hiddenimports = sorted(set(hiddenimports + ["ddddocr", "onnxruntime", "cv2", "numpy", "PIL"]))
 
+# Drop dependency test suites (e.g. numpy/f2py/tests) — dead weight at runtime, and
+# a "tests" path part trips the release artifact forbidden-name guard.
+datas = [d for d in datas if "tests" not in str(d[1]).replace("\\", "/").lower().split("/")]
+
 a = Analysis(
     [str(ENTRYPOINT)],
     pathex=[str(ROOT)],
