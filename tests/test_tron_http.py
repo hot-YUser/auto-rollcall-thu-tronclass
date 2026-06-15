@@ -273,6 +273,9 @@ class TronHttpClientTest(unittest.IsolatedAsyncioTestCase):
         session.cookie_jar = FakeCookieJar()
         session.get.return_value = make_context_manager(
             make_response(
+                # Relative form actions resolve against the FINAL URL after the
+                # LMS /login -> IdP redirect, not the original login_url.
+                url="https://tcidentity.thu.edu.tw/auth/realms/thu/protocol/cas/login",
                 text="""
                 <html>
                   <form class="form-horizontal" action="/auth/login?foo=1&amp;bar=2">
@@ -280,7 +283,7 @@ class TronHttpClientTest(unittest.IsolatedAsyncioTestCase):
                     <input type="hidden" name="tab_id" value="tab-1">
                   </form>
                 </html>
-                """
+                """,
             )
         )
         client = tron_http.TronHttpClient(session)
@@ -293,6 +296,27 @@ class TronHttpClientTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(form.fields["execution"], "abc123")
         self.assertEqual(form.fields["tab_id"], "tab-1")
+
+    def test_endpoints_carry_captcha_defaults_and_overrides(self) -> None:
+        default_ep = tron_http.endpoints_from_provider({"base_url": "https://x.edu"})
+        self.assertEqual(default_ep.captcha_image_name, "captcha.jpg")
+        self.assertEqual(default_ep.captcha_field, "captcha")
+        self.assertEqual(default_ep.captcha_charset, "0123456789")
+        self.assertEqual(default_ep.captcha_length, 4)
+
+        custom = tron_http.endpoints_from_provider(
+            {
+                "base_url": "https://y.edu",
+                "captcha_image_name": "vcode.png",
+                "captcha_field": "vcode",
+                "captcha_charset": "abc123",
+                "captcha_length": "5",  # config passes strings; must coerce to int
+            }
+        )
+        self.assertEqual(custom.captcha_image_name, "vcode.png")
+        self.assertEqual(custom.captcha_field, "vcode")
+        self.assertEqual(custom.captcha_charset, "abc123")
+        self.assertEqual(custom.captcha_length, 5)
 
     async def test_fetch_login_form_raises_when_action_missing(self) -> None:
         session = MagicMock()

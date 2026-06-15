@@ -179,6 +179,12 @@ class TronHttpEndpoints:
     courses_url: str = COURSES_URL
     session_cookie_domain: str = "ilearn.thu.edu.tw"
     auth_flow: str = "thu_cas"
+    # Image-captcha shape for cas_ocr_captcha / fju_ocr_captcha flows. Defaults are
+    # FJU's 4-digit numeric captcha.jpg; per-school overrides come from provider config.
+    captcha_image_name: str = FJU_CAPTCHA_IMAGE_NAME
+    captcha_field: str = FJU_CAPTCHA_FIELD
+    captcha_charset: str = FJU_CAPTCHA_CHARSET
+    captcha_length: int = FJU_CAPTCHA_LENGTH
 
 
 DEFAULT_ENDPOINTS = TronHttpEndpoints()
@@ -204,6 +210,10 @@ def endpoints_from_provider(provider: Any) -> TronHttpEndpoints:
 
     base_url = str(provider.get("base_url") or TRON).rstrip("/")
     cookie_domain = urlparse(base_url).hostname or DEFAULT_ENDPOINTS.session_cookie_domain
+    try:
+        captcha_length = int(provider.get("captcha_length") or FJU_CAPTCHA_LENGTH)
+    except (TypeError, ValueError):
+        captcha_length = FJU_CAPTCHA_LENGTH
     return TronHttpEndpoints(
         base_url=base_url,
         login_url=str(provider.get("login_url") or LOGIN_URL),
@@ -216,6 +226,10 @@ def endpoints_from_provider(provider: Any) -> TronHttpEndpoints:
         ),
         session_cookie_domain=cookie_domain,
         auth_flow=str(provider.get("auth_flow") or ""),
+        captcha_image_name=str(provider.get("captcha_image_name") or FJU_CAPTCHA_IMAGE_NAME),
+        captcha_field=str(provider.get("captcha_field") or FJU_CAPTCHA_FIELD),
+        captcha_charset=str(provider.get("captcha_charset") or FJU_CAPTCHA_CHARSET),
+        captcha_length=captcha_length,
     )
 
 

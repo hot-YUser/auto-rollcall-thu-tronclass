@@ -2,6 +2,7 @@ import unittest
 from troTHU.login_adapters import (
     get_login_adapter,
     CasLoginAdapter,
+    CasApiValidatedLoginAdapter,
     TkuSsoLoginAdapter,
     PublicCloudEmailLoginAdapter,
     ManualCookieLoginAdapter,
@@ -12,11 +13,13 @@ from troTHU.login_adapters import (
 class LoginAdaptersTest(unittest.TestCase):
     def test_mappings(self) -> None:
         self.assertIsInstance(get_login_adapter("thu_cas"), CasLoginAdapter)
+        self.assertIsInstance(get_login_adapter("cas_api_validated"), CasApiValidatedLoginAdapter)
         self.assertIsInstance(get_login_adapter("tku_sso_browser"), TkuSsoLoginAdapter)
         self.assertIsInstance(get_login_adapter("public_cloud_email"), PublicCloudEmailLoginAdapter)
         self.assertIsInstance(get_login_adapter("manual_cookie_only"), ManualCookieLoginAdapter)
         self.assertIsInstance(get_login_adapter("interactive_browser"), InteractiveBrowserLoginAdapter)
         self.assertIsInstance(get_login_adapter("fju_ocr_captcha"), FjuOcrLoginAdapter)
+        self.assertIsInstance(get_login_adapter("cas_ocr_captcha"), FjuOcrLoginAdapter)
 
     def test_unknown_flow_falls_back_to_cas(self) -> None:
         self.assertIsInstance(get_login_adapter("unknown_flow"), CasLoginAdapter)
@@ -30,6 +33,13 @@ class LoginAdaptersTest(unittest.TestCase):
         self.assertFalse(cas.requires_api_session_validation)
         self.assertFalse(cas.requires_manual_cookie_login)
         self.assertTrue(cas.requires_password)
+
+        cas_validated = get_login_adapter("cas_api_validated")
+        self.assertEqual(cas_validated.auth_flow, "cas_api_validated")
+        self.assertFalse(cas_validated.prefers_browser_assisted_login)
+        self.assertTrue(cas_validated.requires_api_session_validation)
+        self.assertFalse(cas_validated.requires_manual_cookie_login)
+        self.assertTrue(cas_validated.requires_password)
 
         tku = get_login_adapter("tku_sso_browser")
         self.assertEqual(tku.auth_flow, "tku_sso_browser")

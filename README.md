@@ -1,6 +1,6 @@
 # Auto-Rollcall-thu-Tronclass
 
-**TronClass 校園點名系統的全自動點名工具｜支援東海 (THU)「iLearn」、淡江 (TKU)「iClass」、東吳 (SCU)「TronClass」、輔仁 (FJU)「TronClass」**
+**TronClass 校園點名系統的全自動點名工具｜支援東海 (THU)「iLearn」、淡江 (TKU)「iClass」、東吳 (SCU)「TronClass」、輔仁 (FJU)「TronClass」，以及全台／港澳逾 30 所 TronClass 學校**
 
 登入學校帳號後，它會在你設定的上課時段自動盯著課程，一偵測到點名就替你完成簽到——你不用一直盯著手機，也不用手忙腳亂找點名碼。
 
@@ -25,6 +25,8 @@
 關於 QR：學生端 API 不會提供 QR 的 `data` token，所以未設定教師帳號時，程式只會提示你貼上 QR 內容或嘗試剪貼簿輔助。教師輔助模式會使用你自備的教師帳號即時發起一場 QR 點名取得 `data`，再用學生帳號送出；教師登入失敗不會影響數字 / 雷達點名。
 
 **內建支援的學校：東海大學 (THU)、淡江大學 (TKU)、東吳大學 (SCU)、輔仁大學 (FJU)，以及 TronClass 公有雲官網。** 這幾所只要填「學校代號」就會自動登入，數字、雷達都完整可用。
+
+> 🏫 **v1.5 起再內建逾 30 所 TronClass 學校**（靜宜、亞洲、世新、中山、彰師、雲科、虎尾、勤益、僑光、朝陽、大同、空中大學、明新、弘光、亞東、海洋、實踐、大葉、長榮、長庚科、真理、馬偕、中台、南亞、崇右、醒吾、樹德、北商、元培、臺大進修推廣學院、澳門城市、澳門鏡湖…）。同樣只要在 `config.conf` 把 `school` 填成代號或中文校名（如 `pu`／`靜宜大學`、`ntou`／`海洋大學`）即可自動登入。這些學校的登入頁多為標準 CAS／Keycloak，沿用與東海相同的登入流程；少數有圖形驗證碼的（如海洋）走與輔仁相同的本地 OCR 流程。萬一某校登入頁結構特殊，會自動退回「瀏覽器手動登入」一次後沿用 cookie，其餘點名功能完全相同。
 
 > 🔢 **輔仁 (FJU) 的登入頁有 4 碼數字圖形驗證碼**：程式用本地離線 OCR 自動辨識。為了讓主程式保持輕量，**打包版（exe）首次用到 FJU 時才自動下載 OCR 附加元件**（辨識引擎＋模型，與瀏覽器登入用的驅動打包成同一個下載檔，只下載一次）；原始碼安裝請加裝 `pip install -e .[ocr]`。下載不到時自動退回「手動瀏覽器登入」一次後沿用 cookie，其餘點名功能完全相同。
 
@@ -411,6 +413,19 @@ PUT {teacher_base}/api/rollcall/{teacher_rollcall_id}/stop_qr_rollcall
   ```conf
   school = my_school
   ```
+  **`auth_flow` 怎麼選**（多數 TronClass 學校屬前兩種）：
+  - `cas_api_validated`：標準 CAS／Keycloak 帳密登入頁，且登入網址是「學校 LMS 自己的 `/login`」（會自動轉跳到 IdP）。**這是新增多學校時的預設值**——因為 TronClass 在載入登入頁時就會在 LMS 網域種一顆匿名 `session` cookie，光看 cookie 在不在會誤判成功，所以這個流程會在登入後再打一次 API 確認 session 真的有效。
+  - `thu_cas`：同樣是 CAS／Keycloak，但 `login_url` 直接指向 IdP（像東海），不經過 LMS `/login`、不會有匿名 cookie，可只靠 cookie 判讀。
+  - `cas_ocr_captcha`：CAS 登入頁另有「圖形驗證碼」（像海洋）。預設與輔仁相同（圖檔 `captcha.jpg`、欄名 `captcha`、4 碼純數字），用本地 OCR 自動辨識；若該校驗證碼規格不同，在區塊內覆寫 `captcha_image_name` / `captcha_field` / `captcha_charset` / `captcha_length` 即可，免改程式：
+    ```toml
+    [provider.available.my_school]
+    base_url = "https://tronclass.my-school.edu.tw"
+    auth_flow = "cas_ocr_captcha"
+    captcha_charset = "0123456789abcdefghijklmnopqrstuvwxyz"  # 預設僅 0-9
+    captcha_length = 5                                        # 預設 4
+    ```
+  - `public_cloud_email`：TronClass 原生 email／密碼登入、沒有外部 CAS（像公有雲官網、澳門鏡湖）。
+  - 若某校 `/login` 不會乾淨轉跳到登入表單（少數同網域學校只在 `/cas/login` 提供表單），在區塊內把 `login_url` 指明即可。
 
 **途徑二：全新登入頁面（寫一個 Adapter）。** 該校若有獨特的 SSO 流程（像淡江 `tku_sso_browser`），在 `troTHU/login_adapters.py` 繼承 `LoginAdapter` 實作 `fetch_login_form` / `submit_login`，以 `auth_flow` 為鍵註冊進 `_adapters_by_flow`，再把 provider 的 `auth_flow` 指到它。登入狀態判讀、錯誤提示、session 驗證、瀏覽器後備都已統一，不必再碰。
 

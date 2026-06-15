@@ -75,7 +75,25 @@ class CasLoginAdapter(LoginAdapter):
 
     async def fetch_login_form(self, client: tron_http.TronHttpClient) -> tron_http.LoginForm:
         html_text, current_url = await client._get_login_form_response(client.endpoints.login_url)
-        return tron_http.extract_login_form(html_text, client.endpoints.login_url)
+        # Resolve relative form actions against the *final* URL after redirects
+        # (matching FjuOcr/PublicCloud adapters). This lets a provider set
+        # login_url = base_url + "/login" and rely on the LMS /login → IdP 302:
+        # for a separate-host Apereo CAS page with a relative action the action
+        # must urljoin against the IdP host, not the LMS login_url.
+        return tron_http.extract_login_form(html_text, current_url)
+
+
+class CasApiValidatedLoginAdapter(CasLoginAdapter):
+    """Generic CAS/Keycloak form login (identical to thu_cas), but flags the session
+    for API validation. TronClass sets an anonymous `session` cookie on the LMS host
+    during the login-page GET, so cookie presence alone is a false positive — the
+    bulk-registered schools (login_url = LMS /login) must confirm the session with an
+    authenticated API call (validate_login_api_session). THU/SCU stay on thu_cas
+    because their login_url targets the IdP directly, so no anonymous LMS cookie is set.
+    """
+
+    auth_flow = "cas_api_validated"
+    requires_api_session_validation = True
 
 
 class TkuSsoLoginAdapter(LoginAdapter):
@@ -214,15 +232,20 @@ class InteractiveBrowserLoginAdapter(LoginAdapter):
 
 
 class FjuOcrLoginAdapter(LoginAdapter):
-    """FJU (elearn2.fju.edu.tw) Apereo CAS login with a local OCR captcha solve.
+    """Generic CAS login with a local OCR image-captcha solve.
 
-    Same CAS form as thu_cas, plus a 4-digit numeric image captcha. fetch_login_form
-    reuses the generic extract_login_form; submit_login fetches captcha.jpg, OCRs it
-    with the optional ddddocr engine, fills the `captcha` field and POSTs. On a miss
-    it retries against a freshly rendered form (CAS login tickets are single-use),
-    up to FJU_MAX_CAPTCHA_ATTEMPTS, then reports a rejection. When ddddocr is not
-    installed it raises LoginPageChangedError so login() can fall back, and the
-    provider also degrades to manual-cookie via provider_requires_manual_cookie_login.
+    Same CAS form as thu_cas, plus an image captcha. fetch_login_form reuses the
+    generic extract_login_form; submit_login fetches the captcha image, OCRs it with
+    the optional ddddocr engine, fills the captcha field and POSTs. On a miss it
+    retries against a freshly rendered form (CAS login tickets are single-use), up to
+    FJU_MAX_CAPTCHA_ATTEMPTS, then reports a rejection. When ddddocr is not installed
+    it raises LoginPageChangedError so login() can fall back, and the provider also
+    degrades to manual-cookie via provider_requires_manual_cookie_login.
+
+    The captcha shape (image name, field name, charset, length) is read per-provider
+    from client.endpoints (FJU's 4-digit-numeric captcha.jpg are the defaults), so
+    this one adapter serves both the `fju_ocr_captcha` and generic `cas_ocr_captcha`
+    flows. Schools whose captcha differs override captcha_* in their provider config.
     """
 
     auth_flow = "fju_ocr_captcha"
@@ -249,16 +272,22 @@ class FjuOcrLoginAdapter(LoginAdapter):
                 "FJU 圖形驗證碼登入需要 OCR 套件；請安裝 pip install -e .[ocr]，或改用瀏覽器／手動 cookie 登入。"
             )
 
+        endpoints = client.endpoints
+        captcha_field = getattr(endpoints, "captcha_field", tron_http.FJU_CAPTCHA_FIELD)
+        captcha_image_name = getattr(endpoints, "captcha_image_name", tron_http.FJU_CAPTCHA_IMAGE_NAME)
+        captcha_charset = getattr(endpoints, "captcha_charset", tron_http.FJU_CAPTCHA_CHARSET)
+        captcha_length = getattr(endpoints, "captcha_length", tron_http.FJU_CAPTCHA_LENGTH)
+
         current_form = form
         for _ in range(tron_http.FJU_MAX_CAPTCHA_ATTEMPTS):
-            captcha_url = urljoin(current_form.action_url, tron_http.FJU_CAPTCHA_IMAGE_NAME)
+            captcha_url = urljoin(current_form.action_url, captcha_image_name)
             image_bytes = await client.fetch_captcha_image(captcha_url)
             try:
-                code = ocr_captcha.solve_captcha(image_bytes, charset=tron_http.FJU_CAPTCHA_CHARSET)
+                code = ocr_captcha.solve_captcha(image_bytes, charset=captcha_charset)
             except ocr_captcha.OcrUnavailableError as exc:
                 raise tron_http.LoginPageChangedError(str(exc)) from exc
 
-            if len(code) != tron_http.FJU_CAPTCHA_LENGTH:
+            if len(code) != captcha_length:
                 # Low-confidence read; the CAS ticket is still unused, so just
                 # fetch a fresh captcha and try again (bounded by the loop).
                 continue
@@ -268,7 +297,7 @@ class FjuOcrLoginAdapter(LoginAdapter):
                 {
                     current_form.username_field: username,
                     current_form.password_field: password,
-                    tron_http.FJU_CAPTCHA_FIELD: code,
+                    captcha_field: code,
                 }
             )
             async with client.session.post(
@@ -297,11 +326,13 @@ class FjuOcrLoginAdapter(LoginAdapter):
 
 _adapters_by_flow: Dict[str, LoginAdapter] = {
     "thu_cas": CasLoginAdapter(),
+    "cas_api_validated": CasApiValidatedLoginAdapter(),
     "tku_sso_browser": TkuSsoLoginAdapter(),
     "public_cloud_email": PublicCloudEmailLoginAdapter(),
     "manual_cookie_only": ManualCookieLoginAdapter(),
     "interactive_browser": InteractiveBrowserLoginAdapter(),
     "fju_ocr_captcha": FjuOcrLoginAdapter(),
+    "cas_ocr_captcha": FjuOcrLoginAdapter(),
 }
 
 login_adapters_by_flow = _adapters_by_flow

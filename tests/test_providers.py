@@ -68,15 +68,18 @@ class ProviderConfigTest(unittest.TestCase):
         self.assertTrue(registry["available"]["scu"]["capabilities"]["radar"])
 
     def test_supported_provider_registry_lists_fju_as_visible(self) -> None:
-        self.assertEqual(
-            [provider.key for provider in list_supported_providers()],
-            ["fju", "scu", "thu", "tku", "tronclass"],
-        )
+        expected = [
+            "aeust", "asia", "au", "cgust", "cityumo", "cjcu", "ctust", "cufa", "cyut", "dyu",
+            "fju", "hk", "hwu", "kwnc", "mkc", "must", "nanya", "ncue", "ncut", "nfu",
+            "nou", "nsysu", "ntou", "ntub", "ntuspecs", "ocu", "pu", "scu", "shu", "stu",
+            "thu", "tku", "tronclass", "ttu", "usc", "ypu", "yuntech",
+        ]
+        self.assertEqual([provider.key for provider in list_supported_providers()], expected)
         self.assertEqual(
             [provider.key for provider in list_supported_providers(include_hidden=True)],
-            ["fju", "scu", "thu", "tku", "tronclass"],
+            expected,
         )
-        self.assertEqual([provider.key for provider in list_all_providers()], ["fju", "scu", "thu", "tku", "tronclass"])
+        self.assertEqual([provider.key for provider in list_all_providers()], expected)
 
     def test_tronclass_api_endpoint_builder_is_shared(self) -> None:
         endpoints = tronclass_api_endpoints("https://school.example/")
@@ -117,10 +120,10 @@ class ProviderConfigTest(unittest.TestCase):
         self.assertEqual(normalized["available"]["fju"]["notes"], "lab only")
 
     def test_unknown_provider_falls_back_with_warning_metadata(self) -> None:
-        normalized = normalize_provider_config({"current": "nfu"})
+        normalized = normalize_provider_config({"current": "zzz_not_a_school"})
 
         self.assertEqual(normalized["current"], DEFAULT_PROVIDER)
-        self.assertEqual(normalized["requested"], "nfu")
+        self.assertEqual(normalized["requested"], "zzz_not_a_school")
         self.assertEqual(normalized["fallback_reason"], "unknown_provider")
 
     def test_provider_support_report_marks_fju_tku_tronclass_daily_ready_without_experimental_gate(self) -> None:
@@ -146,6 +149,44 @@ class ProviderConfigTest(unittest.TestCase):
         self.assertIn("thu", normalized["provider"]["available"])
         self.assertFalse(normalized["research"]["enabled"])
         self.assertTrue(normalized["research"]["redact_sensitive"])
+
+    def test_bulk_registered_school_derives_endpoints_login_url_and_aliases(self) -> None:
+        pu = get_provider("pu")
+        self.assertTrue(pu.ready)
+        # CAS-via-LMS schools validate the session via API (anonymous LMS cookie guard)
+        self.assertEqual(pu.auth_flow, "cas_api_validated")
+        self.assertEqual(pu.base_url, "https://tronclass.pu.edu.tw")
+        self.assertEqual(pu.login_url, "https://tronclass.pu.edu.tw/login")
+        self.assertTrue(pu.rollcalls_url.startswith("https://tronclass.pu.edu.tw/"))
+        self.assertIn("/api/radar/rollcalls", pu.rollcalls_url)
+        # NOU only serves its CAS form at /cas/login, not /login
+        self.assertEqual(get_provider("nou").login_url, "https://tronclass.nou.edu.tw/cas/login")
+        # captcha school routes to the generic OCR flow; email-login school to public cloud
+        self.assertEqual(get_provider("ntou").auth_flow, "cas_ocr_captcha")
+        self.assertEqual(get_provider("kwnc").auth_flow, "public_cloud_email")
+        # Chinese aliases resolve to the right key
+        self.assertEqual(get_provider("靜宜大學").key, "pu")
+        self.assertEqual(get_provider("海洋大學").key, "ntou")
+
+    def test_config_captcha_overrides_pass_through_normalize(self) -> None:
+        normalized = normalize_provider_config(
+            {
+                "current": "capschool",
+                "available": {
+                    "capschool": {
+                        "base_url": "https://cap.edu",
+                        "auth_flow": "cas_ocr_captcha",
+                        "captcha_charset": "abcd",
+                        "captcha_length": 5,
+                    }
+                },
+            }
+        )
+        merged = normalized["available"]["capschool"]
+        self.assertEqual(merged["auth_flow"], "cas_ocr_captcha")
+        self.assertEqual(merged["captcha_charset"], "abcd")
+        # normalize stringifies; endpoints_from_provider re-coerces to int (tested in test_tron_http)
+        self.assertEqual(merged["captcha_length"], "5")
 
 
 class ResearchModeConfigTest(unittest.TestCase):

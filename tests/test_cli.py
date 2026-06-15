@@ -166,7 +166,9 @@ class TronCliSmokeTest(unittest.TestCase):
 
         self.assertEqual(result, 0)
         payload = json.loads(outputs[0])
-        self.assertEqual({item["key"] for item in payload["providers"]}, {"thu", "fju", "tku", "tronclass", "scu"})
+        self.assertTrue(
+            {"thu", "fju", "tku", "tronclass", "scu"}.issubset({item["key"] for item in payload["providers"]})
+        )
         self.assertFalse(payload["include_hidden"])
 
     def test_provider_list_all_json_includes_fju(self) -> None:
@@ -177,7 +179,7 @@ class TronCliSmokeTest(unittest.TestCase):
         self.assertEqual(result, 0)
         payload = json.loads(outputs[0])
         providers = {item["key"]: item for item in payload["providers"]}
-        self.assertEqual(set(providers), {"thu", "fju", "tku", "tronclass", "scu"})
+        self.assertTrue({"thu", "fju", "tku", "tronclass", "scu"}.issubset(set(providers)))
         self.assertTrue(providers["fju"]["user_visible"])
         self.assertTrue(providers["fju"]["capabilities"]["radar"])
         self.assertTrue(providers["tronclass"]["user_visible"])
