@@ -130,6 +130,44 @@ def find_captcha_source(html_text: str, base_url: str) -> Optional[str]:
     return None
 
 
+_JS_AUTOSUBMIT_RE = re.compile(r"forms\[\s*0\s*\]\.submit\s*\(\)|\.forms\[[^\]]*\]\.submit\s*\(\)|document\.\w+\.submit\s*\(\)", re.I)
+
+
+async def _follow_js_autosubmit(
+    client: tron_http.TronHttpClient, html_text: str, current_url: str, max_hops: int = 4
+) -> Tuple[str, str]:
+    """Follow NetIQ NAM-style JS auto-submit intermediate forms.
+
+    Some SSO steps return a 200 page with a hidden/empty <form> that the browser submits
+    via document.forms[0].submit() — plain HTTP clients stop there. When the page is such
+    a bootstrap (auto-submit script + a form with an action and NO password/visible input),
+    POST its hidden fields to the action (carrying cookies) and follow, up to max_hops.
+    Stops at the real credential form (has a password input) or any non-autosubmit page.
+    Returns the final (html, url). Used both to reach the login form and to finalise login.
+    """
+    for _ in range(max_hops):
+        if not _JS_AUTOSUBMIT_RE.search(html_text or ""):
+            break
+        m = re.search(r"(<form\b[^>]*>)(.*?)</form>", html_text, re.IGNORECASE | re.DOTALL)
+        if not m:
+            break
+        action = tron_http.parse_tag_attributes(m.group(1)).get("action")
+        if not action:
+            break
+        inputs = [tron_http.parse_tag_attributes(t) for t in tron_http.INPUT_PATTERN.findall(m.group(2))]
+        # Real credential / interactive form → stop and let the caller handle it.
+        if any(i.get("type", "").lower() == "password" for i in inputs):
+            break
+        if any(i.get("type", "text").lower() in ("text", "email", "tel", "") and i.get("name") for i in inputs):
+            break  # has a visible field to fill → not a blind bootstrap
+        data = {i.get("name"): i.get("value", "") for i in inputs if i.get("name")}
+        next_url = urljoin(current_url, action)
+        async with client.session.post(next_url, data=data, **client.request_kwargs()) as resp:
+            html_text = await resp.text()
+            current_url = str(resp.url)
+    return html_text, current_url
+
+
 async def _fetch_sso_captcha_bytes(client: tron_http.TronHttpClient, url: str) -> bytes:
     """GET a captcha that is either a raw image or a base64 (optionally data-URI) string."""
     async with client.session.get(url, **client.request_kwargs()) as resp:
@@ -578,15 +616,16 @@ class SsoFormLoginAdapter(CasApiValidatedLoginAdapter):
     """Generic external-SSO credential login for the `cas_login_settings` flow.
 
     login() resolves the homepage loginSettings → the campus-SSO (kc_idp_hint) URL and
-    overrides login_url before this runs. fetch_login_form GETs that page and:
+    overrides login_url before this runs. fetch_login_form GETs that page, follows any
+    NetIQ NAM-style JS auto-submit bootstrap forms to reach the real credential form, then:
       - raises LoginPageChangedError if it landed on a federated IdP (Google/Microsoft/…)
-        or has no static password form (e.g. NetIQ NAM JS form) → login() opens an
-        interactive browser instead;
+        or still has no password form → login() opens an interactive browser instead;
       - else detects username/password/captcha field names generically (handles
-        muid/mpassword, login_name, pLoginName/pSecretString, … with no per-school code).
-    submit_login OCRs the image captcha (raw <img> or JS base64 endpoint) and POSTs the
-    detected fields + all hidden inputs, retrying on a miss; on exhaustion it raises
-    LoginRejectedError so login() falls back to the interactive browser.
+        muid/mpassword, login_name, pLoginName/pSecretString, Ecom_User_ID/Ecom_Password,
+        … with no per-school code).
+    submit_login POSTs the detected fields + hidden inputs (OCRing an image captcha when
+    present), follows any JS auto-submit intermediate to finalise, then verifies the
+    session; on failure it raises so login() falls back to the interactive browser.
     """
 
     auth_flow = "cas_login_settings"
@@ -595,6 +634,8 @@ class SsoFormLoginAdapter(CasApiValidatedLoginAdapter):
 
     async def fetch_login_form(self, client: tron_http.TronHttpClient) -> tron_http.LoginForm:
         html_text, current_url = await client._get_login_form_response(client.endpoints.login_url)
+        # Follow NetIQ NAM (and similar) JS auto-submit bootstrap pages to the real form.
+        html_text, current_url = await _follow_js_autosubmit(client, html_text, current_url)
         if _is_federated_host(urlparse(current_url).hostname or ""):
             raise tron_http.LoginPageChangedError(
                 "登入導向聯邦式 SSO（{}），需瀏覽器登入。".format(urlparse(current_url).hostname)
@@ -620,8 +661,20 @@ class SsoFormLoginAdapter(CasApiValidatedLoginAdapter):
         state = getattr(client, "_sso_state", None) or {}
         detected = state.get("detected") or {}
         if not detected.get("captcha_field"):
-            # No captcha → ordinary credential POST with the detected field names.
-            return await super().submit_login(client, form, username, password)
+            # No captcha → credential POST, then follow any JS auto-submit intermediate
+            # (NetIQ NAM stage-3 → stage-4) before checking the session.
+            form_data = dict(detected.get("fields") or form.fields)
+            form_data.update({
+                detected.get("username_field") or form.username_field: username,
+                detected.get("password_field") or form.password_field: password,
+            })
+            async with client.session.post(form.action_url, data=form_data, **client.request_kwargs()) as resp:
+                body = await resp.text()
+                final_url = str(resp.url)
+            body, final_url = await _follow_js_autosubmit(client, body, final_url)
+            if _adapter_has_session(client) and "login" not in final_url.lower():
+                return tron_http.LoginOutcome(final_url=final_url, has_session=True)
+            raise tron_http.LoginRejectedError("登入失敗，請檢查帳號或密碼是否正確。")
 
         import troTHU.ocr_captcha as ocr_captcha
         if not ocr_captcha.ddddocr_available():
@@ -658,8 +711,9 @@ class SsoFormLoginAdapter(CasApiValidatedLoginAdapter):
                 det["captcha_field"]: code,
             })
             async with client.session.post(action_url, data=form_data, **client.request_kwargs()) as resp:
-                await resp.text()
+                body = await resp.text()
                 final_url = str(resp.url)
+            body, final_url = await _follow_js_autosubmit(client, body, final_url)
             if _adapter_has_session(client) and "login" not in final_url.lower():
                 return tron_http.LoginOutcome(final_url=final_url, has_session=True)
             html_text = None  # retry with a freshly rendered form + captcha

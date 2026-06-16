@@ -9,6 +9,7 @@ from troTHU.login_adapters import (
     pick_login_settings_url,
     detect_sso_form,
     find_captcha_source,
+    _follow_js_autosubmit,
     TkuSsoLoginAdapter,
     PublicCloudEmailLoginAdapter,
     ManualCookieLoginAdapter,
@@ -190,8 +191,42 @@ class LoginSettingsHelperTest(unittest.TestCase):
                '<input type="text" name="pSecretString" id="ValidationCode" maxlength="4"></form>')
         d = detect_sso_form(yun)
         self.assertEqual((d["username_field"], d["password_field"], d["captcha_field"]), ("pLoginName", "pLoginPassword", "pSecretString"))
-        # page with no password input → None (→ browser branch)
+        # NetIQ NAM credential form (reached after following the JS bootstrap)
+        nam = ('<form id="IDPLogin" action="/nidp/app/login?sid=1&sid=1">'
+               '<input type="text" name="Ecom_User_ID"><input type="password" name="Ecom_Password">'
+               '<input type="hidden" name="STS" value="tok-123"></form>')
+        d = detect_sso_form(nam)
+        self.assertEqual((d["username_field"], d["password_field"], d["captcha_field"]),
+                         ("Ecom_User_ID", "Ecom_Password", None))
+        self.assertEqual(d["fields"]["STS"], "tok-123")
+        # empty JS-bootstrap form (no inputs) → None (must be followed first)
         self.assertIsNone(detect_sso_form('<form action="/nidp/app/login"></form>'))
+
+    def test_follow_js_autosubmit_reaches_credential_form(self) -> None:
+        import asyncio
+        from unittest.mock import MagicMock, AsyncMock
+        bootstrap = ('<html><body><form method="POST" action="/nidp/app/login?sid=0"></form>'
+                     '<script>document.forms[0].submit();</script></body></html>')
+        credential = ('<form id="IDPLogin" action="/nidp/app/login?sid=1">'
+                      '<input type="text" name="Ecom_User_ID"><input type="password" name="Ecom_Password"></form>')
+        resp = MagicMock()
+        resp.text = AsyncMock(return_value=credential)
+        resp.url = "https://nam.ncue.edu.tw/nidp/app/login?sid=0"
+        cm = MagicMock()
+        cm.__aenter__ = AsyncMock(return_value=resp)
+        cm.__aexit__ = AsyncMock(return_value=None)
+        client = MagicMock()
+        client.session.post.return_value = cm
+        client.request_kwargs.return_value = {}
+
+        html, url = asyncio.run(_follow_js_autosubmit(client, bootstrap, "https://nam.ncue.edu.tw/start"))
+        self.assertIn("Ecom_Password", html)  # followed the bootstrap to the credential form
+        self.assertEqual(client.session.post.call_count, 1)
+        # a page with no auto-submit script is returned unchanged (no POST)
+        client.session.post.reset_mock()
+        html2, _ = asyncio.run(_follow_js_autosubmit(client, "<html>plain</html>", "https://x/"))
+        self.assertEqual(html2, "<html>plain</html>")
+        self.assertEqual(client.session.post.call_count, 0)
 
     def test_find_captcha_source_static_and_js(self) -> None:
         lhu = '<img src="dac/logo.png"><img src="dacAuthImage.do?r=1&w=100"><img src="redo.png">'
