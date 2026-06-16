@@ -48,7 +48,14 @@ def pick_login_settings_url(settings: list) -> Optional[str]:
 _CAPTCHA_FIELD_HINTS = ("captcha", "verif", "valid", "checkcode", "check_code", "secret", "authcode",
                         "auth_code", "kaptcha", "vcode", "yzm", "seccode", "imgcode")
 _USERNAME_FIELD_HINTS = ("user", "account", "login", "uid", "muid", "acc", "email", "memberid", "stuid", "name", "id")
-_CAPTCHA_IMG_HINT_RE = re.compile(r"captcha|authimage|getcode|get_code|verif|valid|kaptcha|yzm|secret|number|\.do\?|\.php\?|/code\b", re.I)
+# Strong captcha-image hints: unambiguous captcha keywords. A plain `.php?`/`.do?`
+# (dynamic-image suffix) is a WEAK hint only — a school Logo served via
+# /download_file.php?... must not be mistaken for the captcha (NCUT bug, 2026-06).
+_CAPTCHA_IMG_STRONG_RE = re.compile(
+    r"captcha|authimage|getcode|get_code|verif|valid|kaptcha|yzm|secret|number|/code\b", re.I)
+_CAPTCHA_IMG_WEAK_RE = re.compile(r"\.do\?|\.php\?", re.I)
+_CAPTCHA_IMG_EXCLUDE_RE = re.compile(
+    r"logo|banner|header|download_file|loading|btn|button|icon|sprite|avatar|qrcode", re.I)
 _FEDERATED_HOST_MARKERS = ("accounts.google.com", "google.com/o/oauth", "login.microsoftonline.com",
                            "login.microsoft.com", "login.live.com", ".okta.com", "adfs", "/oauth2/authorize")
 
@@ -112,13 +119,29 @@ def detect_sso_form(html_text: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def find_captcha_source(html_text: str, base_url: str) -> Optional[str]:
-    """Resolve the captcha image URL: a static <img src> that looks like a captcha, or
-    (when the captcha <img> has no src and is JS-populated) a captcha-ish ajax URL."""
+def _img_srcs(html_text: str):
     for m in re.finditer(r"<img\b[^>]*>", html_text or "", re.IGNORECASE):
         src = tron_http.parse_tag_attributes(m.group(0)).get("src", "")
-        if src and not src.startswith("data:") and _CAPTCHA_IMG_HINT_RE.search(src):
+        if src and not src.startswith("data:"):
+            yield src
+
+
+def find_captcha_source(html_text: str, base_url: str) -> Optional[str]:
+    """Resolve the captcha image URL with a two-stage, order-independent filter:
+    1. a static <img src> matching a STRONG captcha keyword (preferred — wins even if a
+       Logo with a `.php?`/`.do?` src appears earlier in the page, e.g. NCUT);
+    2. else a WEAK `.php?`/`.do?` dynamic-image src that is not a Logo/banner/etc.;
+    3. else a JS-populated captcha <img> whose ajax URL looks like a captcha (e.g. YunTech).
+    """
+    # Stage 1: strong keyword hint (highest priority, ignores document order)
+    for src in _img_srcs(html_text):
+        if _CAPTCHA_IMG_STRONG_RE.search(src):
             return urljoin(base_url, src)
+    # Stage 2: weak dynamic-image suffix, excluding common decorations (Logo/banner/…)
+    for src in _img_srcs(html_text):
+        if _CAPTCHA_IMG_WEAK_RE.search(src) and not _CAPTCHA_IMG_EXCLUDE_RE.search(src):
+            return urljoin(base_url, src)
+    # Stage 3: JS-populated captcha <img> → captcha-ish ajax URL
     js_captcha_img = re.search(
         r"<img\b[^>]*(?:id|name|class)\s*=\s*['\"][^'\"]*(?:captcha|secret|verif|code)[^'\"]*['\"]",
         html_text or "", re.IGNORECASE)

@@ -232,12 +232,20 @@ class LoginSettingsHelperTest(unittest.TestCase):
         lhu = '<img src="dac/logo.png"><img src="dacAuthImage.do?r=1&w=100"><img src="redo.png">'
         self.assertEqual(find_captcha_source(lhu, "https://eportal.lhu.edu.tw/login"),
                          "https://eportal.lhu.edu.tw/dacAuthImage.do?r=1&w=100")
-        ncut = '<img src="/login_page.php?action=getCode&from=login">'
+        # NCUT regression: a Logo served via /download_file.php?... appears BEFORE the real
+        # captcha; the strong getCode keyword must win over the Logo's weak `.php?` match.
+        ncut = ('<img src="/download_file.php?f=ABC&showimage=1">'
+                '<img id="checkcodeImg" src="/login_page.php?action=getCode&from=login&t=1">')
         self.assertEqual(find_captcha_source(ncut, "https://sso.ncut.edu.tw/"),
-                         "https://sso.ncut.edu.tw/login_page.php?action=getCode&from=login")
+                         "https://sso.ncut.edu.tw/login_page.php?action=getCode&from=login&t=1")
         yun = '<img id="NumberCaptcha" class="captcha-img" /><script>var R=()=>$.ajax({url:"/YuntechSSO/Captcha/Number"})</script>'
         self.assertEqual(find_captcha_source(yun, "https://webapp.yuntech.edu.tw/x"),
                          "https://webapp.yuntech.edu.tw/YuntechSSO/Captcha/Number")
+        # weak `.php?` fallback skips a Logo (download_file) but accepts a real dynamic captcha
+        weak = '<img src="/download_file.php?f=logo"><img src="/imgcode.php?x=1">'
+        self.assertEqual(find_captcha_source(weak, "https://x/"), "https://x/imgcode.php?x=1")
+        # a lone Logo must NOT be mistaken for a captcha
+        self.assertIsNone(find_captcha_source('<img src="/download_file.php?f=logo">', "https://x/"))
         self.assertIsNone(find_captcha_source('<img src="/logo.png">', "https://x/"))
 
 
