@@ -142,6 +142,9 @@ KEYCLOAK_CAPTCHA_CHARSET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOP
 KEYCLOAK_CAPTCHA_LENGTH = 4
 KEYCLOAK_CAPTCHA_MAX_ATTEMPTS = 5
 
+# Generic external-SSO credential form (cas_login_settings): captcha OCR retry budget.
+SSO_CAPTCHA_MAX_ATTEMPTS = 5
+
 
 class TronHttpError(Exception):
     """Base class for TronClass HTTP-layer errors."""

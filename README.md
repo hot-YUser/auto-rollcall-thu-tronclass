@@ -428,6 +428,12 @@ PUT {teacher_base}/api/rollcall/{teacher_rollcall_id}/stop_qr_rollcall
     `captcha.jpg`，而是 JS 打 `GET /auth/realms/<realm>/captcha/code` 拿 JSON `{image, key}`，送出時要同時
     帶 `captchaCode`（OCR 結果）與 `captchaKey`（回傳的 key）。本程式已自動處理（亞洲、馬偕、虎尾屬此類）。
   - `public_cloud_email`：TronClass 原生 email／密碼登入、沒有外部 CAS（像公有雲官網、澳門鏡湖）。
+  - `cas_login_settings`：首頁出現「本校／統一登入」兩個選項（或單一選項但帶 `kc_idp_hint`）的學校——
+    真正的登入入口**不是** `{base}/login`。程式會自動讀首頁 `orgSettings.loginSettings`、挑出帶
+    `kc_idp_hint` 的校內 SSO 入口，再依該頁型態決定：若是標準帳密表單（即使欄名特殊、含圖形驗證碼，
+    如龍華 `muid/mpassword`、勤益、雲科）就自動偵測欄位＋OCR 驗證碼自動登入；若導向聯邦式 IdP
+    （Google／微軟）或 JS 算出的表單（如彰師 NetIQ NAM）則自動開瀏覽器手動登入。屬此類：彰師、龍華、
+    雲科、勤益、北商、澳門城市。
   - 若某校 `/login` 不會乾淨轉跳到登入表單（少數同網域學校只在 `/cas/login` 提供表單），在區塊內把 `login_url` 指明即可。
 
 **途徑二：全新登入頁面（寫一個 Adapter）。** 該校若有獨特的 SSO 流程（像淡江 `tku_sso_browser`），在 `troTHU/login_adapters.py` 繼承 `LoginAdapter` 實作 `fetch_login_form` / `submit_login`，以 `auth_flow` 為鍵註冊進 `_adapters_by_flow`，再把 provider 的 `auth_flow` 指到它。登入狀態判讀、錯誤提示、session 驗證、瀏覽器後備都已統一，不必再碰。

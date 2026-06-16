@@ -70,7 +70,7 @@ class ProviderConfigTest(unittest.TestCase):
     def test_supported_provider_registry_lists_fju_as_visible(self) -> None:
         expected = [
             "aeust", "asia", "au", "cgust", "cityumo", "cjcu", "ctust", "cufa", "cyut", "dyu",
-            "fju", "hk", "hwu", "kwnc", "mkc", "must", "nanya", "ncue", "ncut", "nfu",
+            "fju", "hk", "hwu", "kwnc", "lhu", "mkc", "must", "nanya", "ncue", "ncut", "nfu",
             "nou", "nsysu", "ntou", "ntub", "ntuspecs", "ocu", "pu", "scu", "shu", "stu",
             "thu", "tku", "tronclass", "ttu", "usc", "ypu", "yuntech",
         ]
@@ -167,9 +167,14 @@ class ProviderConfigTest(unittest.TestCase):
         self.assertEqual(get_provider("nfu").auth_flow, "keycloak_ocr_captcha")
         self.assertEqual(get_provider("mkc").auth_flow, "keycloak_ocr_captcha")
         self.assertEqual(get_provider("kwnc").auth_flow, "public_cloud_email")
+        # loginSettings (two-option / kc_idp_hint) schools + the new LHU
+        for key in ("ncue", "ncut", "ntub", "yuntech", "cityumo", "lhu"):
+            self.assertEqual(get_provider(key).auth_flow, "cas_login_settings", key)
+        self.assertEqual(get_provider("lhu").base_url, "https://elearn.lhu.edu.tw")
         # Chinese aliases resolve to the right key
         self.assertEqual(get_provider("靜宜大學").key, "pu")
         self.assertEqual(get_provider("海洋大學").key, "ntou")
+        self.assertEqual(get_provider("龍華").key, "lhu")
 
     def test_config_captcha_overrides_pass_through_normalize(self) -> None:
         normalized = normalize_provider_config(

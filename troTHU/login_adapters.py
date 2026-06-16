@@ -1,10 +1,151 @@
 from __future__ import annotations
+import ast
 import base64
+import json
 import re
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Tuple
-from urllib.parse import urljoin
+from typing import Dict, Any, Optional, Tuple
+from urllib.parse import urljoin, urlparse
 import troTHU.tron_http as tron_http
+
+
+# --- loginSettings (TronClass homepage "本校/統一登入" vs "非本校") resolution -------
+# Some schools' homepage orgSettings.loginSettings offers two login URLs; the real
+# campus SSO carries kc_idp_hint and is NOT {base}/login. Rule (user): whenever a
+# loginSettings entry has kc_idp_hint, use it. Parser must accept both double-quoted
+# JSON and single-quoted Python-dict (e.g. CityU) forms. Verified live 2026-06.
+_LOGIN_SETTINGS_RE = re.compile(r"""["']loginSettings["']\s*:\s*(\[.*?\])""", re.DOTALL)
+
+
+def parse_login_settings(html_text: str) -> list:
+    """Extract orgSettings.loginSettings as a list of {url,title} dicts (or [])."""
+    match = _LOGIN_SETTINGS_RE.search(html_text or "")
+    if not match:
+        return []
+    raw = match.group(1)
+    for loader in (json.loads, ast.literal_eval):
+        try:
+            value = loader(raw)
+        except Exception:
+            continue
+        if isinstance(value, list):
+            return [item for item in value if isinstance(item, dict)]
+    # last resort: pull out the url values directly
+    return [{"url": m.group(1)} for m in re.finditer(r"""["']url["']\s*:\s*["']([^"']+)["']""", raw)]
+
+
+def pick_login_settings_url(settings: list) -> Optional[str]:
+    """The campus-SSO entry: the first whose url carries kc_idp_hint. None → use /login."""
+    for item in settings or []:
+        if isinstance(item, dict):
+            url = str(item.get("url", ""))
+            if "kc_idp_hint=" in url:
+                return url
+    return None
+
+
+# Field-name / captcha heuristics for external-SSO credential forms (generic, not per-school).
+_CAPTCHA_FIELD_HINTS = ("captcha", "verif", "valid", "checkcode", "check_code", "secret", "authcode",
+                        "auth_code", "kaptcha", "vcode", "yzm", "seccode", "imgcode")
+_USERNAME_FIELD_HINTS = ("user", "account", "login", "uid", "muid", "acc", "email", "memberid", "stuid", "name", "id")
+_CAPTCHA_IMG_HINT_RE = re.compile(r"captcha|authimage|getcode|get_code|verif|valid|kaptcha|yzm|secret|number|\.do\?|\.php\?|/code\b", re.I)
+_FEDERATED_HOST_MARKERS = ("accounts.google.com", "google.com/o/oauth", "login.microsoftonline.com",
+                           "login.microsoft.com", "login.live.com", ".okta.com", "adfs", "/oauth2/authorize")
+
+
+def _is_federated_host(host: str) -> bool:
+    h = (host or "").lower()
+    return any(marker in h for marker in _FEDERATED_HOST_MARKERS)
+
+
+def _iter_form_inputs(html_text: str):
+    """Yield (form_attrs, [input_attrs,...]) for every <form> in the page."""
+    for m in re.finditer(r"(<form\b[^>]*>)(.*?)</form>", html_text or "", re.IGNORECASE | re.DOTALL):
+        form_attrs = tron_http.parse_tag_attributes(m.group(1))
+        inputs = []
+        for tag in tron_http.INPUT_PATTERN.findall(m.group(2)):
+            attrs = tron_http.parse_tag_attributes(tag)
+            if attrs.get("name"):
+                inputs.append(attrs)
+        yield form_attrs, inputs
+
+
+def detect_sso_form(html_text: str) -> Optional[Dict[str, Any]]:
+    """Find the form that has a password input and infer its username / password /
+    captcha field names by input type + name hints (handles muid/mpassword, login_name,
+    pLoginName/pSecretString, ... without per-school code). None if no password form."""
+    for form_attrs, inputs in _iter_form_inputs(html_text):
+        pw = next((i for i in inputs if i.get("type", "").lower() == "password"), None)
+        if not pw:
+            continue
+        password_field = pw.get("name")
+        texts = [
+            i for i in inputs
+            if i.get("type", "text").lower() in ("text", "email", "tel", "")
+            and i.get("name") != password_field
+        ]
+        captcha_field = None
+        captcha_maxlen = 4
+        for i in texts:
+            nm = (i.get("name", "") + " " + i.get("id", "")).lower()
+            if any(h in nm for h in _CAPTCHA_FIELD_HINTS):
+                captcha_field = i.get("name")
+                if str(i.get("maxlength", "")).isdigit():
+                    captcha_maxlen = int(i["maxlength"])
+                break
+        username_field = next((i.get("name") for i in texts if i.get("name") != captcha_field), None)
+        if not username_field:
+            username_field = next(
+                (i.get("name") for i in texts
+                 if any(h in i.get("name", "").lower() for h in _USERNAME_FIELD_HINTS)),
+                None,
+            )
+        fields = {i.get("name"): i.get("value", "") for i in inputs if i.get("name")}
+        return {
+            "action": form_attrs.get("action", ""),
+            "fields": fields,
+            "username_field": username_field or "username",
+            "password_field": password_field,
+            "captcha_field": captcha_field,
+            "captcha_maxlen": captcha_maxlen,
+        }
+    return None
+
+
+def find_captcha_source(html_text: str, base_url: str) -> Optional[str]:
+    """Resolve the captcha image URL: a static <img src> that looks like a captcha, or
+    (when the captcha <img> has no src and is JS-populated) a captcha-ish ajax URL."""
+    for m in re.finditer(r"<img\b[^>]*>", html_text or "", re.IGNORECASE):
+        src = tron_http.parse_tag_attributes(m.group(0)).get("src", "")
+        if src and not src.startswith("data:") and _CAPTCHA_IMG_HINT_RE.search(src):
+            return urljoin(base_url, src)
+    js_captcha_img = re.search(
+        r"<img\b[^>]*(?:id|name|class)\s*=\s*['\"][^'\"]*(?:captcha|secret|verif|code)[^'\"]*['\"]",
+        html_text or "", re.IGNORECASE)
+    if js_captcha_img:
+        for jm in re.finditer(r"""(?:url|src|ajax|fetch)\s*[:(]\s*[`'\"]([^`'\"]+)[`'\"]""", html_text or "", re.I):
+            u = jm.group(1)
+            if re.search(r"captcha|getcode|get_code|number|verif|secret|/code", u, re.I):
+                return urljoin(base_url, u)
+    return None
+
+
+async def _fetch_sso_captcha_bytes(client: tron_http.TronHttpClient, url: str) -> bytes:
+    """GET a captcha that is either a raw image or a base64 (optionally data-URI) string."""
+    async with client.session.get(url, **client.request_kwargs()) as resp:
+        if resp.status != 200:
+            raise tron_http.LoginPageChangedError("驗證碼端點回應 HTTP {}。".format(resp.status))
+        ctype = resp.headers.get("Content-Type", "").lower()
+        raw = await resp.read()
+    if ctype.startswith("image"):
+        return raw
+    text = raw.decode("utf-8", "ignore").strip().strip('"')
+    if text.startswith("data:image") and "," in text:
+        text = text.split(",", 1)[1]
+    try:
+        return base64.b64decode(text)
+    except Exception:
+        return raw
 
 
 def _keycloak_captcha_url(action_url: str) -> str:
@@ -433,9 +574,105 @@ class KeycloakOcrCaptchaLoginAdapter(CasLoginAdapter):
         )
 
 
+class SsoFormLoginAdapter(CasApiValidatedLoginAdapter):
+    """Generic external-SSO credential login for the `cas_login_settings` flow.
+
+    login() resolves the homepage loginSettings → the campus-SSO (kc_idp_hint) URL and
+    overrides login_url before this runs. fetch_login_form GETs that page and:
+      - raises LoginPageChangedError if it landed on a federated IdP (Google/Microsoft/…)
+        or has no static password form (e.g. NetIQ NAM JS form) → login() opens an
+        interactive browser instead;
+      - else detects username/password/captcha field names generically (handles
+        muid/mpassword, login_name, pLoginName/pSecretString, … with no per-school code).
+    submit_login OCRs the image captcha (raw <img> or JS base64 endpoint) and POSTs the
+    detected fields + all hidden inputs, retrying on a miss; on exhaustion it raises
+    LoginRejectedError so login() falls back to the interactive browser.
+    """
+
+    auth_flow = "cas_login_settings"
+    requires_api_session_validation = True
+    requires_password = True
+
+    async def fetch_login_form(self, client: tron_http.TronHttpClient) -> tron_http.LoginForm:
+        html_text, current_url = await client._get_login_form_response(client.endpoints.login_url)
+        if _is_federated_host(urlparse(current_url).hostname or ""):
+            raise tron_http.LoginPageChangedError(
+                "登入導向聯邦式 SSO（{}），需瀏覽器登入。".format(urlparse(current_url).hostname)
+            )
+        detected = detect_sso_form(html_text)
+        if not detected or not detected.get("password_field"):
+            raise tron_http.LoginPageChangedError("登入頁無靜態帳密表單（可能為 JS/聯邦式），改用瀏覽器登入。")
+        client._sso_state = {"html": html_text, "current_url": current_url, "detected": detected}
+        return tron_http.LoginForm(
+            action_url=urljoin(current_url, detected["action"]) if detected["action"] else current_url,
+            fields=detected["fields"],
+            username_field=detected["username_field"],
+            password_field=detected["password_field"],
+        )
+
+    async def submit_login(
+        self,
+        client: tron_http.TronHttpClient,
+        form: tron_http.LoginForm,
+        username: str,
+        password: str,
+    ) -> tron_http.LoginOutcome:
+        state = getattr(client, "_sso_state", None) or {}
+        detected = state.get("detected") or {}
+        if not detected.get("captcha_field"):
+            # No captcha → ordinary credential POST with the detected field names.
+            return await super().submit_login(client, form, username, password)
+
+        import troTHU.ocr_captcha as ocr_captcha
+        if not ocr_captcha.ddddocr_available():
+            raise tron_http.LoginPageChangedError(
+                "此 SSO 需圖形驗證碼 OCR；請安裝 pip install -e .[ocr]，或改用瀏覽器登入。"
+            )
+
+        html_text = state.get("html")
+        current_url = state.get("current_url") or client.endpoints.login_url
+        for _ in range(tron_http.SSO_CAPTCHA_MAX_ATTEMPTS):
+            if html_text is None:
+                html_text, current_url = await client._get_login_form_response(client.endpoints.login_url)
+            det = detect_sso_form(html_text) or detected
+            captcha_src = find_captcha_source(html_text, current_url)
+            if not captcha_src:
+                break
+            action_url = urljoin(current_url, det["action"]) if det.get("action") else current_url
+            try:
+                image_bytes = await _fetch_sso_captcha_bytes(client, captcha_src)
+                code = ocr_captcha.solve_captcha(image_bytes)
+            except ocr_captcha.OcrUnavailableError as exc:
+                raise tron_http.LoginPageChangedError(str(exc)) from exc
+            except tron_http.LoginPageChangedError:
+                html_text = None
+                continue
+            maxlen = det.get("captcha_maxlen") or 4
+            if len(code) != maxlen:
+                html_text = None  # low-confidence read; refetch fresh form + captcha
+                continue
+            form_data = dict(det["fields"])
+            form_data.update({
+                det["username_field"]: username,
+                det["password_field"]: password,
+                det["captcha_field"]: code,
+            })
+            async with client.session.post(action_url, data=form_data, **client.request_kwargs()) as resp:
+                await resp.text()
+                final_url = str(resp.url)
+            if _adapter_has_session(client) and "login" not in final_url.lower():
+                return tron_http.LoginOutcome(final_url=final_url, has_session=True)
+            html_text = None  # retry with a freshly rendered form + captcha
+
+        raise tron_http.LoginRejectedError(
+            "登入失敗，請檢查帳號或密碼是否正確（或圖形驗證碼辨識連續失敗）。"
+        )
+
+
 _adapters_by_flow: Dict[str, LoginAdapter] = {
     "thu_cas": CasLoginAdapter(),
     "cas_api_validated": CasApiValidatedLoginAdapter(),
+    "cas_login_settings": SsoFormLoginAdapter(),
     "keycloak_ocr_captcha": KeycloakOcrCaptchaLoginAdapter(),
     "tku_sso_browser": TkuSsoLoginAdapter(),
     "public_cloud_email": PublicCloudEmailLoginAdapter(),

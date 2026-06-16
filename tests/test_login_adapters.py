@@ -4,6 +4,11 @@ from troTHU.login_adapters import (
     CasLoginAdapter,
     CasApiValidatedLoginAdapter,
     KeycloakOcrCaptchaLoginAdapter,
+    SsoFormLoginAdapter,
+    parse_login_settings,
+    pick_login_settings_url,
+    detect_sso_form,
+    find_captcha_source,
     TkuSsoLoginAdapter,
     PublicCloudEmailLoginAdapter,
     ManualCookieLoginAdapter,
@@ -22,6 +27,7 @@ class LoginAdaptersTest(unittest.TestCase):
         self.assertIsInstance(get_login_adapter("fju_ocr_captcha"), FjuOcrLoginAdapter)
         self.assertIsInstance(get_login_adapter("cas_ocr_captcha"), FjuOcrLoginAdapter)
         self.assertIsInstance(get_login_adapter("keycloak_ocr_captcha"), KeycloakOcrCaptchaLoginAdapter)
+        self.assertIsInstance(get_login_adapter("cas_login_settings"), SsoFormLoginAdapter)
 
     def test_unknown_flow_falls_back_to_cas(self) -> None:
         self.assertIsInstance(get_login_adapter("unknown_flow"), CasLoginAdapter)
@@ -141,6 +147,63 @@ class KeycloakCaptchaHelperTest(unittest.TestCase):
         image_bytes, key = asyncio.run(_fetch_keycloak_captcha(client, "https://x/realms/r/captcha/code"))
         self.assertTrue(image_bytes.startswith(b"\x89PNG"))
         self.assertEqual(key, "uuid-123")
+
+
+class LoginSettingsHelperTest(unittest.TestCase):
+    def test_parse_login_settings_json_and_python_dict(self) -> None:
+        # double-quoted JSON (most schools)
+        js = ('var x={"loginSettings": [{"url":"https://id/realms/a/protocol/cas/login?'
+              'service=https://lms/&kc_idp_hint=oauth2-client","title":"A"},'
+              '{"url":"https://lms/user/index","title":"B"}]};')
+        self.assertEqual(len(parse_login_settings(js)), 2)
+        # single-quoted python-dict (e.g. CityU)
+        sq = ("\"loginSettings\": [{'url': 'https://id/realms/c/protocol/cas/login?"
+              "service=https://lms/&kc_idp_hint=oauth2-client', 'title': '登入'}]")
+        self.assertEqual(len(parse_login_settings(sq)), 1)
+        self.assertEqual(parse_login_settings("<html>no settings here</html>"), [])
+
+    def test_pick_login_settings_url_prefers_kc_idp_hint(self) -> None:
+        two = [
+            {"url": "https://id/realms/a/protocol/cas/login?service=https://lms/&kc_idp_hint=oauth2-client"},
+            {"url": "https://lms/user/index"},
+        ]
+        self.assertIn("kc_idp_hint=oauth2-client", pick_login_settings_url(two))
+        one = [{"url": "https://id/realms/c/protocol/cas/login?service=https://lms/&kc_idp_hint=oauth2-client"}]
+        self.assertIn("kc_idp_hint", pick_login_settings_url(one))
+        self.assertIsNone(pick_login_settings_url([{"url": "https://lms/login"}]))
+        self.assertIsNone(pick_login_settings_url([]))
+
+    def test_detect_sso_form_dynamic_field_names(self) -> None:
+        lhu = ('<form action="openidConnectServerLogin.do">'
+               '<input type="hidden" name="state" value="z">'
+               '<input type="text" name="muid"><input type="password" name="mpassword">'
+               '<input type="text" name="authcode" maxlength="4"><input type="submit" name="submit"></form>')
+        d = detect_sso_form(lhu)
+        self.assertEqual((d["username_field"], d["password_field"], d["captcha_field"]), ("muid", "mpassword", "authcode"))
+        ncut = ('<form action=""><input type="hidden" name="loginCheck">'
+                '<input type="text" name="login_name"><input type="password" name="password">'
+                '<input type="text" name="verify_code"></form>')
+        d = detect_sso_form(ncut)
+        self.assertEqual((d["username_field"], d["password_field"], d["captcha_field"]), ("login_name", "password", "verify_code"))
+        yun = ('<form action="/YuntechSSO/Account/Login"><input type="hidden" name="__RequestVerificationToken" value="t">'
+               '<input type="text" name="pLoginName"><input type="password" name="pLoginPassword">'
+               '<input type="text" name="pSecretString" id="ValidationCode" maxlength="4"></form>')
+        d = detect_sso_form(yun)
+        self.assertEqual((d["username_field"], d["password_field"], d["captcha_field"]), ("pLoginName", "pLoginPassword", "pSecretString"))
+        # page with no password input → None (→ browser branch)
+        self.assertIsNone(detect_sso_form('<form action="/nidp/app/login"></form>'))
+
+    def test_find_captcha_source_static_and_js(self) -> None:
+        lhu = '<img src="dac/logo.png"><img src="dacAuthImage.do?r=1&w=100"><img src="redo.png">'
+        self.assertEqual(find_captcha_source(lhu, "https://eportal.lhu.edu.tw/login"),
+                         "https://eportal.lhu.edu.tw/dacAuthImage.do?r=1&w=100")
+        ncut = '<img src="/login_page.php?action=getCode&from=login">'
+        self.assertEqual(find_captcha_source(ncut, "https://sso.ncut.edu.tw/"),
+                         "https://sso.ncut.edu.tw/login_page.php?action=getCode&from=login")
+        yun = '<img id="NumberCaptcha" class="captcha-img" /><script>var R=()=>$.ajax({url:"/YuntechSSO/Captcha/Number"})</script>'
+        self.assertEqual(find_captcha_source(yun, "https://webapp.yuntech.edu.tw/x"),
+                         "https://webapp.yuntech.edu.tw/YuntechSSO/Captcha/Number")
+        self.assertIsNone(find_captcha_source('<img src="/logo.png">', "https://x/"))
 
 
 class AuthPredicateBackCompatTest(unittest.TestCase):

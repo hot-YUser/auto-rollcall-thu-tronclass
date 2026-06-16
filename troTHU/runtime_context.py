@@ -1060,6 +1060,7 @@ _LEGACY_EXPORTS = {
     'tronclass_api_endpoints': ('troTHU.providers', 'tronclass_api_endpoints'),
     'unbind_account': ('troTHU.cli_accounts', 'unbind_account'),
     'validate_login_api_session': ('troTHU.auth_runtime', 'validate_login_api_session'),
+    'resolve_login_settings_url': ('troTHU.auth_runtime', 'resolve_login_settings_url'),
     'webview_import_command': ('troTHU.cli_app', 'webview_import_command'),
     'webview_preview_command': ('troTHU.cli_app', 'webview_preview_command'),
     'webview_status_command': ('troTHU.cli_app', 'webview_status_command'),

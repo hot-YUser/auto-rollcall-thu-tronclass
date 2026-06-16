@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 from urllib.parse import urlparse
 
 try:  # pragma: no cover - package import path
@@ -412,6 +413,7 @@ async def interactive_browser_login(
     *,
     user: str,
     credential_source: str,
+    login_url_override: ctx.Optional[str] = None,
 ) -> ctx.LoginResult:
     config = ctx.get_browser_assisted_login_config()
     if not ctx.browser_assisted_login_available():
@@ -458,8 +460,8 @@ async def interactive_browser_login(
         browser = await playwright.chromium.launch(headless=False)
         context = await browser.new_context(user_agent=browser_user_agent)
         page = await context.new_page()
-        
-        await page.goto(str(endpoints.login_url), wait_until='domcontentloaded')
+
+        await page.goto(str(login_url_override or endpoints.login_url), wait_until='domcontentloaded')
         
         import asyncio
         start_time = asyncio.get_event_loop().time()
@@ -609,6 +611,23 @@ async def fallback_to_browser_assisted_login(
     return ctx.record_login_runtime(assisted)
 
 
+async def resolve_login_settings_url(session: ctx.aiohttp.ClientSession, base_url: str, fallback_url: str) -> str:
+    """For the cas_login_settings flow: GET the school homepage, read orgSettings.loginSettings,
+    and return the campus-SSO (kc_idp_hint) login URL. Falls back to fallback_url ({base}/login)
+    on any error or when no kc_idp_hint entry exists. Never raises."""
+    try:
+        import troTHU.login_adapters as login_adapters
+        homepage = str(base_url or "").rstrip("/") + "/"
+        ssl_setting = ctx.get_ssl_request_setting()
+        kwargs = {} if ssl_setting is None else {"ssl": ssl_setting}
+        async with session.get(homepage, **kwargs) as resp:
+            html = await resp.text()
+        resolved = login_adapters.pick_login_settings_url(login_adapters.parse_login_settings(html))
+        return resolved or fallback_url
+    except Exception:
+        return fallback_url
+
+
 def record_login_runtime(result: ctx.LoginResult) -> ctx.LoginResult:
     try:
         ctx.mark_login_result(ctx.BASE_DIR, ctx.get_active_profile(ctx.CONFIG).name, result)
@@ -691,14 +710,34 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
     ctx.log_print('嘗試使用帳密自動登入...')
     ctx.log(event='login_attempt', status='started', message='嘗試登入 TronClass。', extra={'credential_source': credential_source, 'user': user})
     ssl_fallback_attempted = False
+    # cas_login_settings: resolve the homepage loginSettings → campus-SSO (kc_idp_hint)
+    # URL once, and use it as login_url so both the auto form-POST and the interactive
+    # browser fallback target the correct entry (not the wrong {base}/login).
+    login_settings_url = None
+    active_provider = ctx.get_active_provider_config()
+    active_auth_flow = ctx.normalize_text(
+        active_provider.get('auth_flow') if isinstance(active_provider, dict) else ''
+    ).lower()
+    if active_auth_flow == 'cas_login_settings':
+        endpoints0 = ctx.get_active_http_endpoints()
+        login_settings_url = await ctx.resolve_login_settings_url(session, endpoints0.base_url, endpoints0.login_url)
     try:
         while True:
             client = ctx.create_tron_http_client(session, request_ssl=ctx.get_ssl_request_setting())
+            if login_settings_url and login_settings_url != client.endpoints.login_url:
+                client.endpoints = dataclasses.replace(client.endpoints, login_url=login_settings_url)
             try:
                 session.cookie_jar.clear()
                 form = await client.fetch_login_form()
                 outcome = await client.submit_login(form, user, passwd)
             except ctx.LoginPageChangedError as exc:
+                if login_settings_url:
+                    # Federated IdP / JS-rendered SSO → open the interactive browser at the
+                    # resolved campus-SSO URL for manual login (Google/Microsoft/NetIQ NAM…).
+                    return ctx.record_login_runtime(await ctx.interactive_browser_login(
+                        session, user=user, credential_source=credential_source,
+                        login_url_override=login_settings_url,
+                    ))
                 if ctx.should_try_browser_assisted_login():
                     return await ctx.fallback_to_browser_assisted_login(
                         session,
@@ -713,6 +752,13 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
                 ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='login_page_changed', credential_source=credential_source, user=user, error=ctx.normalize_text(exc))
                 return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
             except ctx.LoginRejectedError as exc:
+                if login_settings_url:
+                    # Auto credential/captcha attempt failed → fall back to interactive
+                    # browser at the resolved campus-SSO URL (user completes login manually).
+                    return ctx.record_login_runtime(await ctx.interactive_browser_login(
+                        session, user=user, credential_source=credential_source,
+                        login_url_override=login_settings_url,
+                    ))
                 if ctx.should_try_browser_assisted_login():
                     return await ctx.fallback_to_browser_assisted_login(
                         session,
