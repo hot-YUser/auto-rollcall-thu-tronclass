@@ -91,8 +91,60 @@ def get_login_retry_delay(attempt_index: int) -> float:
     return ctx.LOGIN_RETRY_DELAYS[min(attempt_index, len(ctx.LOGIN_RETRY_DELAYS) - 1)]
 
 
+# Login outcomes that cannot succeed on a blind retry — they need the user to fix
+# something first (wrong credentials, a changed login page with no browser fallback,
+# a missing manual cookie). The monitor must NOT auto-retry these: doing so is the
+# "stuck in a 1-second login-retry loop" symptom. The complement
+# (LoginResult.should_auto_retry) is the transient set that DOES back off and retry.
+LOGIN_NEEDS_USER_STATUSES = frozenset({
+    'missing_credentials',
+    'rejected',
+})
+
+# One source of truth for the user-facing line shown on each non-success login.
+# Every LoginResult.status (except 'success') MUST have an entry here — the coverage
+# is asserted by tests/test_login_messages.py so a new status can't ship message-less.
+# Secrets (password / captcha contents) are never included.
+_LOGIN_FAILURE_MESSAGES = {
+    'missing_credentials': '未設定帳號密碼。請按任意鍵編輯 config.conf，填好後關閉記事本。',
+    'rejected': '登入失敗：帳號、密碼或驗證碼有誤，請確認後按任意鍵編輯 config.conf。',
+    'login_page_changed': '登入頁結構與預期不符（學校可能改版）；將開啟瀏覽器讓你手動登入，或可用 webview import 匯入 Cookie。無人值守模式則持續偵測 Cookie 並重試。',
+    'transient_error': '登入時發生暫時性錯誤（網路或伺服器），稍後會自動重試。',
+    'missing_session': '登入流程完成但未取得有效 session；將開啟瀏覽器讓你手動登入，或匯入 Cookie。無人值守模式則持續偵測 Cookie 並重試。',
+    'browser_assist_disabled': '自動登入未成功，且未啟用瀏覽器後備登入（auth.browser_assisted_login）。',
+    'browser_assist_unavailable': '需要瀏覽器登入，但此環境未內建 Playwright；請改用打包版 exe，或安裝 pip install -e .[browser]。',
+    'browser_assist_failed': '瀏覽器後備登入失敗；稍後會自動重試。',
+    'browser_assist_missing_session': '瀏覽器登入完成，但未取得有效 session cookie；稍後會自動重試。',
+    'browser_interactive_timeout': '瀏覽器手動登入逾時（時間內未完成）；稍後會再開啟瀏覽器讓你登入。',
+    'browser_interactive_cancelled': '瀏覽器視窗被關閉、未完成登入；稍後會再試。',
+    'error': '登入時發生未預期的錯誤；稍後會自動重試。',
+}
+
+# Statuses whose raised-exception text carries the actionable detail (missing OCR
+# extra, federated SSO, captcha) and SHOULD replace the generic line.
+_LOGIN_DETAIL_REPLACES_MESSAGE = frozenset({'login_page_changed'})
+# Statuses where a short error snippet is appended after the generic line.
+_LOGIN_DETAIL_APPENDS_MESSAGE = frozenset({'transient_error', 'missing_session', 'error'})
+
+
+def login_failure_message(result: ctx.Any) -> str:
+    """The single user-facing line for a non-success LoginResult. Surfaces the
+    raised exception's actionable text when present (e.g. '需要 .[ocr] 套件')."""
+    status = ctx.normalize_text(getattr(result, 'status', ''))
+    detail = ctx.normalize_text(getattr(result, 'error', ''))
+    if status in _LOGIN_DETAIL_REPLACES_MESSAGE and detail:
+        return detail
+    base = _LOGIN_FAILURE_MESSAGES.get(status)
+    if base is None:
+        return '登入失敗（{}）。'.format(status or 'unknown')
+    if detail and status in _LOGIN_DETAIL_APPENDS_MESSAGE and detail not in base:
+        snippet = detail if len(detail) <= 120 else detail[:117] + '…'
+        return '{}（{}）'.format(base, snippet)
+    return base
+
+
 def should_auto_login_without_session() -> bool:
-    return ctx.LAST_LOGIN_RESULT.status not in {'manual_cookie_required', 'missing_credentials', 'rejected'}
+    return ctx.LAST_LOGIN_RESULT.status not in LOGIN_NEEDS_USER_STATUSES
 
 
 def redacted_login_user(user: ctx.Any) -> str:
@@ -103,18 +155,18 @@ def masked_login_user(user: ctx.Any) -> str:
     return ctx.normalize_text(user)
 
 
-# Auth-flow values are protocol/feature categories — never school names. The unified
-# login flow (login_flow.run_login_flow) DISPATCHES purely on detected page features;
-# auth_flow is consulted ONLY for the pre-login mode/degradation decisions below.
-# Legacy filled-config values are normalised so old configs keep working.
+# The unified login flow (login_flow.run_login_flow) DISPATCHES purely on detected page
+# features and never reads auth_flow. The only remaining pre-login use is the
+# `interactive_browser` mode (synthesised for pasted-URL providers). Manual cookies are
+# no longer a provider mode — they are just cookie detection (see the monitor loop), so
+# there is no per-provider manual-cookie gate. Legacy filled-config values still normalise
+# so old configs keep working.
 _LEGACY_AUTH_FLOW_ALIASES = {
     'thu_cas': 'cas',
     'cas_api_validated': 'cas',
     'cas_login_settings': 'cas',
-    'fju_ocr_captcha': 'cas_ocr_captcha',
     'tku_sso_browser': 'nam_neai',
 }
-OCR_CAPTCHA_AUTH_FLOWS = {'cas_ocr_captcha', 'keycloak_ocr_captcha'}
 
 
 def _active_auth_flow() -> str:
@@ -124,16 +176,6 @@ def _active_auth_flow() -> str:
         provider = {}
     flow = ctx.normalize_text(provider.get('auth_flow') if isinstance(provider, dict) else '').lower()
     return _LEGACY_AUTH_FLOW_ALIASES.get(flow, flow)
-
-
-def provider_requires_manual_cookie_login() -> bool:
-    auth_flow = _active_auth_flow()
-    # OCR image/JSON captcha logins degrade to manual-cookie when the optional ddddocr
-    # engine is unavailable, so the provider still works out of the box (e.g. the small
-    # default release) without a hard failure.
-    if auth_flow in OCR_CAPTCHA_AUTH_FLOWS and not ctx.ddddocr_available():
-        return True
-    return auth_flow == 'manual_cookie_only'
 
 
 def provider_requires_interactive_browser_login() -> bool:
@@ -448,21 +490,40 @@ async def interactive_browser_login(
         import asyncio
         start_time = asyncio.get_event_loop().time()
         success_cookies = None
+        passive_success = False
         final_url = str(page.url)
-        
+
         while True:
             if page.is_closed() or not browser.is_connected():
                 return ctx.LoginResult(status='browser_interactive_cancelled', credential_source=credential_source, user=user)
-                
+
             elapsed_ms = (asyncio.get_event_loop().time() - start_time) * 1000
             if elapsed_ms >= timeout_ms:
                 return ctx.LoginResult(status='browser_interactive_timeout', credential_source=credential_source, user=user)
-                
+
+            # Passive path, concurrent with the active browser login: a cookie imported or
+            # written elsewhere (e.g. `webview import`) lands in the cache. Pick it up here so
+            # whichever arrives first — the browser login or a manually-placed cookie — wins.
+            if ctx.cookie_cache_enabled(ctx.CONFIG):
+                try:
+                    ctx.load_session_cookies(session, ctx.BASE_DIR, ctx.get_active_profile(ctx.CONFIG).name)
+                except Exception:
+                    pass
+                if ctx.has_session_cookie(session):
+                    client = ctx.create_tron_http_client(session, request_ssl=ctx.get_ssl_request_setting())
+                    try:
+                        await ctx.validate_login_api_session(client)
+                        passive_success = True
+                        final_url = str(page.url)
+                        break
+                    except Exception:
+                        pass
+
             try:
                 cookies = await context.cookies()
             except Exception:
                 return ctx.LoginResult(status='browser_interactive_cancelled', credential_source=credential_source, user=user)
-                
+
             if _has_playwright_session_cookie(cookies, expected_host):
                 session.cookie_jar.clear()
                 for cookie in cookies:
@@ -489,7 +550,15 @@ async def interactive_browser_login(
         browser = None
         await playwright_mgr.__aexit__(None, None, None)
         playwright_mgr = None
-        
+
+        if passive_success:
+            # Cookie arrived via the cache (manual import / external login). It's already
+            # in the jar and the cache file; just confirm success.
+            ctx.CONFIG['account']['user'] = user
+            ctx.log(event='login_success', status='success', url=final_url, message='偵測到外部匯入的 Cookie，登入成功。', extra={'credential_source': credential_source, 'user': user})
+            ctx.log_print('偵測到可用的 Cookie，登入成功！綁定帳號：{}'.format(user))
+            return ctx.LoginResult(status='success', credential_source='manual_cookie:{}'.format(credential_source), user=user, final_url=final_url)
+
         return _finalize_browser_cookies(session, success_cookies, final_url, user, credential_source, label_prefix='interactive_browser')
         
     except Exception as exc:
@@ -590,6 +659,7 @@ async def fallback_to_browser_assisted_login(
             error=assisted.error,
             extra={'credential_source': credential_source, 'user': user},
         )
+        ctx.log_print(ctx.login_failure_message(assisted))
     return ctx.record_login_runtime(assisted)
 
 
@@ -618,43 +688,43 @@ def record_login_runtime(result: ctx.LoginResult) -> ctx.LoginResult:
     return result
 
 
+async def _browser_or_passive(
+    session: ctx.aiohttp.ClientSession,
+    *,
+    user: str,
+    credential_source: str,
+    status: str,
+    error: ctx.Any = None,
+    login_url_override: ctx.Optional[str] = None,
+) -> ctx.LoginResult:
+    """Last resort for a non-rejected auto-login failure (changed login page, no session,
+    OCR captcha with no engine, federated SSO…). In interactive mode open the browser for
+    the user to log in manually — interactive_browser_login also watches the cookie cache,
+    so a cookie imported/pasted elsewhere wins too. In --no-input mode the browser can't be
+    driven, so return the failure status: the monitor backs off and keeps polling the cookie
+    cache for a manually-imported cookie. Either way the only thing that succeeds is a valid
+    cookie, regardless of how it arrives."""
+    if ctx.INPUT_ENABLED:
+        result = await ctx.interactive_browser_login(
+            session, user=user, credential_source=credential_source,
+            login_url_override=login_url_override,
+        )
+        ctx.LAST_LOGIN_RESULT = result
+        if not result.ok:
+            ctx.log_print(ctx.login_failure_message(result))
+        return ctx.record_login_runtime(result)
+    ctx.log(event='login_failure', status=status, message='自動登入未成功；無人值守模式改為持續偵測 Cookie 並退避重試。', error=error, extra={'credential_source': credential_source, 'user': user})
+    ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status=status, credential_source=credential_source, user=user, error=ctx.normalize_text(error) if error else '')
+    ctx.log_print(ctx.login_failure_message(ctx.LAST_LOGIN_RESULT))
+    return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
+
+
 async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=False) -> ctx.LoginResult:
     if not research_context:
         blocked = ctx.provider_guard_result('login/daily automation')
         if blocked is not None:
             ctx.LAST_LOGIN_RESULT = blocked
             return ctx.record_login_runtime(blocked)
-    if ctx.provider_requires_manual_cookie_login():
-        active_profile = ctx.get_active_profile(ctx.CONFIG)
-        if ctx.has_session_cookie(session):
-            client = ctx.create_tron_http_client(session, request_ssl=ctx.get_ssl_request_setting())
-            try:
-                await ctx.validate_login_api_session(client)
-                result = ctx.LoginResult(status='success', credential_source='manual_cookie', user=active_profile.user)
-                ctx.LAST_LOGIN_RESULT = result
-                return ctx.record_login_runtime(result)
-            except (ctx.TronHttpError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError, ctx.ssl.SSLError) as exc:
-                try:
-                    session.cookie_jar.clear()
-                except Exception:
-                    pass
-                ctx.log(
-                    event='login_failure',
-                    status='missing_session',
-                    message='Manual cookie API session validation failed.',
-                    error=exc,
-                    extra={'provider': ctx.get_active_provider_key(), 'user': active_profile.user},
-                )
-                ctx.log_print('手動 Cookie API 驗證失敗。')
-        result = ctx.LoginResult(status='manual_cookie_required', credential_source='manual_cookie', user=active_profile.user)
-        ctx.log(
-            event='login_skipped',
-            status='manual_cookie_required',
-            message='Provider requires a manually supplied session cookie; password login is disabled.',
-            extra={'provider': ctx.get_active_provider_key(), 'user': active_profile.user},
-        )
-        ctx.LAST_LOGIN_RESULT = result
-        return ctx.record_login_runtime(result)
     if ctx.provider_requires_interactive_browser_login():
         active_profile = ctx.get_active_profile(ctx.CONFIG)
         if ctx.cookie_cache_enabled(ctx.CONFIG):
@@ -681,12 +751,14 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
                 ctx.log_print('互動瀏覽器快取 Cookie API 驗證失敗，需要重新登入。')
         result = await ctx.interactive_browser_login(session, user=active_profile.user, credential_source='config')
         ctx.LAST_LOGIN_RESULT = result
+        if not result.ok:
+            ctx.log_print(ctx.login_failure_message(result))
         return ctx.record_login_runtime(result)
     user, passwd, credential_source = ctx.resolve_credentials()
     if not ctx.has_real_credential(user) or not ctx.has_real_credential(passwd):
         ctx.log(event='login_failure', status='missing_credentials', message='尚未設定可用帳號密碼。', extra={'credential_source': credential_source})
-        ctx.log_print('未設定帳號密碼。請按任意鍵編輯 config.conf，填好後關閉記事本。')
         ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='missing_credentials', credential_source=credential_source)
+        ctx.log_print(ctx.login_failure_message(ctx.LAST_LOGIN_RESULT))
         return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
     ctx.IS_LOGGING_IN = True
     ctx.log_print('嘗試使用帳密自動登入...')
@@ -711,112 +783,62 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
                 session.cookie_jar.clear()
                 outcome = await ctx.run_login_flow(client, user, passwd)
             except ctx.LoginPageChangedError as exc:
-                if login_settings_url:
-                    # Federated IdP / JS-rendered SSO → open the interactive browser at the
-                    # resolved campus-SSO URL for manual login (Google/Microsoft/NetIQ NAM…).
-                    return ctx.record_login_runtime(await ctx.interactive_browser_login(
-                        session, user=user, credential_source=credential_source,
-                        login_url_override=login_settings_url,
-                    ))
-                if ctx.should_try_browser_assisted_login():
-                    return await ctx.fallback_to_browser_assisted_login(
-                        session,
-                        user=user,
-                        passwd=passwd,
-                        credential_source=credential_source,
-                        reason='Login form changed or TKU fast SSO failed; trying browser-assisted login.',
-                        error=exc,
-                    )
-                ctx.log(event='login_failure', status='login_page_changed', message='登入頁結構已更改。', error=exc, extra={'credential_source': credential_source, 'user': user})
-                ctx.log_print('登入頁結構已更改，可在 config.advanced.toml 啟用 auth.browser_assisted_login 作為 opt-in 後備。')
-                ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='login_page_changed', credential_source=credential_source, user=user, error=ctx.normalize_text(exc))
-                return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
+                # Structural failure (changed login page / OCR captcha with no engine /
+                # federated SSO). Last resort: interactive browser when there's a user,
+                # else passive cookie polling. login_settings_url, when set, is the
+                # campus-SSO URL the browser should open.
+                ctx.log(event='login_failure', status='login_page_changed', message='登入頁結構與預期不符；改用最後備案（手動瀏覽器登入／持續偵測 Cookie）。', error=exc, extra={'credential_source': credential_source, 'user': user})
+                return await _browser_or_passive(
+                    session, user=user, credential_source=credential_source,
+                    status='login_page_changed', error=exc, login_url_override=login_settings_url,
+                )
             except ctx.LoginRejectedError as exc:
-                if login_settings_url:
-                    # Auto credential/captcha attempt failed → fall back to interactive
-                    # browser at the resolved campus-SSO URL (user completes login manually).
-                    return ctx.record_login_runtime(await ctx.interactive_browser_login(
-                        session, user=user, credential_source=credential_source,
-                        login_url_override=login_settings_url,
-                    ))
-                if ctx.should_try_browser_assisted_login():
-                    return await ctx.fallback_to_browser_assisted_login(
-                        session,
-                        user=user,
-                        passwd=passwd,
-                        credential_source=credential_source,
-                        reason='TKU fast SSO rejected or changed; trying browser-assisted login.',
-                        error=exc,
-                    )
-                ctx.log(event='login_failure', status='rejected', message='登入失敗，帳號密碼被拒絕。', extra={'credential_source': credential_source, 'user': user})
-                ctx.log_print('登入失敗，請檢查帳號或密碼是否正確。')
-                ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='rejected', credential_source=credential_source, user=user)
+                # Wrong account / password / captcha — a browser login would only repeat the
+                # same rejection, so never auto-open one. Cookie detection stays on, so a
+                # manually-imported cookie can still take over.
+                ctx.log(event='login_failure', status='rejected', message='登入失敗，帳號密碼被拒絕。', error=exc, extra={'credential_source': credential_source, 'user': user})
+                ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='rejected', credential_source=credential_source, user=user, error=ctx.normalize_text(exc))
+                ctx.log_print(ctx.login_failure_message(ctx.LAST_LOGIN_RESULT))
                 return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
             except (ctx.TronHttpError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError, ctx.ssl.SSLError) as exc:
                 if not ssl_fallback_attempted and ctx.get_verify_ssl() and ctx.is_ssl_certificate_verification_error(exc):
                     ssl_fallback_attempted = True
                     ctx.enable_insecure_ssl_fallback(exc)
                     continue
-                if ctx.should_try_browser_assisted_login():
-                    return await ctx.fallback_to_browser_assisted_login(
-                        session,
-                        user=user,
-                        passwd=passwd,
-                        credential_source=credential_source,
-                        reason='TKU fast SSO encountered an HTTP error; trying browser-assisted login.',
-                        error=exc,
-                    )
+                # Network/HTTP/timeout — transient, resolves by waiting; auto-retry with
+                # backoff (a browser can't fix a network problem). Cookie polling continues.
                 ctx.log(event='login_failure', status='transient_error', message='登入過程發生錯誤。', error=exc, extra={'credential_source': credential_source, 'user': user})
-                ctx.log_print('登入過程中發生錯誤: {}'.format(exc))
                 ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='transient_error', credential_source=credential_source, user=user, error=ctx.normalize_text(exc))
+                ctx.log_print(ctx.login_failure_message(ctx.LAST_LOGIN_RESULT))
                 return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
             if not outcome.has_session or not ctx.has_session_cookie(session):
-                if ctx.should_try_browser_assisted_login():
-                    return await ctx.fallback_to_browser_assisted_login(
-                        session,
-                        user=user,
-                        passwd=passwd,
-                        credential_source=credential_source,
-                        reason='Login did not yield a valid session; trying browser-assisted login.',
-                    )
-                ctx.log(event='login_failure', status='missing_session', url=outcome.final_url, message='登入流程完成，但未取得有效 session。', extra={'credential_source': credential_source, 'user': user})
-                ctx.log_print('登入流程已完成，但未取得有效 session。')
-                ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='missing_session', credential_source=credential_source, user=user, final_url=outcome.final_url)
-                return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
+                ctx.log(event='login_failure', status='missing_session', url=outcome.final_url, message='登入流程完成，但未取得有效 session；改用最後備案。', extra={'credential_source': credential_source, 'user': user})
+                return await _browser_or_passive(
+                    session, user=user, credential_source=credential_source,
+                    status='missing_session', login_url_override=login_settings_url,
+                )
             if ctx.provider_requires_api_session_validation():
                 try:
                     await ctx.validate_login_api_session(client)
                 except (ctx.TronHttpError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError, ctx.ssl.SSLError) as exc:
-                    if ctx.should_try_browser_assisted_login():
-                        return await ctx.fallback_to_browser_assisted_login(
-                            session,
-                            user=user,
-                            passwd=passwd,
-                            credential_source=credential_source,
-                            reason='Login session failed API validation; trying browser-assisted login.',
-                            error=exc,
-                        )
                     try:
                         session.cookie_jar.clear()
                     except Exception:
                         pass
+                    # Logged in but the session failed validation (flow changed). Structural
+                    # → last resort: interactive browser, or passive cookie polling.
                     ctx.log(
                         event='login_failure',
                         status='missing_session',
                         url=outcome.final_url,
-                        message='登入流程完成，但 API session 驗證失敗。',
+                        message='登入流程完成，但 API session 驗證失敗；改用最後備案。',
                         error=exc,
                         extra={'credential_source': credential_source, 'user': user},
                     )
-                    ctx.log_print('登入流程已完成，但 API session 驗證失敗；TronClass 可能需要瀏覽器登入或登入流程已變更。')
-                    ctx.LAST_LOGIN_RESULT = ctx.LoginResult(
-                        status='missing_session',
-                        credential_source=credential_source,
-                        user=user,
-                        final_url=outcome.final_url,
-                        error=ctx.normalize_text(exc),
+                    return await _browser_or_passive(
+                        session, user=user, credential_source=credential_source,
+                        status='missing_session', error=exc, login_url_override=login_settings_url,
                     )
-                    return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
             ctx.CONFIG['account']['user'] = user
             ctx.log(event='login_success', status='success', url=outcome.final_url, message='登入成功。', extra={'credential_source': credential_source, 'user': user})
             ctx.log_print('登入成功！綁定帳號：{}'.format(user))
@@ -828,6 +850,14 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
                 ctx.log(event='session_cookie_cache', status='failed', message='登入成功，但 cookie 快取保存失敗。', error=exc)
             ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='success', credential_source=credential_source, user=user, final_url=outcome.final_url)
             return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
+    except Exception as exc:
+        # Catch-all so an unexpected error still yields a clear, classified result
+        # (auto-retry with backoff) instead of escaping to the fatal-restart path
+        # with no user-facing explanation. ponytail: one net, not per-exception.
+        ctx.log(event='login_failure', status='error', message='登入時發生未預期的錯誤。', error=exc, extra={'credential_source': credential_source, 'user': user})
+        ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='error', credential_source=credential_source, user=user, error=ctx.normalize_text(exc))
+        ctx.log_print(ctx.login_failure_message(ctx.LAST_LOGIN_RESULT))
+        return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
     finally:
         ctx.IS_LOGGING_IN = False
 

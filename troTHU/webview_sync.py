@@ -390,14 +390,11 @@ def import_webview_cookies(
     if not accepted:
         raise WebViewSyncError("no_accepted_cookies")
 
-    # Confirm imported cookies with an authenticated API call for every flow except the
-    # plain CAS one (see cookie_sync_report). Keyed on the protocol, not the school.
-    flow = str(provider_config.get("auth_flow") or "").strip().lower()
-    requires_validation = flow not in ("", "cas", "thu_cas")
-
-    if requires_validation:
-        if not _validate_api_session(provider_config, accepted):
-            raise WebViewSyncError("api_validation_failed")
+    # Always confirm imported cookies with an authenticated API call — a manually-imported
+    # cookie IS the cookie detection the monitor relies on, so it must be proven valid here
+    # regardless of school. (Previously skipped for plain CAS; now uniform, school-agnostic.)
+    if not _validate_api_session(provider_config, accepted):
+        raise WebViewSyncError("api_validation_failed")
 
     path = cookie_path(Path(base_dir), profile_name)
     path.parent.mkdir(parents=True, exist_ok=True)

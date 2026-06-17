@@ -95,25 +95,11 @@ async def _classify_captcha(
     return {"kind": kind, "fetch": fetched}
 
 
-async def _resolve_and_classify(client: tron_http.TronHttpClient) -> Dict[str, Any]:
-    """Credential-free walk to the real credential form + feature classification."""
+async def _classify_login_url(client: tron_http.TronHttpClient, login_url: str, prior_steps: List[str]) -> Dict[str, Any]:
+    """Fetch ONE login URL and classify its page by feature. form_kind == 'no_form' means
+    no credential form here (the caller advances to the next candidate URL)."""
     ep = client.endpoints
-    auth_flow = str(getattr(ep, "auth_flow", "") or "").strip().lower()
-    login_url = ep.login_url
-    steps: List[str] = []
-
-    # login-settings federation (homepage orgSettings.loginSettings → kc_idp_hint)
-    if auth_flow == "cas_login_settings":
-        try:
-            homepage = ep.base_url.rstrip("/") + "/"
-            home_html, _ = await client._get_login_form_response(homepage)
-            resolved = pick_login_settings_url(parse_login_settings(home_html))
-            if resolved:
-                login_url = resolved
-                steps.append("login_settings")
-        except Exception:
-            pass
-
+    steps = list(prior_steps)
     html, final_url = await client._get_login_form_response(login_url)
     pre_auth_session = tron_http.has_session_cookie(client.session, ep.session_cookie_domain)
     html, final_url = await _follow_js_autosubmit(client, html, final_url)
@@ -182,6 +168,41 @@ async def _resolve_and_classify(client: tron_http.TronHttpClient) -> Dict[str, A
         return result
 
 
+async def _resolve_and_classify(client: tron_http.TronHttpClient) -> Dict[str, Any]:
+    """Credential-free walk to the real credential form, mirroring the live login flow:
+    unconditional loginSettings (kc_idp_hint) discovery, then candidate probing of
+    /login and /cas/login. No per-school gate — identical for every provider."""
+    ep = client.endpoints
+    base = str(getattr(ep, "base_url", "") or "").rstrip("/")
+    primary = ep.login_url
+    steps: List[str] = []
+
+    # loginSettings federation (homepage orgSettings.loginSettings → kc_idp_hint), run for
+    # every school exactly as auth_runtime.login() does — not gated on auth_flow.
+    try:
+        homepage = base + "/" if base else ep.base_url
+        home_html, _ = await client._get_login_form_response(homepage)
+        resolved = pick_login_settings_url(parse_login_settings(home_html))
+        if resolved and resolved != primary:
+            primary = resolved
+            steps.append("login_settings")
+    except Exception:
+        pass
+
+    candidates = [primary]
+    cas = base + "/cas/login" if base else ""
+    if cas and cas != primary:
+        candidates.append(cas)
+
+    last: Dict[str, Any] = {}
+    for login_url in candidates:
+        result = await _classify_login_url(client, login_url, steps)
+        if result.get("form_kind") != "no_form":
+            return result
+        last = result
+    return last
+
+
 async def probe_provider(provider_cfg: Dict[str, Any], *, timeout: float = _PROBE_TIMEOUT_S) -> Dict[str, Any]:
     """Probe one provider. Never raises; classifies into ok/reachable_but_changed/unreachable/skipped."""
     key = str(provider_cfg.get("key") or "?")
@@ -227,10 +248,25 @@ async def probe_all(provider_cfgs: List[Dict[str, Any]], *, delay: float = 0.4, 
     return results
 
 
-def run_login_probe(school: Optional[str] = None, *, as_json: bool = False) -> Dict[str, Any]:
-    """Sync entry: probe one school (--school KEY) or all. Returns the report dict."""
+def run_login_probe(
+    school: Optional[str] = None,
+    *,
+    as_json: bool = False,
+    available: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    """Sync entry: probe one school (--school KEY) or all. Returns the report dict.
+
+    ``available`` is the merged provider map (built-in + config-defined `[provider.
+    available.*]`); when given it is the source of truth so a pure-config school is
+    probed too. Falls back to the built-in registry when omitted.
+    """
+    available = available or {}
     if school:
-        cfgs = [providers.get_provider(school).to_config()]
+        key = providers.normalize_provider_name(school)
+        cfg = available.get(key) or providers.get_provider(school).to_config()
+        cfgs = [cfg]
+    elif available:
+        cfgs = [available[key] for key in sorted(available)]
     else:
         cfgs = [p.to_config() for p in providers.list_all_providers()]
     results = asyncio.run(probe_all(cfgs))
@@ -264,10 +300,21 @@ def format_table(report: Dict[str, Any]) -> str:
 
 
 def login_probe_command(args: Any) -> int:
-    """CLI handler for `login-probe`: probe one school (--school KEY) or all (default)."""
+    """CLI handler for `login-probe`: probe one school (--school KEY) or all (default).
+
+    Loads the merged config so schools added purely via `config.advanced.toml`
+    (`[provider.available.*]`) are probed alongside the built-in registry.
+    """
     school = (getattr(args, "school", "") or "").strip() or None
     as_json = bool(getattr(args, "json", False))
-    report = run_login_probe(school, as_json=as_json)
+    available = None
+    try:
+        import troTHU.runtime_context as ctx
+        config = ctx.load_config()
+        available = providers.normalize_provider_config(config.get("provider")).get("available") or None
+    except Exception:
+        available = None
+    report = run_login_probe(school, as_json=as_json, available=available)
     if as_json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
     else:

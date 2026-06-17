@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from troTHU.account_store import cookie_path
 from troTHU.webview_sync import (
@@ -154,14 +155,15 @@ class WebViewSyncTest(unittest.TestCase):
         )
         with tempfile.TemporaryDirectory() as temp_dir:
             base = Path(temp_dir)
-            result = import_webview_cookies(
-                base,
-                "default",
-                records,
-                config=config(enabled=True, allow_import=True),
-                provider=THU_PROVIDER,
-                save=True,
-            )
+            with patch("troTHU.webview_sync._validate_api_session", return_value=True):
+                result = import_webview_cookies(
+                    base,
+                    "default",
+                    records,
+                    config=config(enabled=True, allow_import=True),
+                    provider=THU_PROVIDER,
+                    save=True,
+                )
             path = cookie_path(base, "default")
             raw = path.read_text(encoding="utf-8")
             stored = json.loads(raw)
@@ -189,14 +191,15 @@ class WebViewSyncTest(unittest.TestCase):
 
             provider = dict(FJU_PROVIDER)
             provider["allow_experimental"] = True
-            result = import_webview_cookies(
-                Path(temp_dir),
-                "default",
-                records,
-                config=config(enabled=True, allow_import=True, allow_exp=True),
-                provider=provider,
-                save=True,
-            )
+            with patch("troTHU.webview_sync._validate_api_session", return_value=True):
+                result = import_webview_cookies(
+                    Path(temp_dir),
+                    "default",
+                    records,
+                    config=config(enabled=True, allow_import=True, allow_exp=True),
+                    provider=provider,
+                    save=True,
+                )
             self.assertTrue(result["saved"])
 
 

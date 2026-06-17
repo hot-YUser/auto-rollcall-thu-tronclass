@@ -192,7 +192,7 @@ class TronCliSmokeTest(unittest.TestCase):
         self.assertEqual(result, 0)
         payload = json.loads(outputs[0])
         self.assertEqual(payload["key"], "fju")
-        self.assertEqual(payload["auth_flow"], "cas_ocr_captcha")
+        self.assertEqual(payload["auth_flow"], "auto")
         self.assertTrue(payload["user_visible"])
         self.assertTrue(payload["capabilities"]["radar"])
         self.assertEqual(payload["support"]["support_level"], "ready")
@@ -422,7 +422,7 @@ class TronCliSmokeTest(unittest.TestCase):
                     )
                 )
                 outputs = []
-                with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):
+                with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append), patch("troTHU.webview_sync._validate_api_session", return_value=True):
                     result = tron.main(
                         ["webview", "import", "--input", str(input_path), "--profile", "default", "--save", "--json"]
                     )

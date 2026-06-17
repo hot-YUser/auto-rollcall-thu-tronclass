@@ -428,44 +428,55 @@ EXAMPLE_PLACEHOLDER_VALUES = {
 }
 
 # Friendly default written to config.conf on first run (config_runtime.ensure_config_exists).
-# Beginner-facing Traditional-Chinese teaching template: in-section comments, two
-# example accounts + one blank, an optional teacher block, two example groups, and
-# a per-weekday operating schedule. The example values above are intentional; they
-# parse to empty, so the program opens this file for editing until real credentials
-# are filled in.
+# Beginner-facing Traditional-Chinese teaching template: in-section comments, example
+# [save account] blocks, an optional teacher block, example groups, and a per-weekday
+# operating schedule. The example values are intentional; they parse to empty, so the
+# program opens this file for editing until real credentials are filled in.
+#
+# The __SCHOOL_CODES__ sentinel is replaced (below) with the live registry codes so the
+# first page a user sees lists EVERY supported school equally and stays current — no
+# school is singled out, and the list never drifts when a school is added.
+def _default_basic_config_school_code_lines() -> str:
+    try:
+        import troTHU.providers as _p  # providers imports no troTHU module → no import cycle
+        codes = sorted({prov.key.upper() for prov in _p.list_all_providers() if getattr(prov, "user_visible", True)})
+    except Exception:
+        codes = ["THU", "TKU", "SCU", "FJU", "TRONCLASS"]
+    return "\n".join("#   " + ", ".join(codes[i:i + 8]) for i in range(0, len(codes), 8))
+
+
 DEFAULT_BASIC_CONFIG_TEMPLATE = """# ===== 基本設定 config.conf =====（改完存檔關閉記事本即自動套用）
 # now：要用哪個帳號跑？填某帳號的 user，或填「class 群組名」。只有一個帳號可留空。
 #       也可填學校網址（如 https://tronclass.你的學校.edu.tw）→ 改用手動瀏覽器登入，免填帳密。
 now = AAAAA 或 class A 或 「class A」 擇一
 
-[account]
-# 你儲存的帳號，要幾個就放幾塊方便快速切換。
-# school 填代號＝自動登入：THU / TKU / TRONCLASS / SCU / FJU；填學校網址＝手動瀏覽器登入（passwd 可留空）
+# [save account] 已儲存的帳號，要存幾個就放幾塊方便切換；實際只會用上面 now 指定的那一個跑，
+#   填多個並「不會」同時偵測多個。school 填下列任一支援代號＝自動登入：
+__SCHOOL_CODES__
+#   也可改填學校「網址」＝手動瀏覽器登入（passwd 可留空）。
+
+[save account]
 user = AAAAA
 passwd = **OOXX
-school = THU
+school = （填上方任一代號）
 # 上面的 now 填了嗎？一定要記得把 user 名填上去！
 
-[account]
-# 你儲存的帳號，要幾個就放幾塊方便快速切換。
-# school 填代號＝自動登入：THU / TKU / TRONCLASS / SCU / FJU；填學校網址＝手動瀏覽器登入（passwd 可留空）
+[save account]
 user = BBBBB
 passwd = XXOO**
-school = THU
+school = （填上方任一代號）
 # 上面的 now 填了嗎？一定要記得把 user 名填上去！
 
-[account]
-# 你儲存的帳號，要幾個就放幾塊方便快速切換。
-# school 填代號＝自動登入：THU / TKU / TRONCLASS / SCU / FJU；填學校網址＝手動瀏覽器登入（passwd 可留空）
+[save account]
 user =
 passwd =
 school =
 # 上面的 now 填了嗎？一定要記得把 user 名填上去！
 
-# 這裡可以繼續放更多 [account] ，自行複製
+# 這裡可以繼續放更多 [save account]，自行複製
 
 [teacher]
-# （選用）QR 教師輔助帳號。course 留空會自動抓第一門課
+# （選用）QR 教師輔助帳號。school 填任一支援代號（見上）；course 留空會自動抓第一門課
 user = TTTTT
 passwd = OO**XX
 school = TRONCLASS
@@ -474,7 +485,7 @@ course =
 [group]
 # （選用）第一人偵測、全員簽到。members 用逗號列出同組 user，再把上面 now 填成「class A」
 class = A
-school = THU
+school = （填上方任一代號）
 members = AAAAA,BBBBB
 
 [group]
@@ -483,7 +494,7 @@ class =
 school =
 members =
 
-# 這裡可以繼續放更多 [group] ，自行複製
+# 這裡可以繼續放更多 [group]，自行複製
 
 [operating]
 # 星期日上課時段；times 用逗號分隔多段
@@ -526,7 +537,7 @@ times = 00:00-00:00
 day = 6
 enable = true
 times = 00:00-00:00
-"""
+""".replace("__SCHOOL_CODES__", _default_basic_config_school_code_lines())
 
 DEFAULT_USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -753,6 +764,11 @@ CONFIG_BOOTSTRAPPED = False
 LAST_FATAL_NOTIFICATION_AT = 0.0
 
 COOKIE_CACHE_RESTORED = False
+# Whether a human is at the keyboard to drive the interactive-browser last resort.
+# The interactive monitor (app_main) sets this True; everything else — one-shot CLI
+# commands (courses/teacher/…), --no-input runs, and direct test calls — leaves it
+# False so login() never pops a browser unless a monitor explicitly opted in.
+INPUT_ENABLED = False
 CONFIG_WARNINGS: List[str] = []
 
 @dataclass(frozen=True)
@@ -769,9 +785,19 @@ class LoginResult:
 
     @property
     def should_auto_retry(self) -> bool:
+        # Transient/recoverable outcomes: back off (10/30/60/300s) and retry.
+        # The complement (login_needs_user_action) is permanent until the user acts
+        # and must NOT be auto-retried — see auth_runtime.LOGIN_NEEDS_USER_STATUSES.
         return self.status in {
             "missing_session",
             "transient_error",
+            # A changed login page is recovered via the interactive-browser last resort
+            # (or, headless, by polling for a manually-imported cookie); back off + retry,
+            # never a 1s spin or a permanent give-up.
+            "login_page_changed",
+            # Unexpected-error catch-all is treated as transient (retry with backoff),
+            # never a 1s spin or a silent give-up.
+            "error",
             # Browser-login flows back off (10/30/60/300s) instead of the 1s
             # fast-fail spam when the browser is missing / cancelled / timed out.
             "browser_assist_failed",
@@ -927,6 +953,7 @@ _LEGACY_EXPORTS = {
     'clear_status_line': ('troTHU.logging_runtime', 'clear_status_line'),
     'pause_status_line': ('troTHU.logging_runtime', 'pause_status_line'),
     'login': ('troTHU.auth_runtime', 'login'),
+    'login_failure_message': ('troTHU.auth_runtime', 'login_failure_message'),
     'login_test_command': ('troTHU.cli_courses', 'login_test_command'),
     'logs_command': ('troTHU.cli_system', 'logs_command'),
     'main': ('troTHU.cli_main', 'main'),
@@ -960,7 +987,6 @@ _LEGACY_EXPORTS = {
     'provider_list_command': ('troTHU.cli_provider', 'provider_list_command'),
     'provider_prefers_browser_assisted_login': ('troTHU.auth_runtime', 'provider_prefers_browser_assisted_login'),
     'provider_requires_api_session_validation': ('troTHU.auth_runtime', 'provider_requires_api_session_validation'),
-    'provider_requires_manual_cookie_login': ('troTHU.auth_runtime', 'provider_requires_manual_cookie_login'),
     'provider_report': ('troTHU.status_reports', 'provider_report'),
     'provider_show_command': ('troTHU.cli_provider', 'provider_show_command'),
     'provider_summary': ('troTHU.cli_provider', 'provider_summary'),

@@ -52,18 +52,20 @@ class ProviderConfigTest(unittest.TestCase):
         self.assertTrue(registry["available"]["tronclass"]["ready"])
         self.assertTrue(registry["available"]["tronclass"]["user_visible"])
         self.assertEqual(registry["available"]["fju"]["support_level"], "ready")
-        self.assertEqual(registry["available"]["fju"]["auth_flow"], "cas_ocr_captcha")
+        # No per-school auth_flow any more: every built-in provider ships the uniform
+        # "auto" value and login is feature-detected at runtime.
+        self.assertEqual(registry["available"]["fju"]["auth_flow"], "auto")
         self.assertTrue(registry["available"]["fju"]["capabilities"]["radar"])
         self.assertEqual(registry["available"]["tku"]["support_level"], "ready")
         self.assertEqual(registry["available"]["tku"]["base_url"], "https://iclass.tku.edu.tw")
-        self.assertEqual(registry["available"]["tku"]["auth_flow"], "nam_neai")
+        self.assertEqual(registry["available"]["tku"]["auth_flow"], "auto")
         self.assertTrue(registry["available"]["tku"]["capabilities"]["radar"])
         self.assertEqual(registry["available"]["tronclass"]["base_url"], "https://www.tronclass.com.tw")
-        self.assertEqual(registry["available"]["tronclass"]["auth_flow"], "public_cloud_email")
+        self.assertEqual(registry["available"]["tronclass"]["auth_flow"], "auto")
         self.assertTrue(registry["available"]["tronclass"]["capabilities"]["course_discovery"])
         self.assertTrue(registry["available"]["scu"]["ready"])
         self.assertTrue(registry["available"]["scu"]["user_visible"])
-        self.assertEqual(registry["available"]["scu"]["auth_flow"], "cas")
+        self.assertEqual(registry["available"]["scu"]["auth_flow"], "auto")
         self.assertEqual(registry["available"]["scu"]["base_url"], "https://tronclass.scu.edu.tw")
         self.assertTrue(registry["available"]["scu"]["capabilities"]["radar"])
 
@@ -153,37 +155,37 @@ class ProviderConfigTest(unittest.TestCase):
     def test_bulk_registered_school_derives_endpoints_login_url_and_aliases(self) -> None:
         pu = get_provider("pu")
         self.assertTrue(pu.ready)
-        # CAS-via-LMS schools validate the session via API (anonymous LMS cookie guard)
-        self.assertEqual(pu.auth_flow, "cas_api_validated")
+        # Zero per-school presets: every bulk school derives login_url = base + /login and
+        # ships the uniform "auto" auth_flow (login is feature-detected at runtime).
+        self.assertEqual(pu.auth_flow, "auto")
         self.assertEqual(pu.base_url, "https://tronclass.pu.edu.tw")
         self.assertEqual(pu.login_url, "https://tronclass.pu.edu.tw/login")
         self.assertTrue(pu.rollcalls_url.startswith("https://tronclass.pu.edu.tw/"))
         self.assertIn("/api/radar/rollcalls", pu.rollcalls_url)
-        # NOU only serves its CAS form at /cas/login, not /login
-        self.assertEqual(get_provider("nou").login_url, "https://tronclass.nou.edu.tw/cas/login")
-        # captcha schools route to the right OCR flow; email-login school to public cloud
-        self.assertEqual(get_provider("ntou").auth_flow, "cas_ocr_captcha")  # Apereo captcha.jpg
-        self.assertEqual(get_provider("asia").auth_flow, "keycloak_ocr_captcha")  # Keycloak JSON captcha
-        self.assertEqual(get_provider("nfu").auth_flow, "keycloak_ocr_captcha")
-        self.assertEqual(get_provider("mkc").auth_flow, "keycloak_ocr_captcha")
-        self.assertEqual(get_provider("kwnc").auth_flow, "public_cloud_email")
-        # loginSettings (two-option / kc_idp_hint) schools + the new LHU
-        for key in ("ncue", "ncut", "ntub", "yuntech", "cityumo", "lhu"):
-            self.assertEqual(get_provider(key).auth_flow, "cas_login_settings", key)
+        # NOU is no longer special-cased: login_url derives like everyone else, and the
+        # /cas/login form is reached at runtime by login_flow's candidate probing.
+        self.assertEqual(get_provider("nou").login_url, "https://tronclass.nou.edu.tw/login")
+        # Formerly per-school captcha/email/loginSettings flows — now all uniform "auto".
+        for key in ("ntou", "asia", "nfu", "mkc", "kwnc", "ncue", "ncut", "ntub", "yuntech", "cityumo", "lhu"):
+            self.assertEqual(get_provider(key).auth_flow, "auto", key)
+            self.assertEqual(get_provider(key).login_url, get_provider(key).base_url.rstrip("/") + "/login", key)
         self.assertEqual(get_provider("lhu").base_url, "https://elearn.lhu.edu.tw")
         # Chinese aliases resolve to the right key
         self.assertEqual(get_provider("靜宜大學").key, "pu")
         self.assertEqual(get_provider("海洋大學").key, "ntou")
         self.assertEqual(get_provider("龍華").key, "lhu")
 
-    def test_config_captcha_overrides_pass_through_normalize(self) -> None:
+    def test_config_captcha_overrides_are_not_accepted_but_login_flow_overrides_are(self) -> None:
+        # Captcha params are NOT per-school overridable any more (OCR self-determines);
+        # login_url / auth_flow stay overridable as a power-user escape hatch.
         normalized = normalize_provider_config(
             {
                 "current": "capschool",
                 "available": {
                     "capschool": {
                         "base_url": "https://cap.edu",
-                        "auth_flow": "cas_ocr_captcha",
+                        "auth_flow": "manual_cookie_only",
+                        "login_url": "https://cap.edu/cas/login",
                         "captcha_charset": "abcd",
                         "captcha_length": 5,
                     }
@@ -191,10 +193,10 @@ class ProviderConfigTest(unittest.TestCase):
             }
         )
         merged = normalized["available"]["capschool"]
-        self.assertEqual(merged["auth_flow"], "cas_ocr_captcha")
-        self.assertEqual(merged["captcha_charset"], "abcd")
-        # normalize stringifies; endpoints_from_provider re-coerces to int (tested in test_tron_http)
-        self.assertEqual(merged["captcha_length"], "5")
+        self.assertEqual(merged["auth_flow"], "manual_cookie_only")
+        self.assertEqual(merged["login_url"], "https://cap.edu/cas/login")
+        self.assertNotIn("captcha_charset", merged)
+        self.assertNotIn("captcha_length", merged)
 
 
 class ResearchModeConfigTest(unittest.TestCase):

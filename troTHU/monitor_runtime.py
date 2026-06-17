@@ -278,16 +278,12 @@ async def monitor_loop(
     else:
         ctx.COOKIE_CACHE_RESTORED = False
         login_result = await ctx.login(session)
-    if not login_result.ok:
-        if login_result.status == 'manual_cookie_required':
-            pass
-        elif login_result.should_auto_retry:
-            delay = ctx.get_login_retry_delay(login_retry_attempt)
-            next_login_retry_at = ctx.time.monotonic() + delay
-            login_retry_attempt += 1
-            ctx.log_print('首次登入失敗，稍後會自動重試；也可按任意鍵用舊版記事本修改 config.conf。')
-        else:
-            ctx.log_print('首次登入失敗，請按任意鍵用舊版記事本填寫 now、帳號與密碼。')
+    if not login_result.ok and login_result.should_auto_retry:
+        # login() has already printed the specific reason via login_failure_message;
+        # here we only schedule the backoff retry (needs-user statuses don't retry).
+        delay = ctx.get_login_retry_delay(login_retry_attempt)
+        next_login_retry_at = ctx.time.monotonic() + delay
+        login_retry_attempt += 1
     error_cnt = 0
     while not shutdown_event.is_set():
         now_for_runtime = ctx.time.monotonic()
@@ -298,9 +294,26 @@ async def monitor_loop(
             await ctx.sleep_or_shutdown(shutdown_event, 1)
             continue
         if not ctx.has_session_cookie(session):
-            if ctx.LAST_LOGIN_RESULT.status == 'manual_cookie_required':
-                await ctx.sleep_or_shutdown(shutdown_event, 5)
-                continue
+            # Cookie detection == manual cookie: a cookie written to the cache while we run
+            # (e.g. `webview import` in another window, or a browser login elsewhere) isn't
+            # in this session's jar yet. Reload the cache every idle cycle so it's picked up
+            # live — a valid cookie goes straight to monitoring, no login flow, no restart.
+            # Runs before the needs-user / auto-retry split, so even after a rejected login a
+            # manually-imported cookie still takes over.
+            if ctx.cookie_cache_enabled(ctx.CONFIG):
+                cookie_profile = ctx.get_active_profile(ctx.CONFIG)
+                try:
+                    ctx.load_session_cookies(session, ctx.BASE_DIR, cookie_profile.name)
+                except Exception:
+                    pass
+                if ctx.has_session_cookie(session):
+                    ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='success', credential_source='cookie_cache', user=cookie_profile.user)
+                    login_retry_attempt = 0
+                    next_login_retry_at = 0.0
+                    error_cnt = 0
+                    unauth_notice_state = ''
+                    ctx.log_print('偵測到可用的 Cookie，直接進入監控。')
+                    continue
             if ctx.should_auto_login_without_session():
                 now = ctx.time.monotonic()
                 if now >= next_login_retry_at:
@@ -588,12 +601,10 @@ async def monitor_loop(
                 next_login_retry_at = 0.0
                 unauth_notice_state = ''
             elif login_result.should_auto_retry:
+                # login() already printed the specific reason; just schedule backoff.
                 delay = ctx.get_login_retry_delay(login_retry_attempt)
                 next_login_retry_at = ctx.time.monotonic() + delay
                 login_retry_attempt += 1
-                ctx.log_print('自動登入失敗，稍後會持續自動重試；也可按任意鍵開啟 config.conf。')
-            else:
-                ctx.log_print('自動登入失敗，請按任意鍵用舊版記事本填寫 config.conf。')
             error_cnt = 0
             continue
         except ctx.TronHttpError as exc:

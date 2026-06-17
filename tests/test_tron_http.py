@@ -469,7 +469,11 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.status, "missing_credentials")
         log_print.assert_called_once()
 
-    async def test_fju_without_ocr_extra_falls_back_to_manual_cookie(self) -> None:
+    async def test_fju_without_ocr_extra_routes_to_passive_when_headless(self) -> None:
+        # v1.6-alpha.2: no per-school manual-cookie gate. A captcha school with no OCR engine
+        # surfaces as a non-rejected failure whose detail tells the user to install .[ocr]
+        # (or use the browser / import a cookie). Headless (--no-input) → passive: status is
+        # login_page_changed (auto-retry), the detail reaches the user, and NO browser opens.
         session = MagicMock()
         session.cookie_jar = MagicMock()
         tron.CONFIG.clear()
@@ -481,22 +485,27 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
                 }
             )
         )
+        ocr_detail = "圖形驗證碼登入需要 OCR 套件；請安裝 pip install -e .[ocr]，或改用瀏覽器／手動 cookie 登入。"
+
+        async def raise_ocr(_client, _user, _passwd):
+            raise tron.LoginPageChangedError(ocr_detail)
 
         with (
-            patch.object(tron, "ddddocr_available", return_value=False),
+            patch.object(tron, "INPUT_ENABLED", False),  # headless / scheduler
             patch.object(tron, "has_session_cookie", return_value=False),
-            patch.object(tron, "TronHttpClient") as client_factory,
-            patch.object(tron, "browser_assisted_login", AsyncMock()) as browser_login,
+            patch.object(tron, "resolve_login_settings_url", AsyncMock(return_value="")),
+            patch.object(tron, "run_login_flow", AsyncMock(side_effect=raise_ocr)),
+            patch.object(tron, "interactive_browser_login", AsyncMock()) as browser,
             patch.object(tron, "log_print") as log_print,
         ):
             result = await tron.login(session)
 
         self.assertFalse(result.ok)
-        self.assertEqual(result.status, "manual_cookie_required")
-        self.assertEqual(result.credential_source, "manual_cookie")
-        client_factory.assert_not_called()
-        browser_login.assert_not_awaited()
-        log_print.assert_not_called()
+        self.assertEqual(result.status, "login_page_changed")
+        self.assertIn(".[ocr]", result.error)  # actionable detail preserved
+        browser.assert_not_awaited()  # headless never pops a browser
+        self.assertTrue(result.should_auto_retry)  # keeps detecting cookie / retrying
+        self.assertTrue(any(".[ocr]" in call.args[0] for call in log_print.call_args_list))
 
     async def test_fju_manual_cookie_provider_uses_common_rollcalls_when_cookie_exists(self) -> None:
         if URL is None or web is None:
@@ -649,7 +658,10 @@ class TronOrchestrationTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertFalse(result.ok)
         self.assertEqual(result.status, "rejected")
-        log_print.assert_any_call("登入失敗，請檢查帳號或密碼是否正確。")
+        self.assertEqual(result.error, "bad credentials")  # exception text preserved
+        printed = " ".join(call.args[0] for call in log_print.call_args_list if call.args)
+        for token in ("帳號", "密碼", "驗證碼"):
+            self.assertIn(token, printed)
 
     async def test_check_rollcall_returns_not_call_for_empty_list(self) -> None:
         session = MagicMock()
@@ -1183,6 +1195,7 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
                 AsyncMock(side_effect=fake_login),
             ) as login_mock,
             patch.object(tron, "has_session_cookie", side_effect=[False, True]),
+            patch.object(tron, "cookie_cache_enabled", return_value=False),
             patch.object(tron, "get_login_retry_delay", return_value=0.0),
             patch.object(tron, "poll_rollcall_decision", AsyncMock(side_effect=fake_poll_rollcall)),
             patch.object(
@@ -1191,15 +1204,14 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
                 return_value={"enable": True, "range": ["00:00", "23:59"]},
             ),
             patch.object(tron, "parse_schedule_range", return_value=(dt_time(0, 0), dt_time(23, 59))),
-            patch.object(tron, "log_print") as log_print,
+            patch.object(tron, "log_print"),
             patch.object(tron, "mes", AsyncMock()),
         ):
             await tron.monitor_loop(session, shutdown_event)
 
+        # Retried after the transient failure (the failure message itself is now
+        # printed by login(), which is mocked here, so we assert on the retry).
         self.assertEqual(login_mock.await_count, 2)
-        self.assertTrue(
-            any("稍後會自動重試" in call.args[0] for call in log_print.call_args_list)
-        )
 
     async def test_monitor_loop_folds_progress_into_status_and_resets_on_not_call(self) -> None:
         session = MagicMock()
@@ -1746,35 +1758,55 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(login_mock.await_count, 1)
 
-    async def test_monitor_loop_silently_waits_for_fju_manual_cookie(self) -> None:
+    async def test_monitor_loop_detects_cookie_written_mid_run(self) -> None:
+        # v1.6-alpha.2: "manual cookie == cookie detection". A cookie that lands in the
+        # cache while the monitor runs (e.g. `webview import` in another window) is picked
+        # up live by reloading the cache each idle cycle — straight to monitoring, no login.
         session = MagicMock()
         session.cookie_jar = MagicMock()
         shutdown_event = asyncio.Event()
-        sleep_calls = 0
+        cookie_present = {"v": False}
 
-        async def fake_sleep(_event, _seconds):
-            nonlocal sleep_calls
-            sleep_calls += 1
-            if sleep_calls >= 2:
-                shutdown_event.set()
+        def fake_has_session(_session):
+            return cookie_present["v"]
+
+        def fake_load(_session, _base_dir, _profile):
+            cookie_present["v"] = True  # the imported cookie now lands in the jar
+            return True
+
+        async def fake_poll_rollcall(_session, _cnt):
+            shutdown_event.set()
+            return {"status": "not_call", "rollcall": None, "rollcall_type": "", "message": ""}
 
         async def fake_login(_session):
-            result = make_login_result("manual_cookie_required", credential_source="manual_cookie")
+            # Initial pre-loop login (no creds / not yet logged in); the loop must then
+            # detect the imported cookie rather than depend on this.
+            result = make_login_result("login_page_changed")
             tron.LAST_LOGIN_RESULT = result
             return result
 
         with (
             patch.object(tron, "login", AsyncMock(side_effect=fake_login)) as login_mock,
-            patch.object(tron, "has_session_cookie", return_value=False),
-            patch.object(tron, "sleep_or_shutdown", AsyncMock(side_effect=fake_sleep)),
-            patch.object(tron, "status_print") as status_print,
+            patch.object(tron, "has_session_cookie", side_effect=fake_has_session),
+            patch.object(tron, "cookie_cache_enabled", return_value=True),
+            patch.object(tron, "load_session_cookies", side_effect=fake_load),
+            patch.object(tron, "poll_rollcall_decision", AsyncMock(side_effect=fake_poll_rollcall)),
+            patch.object(
+                tron,
+                "get_schedule_for_day",
+                return_value={"enable": True, "range": ["00:00", "23:59"]},
+            ),
+            patch.object(tron, "parse_schedule_range", return_value=(dt_time(0, 0), dt_time(23, 59))),
+            patch.object(tron, "sleep_or_shutdown", AsyncMock()),
             patch.object(tron, "log_print") as log_print,
+            patch.object(tron, "mes", AsyncMock()),
         ):
             await tron.monitor_loop(session, shutdown_event)
 
+        # Only the pre-loop login ran; the loop reached monitoring via the detected cookie,
+        # never re-attempting login.
         self.assertEqual(login_mock.await_count, 1)
-        status_print.assert_not_called()
-        log_print.assert_not_called()
+        self.assertTrue(any("偵測到可用的 Cookie" in call.args[0] for call in log_print.call_args_list))
 
     async def test_monitor_loop_prints_manual_login_notice_once(self) -> None:
         session = MagicMock()
@@ -1826,6 +1858,7 @@ class TronMonitorLoopTest(unittest.IsolatedAsyncioTestCase):
         with (
             patch.object(tron, "login", AsyncMock(side_effect=fake_login)) as login_mock,
             patch.object(tron, "has_session_cookie", side_effect=[False, True]),
+            patch.object(tron, "cookie_cache_enabled", return_value=False),
             patch.object(tron, "poll_rollcall_decision", AsyncMock(side_effect=fake_poll_rollcall)),
             patch.object(
                 tron,

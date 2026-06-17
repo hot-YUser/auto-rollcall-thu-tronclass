@@ -13,31 +13,34 @@ import troTHU.providers as providers
 
 ROOT = Path(__file__).resolve().parent.parent / "troTHU"
 SCHOOL_KEYS = ("thu", "tku", "fju", "scu")
-# Protocol/feature auth_flow vocabulary (no school names). Legacy aliases are accepted
-# in user configs but must NOT be the value any built-in provider ships with.
-ALLOWED_AUTH_FLOWS = {
-    "cas", "cas_ocr_captcha", "keycloak_ocr_captcha", "public_cloud_email",
-    "nam_neai", "manual_cookie_only", "interactive_browser", "",
-    # Legacy-but-protocol-named values still shipped by the bulk table (treated as `cas`
-    # by the flow; no school names, so compliant). The flow dispatches on detected
-    # features regardless of this value.
-    "cas_api_validated", "cas_login_settings",
-}
 
 
 class NoSchoolPrivilegeTest(unittest.TestCase):
-    def test_no_provider_ships_a_school_named_auth_flow(self) -> None:
-        for provider in providers.list_all_providers():
-            flow = (provider.auth_flow or "").lower()
-            self.assertIn(
-                flow, ALLOWED_AUTH_FLOWS,
-                "provider {!r} ships auth_flow {!r}; use a protocol/feature name".format(provider.key, flow),
+    def test_providers_ship_one_uniform_auth_flow(self) -> None:
+        # Stronger than "no school NAME in auth_flow": there must be NO per-school auth_flow
+        # at all. Every built-in provider ships the single uniform value — login is
+        # feature-detected at runtime, never picked by a registry flow.
+        flows = {(p.auth_flow or "").lower() for p in providers.list_all_providers()}
+        self.assertEqual(
+            flows, {"auto"},
+            "built-in providers must all ship the uniform auth_flow 'auto'; got {}".format(sorted(flows)),
+        )
+
+    def test_no_provider_overrides_login_url(self) -> None:
+        # login_url must derive from base_url for EVERY provider (no per-school override,
+        # including NOU's old /cas/login). Schools whose form lives at /cas/login are reached
+        # by login_flow's runtime candidate probing, not a registry override.
+        for p in providers.list_all_providers():
+            self.assertEqual(
+                p.login_url, p.base_url.rstrip("/") + "/login",
+                "provider {!r} overrides login_url ({!r}); derive it from base_url".format(p.key, p.login_url),
             )
-            for key in SCHOOL_KEYS:
-                self.assertNotIn(
-                    key, flow,
-                    "provider {!r} auth_flow {!r} contains school key {!r}".format(provider.key, flow, key),
-                )
+
+    def test_bulk_school_rows_carry_no_url_or_flow(self) -> None:
+        # The bulk table is (key, label, base_url) only — structurally impossible to slip a
+        # per-school login_url or auth_flow back in.
+        for row in providers._TRONCLASS_SCHOOLS:
+            self.assertEqual(len(row), 3, "bulk school row must be (key, label, base_url): {!r}".format(row))
 
     def test_login_flow_has_no_school_named_identifiers(self) -> None:
         # NAME tokens only — comments and docstrings may mention THU/FJU/TKU as examples,

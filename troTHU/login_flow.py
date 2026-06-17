@@ -417,10 +417,25 @@ def _classify_captcha(detected: Dict[str, Any], field_names: Any) -> str:
     return CAPTCHA_NONE
 
 
-async def resolve_credential_form(client: tron_http.TronHttpClient) -> ResolvedForm:
-    """Fetch the login page (client.endpoints.login_url, already loginSettings-resolved by
-    the caller when applicable) and resolve it to a credential form, purely by feature."""
-    html, url = await client._get_login_form_response(client.endpoints.login_url)
+def _login_url_candidates(endpoints: Any) -> list[str]:
+    """Generic, base_url-derived login-page candidates, identical for every school:
+    the configured login_url (= base_url + /login) first, then base_url + /cas/login.
+    No per-school override — a school that only serves its form at /cas/login is reached
+    by the second candidate."""
+    primary = str(getattr(endpoints, "login_url", "") or "")
+    base = str(getattr(endpoints, "base_url", "") or "").rstrip("/")
+    candidates = [primary]
+    cas = base + "/cas/login" if base else ""
+    if cas and cas != primary:
+        candidates.append(cas)
+    return [c for c in candidates if c]
+
+
+async def _resolve_form_at(client: tron_http.TronHttpClient, login_url: str) -> Optional[ResolvedForm]:
+    """Resolve ONE login URL to a credential form, purely by feature. Returns None when
+    no credential form is found here (caller advances to the next candidate). Raises
+    LoginPageChangedError only for a federated-SSO redirect (terminal: browser login)."""
+    html, url = await client._get_login_form_response(login_url)
     html, url = await _follow_js_autosubmit(client, html, url)
 
     if _is_federated_host(urlparse(url).hostname or ""):
@@ -459,7 +474,10 @@ async def resolve_credential_form(client: tron_http.TronHttpClient) -> ResolvedF
         )
 
     # Last resort: a CAS form whose password input wasn't picked up generically.
-    form = tron_http.extract_login_form(html, url)  # raises LoginPageChangedError if none
+    try:
+        form = tron_http.extract_login_form(html, url)
+    except tron_http.LoginPageChangedError:
+        return None  # no form here -> caller tries the next candidate URL
     return ResolvedForm(
         kind="credential",
         form=form,
@@ -468,6 +486,17 @@ async def resolve_credential_form(client: tron_http.TronHttpClient) -> ResolvedF
         html=html,
         url=url,
     )
+
+
+async def resolve_credential_form(client: tron_http.TronHttpClient) -> ResolvedForm:
+    """Resolve the login page to a credential form, purely by feature. Tries the
+    base_url-derived candidates (/login then /cas/login) in order; the login_url is
+    already loginSettings-resolved by the caller when applicable."""
+    for login_url in _login_url_candidates(client.endpoints):
+        resolved = await _resolve_form_at(client, login_url)
+        if resolved is not None:
+            return resolved
+    raise tron_http.LoginPageChangedError("無法在 /login 或 /cas/login 定位登入表單。")
 
 
 async def _submit_plain(client, form: tron_http.LoginForm, user: str, passwd: str) -> tron_http.LoginOutcome:

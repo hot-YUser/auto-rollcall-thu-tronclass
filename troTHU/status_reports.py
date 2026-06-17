@@ -268,8 +268,8 @@ def doctor_report(network_probe: ctx.Optional[ctx.Mapping[str, ctx.Any]]=None) -
                 except Exception:
                     pass
             checks.append(ctx.check_item('cookie cache status', True, 'cookie cache is near expiry{}'.format(exp_time), severity='warn'))
-    if ctx.normalize_text(provider.get('auth_flow')).lower() in {'fju_ocr_captcha', 'cas_ocr_captcha', 'keycloak_ocr_captcha'}:
-        checks.append(ctx.check_item('ocr captcha', bool(ocr_captcha.get('available')), 'ddddocr {}'.format('available' if ocr_captcha.get('available') else "not installed — image-captcha schools fall back to manual-cookie login (pip install -e '.[ocr]')"), severity='warn'))
+    if ctx.normalize_text(provider.get('auth_flow')).lower() in {'cas_ocr_captcha', 'keycloak_ocr_captcha'}:
+        checks.append(ctx.check_item('ocr captcha', bool(ocr_captcha.get('available')), 'ddddocr {}'.format('available' if ocr_captcha.get('available') else "not installed — 圖形驗證碼登入會改用瀏覽器／手動 Cookie (pip install -e '.[ocr]')"), severity='warn'))
     group_summary = ctx.summarize_group_target(ctx.CONFIG)
     group_ok = bool(group_summary.get('ok')) and not group_summary.get('skipped')
     checks.append(ctx.check_item('group target', group_ok, ctx.describe_group_target(ctx.CONFIG), severity='warn'))
