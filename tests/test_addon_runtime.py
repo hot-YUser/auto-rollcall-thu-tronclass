@@ -31,15 +31,15 @@ class AddonRuntimeTest(unittest.TestCase):
     def _make_bundle(self) -> Path:
         z = self.base / "src_addons.zip"
         with zipfile.ZipFile(z, "w") as a:
-            a.writestr("fju-ocr/fju-ocr.exe", "exe")
-            a.writestr("fju-ocr/_internal/lib.dll", "dll")
+            a.writestr("ocr-sidecar/ocr-sidecar.exe", "exe")
+            a.writestr("ocr-sidecar/_internal/lib.dll", "dll")
             a.writestr("node.exe", "node")
         return z
 
     def _make_named_bundle(self, where: Path, name: str | None = None) -> Path:
         z = where / (name or addon.bundle_name())
         with zipfile.ZipFile(z, "w") as a:
-            a.writestr("fju-ocr/fju-ocr.exe", "exe")
+            a.writestr("ocr-sidecar/ocr-sidecar.exe", "exe")
             a.writestr("node.exe", "node")
         return z
 
@@ -61,12 +61,12 @@ class AddonRuntimeTest(unittest.TestCase):
             addon.ensure_addons()
         dl.assert_not_called()
         self.assertIsNotNone(addon.downloaded_node_path())
-        self.assertTrue(addon.ocr_sidecar_path().name.startswith("fju-ocr"))
+        self.assertTrue(addon.ocr_sidecar_path().name.startswith("ocr-sidecar"))
 
     def test_preplaced_extracted_dir_reused_without_download(self) -> None:
         root = self.base / addon.bundle_name()[:-4]  # addons-vX-win/
-        (root / "fju-ocr").mkdir(parents=True)
-        (root / "fju-ocr" / "fju-ocr.exe").write_text("exe")
+        (root / "ocr-sidecar").mkdir(parents=True)
+        (root / "ocr-sidecar" / "ocr-sidecar.exe").write_text("exe")
         (root / "node.exe").write_text("node")
         with mock.patch.object(addon, "_download") as dl:
             addon.ensure_addons()
@@ -77,7 +77,7 @@ class AddonRuntimeTest(unittest.TestCase):
         os.environ["TROTHU_ADDON_URL"] = str(self._make_bundle())  # local path -> copied, no urlopen
         with mock.patch.object(ctx, "log_print"):
             addon.ensure_addons()
-        self.assertTrue(addon.ocr_sidecar_path().name.startswith("fju-ocr"))
+        self.assertTrue(addon.ocr_sidecar_path().name.startswith("ocr-sidecar"))
         self.assertIsNotNone(addon.downloaded_node_path())
         with mock.patch.object(ctx, "log_print"):  # idempotent (marker present)
             addon.ensure_addons()

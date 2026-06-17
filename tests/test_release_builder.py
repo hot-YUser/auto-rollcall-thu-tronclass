@@ -21,9 +21,9 @@ class AddonBundleTest(unittest.TestCase):
     def test_package_addon_bundle_zips_sidecar_and_node(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
-            sidecar = root / "fju-ocr"
+            sidecar = root / "ocr-sidecar"
             (sidecar / "_internal" / "ddddocr").mkdir(parents=True)
-            (sidecar / "fju-ocr.exe").write_text("exe")
+            (sidecar / "ocr-sidecar.exe").write_text("exe")
             # The add-on legitimately carries the OCR model/stack — must NOT be rejected.
             (sidecar / "_internal" / "ddddocr" / "common_old.onnx").write_text("model")
             node = root / "node.exe"
@@ -36,15 +36,15 @@ class AddonBundleTest(unittest.TestCase):
             self.assertTrue(report["node_included"])
             with zipfile.ZipFile(artifact) as archive:
                 names = archive.namelist()
-            self.assertTrue(any(n.endswith("fju-ocr/fju-ocr.exe") for n in names))
+            self.assertTrue(any(n.endswith("ocr-sidecar/ocr-sidecar.exe") for n in names))
             self.assertTrue(any(n.endswith("/node.exe") for n in names))
 
     def test_package_addon_bundle_rejects_secrets(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
-            sidecar = root / "fju-ocr"
+            sidecar = root / "ocr-sidecar"
             sidecar.mkdir()
-            (sidecar / "fju-ocr.exe").write_text("exe")
+            (sidecar / "ocr-sidecar.exe").write_text("exe")
             (sidecar / "config.conf").write_text("secret")  # must be refused
             with self.assertRaises(ReleaseBuildError):
                 package_addon_bundle(sidecar, root / "addons.zip", node_exe=None)

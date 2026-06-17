@@ -1,18 +1,18 @@
 """Local, offline OCR for login image captchas.
 
 Some TronClass tenants gate their login form behind a static text/number image
-captcha (e.g. Fu Jen / FJU's Apereo CAS, a 4-digit numeric `captcha.jpg`).
+captcha (e.g. an Apereo CAS realm serving a 4-digit numeric `captcha.jpg`).
 
 Two backends, picked automatically:
 - **in-process** `ddddocr` — used when the optional `ocr` extra is installed
   (`pip install -e .[ocr]`), e.g. source checkouts. Carries its own model.
 - **sidecar** — the lean default exe does NOT bundle the heavy OCR stack
-  (onnxruntime/cv2/...). Instead a standalone `fju-ocr` executable lives in the
+  (onnxruntime/cv2/...). Instead a standalone `ocr-sidecar` executable lives in the
   downloadable add-on bundle (see `addon_runtime`); we shell out to it.
 
-If neither is available the module degrades to "unavailable" and FJU falls back
-to manual-cookie / browser-assisted login. The raw captcha bytes and the solved
-text are sensitive (they authenticate a login); this module never logs either.
+If neither is available the module degrades to "unavailable" and the login falls
+back to the interactive-browser / manual-cookie path. The raw captcha bytes and the
+solved text are sensitive (they authenticate a login); this module never logs either.
 """
 from __future__ import annotations
 
@@ -41,9 +41,8 @@ def _inprocess_importable() -> bool:
 def ddddocr_available() -> bool:
     """True if captcha OCR can run — in-process ddddocr OR a usable sidecar.
 
-    Kept as the single gate the manual-cookie fallback predicate consults
-    (`auth_runtime.provider_requires_manual_cookie_login`): when this is False,
-    FJU degrades to manual-cookie login.
+    When this is False, the captcha submitters raise so the login falls through to the
+    interactive-browser last resort (or, headless, cookie polling) — no per-school gate.
     """
     if _inprocess_importable():
         return True

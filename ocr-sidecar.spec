@@ -1,5 +1,5 @@
 # -*- mode: python ; coding=utf-8 -*-
-"""PyInstaller spec for the standalone OCR captcha sidecar (`fju-ocr`).
+"""PyInstaller spec for the standalone OCR captcha sidecar (`ocr-sidecar`).
 
 Ships in the downloadable add-on bundle, NOT in the lean main exe. Bundles the
 heavy OCR stack (ddddocr + its model + onnxruntime + opencv + numpy + PIL).
@@ -12,7 +12,7 @@ from PyInstaller.utils.hooks import collect_all
 
 ROOT = Path(SPECPATH)  # noqa: F821 - PyInstaller-provided global
 ENTRYPOINT = ROOT / "troTHU" / "ocr_sidecar.py"
-NAME = "fju-ocr"
+NAME = "ocr-sidecar"
 
 datas = []
 binaries = []

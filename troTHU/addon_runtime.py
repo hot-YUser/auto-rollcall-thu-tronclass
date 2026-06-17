@@ -2,7 +2,7 @@
 
 The lean default exe ships without the heavy optional pieces. They live in ONE
 zip (this round; the shape is small so more can be added later):
-  - ``fju-ocr/``  — standalone OCR captcha sidecar (ddddocr + model + onnxruntime
+  - ``ocr-sidecar/``  — standalone OCR captcha sidecar (ddddocr + model + onnxruntime
     + opencv), invoked out-of-process by ``ocr_captcha``.
   - ``node.exe``  — the Playwright node driver (~92MB), the part stripped from the
     exe; ``browser_install`` points ``PLAYWRIGHT_NODEJS_PATH`` at it.
@@ -16,7 +16,7 @@ disappears.
 
 ponytail: integrity = HTTPS + the project's own GitHub release (same trust model
 as `playwright install`); a pre-placed bundle is validated by content (must carry
-fju-ocr + node.exe) before it's trusted. Add a pinned sha256 if supply-chain
+ocr-sidecar + node.exe) before it's trusted. Add a pinned sha256 if supply-chain
 hardening is ever needed.
 """
 from __future__ import annotations
@@ -145,13 +145,13 @@ def _zip_is_valid(zip_path: Path) -> bool:
             names = [n.replace("\\", "/").lower() for n in archive.namelist()]
     except Exception:
         return False
-    has_ocr = any(n.rsplit("/", 1)[-1] in ("fju-ocr.exe", "fju-ocr") for n in names)
+    has_ocr = any(n.rsplit("/", 1)[-1] in ("ocr-sidecar.exe", "ocr-sidecar") for n in names)
     has_node = any(n.rsplit("/", 1)[-1] == "node.exe" for n in names)
     return has_ocr and has_node
 
 
 def _dir_is_valid(folder: Path) -> bool:
-    return _find(folder, "fju-ocr.exe", "fju-ocr") is not None and _find(folder, "node.exe", "node") is not None
+    return _find(folder, "ocr-sidecar.exe", "ocr-sidecar") is not None and _find(folder, "node.exe", "node") is not None
 
 
 def _candidate_dirs() -> List[Path]:
@@ -252,7 +252,7 @@ def ensure_addons() -> Path:
 
 def ocr_sidecar_available() -> bool:
     """True if the OCR sidecar is already extracted, pre-placed, or downloadable."""
-    if _find(_extract_dir(), "fju-ocr.exe", "fju-ocr"):
+    if _find(_extract_dir(), "ocr-sidecar.exe", "ocr-sidecar"):
         return True
     if _find_preplaced() is not None:
         return True
@@ -261,7 +261,7 @@ def ocr_sidecar_available() -> bool:
 
 def ocr_sidecar_path() -> Path:
     """Path to the OCR sidecar executable, acquiring the bundle if needed."""
-    exe = _find(ensure_addons(), "fju-ocr.exe", "fju-ocr")
+    exe = _find(ensure_addons(), "ocr-sidecar.exe", "ocr-sidecar")
     if not exe:
         raise AddonUnavailableError("附加元件包內找不到 OCR sidecar。")
     return exe

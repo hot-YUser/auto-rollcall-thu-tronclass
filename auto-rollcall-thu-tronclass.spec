@@ -113,7 +113,7 @@ HIDDEN_IMPORTS = sorted(
 )
 
 # The heavy OCR stack (ddddocr/onnxruntime/cv2/numpy/PIL) is NOT bundled — it lives
-# in the downloadable add-on bundle as the `fju-ocr` sidecar (see fju-ocr.spec /
+# in the downloadable add-on bundle as the `ocr-sidecar` sidecar (see ocr-sidecar.spec /
 # troTHU/addon_runtime.py). Keeping the default exe lean.
 EXCLUDES = [
     "aiohttp.pytest_plugin",

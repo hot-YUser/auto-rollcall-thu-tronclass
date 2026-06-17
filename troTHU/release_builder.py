@@ -59,8 +59,8 @@ LATEST_BUILD_REPORT = Path("state") / "release" / "latest_release_build.json"
 
 # The single optional add-on bundle (this round): the OCR sidecar + Playwright
 # node driver, kept out of the lean main exe and downloaded on demand.
-SIDECAR_SPEC_NAME = "fju-ocr.spec"
-SIDECAR_NAME = "fju-ocr"
+SIDECAR_SPEC_NAME = "ocr-sidecar.spec"
+SIDECAR_NAME = "ocr-sidecar"
 # Short, distinct from the main program zip so users grab the right file.
 ADDON_ROOT = "addons-v{}-win".format(PROJECT_VERSION)
 ADDON_ARTIFACT = ADDON_ROOT + ".zip"
@@ -417,7 +417,7 @@ def package_addon_bundle(
     with zipfile.ZipFile(artifact, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for child in _iter_collect_files(sidecar):
             relative = _rel(child, sidecar).replace("\\", "/")
-            archive.write(child, "{}/fju-ocr/{}".format(ADDON_ROOT, relative))
+            archive.write(child, "{}/ocr-sidecar/{}".format(ADDON_ROOT, relative))
             count += 1
         if node_exe and Path(node_exe).is_file():
             archive.write(node_exe, "{}/node.exe".format(ADDON_ROOT))

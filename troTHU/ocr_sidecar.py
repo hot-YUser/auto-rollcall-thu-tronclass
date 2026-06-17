@@ -1,9 +1,9 @@
 """Standalone OCR captcha sidecar entry point.
 
-Built as its own small PyInstaller exe (`fju-ocr`) that ships in the optional
+Built as its own small PyInstaller exe (`ocr-sidecar`) that ships in the optional
 add-on bundle, so the lean main exe needn't carry ddddocr/onnxruntime/cv2.
 
-Protocol: ``fju-ocr.exe <image_path> [charset]`` -> prints the recognised text to
+Protocol: ``ocr-sidecar.exe <image_path> [charset]`` -> prints the recognised text to
 stdout (exit 0). Non-zero exit / empty output = recognition failure (the caller's
 retry loop handles it). Self-contained: imports only ddddocr (bundled alongside),
 never the troTHU app, to keep the sidecar build small.
