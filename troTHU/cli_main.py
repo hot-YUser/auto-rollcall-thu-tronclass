@@ -81,6 +81,8 @@ def main(argv: ctx.Optional[ctx.List[str]]=None) -> int:
             probe_count=getattr(args, 'probe_count', 3),
             probe_concurrency=getattr(args, 'probe_concurrency', 1),
         )
+    if args.command == 'login-probe':
+        return ctx.login_probe_command(args)
     if args.command == 'config':
         command = getattr(args, 'config_command', None) or 'show'
         if command == 'show':

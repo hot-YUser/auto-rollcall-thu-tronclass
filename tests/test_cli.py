@@ -192,7 +192,7 @@ class TronCliSmokeTest(unittest.TestCase):
         self.assertEqual(result, 0)
         payload = json.loads(outputs[0])
         self.assertEqual(payload["key"], "fju")
-        self.assertEqual(payload["auth_flow"], "fju_ocr_captcha")
+        self.assertEqual(payload["auth_flow"], "cas_ocr_captcha")
         self.assertTrue(payload["user_visible"])
         self.assertTrue(payload["capabilities"]["radar"])
         self.assertEqual(payload["support"]["support_level"], "ready")

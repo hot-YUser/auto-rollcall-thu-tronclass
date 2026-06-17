@@ -2,7 +2,6 @@ from __future__ import annotations
 import html
 import json
 import re
-from http.cookies import SimpleCookie
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 from urllib.parse import parse_qs, urlencode, unquote, urljoin, urlparse
@@ -18,10 +17,6 @@ except ModuleNotFoundError:  # pragma: no cover - exercised by CLI-only environm
             pass
 
     aiohttp = _MissingAiohttp()  # type: ignore
-try:
-    from yarl import URL
-except ModuleNotFoundError:  # pragma: no cover - aiohttp normally provides yarl
-    URL = None  # type: ignore
 
 TRON = "https://ilearn.thu.edu.tw"
 LOGIN_URL = (
@@ -32,45 +27,8 @@ ROLLCALLS_URL = "{}/api/radar/rollcalls?api_version=1.1.0".format(TRON)
 CURRENT_SEMESTER_URL = "{}/api/current-semester-info".format(TRON)
 COURSES_URL = "{}/api/my-courses?page=1&page_size=50".format(TRON)
 
-TKU_SSO_HOST = "sso.tku.edu.tw"
-TKU_ICLASS_HOST = "iclass.tku.edu.tw"
-PUBLIC_CLOUD_HOSTS = {"www.tronclass.com.tw", "tronclass.com.tw"}
-PUBLIC_CLOUD_AUTH_FLOW = "public_cloud_email"
-TKU_SSO_LOGIN_FORM_URL_TEMPLATE = "https://sso.tku.edu.tw/NEAI/logineb.jsp?myurl={}"
 HTML_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 LANGUAGE_ACCEPT = "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7"
-TKU_SSO_FORM_HEADERS = {
-    "Accept": HTML_ACCEPT,
-    "Accept-Language": LANGUAGE_ACCEPT,
-    "Referer": "https://iclass.tku.edu.tw/login?next=/iportal&locale=zh_TW",
-    "Upgrade-Insecure-Requests": "1",
-}
-TKU_SSO_IMAGE_HEADERS = {
-    "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
-    "Accept-Language": LANGUAGE_ACCEPT,
-    "Referer": TKU_SSO_LOGIN_FORM_URL_TEMPLATE.format(
-        "https://iclass.tku.edu.tw/login?next=/iportal&locale=zh_TW"
-    ),
-}
-TKU_SSO_AJAX_HEADERS = {
-    "Accept": "text/plain, */*; q=0.01",
-    "Accept-Language": LANGUAGE_ACCEPT,
-    "Origin": "https://sso.tku.edu.tw",
-    "Referer": TKU_SSO_LOGIN_FORM_URL_TEMPLATE.format(
-        "https://iclass.tku.edu.tw/login?next=/iportal&locale=zh_TW"
-    ),
-    "X-Requested-With": "XMLHttpRequest",
-}
-TKU_SSO_SUBMIT_HEADERS = {
-    "Accept": HTML_ACCEPT,
-    "Accept-Language": LANGUAGE_ACCEPT,
-    "Cache-Control": "max-age=0",
-    "Origin": "https://sso.tku.edu.tw",
-    "Referer": TKU_SSO_LOGIN_FORM_URL_TEMPLATE.format(
-        "https://iclass.tku.edu.tw/login?next=/iportal&locale=zh_TW"
-    ),
-    "Upgrade-Insecure-Requests": "1",
-}
 NAVIGATION_HEADERS = {
     "Accept": HTML_ACCEPT,
     "Accept-Language": LANGUAGE_ACCEPT,
@@ -114,19 +72,18 @@ PUBLIC_CLOUD_ORG_ID_PATTERN = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 
-# --- FJU (Fu Jen Catholic University) CAS captcha login --------------------
-# elearn2.fju.edu.tw is an Apereo CAS tenant whose login form (id="fm1", parsed
-# fine by extract_login_form) adds a 4-digit numeric image captcha served at
-# captcha.jpg (relative to /cas/, bound to JSESSIONID). Verified by live login.
-# The submit is an ordinary form-encoded CAS POST; only the captcha field and
-# the OCR-solve-with-retry differ from the shared thu_cas flow. CAS "lt" login
-# tickets are single-use, so on a failed POST the adapter re-parses the freshly
-# rendered form from the response body before retrying.
-FJU_CAPTCHA_IMAGE_NAME = "captcha.jpg"
-FJU_CAPTCHA_FIELD = "captcha"
-FJU_CAPTCHA_CHARSET = "0123456789"
-FJU_CAPTCHA_LENGTH = 4
-FJU_MAX_CAPTCHA_ATTEMPTS = 4
+# --- Static image-captcha defaults (protocol, not school) ------------------
+# An Apereo-CAS-style image captcha served at captcha.jpg (relative to the form
+# action, bound to the session cookie). Defaults match the common 4-digit numeric
+# case (verified live on elearn2.fju.edu.tw and tccas.ntou.edu.tw); per-school
+# overrides come from provider config. The submit is an ordinary form-encoded POST
+# plus the captcha field; CAS "lt" tickets are single-use, so a failed POST
+# re-parses the freshly rendered form before retrying.
+IMAGE_CAPTCHA_IMAGE_NAME = "captcha.jpg"
+IMAGE_CAPTCHA_FIELD = "captcha"
+IMAGE_CAPTCHA_CHARSET = "0123456789"
+IMAGE_CAPTCHA_LENGTH = 4
+IMAGE_CAPTCHA_MAX_ATTEMPTS = 4
 
 # --- Keycloak (WeJoy/TronClass "tw-common" theme) JSON captcha -------------
 # Some Keycloak tenants (verified live 2026-06: 亞洲 Asia, 馬偕 MacKay, 虎尾 NFU) gate
@@ -195,13 +152,13 @@ class TronHttpEndpoints:
     current_semester_url: str = CURRENT_SEMESTER_URL
     courses_url: str = COURSES_URL
     session_cookie_domain: str = "ilearn.thu.edu.tw"
-    auth_flow: str = "thu_cas"
-    # Image-captcha shape for cas_ocr_captcha / fju_ocr_captcha flows. Defaults are
-    # FJU's 4-digit numeric captcha.jpg; per-school overrides come from provider config.
-    captcha_image_name: str = FJU_CAPTCHA_IMAGE_NAME
-    captcha_field: str = FJU_CAPTCHA_FIELD
-    captcha_charset: str = FJU_CAPTCHA_CHARSET
-    captcha_length: int = FJU_CAPTCHA_LENGTH
+    auth_flow: str = "cas"
+    # Image-captcha shape for the cas_ocr_captcha flow. Defaults are a 4-digit numeric
+    # captcha.jpg; per-school overrides come from provider config.
+    captcha_image_name: str = IMAGE_CAPTCHA_IMAGE_NAME
+    captcha_field: str = IMAGE_CAPTCHA_FIELD
+    captcha_charset: str = IMAGE_CAPTCHA_CHARSET
+    captcha_length: int = IMAGE_CAPTCHA_LENGTH
 
 
 DEFAULT_ENDPOINTS = TronHttpEndpoints()
@@ -215,7 +172,7 @@ def default_endpoints() -> TronHttpEndpoints:
         current_semester_url=CURRENT_SEMESTER_URL,
         courses_url=COURSES_URL,
         session_cookie_domain=urlparse(TRON).hostname or DEFAULT_ENDPOINTS.session_cookie_domain,
-        auth_flow="thu_cas",
+        auth_flow="cas",
     )
 
 
@@ -228,9 +185,9 @@ def endpoints_from_provider(provider: Any) -> TronHttpEndpoints:
     base_url = str(provider.get("base_url") or TRON).rstrip("/")
     cookie_domain = urlparse(base_url).hostname or DEFAULT_ENDPOINTS.session_cookie_domain
     try:
-        captcha_length = int(provider.get("captcha_length") or FJU_CAPTCHA_LENGTH)
+        captcha_length = int(provider.get("captcha_length") or IMAGE_CAPTCHA_LENGTH)
     except (TypeError, ValueError):
-        captcha_length = FJU_CAPTCHA_LENGTH
+        captcha_length = IMAGE_CAPTCHA_LENGTH
     return TronHttpEndpoints(
         base_url=base_url,
         login_url=str(provider.get("login_url") or LOGIN_URL),
@@ -243,9 +200,9 @@ def endpoints_from_provider(provider: Any) -> TronHttpEndpoints:
         ),
         session_cookie_domain=cookie_domain,
         auth_flow=str(provider.get("auth_flow") or ""),
-        captcha_image_name=str(provider.get("captcha_image_name") or FJU_CAPTCHA_IMAGE_NAME),
-        captcha_field=str(provider.get("captcha_field") or FJU_CAPTCHA_FIELD),
-        captcha_charset=str(provider.get("captcha_charset") or FJU_CAPTCHA_CHARSET),
+        captcha_image_name=str(provider.get("captcha_image_name") or IMAGE_CAPTCHA_IMAGE_NAME),
+        captcha_field=str(provider.get("captcha_field") or IMAGE_CAPTCHA_FIELD),
+        captcha_charset=str(provider.get("captcha_charset") or IMAGE_CAPTCHA_CHARSET),
         captcha_length=captcha_length,
     )
 
@@ -360,10 +317,6 @@ def extract_html_redirect(html_text: str, base_url: str) -> Optional[str]:
     return None
 
 
-def make_tku_sso_login_form_url(target_url: str) -> str:
-    return TKU_SSO_LOGIN_FORM_URL_TEMPLATE.format(target_url)
-
-
 def has_session_cookie(
     session: aiohttp.ClientSession,
     session_cookie_domain: str = DEFAULT_ENDPOINTS.session_cookie_domain,
@@ -430,28 +383,6 @@ class TronHttpClient:
                     "Unexpected response body: {}".format(body[:200])
                 )
 
-    def is_tku_fast_sso(self) -> bool:
-        host = urlparse(self.endpoints.base_url).hostname or ""
-        login_host = urlparse(self.endpoints.login_url).hostname or ""
-        return host.lower() == TKU_ICLASS_HOST or login_host.lower() == TKU_ICLASS_HOST
-
-    def is_public_cloud_email_login(self) -> bool:
-        auth_flow = str(getattr(self.endpoints, "auth_flow", "") or "").strip().lower()
-        host = (urlparse(self.endpoints.base_url).hostname or "").lower()
-        login_host = (urlparse(self.endpoints.login_url).hostname or "").lower()
-        return auth_flow == PUBLIC_CLOUD_AUTH_FLOW or host in PUBLIC_CLOUD_HOSTS or login_host in PUBLIC_CLOUD_HOSTS
-
-    def _set_tku_browser_cookie(self, name: str, value: str, path: str = "/") -> None:
-        if URL is None:
-            return
-        cookie = SimpleCookie()
-        cookie[name] = value
-        cookie[name]["path"] = path
-        self.session.cookie_jar.update_cookies(
-            cookie,
-            response_url=URL("https://sso.tku.edu.tw/"),
-        )
-
     async def _get_login_form_response(
         self,
         url: str,
@@ -468,42 +399,6 @@ class TronHttpClient:
         html_text, _ = await self._get_login_form_response(url, headers)
         return html_text
 
-    async def _fetch_tku_image_validate_code(self, form_url: str) -> str:
-        validate_url = urljoin(form_url, "ImageValidate")
-        async with self.session.get(
-            validate_url,
-            headers=TKU_SSO_IMAGE_HEADERS,
-            **self.request_kwargs(),
-        ) as resp:
-            await resp.read()
-
-        async with self.session.post(
-            validate_url,
-            data={"outType": "1"},
-            headers=TKU_SSO_AJAX_HEADERS,
-            **self.request_kwargs(),
-        ) as resp:
-            await resp.read()
-
-        async with self.session.post(
-            validate_url,
-            data={"outType": "2"},
-            headers=TKU_SSO_AJAX_HEADERS,
-            **self.request_kwargs(),
-        ) as resp:
-            if resp.status != 200:
-                raise LoginPageChangedError("TKU SSO ImageValidate returned HTTP {}.".format(resp.status))
-            code = (await resp.text()).strip()
-        if not code:
-            raise LoginPageChangedError("TKU SSO ImageValidate did not return a validation code.")
-        return code
-
-    async def _complete_tku_login_form(self, form: LoginForm) -> LoginForm:
-        fields = dict(form.fields)
-        if "vidcode" in fields and not fields["vidcode"]:
-            fields["vidcode"] = await self._fetch_tku_image_validate_code(form.action_url)
-        return LoginForm(action_url=form.action_url, fields=fields)
-
     async def fetch_captcha_image(self, captcha_url: str) -> bytes:
         """GET a login captcha image in the current session and return its bytes.
 
@@ -519,60 +414,6 @@ class TronHttpClient:
         if not data:
             raise LoginPageChangedError("驗證碼圖片內容為空。")
         return data
-
-    async def _follow_tku_login_redirects(
-        self,
-        html_text: str,
-        base_url: str,
-        max_redirects: int = 10,
-    ) -> str:
-        final_url = base_url
-        for _ in range(max_redirects):
-            redirect_url = extract_html_redirect(html_text, final_url)
-            if redirect_url is None:
-                break
-
-            while True:
-                headers = dict(NAVIGATION_HEADERS)
-                headers["Referer"] = final_url
-                async with self.session.get(
-                    redirect_url,
-                    headers=headers,
-                    allow_redirects=False,
-                    **self.request_kwargs(),
-                ) as resp:
-                    html_text = await resp.text()
-                    response_url = str(resp.url)
-                    location = resp.headers.get("Location")
-                    if resp.status in {301, 302, 303, 307, 308} and location:
-                        final_url = response_url
-                        redirect_url = urljoin(response_url, location)
-                        continue
-
-                    final_url = response_url
-                    break
-
-        return final_url
-
-    def _select_login_adapter(self) -> Any:
-        from troTHU.login_adapters import get_login_adapter
-        flow = str(getattr(self.endpoints, "auth_flow", "") or "").strip().lower()
-        if not flow:
-            if self.is_tku_fast_sso():
-                flow = "tku_sso_browser"
-            elif self.is_public_cloud_email_login():
-                flow = "public_cloud_email"
-            else:
-                flow = "thu_cas"
-        return get_login_adapter(flow)
-
-    async def fetch_login_form(self) -> LoginForm:
-        adapter = self._select_login_adapter()
-        return await adapter.fetch_login_form(self)
-
-    async def submit_login(self, form: LoginForm, username: str, password: str) -> LoginOutcome:
-        adapter = self._select_login_adapter()
-        return await adapter.submit_login(self, form, username, password)
 
     async def fetch_user_id(self) -> Optional[int]:
         async with self.session.get(self.endpoints.base_url, **self.request_kwargs()) as resp:

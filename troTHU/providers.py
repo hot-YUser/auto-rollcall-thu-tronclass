@@ -116,7 +116,7 @@ PROVIDERS: Dict[str, ProviderDefinition] = {
             "https://tcidentity.thu.edu.tw/auth/realms/thu/protocol/cas/login"
             "?ui_locales=zh-TW&service=https%3A//ilearn.thu.edu.tw/login&locale=zh_TW"
         ),
-        auth_flow="thu_cas",
+        auth_flow="cas",
         status="ready",
         support_level="ready",
         capabilities=ProviderCapabilities(
@@ -136,7 +136,7 @@ PROVIDERS: Dict[str, ProviderDefinition] = {
         label="Fu Jen Catholic University TronClass",
         base_url="https://elearn2.fju.edu.tw",
         login_url="https://elearn2.fju.edu.tw/login",
-        auth_flow="fju_ocr_captcha",
+        auth_flow="cas_ocr_captcha",
         status="ready",
         support_level="ready",
         capabilities=ProviderCapabilities(
@@ -156,7 +156,7 @@ PROVIDERS: Dict[str, ProviderDefinition] = {
         label="Tamkang University TronClass",
         base_url="https://iclass.tku.edu.tw",
         login_url="https://iclass.tku.edu.tw/login?next=/iportal&locale=zh_TW",
-        auth_flow="tku_sso_browser",
+        auth_flow="nam_neai",
         status="ready",
         support_level="ready",
         capabilities=ProviderCapabilities(
@@ -196,7 +196,7 @@ PROVIDERS: Dict[str, ProviderDefinition] = {
         label="Soochow University TronClass",
         base_url="https://tronclass.scu.edu.tw",
         login_url="https://tronclass.scu.edu.tw/cas/login?ui_locales=zh-TW&service=https%3A//tronclass.scu.edu.tw/user/index&locale=zh_TW",
-        auth_flow="thu_cas",
+        auth_flow="cas",
         status="ready",
         capabilities=ProviderCapabilities(
             number=True,
@@ -213,20 +213,23 @@ PROVIDERS: Dict[str, ProviderDefinition] = {
 }
 
 
-# Bulk-registered TronClass schools that reuse an existing login flow. All share the
-# same full capability set, so they are data-driven rather than 32 verbose literals.
-# login_url defaults to base_url + "/login": TronClass /login 302-redirects to each
-# school's CAS/Keycloak IdP, and CasLoginAdapter resolves the form against the final
-# URL. The 5th tuple field overrides login_url when /login does not expose the form
-# (e.g. NOU only serves the CAS form at /cas/login). auth_flow values used here:
-#   cas_api_validated  — generic CAS/Keycloak server-form, then confirm the session
-#                        via an authenticated API call. Required because TronClass sets
-#                        an anonymous `session` cookie on the LMS host during the
-#                        login-page GET, so cookie-presence alone is a false positive
-#                        (verified live against every school, 2026-06). THU/SCU stay on
-#                        thu_cas: their login_url targets the IdP, so no anon LMS cookie.
-#   cas_ocr_captcha    — Apereo CAS that also shows an image captcha (NTOU).
-#   public_cloud_email — TronClass-native email/password login, no CAS (KWNC).
+# Bulk-registered TronClass schools. All share the same full capability set, so they
+# are data-driven rather than 32 verbose literals. login_url defaults to base_url +
+# "/login": TronClass /login 302-redirects to each school's CAS/Keycloak IdP. The 5th
+# tuple field overrides login_url when /login does not expose the form (e.g. NOU only
+# serves the CAS form at /cas/login).
+#
+# auth_flow is NOT used to dispatch the login: login_flow.run_login_flow detects every
+# feature (captcha kind, SSO discovery, email SPA, NAM) from the live page. The value is
+# kept only as a documentation hint and for two pre-login decisions
+# (auth_runtime.provider_requires_manual_cookie_login): OCR-captcha degradation and the
+# manual_cookie_only / interactive_browser modes. All values are protocol/feature names,
+# never school names:
+#   cas                — generic CAS/Keycloak/SSO credential form (most schools).
+#   cas_ocr_captcha    — CAS that also shows a static image captcha (FJU, NTOU).
+#   keycloak_ocr_captcha — Keycloak realm with a JSON captcha (Asia, MacKay, NFU).
+#   public_cloud_email — TronClass-native email/password SPA, no CAS (KWNC).
+# (Legacy values cas_api_validated / cas_login_settings are accepted and treated as cas.)
 _STANDARD_CAPS = ProviderCapabilities(
     number=True,
     radar=True,
@@ -583,7 +586,7 @@ def normalize_provider_config(value: Any) -> Dict[str, Any]:
                 "rollcalls_url": endpoints["rollcalls_url"],
                 "current_semester_url": endpoints["current_semester_url"],
                 "courses_url": endpoints["courses_url"],
-                "auth_flow": "interactive_browser" if key.startswith("url_") else "thu_cas",
+                "auth_flow": "interactive_browser" if key.startswith("url_") else "cas",
                 "status": "ready",
                 "support_level": "ready",
                 "ready": True,

@@ -282,12 +282,11 @@ def build_webview_sync_status(config: Mapping[str, Any], *, provider: Any = None
     # I/O. Whether imported cookies actually work is verified at import time
     # (import_webview_cookies) and at login; here we only report, declaratively,
     # whether such API-session validation will be required for this provider.
-    auth_flow = provider_config.get("auth_flow") or ""
-    try:
-        from troTHU.login_adapters import get_login_adapter
-        requires_validation = bool(get_login_adapter(auth_flow).requires_api_session_validation)
-    except Exception:
-        requires_validation = False
+    # Imported cookies are confirmed via an authenticated API call for every flow except
+    # the plain CAS one (THU/SCU target the IdP directly, so no anonymous LMS cookie is
+    # set and cookie presence is already reliable). Keyed on the protocol, not the school.
+    flow = str(provider_config.get("auth_flow") or "").strip().lower()
+    requires_validation = flow not in ("", "cas", "thu_cas")
 
     return {
         "status": "ready" if can_import else "preview_only",
@@ -391,13 +390,10 @@ def import_webview_cookies(
     if not accepted:
         raise WebViewSyncError("no_accepted_cookies")
 
-    auth_flow = provider_config.get("auth_flow") or ""
-    try:
-        from troTHU.login_adapters import get_login_adapter
-        adapter = get_login_adapter(auth_flow)
-        requires_validation = adapter.requires_api_session_validation
-    except Exception:
-        requires_validation = False
+    # Confirm imported cookies with an authenticated API call for every flow except the
+    # plain CAS one (see cookie_sync_report). Keyed on the protocol, not the school.
+    flow = str(provider_config.get("auth_flow") or "").strip().lower()
+    requires_validation = flow not in ("", "cas", "thu_cas")
 
     if requires_validation:
         if not _validate_api_session(provider_config, accepted):

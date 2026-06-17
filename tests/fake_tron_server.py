@@ -539,7 +539,9 @@ class FakeTronServer:
         await self.close()
 
     async def login_session(self, session, *, user: str = "user1", password: str = "pass1"):
+        from troTHU.login_flow import resolve_credential_form, submit_credentials
+
         client = self.client(session)
-        form = await client.fetch_login_form()
-        outcome = await client.submit_login(form, user, password)
-        return form, outcome
+        resolved = await resolve_credential_form(client)
+        outcome = await submit_credentials(client, resolved, user, password)
+        return resolved.form, outcome

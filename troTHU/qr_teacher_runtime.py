@@ -68,22 +68,10 @@ def _teacher_login_result(status: str, source: str, user: str = "", final_url: s
 
 
 def _teacher_requires_api_validation(endpoints) -> bool:
-    # Mirror the student-side predicate: union the legacy auth_flow set with the
-    # login-adapter registry so a new school's adapter automatically participates
-    # and the teacher path stays consistent with student login.
-    auth_flow = ctx.normalize_text(getattr(endpoints, "auth_flow", "")).lower()
-    requires = auth_flow in {
-        "public_cloud_email",
-        "browser_sso",
-        "oidc_browser",
-        "sso_browser",
-        "tku_sso_browser",
-    }
-    try:
-        requires = requires or ctx.get_login_adapter(auth_flow).requires_api_session_validation
-    except Exception:
-        pass
-    return requires
+    # Mirror the student side: every credential login confirms the session via an
+    # authenticated API call, since a TronClass LMS sets an anonymous `session` cookie
+    # on the login-page GET (cookie presence alone is unreliable). Always validate.
+    return True
 
 
 async def teacher_login(session, endpoints):
@@ -93,8 +81,7 @@ async def teacher_login(session, endpoints):
     client = ctx.TronHttpClient(session, request_ssl=ctx.get_ssl_request_setting(), endpoints=endpoints)
     try:
         session.cookie_jar.clear()
-        form = await client.fetch_login_form()
-        outcome = await client.submit_login(form, user, passwd)
+        outcome = await ctx.run_login_flow(client, user, passwd)
         if not outcome.has_session or not ctx.has_session_cookie_data(session, endpoints.session_cookie_domain):
             return _teacher_login_result("missing_session", credential_source, user, outcome.final_url)
         if _teacher_requires_api_validation(endpoints):

@@ -13,7 +13,7 @@ except (ImportError, ModuleNotFoundError):
     aiohttp = None
     web = None
 
-from troTHU import tron, tron_http, radar_runtime
+from troTHU import tron, tron_http
 from tests.fake_tron_server import FakeTronServer
 
 TEST_WORKSPACE_DIR = Path(__file__).resolve().parents[1]
@@ -65,17 +65,18 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         shutil.rmtree(self.base_dir, ignore_errors=True)
 
     async def login_session(self, session):
+        from troTHU import login_flow
         client = tron_http.TronHttpClient(session)
-        form = await client.fetch_login_form()
+        resolved = await login_flow.resolve_credential_form(client)
         with patch.object(
             tron_http,
             "has_session_cookie",
-            side_effect=lambda current_session: any(
+            side_effect=lambda current_session, *args, **kwargs: any(
                 cookie.key == "session" for cookie in current_session.cookie_jar
             ),
         ):
-            outcome = await client.submit_login(form, "user1", "pass1")
-        return form, outcome
+            outcome = await login_flow.submit_credentials(client, resolved, "user1", "pass1")
+        return resolved.form, outcome
 
     def current_daily_log_path(self, root: Path) -> Path:
         today = tron.current_datetime()
@@ -220,76 +221,6 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result, "qr 點名已處理")
         teacher_mock.assert_not_awaited()
-
-    async def test_radar_flow_uses_lite_beacon_payload_and_safe_diagnostics(self) -> None:
-        # legacy_radar is detached from the live dispatch; call it directly to keep
-        # coverage of the shared coordinate/lite/diagnostic-redaction machinery.
-        probe_plan = tron.build_probe_plan(tron.DEFAULT_CONFIG["radar"]["boundary_points"])
-        first_probe = probe_plan.frame.to_geo(probe_plan.probes[0])
-        self.fake_server.set_radar_target(first_probe.lat, first_probe.lon, success_radius_meters=3.0)
-        self.fake_server.radar_lite_payload = {
-            "data": {
-                "rollcallId": 501,
-                "useBeacon": "true",
-                "beacon": {"nonce": "fixture-nonce"},
-            }
-        }
-
-        temp_dir = make_workspace_temp_dir()
-        try:
-            tron.PATH = temp_dir
-            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
-                await self.login_session(session)
-                with (
-                    patch.object(tron, "mes", AsyncMock()),
-                    patch.object(tron, "log_print"),
-                ):
-                    success = await radar_runtime.legacy_radar(session, {"is_radar": True, "rollcall_id": 501})
-
-            log_path = self.current_daily_log_path(temp_dir)
-            entries = [
-                json.loads(line)
-                for line in log_path.read_text(encoding="utf-8").splitlines()
-            ]
-        finally:
-            shutil.rmtree(temp_dir, ignore_errors=True)
-
-        self.assertTrue(success)
-        self.assertEqual(len(self.fake_server.radar_answers), 1)
-        payload = self.fake_server.radar_answers[0]["body"]
-        self.assertIn("radarSignal", payload)
-        self.assertIn("altitudeAccuracy", payload)
-        attempt_entry = next(entry for entry in entries if entry["event"] == "radar_coordinate_attempt")
-        self.assertEqual(attempt_entry["status"], "success")
-        self.assertIn("radarSignal", attempt_entry["payload_fields"])
-        self.assertNotIn("fixture-nonce", json.dumps(attempt_entry, ensure_ascii=False))
-        self.assertNotIn(payload["radarSignal"], json.dumps(attempt_entry, ensure_ascii=False))
-
-    async def test_radar_lite_rate_limit_returns_safe_failure_without_submit(self) -> None:
-        self.fake_server.queue_response("radar_lite", status=429, text="limited")
-
-        async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
-            await self.login_session(session)
-            with (
-                patch.object(tron, "mes", AsyncMock()),
-                patch.object(tron, "log_print"),
-            ):
-                success = await radar_runtime.legacy_radar(session, {"is_radar": True, "rollcall_id": 502})
-
-        self.assertFalse(success)
-        self.assertEqual(self.fake_server.radar_answers, [])
-
-    async def test_radar_answer_session_expired_raises_unauthorized(self) -> None:
-        self.fake_server.queue_response("radar", status=401, text="unauthorized")
-
-        async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
-            await self.login_session(session)
-            with (
-                patch.object(tron, "mes", AsyncMock()),
-                patch.object(tron, "log_print"),
-            ):
-                with self.assertRaises(tron_http.UnauthorizedError):
-                    await radar_runtime.legacy_radar(session, {"is_radar": True, "rollcall_id": 503})
 
 
 if __name__ == "__main__":

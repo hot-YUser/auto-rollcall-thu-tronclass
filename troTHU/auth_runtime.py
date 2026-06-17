@@ -103,72 +103,54 @@ def masked_login_user(user: ctx.Any) -> str:
     return ctx.normalize_text(user)
 
 
-BROWSER_ASSIST_AUTH_FLOWS = {
-    'browser_sso',
-    'oidc_browser',
-    'sso_browser',
+# Auth-flow values are protocol/feature categories — never school names. The unified
+# login flow (login_flow.run_login_flow) DISPATCHES purely on detected page features;
+# auth_flow is consulted ONLY for the pre-login mode/degradation decisions below.
+# Legacy filled-config values are normalised so old configs keep working.
+_LEGACY_AUTH_FLOW_ALIASES = {
+    'thu_cas': 'cas',
+    'cas_api_validated': 'cas',
+    'cas_login_settings': 'cas',
+    'fju_ocr_captcha': 'cas_ocr_captcha',
+    'tku_sso_browser': 'nam_neai',
 }
+OCR_CAPTCHA_AUTH_FLOWS = {'cas_ocr_captcha', 'keycloak_ocr_captcha'}
 
-API_VALIDATED_AUTH_FLOWS = {
-    'public_cloud_email',
-}
+
+def _active_auth_flow() -> str:
+    try:
+        provider = ctx.get_active_provider_config()
+    except Exception:
+        provider = {}
+    flow = ctx.normalize_text(provider.get('auth_flow') if isinstance(provider, dict) else '').lower()
+    return _LEGACY_AUTH_FLOW_ALIASES.get(flow, flow)
 
 
 def provider_requires_manual_cookie_login() -> bool:
-    try:
-        provider = ctx.get_active_provider_config()
-    except Exception:
-        provider = {}
-    auth_flow = ctx.normalize_text(provider.get('auth_flow') if isinstance(provider, dict) else '').lower()
-    # OCR image-captcha logins (FJU's Apereo captcha.jpg, the generic cas_ocr_captcha,
-    # and the Keycloak JSON captcha) degrade to manual-cookie behaviour when the optional
-    # ddddocr engine is unavailable, so the provider still works out of the box (e.g. the
-    # small default release) without a hard failure.
-    if auth_flow in {'fju_ocr_captcha', 'cas_ocr_captcha', 'keycloak_ocr_captcha'} and not ctx.ddddocr_available():
+    auth_flow = _active_auth_flow()
+    # OCR image/JSON captcha logins degrade to manual-cookie when the optional ddddocr
+    # engine is unavailable, so the provider still works out of the box (e.g. the small
+    # default release) without a hard failure.
+    if auth_flow in OCR_CAPTCHA_AUTH_FLOWS and not ctx.ddddocr_available():
         return True
-    requires = auth_flow == 'manual_cookie_only'
-    try:
-        requires = requires or ctx.get_login_adapter(auth_flow).requires_manual_cookie_login
-    except Exception:
-        pass
-    return requires
+    return auth_flow == 'manual_cookie_only'
 
 
 def provider_requires_interactive_browser_login() -> bool:
-    try:
-        provider = ctx.get_active_provider_config()
-    except Exception:
-        provider = {}
-    auth_flow = ctx.normalize_text(provider.get('auth_flow') if isinstance(provider, dict) else '').lower()
-    return auth_flow == 'interactive_browser'
+    return _active_auth_flow() == 'interactive_browser'
 
 
 def provider_prefers_browser_assisted_login() -> bool:
-    try:
-        provider = ctx.get_active_provider_config()
-    except Exception:
-        provider = {}
-    auth_flow = ctx.normalize_text(provider.get('auth_flow') if isinstance(provider, dict) else '').lower()
-    prefers = auth_flow in BROWSER_ASSIST_AUTH_FLOWS
-    try:
-        prefers = prefers or ctx.get_login_adapter(auth_flow).prefers_browser_assisted_login
-    except Exception:
-        pass
-    return prefers
+    # No provider opts into automatic browser-assisted login; it is enabled only via the
+    # explicit auth.browser_assisted_login config switch (should_try_browser_assisted_login).
+    return False
 
 
 def provider_requires_api_session_validation() -> bool:
-    try:
-        provider = ctx.get_active_provider_config()
-    except Exception:
-        provider = {}
-    auth_flow = ctx.normalize_text(provider.get('auth_flow') if isinstance(provider, dict) else '').lower()
-    requires = auth_flow in API_VALIDATED_AUTH_FLOWS or ctx.provider_prefers_browser_assisted_login()
-    try:
-        requires = requires or ctx.get_login_adapter(auth_flow).requires_api_session_validation
-    except Exception:
-        pass
-    return requires
+    # Every credential login confirms the session via an authenticated API call: a
+    # TronClass LMS sets an anonymous `session` cookie on the login-page GET, so cookie
+    # presence alone is an unreliable success signal. Always validate.
+    return True
 
 
 def get_browser_assisted_login_config() -> ctx.Dict[str, ctx.Any]:
@@ -616,13 +598,13 @@ async def resolve_login_settings_url(session: ctx.aiohttp.ClientSession, base_ur
     and return the campus-SSO (kc_idp_hint) login URL. Falls back to fallback_url ({base}/login)
     on any error or when no kc_idp_hint entry exists. Never raises."""
     try:
-        import troTHU.login_adapters as login_adapters
+        import troTHU.login_flow as login_flow
         homepage = str(base_url or "").rstrip("/") + "/"
         ssl_setting = ctx.get_ssl_request_setting()
         kwargs = {} if ssl_setting is None else {"ssl": ssl_setting}
         async with session.get(homepage, **kwargs) as resp:
             html = await resp.text()
-        resolved = login_adapters.pick_login_settings_url(login_adapters.parse_login_settings(html))
+        resolved = login_flow.pick_login_settings_url(login_flow.parse_login_settings(html))
         return resolved or fallback_url
     except Exception:
         return fallback_url
@@ -710,17 +692,16 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
     ctx.log_print('嘗試使用帳密自動登入...')
     ctx.log(event='login_attempt', status='started', message='嘗試登入 TronClass。', extra={'credential_source': credential_source, 'user': user})
     ssl_fallback_attempted = False
-    # cas_login_settings: resolve the homepage loginSettings → campus-SSO (kc_idp_hint)
-    # URL once, and use it as login_url so both the auto form-POST and the interactive
-    # browser fallback target the correct entry (not the wrong {base}/login).
+    # Feature-detected SSO discovery (no per-school gate): GET the homepage and, if its
+    # orgSettings.loginSettings carries a campus-SSO (kc_idp_hint) URL, prefer it over
+    # {base}/login. login_settings_url is set ONLY when discovery genuinely points
+    # elsewhere — it both overrides login_url and marks this as a federation entry, so a
+    # failed auto attempt falls back to the interactive browser at the resolved URL.
     login_settings_url = None
-    active_provider = ctx.get_active_provider_config()
-    active_auth_flow = ctx.normalize_text(
-        active_provider.get('auth_flow') if isinstance(active_provider, dict) else ''
-    ).lower()
-    if active_auth_flow == 'cas_login_settings':
-        endpoints0 = ctx.get_active_http_endpoints()
-        login_settings_url = await ctx.resolve_login_settings_url(session, endpoints0.base_url, endpoints0.login_url)
+    endpoints0 = ctx.get_active_http_endpoints()
+    resolved_settings = await ctx.resolve_login_settings_url(session, endpoints0.base_url, endpoints0.login_url)
+    if resolved_settings and resolved_settings != endpoints0.login_url:
+        login_settings_url = resolved_settings
     try:
         while True:
             client = ctx.create_tron_http_client(session, request_ssl=ctx.get_ssl_request_setting())
@@ -728,8 +709,7 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
                 client.endpoints = dataclasses.replace(client.endpoints, login_url=login_settings_url)
             try:
                 session.cookie_jar.clear()
-                form = await client.fetch_login_form()
-                outcome = await client.submit_login(form, user, passwd)
+                outcome = await ctx.run_login_flow(client, user, passwd)
             except ctx.LoginPageChangedError as exc:
                 if login_settings_url:
                     # Federated IdP / JS-rendered SSO → open the interactive browser at the

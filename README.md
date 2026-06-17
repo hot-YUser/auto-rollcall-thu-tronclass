@@ -383,15 +383,16 @@ PUT {teacher_base}/api/rollcall/{teacher_rollcall_id}/stop_qr_rollcall
 - `troTHU/number_runtime.py`、`troTHU/radar_runtime.py`：兩種點名的實作核心（上面的 API 就在這裡）；雷達的全球定位求解器另放在 `troTHU/global_radar_solver.py`（純 Python WGS84 多點定位）。
 - `troTHU/qr_runtime.py`、`troTHU/qr_teacher_runtime.py`：QR 手動 / 剪貼簿送出與教師帳號輔助流程。
 - `troTHU/providers.py`：支援的學校登錄表（base URL、`auth_flow`、能力旗標）。沿用既有登入流程的新學校，從這裡加一筆即可，甚至可純用 `config.advanced.toml` 的 `[provider.available.<校名>]` 定義，完全不必改程式。
-- `troTHU/login_adapters.py`：以 `auth_flow` 為鍵的「登入頁 adapter」登錄表（CAS / TKU SSO / 公有雲 email / 純 cookie 匯入 / 互動瀏覽器手動登入）。有獨特登入頁的新學校，只需新增一個 adapter；登入狀態判讀、錯誤提示、session 驗證等共用流程都已統一，不必再碰。
-- `troTHU/tron_http.py`：端點驅動的 HTTP client；`fetch_login_form` / `submit_login` 會依 `auth_flow` 委派給對應的 login adapter。
-- `troTHU/auth_runtime.py`：與學校無關的登入主流程（cookie 還原、送出、API session 驗證、瀏覽器後備、各種狀態與提示）。
+- `troTHU/login_flow.py`：**唯一的統一登入流程**（`run_login_flow`）。抓登入頁一次後，純粹依「偵測到的頁面特徵」分流——有無驗證碼、哪一種驗證碼（靜態圖檔／Keycloak JSON）、是否為首頁 SSO 探索、是否為公有雲 email SPA、是否為 NetIQ NAM——**絕不以學校為分支或命名**。新增一種前所未見的登入「協定」才需要在這裡加一個特徵處理函式；換新學校通常什麼都不必碰。
+- `troTHU/login_probe.py`：`login-probe` 指令——對全部學校的真實登入頁做免帳密探測（可達性＋實際 adapter 解析），是回歸守門與「上線前驗證」的工具。
+- `troTHU/tron_http.py`：端點驅動的 HTTP client（`run_login_flow` 在它之上執行）。
+- `troTHU/auth_runtime.py`：與學校無關的登入主流程（cookie 還原、呼叫統一流程、API session 驗證、瀏覽器後備、各種狀態與提示）。
 
 ### 新增一所學校（給開發者）
 
-「多學校系統」刻意設計成新增學校的成本極低。最省事的一條其實連開發者都不必當：**任何 TronClass 學校，使用者只要在 `config.conf` 把 `school` 或 `now` 填成該校網址，就會自動走「互動瀏覽器手動登入」（`auth_flow = interactive_browser`），免改任何程式或設定檔**（細節見上面〈我的學校不在清單裡？〉一節）。若想做到「填代號就自動登入」而非每次手動，再依登入方式選下面三條路之一：
+「多學校系統」刻意設計成新增學校的成本極低，而且**登入流程完全統一**：所有學校都走同一條 `run_login_flow`，由程式在執行時偵測登入頁特徵自動分流，沒有任何一所學校享有特化程式碼或特化命名。最省事的一條其實連開發者都不必當：**任何 TronClass 學校，使用者只要在 `config.conf` 把 `school` 或 `now` 填成該校網址，就能自動登入**（細節見上面〈我的學校不在清單裡？〉一節）。若想「填代號就自動登入」，依下面選一條路：
 
-**途徑一：沿用既有登入流程（最常見）。** 新學校登入頁若與東海 CAS（`thu_cas`）、淡江 SSO、公有雲 email 其中一種相同，有兩種作法：
+**途徑一：加一筆 provider（最常見，通常就夠了）。** 因為登入流程會自動偵測特徵，新學校多半**只要一個 `base_url`**：
 
 - *永久新增（適合送 PR）*：在 `troTHU/providers.py` 的 `PROVIDERS` 加一筆 `ProviderDefinition`，並在 `PROVIDER_ALIASES` 補上中英文別名。
   ```python
@@ -399,8 +400,6 @@ PUT {teacher_base}/api/rollcall/{teacher_rollcall_id}/stop_qr_rollcall
       key="scu",
       label="Soochow University TronClass",
       base_url="https://tronclass.scu.edu.tw",
-      login_url="https://tronclass.scu.edu.tw/cas/login?...",
-      auth_flow="thu_cas",
       capabilities=ProviderCapabilities(number=True, radar=True, qrcode=True, ...),
   ),
   ```
@@ -408,45 +407,27 @@ PUT {teacher_base}/api/rollcall/{teacher_rollcall_id}/stop_qr_rollcall
   ```toml
   [provider.available.my_school]
   base_url = "https://tronclass.my-school.edu.tw"
-  auth_flow = "thu_cas"
   ```
   ```conf
   school = my_school
   ```
-  **`auth_flow` 怎麼選**（多數 TronClass 學校屬前兩種）：
-  - `cas_api_validated`：標準 CAS／Keycloak 帳密登入頁，且登入網址是「學校 LMS 自己的 `/login`」（會自動轉跳到 IdP）。**這是新增多學校時的預設值**——因為 TronClass 在載入登入頁時就會在 LMS 網域種一顆匿名 `session` cookie，光看 cookie 在不在會誤判成功，所以這個流程會在登入後再打一次 API 確認 session 真的有效。
-  - `thu_cas`：同樣是 CAS／Keycloak，但 `login_url` 直接指向 IdP（像東海），不經過 LMS `/login`、不會有匿名 cookie，可只靠 cookie 判讀。
-  - `cas_ocr_captcha`：CAS 登入頁另有「圖形驗證碼」（像海洋）。預設與輔仁相同（圖檔 `captcha.jpg`、欄名 `captcha`、4 碼純數字），用本地 OCR 自動辨識；若該校驗證碼規格不同，在區塊內覆寫 `captcha_image_name` / `captcha_field` / `captcha_charset` / `captcha_length` 即可，免改程式：
+  **`auth_flow` 是「選填提示」，不是分流依據**：流程會在執行時自動偵測登入頁屬於下列哪一種，正常情況**不必設定**。它只保留供文件說明、向後相容，以及兩個與分流無關的判斷（缺 OCR 套件時的降級、`manual_cookie_only` / `interactive_browser` 模式）。所有值都以「協定／特徵」命名，**沒有學校名稱**：
+  - `cas`：標準 CAS／Keycloak 帳密登入頁（多數學校；東海、東吳亦同）。流程一律會在登入後再打一次 API 確認 session——因為 TronClass 載入登入頁時會在 LMS 網域種一顆匿名 `session` cookie，光看 cookie 在不在會誤判成功。
+  - `cas_ocr_captcha`：CAS 登入頁另有「靜態圖形驗證碼」（輔仁、海洋）。預設圖檔 `captcha.jpg`、欄名 `captcha`、4 碼，用本地 OCR 自動辨識；規格不同時於區塊內覆寫 `captcha_image_name` / `captcha_field` / `captcha_charset` / `captcha_length`：
     ```toml
     [provider.available.my_school]
     base_url = "https://tronclass.my-school.edu.tw"
-    auth_flow = "cas_ocr_captcha"
+    auth_flow = "cas_ocr_captcha"        # 多半可省略；偵測到驗證碼欄位就會自動處理
     captcha_charset = "0123456789abcdefghijklmnopqrstuvwxyz"  # 預設僅 0-9
     captcha_length = 5                                        # 預設 4
     ```
-  - `keycloak_ocr_captcha`：Keycloak（WeJoy／智園 `tw-common` 佈景）登入頁的驗證碼——它不是靜態
-    `captcha.jpg`，而是 JS 打 `GET /auth/realms/<realm>/captcha/code` 拿 JSON `{image, key}`，送出時要同時
-    帶 `captchaCode`（OCR 結果）與 `captchaKey`（回傳的 key）。本程式已自動處理（亞洲、馬偕、虎尾屬此類）。
-  - `public_cloud_email`：TronClass 原生 email／密碼登入、沒有外部 CAS（像公有雲官網、澳門鏡湖）。
-  - `cas_login_settings`：首頁出現「本校／統一登入」兩個選項（或單一選項但帶 `kc_idp_hint`）的學校——
-    真正的登入入口**不是** `{base}/login`。程式會自動讀首頁 `orgSettings.loginSettings`、挑出帶
-    `kc_idp_hint` 的校內 SSO 入口，必要時自動跟隨 JS 自動提交的中轉表單（如彰師 NetIQ NAM），再依該頁
-    型態決定：若是標準帳密表單（即使欄名特殊、含圖形驗證碼，如龍華 `muid/mpassword`、勤益、雲科、
-    彰師 `Ecom_User_ID/Ecom_Password`）就自動偵測欄位＋OCR 驗證碼自動登入；若導向聯邦式 IdP
-    （Google／微軟）則自動開瀏覽器手動登入。屬此類：彰師、龍華、雲科、勤益、北商、澳門城市。
-  - 若某校 `/login` 不會乾淨轉跳到登入表單（少數同網域學校只在 `/cas/login` 提供表單），在區塊內把 `login_url` 指明即可。
+  - `keycloak_ocr_captcha`：Keycloak（`tw-common` 佈景）的 JSON 驗證碼——JS 打 `GET /auth/realms/<realm>/captcha/code` 拿 `{image, key}`，送出時帶 `captchaCode`＋`captchaKey`。流程自動處理（亞洲、馬偕、虎尾）。
+  - `public_cloud_email`：TronClass 原生 email／密碼 SPA、沒有外部 CAS（公有雲官網、澳門鏡湖）。
+  - `nam_neai`：NetIQ Access Manager（NEAI）SSO（淡江）。SSO 主機由登入頁的 JS 自動推導，**不寫死**任何學校網址。
+  - 首頁帶「本校／統一登入」`kc_idp_hint` 的學校（彰師、龍華、雲科、勤益、北商、澳門城市）：流程會自動讀首頁 `orgSettings.loginSettings` 找出校內 SSO 入口、跟隨 JS 自動提交中轉表單，再依該頁型態自動處理（標準帳密表單即使欄名特殊如 `muid/mpassword`、`Ecom_User_ID/Ecom_Password` 也會自動偵測；含驗證碼自動 OCR；導向 Google／微軟聯邦式 IdP 則自動開瀏覽器）——同樣**不必設定**。
+  - 若某校 `/login` 不會乾淨轉跳到登入表單（少數只在 `/cas/login` 提供），於區塊內指明 `login_url`。
 
-**途徑二：全新登入頁面（寫一個 Adapter）。** 該校若有獨特的 SSO 流程（像淡江 `tku_sso_browser`），在 `troTHU/login_adapters.py` 繼承 `LoginAdapter` 實作 `fetch_login_form` / `submit_login`，以 `auth_flow` 為鍵註冊進 `_adapters_by_flow`，再把 provider 的 `auth_flow` 指到它。登入狀態判讀、錯誤提示、session 驗證、瀏覽器後備都已統一，不必再碰。
-
-```python
-class MySchoolLoginAdapter(LoginAdapter):
-    auth_flow = "my_school_sso"
-    prefers_browser_assisted_login = True   # 必要時呼叫瀏覽器輔助
-    requires_api_session_validation = True  # 登入後是否驗證 API session
-
-    async def fetch_login_form(self, client) -> LoginForm: ...
-    async def submit_login(self, client, form, username, password) -> LoginOutcome: ...
-```
+**途徑二：前所未見的登入協定（極少數）。** 只有當某校的登入「協定」是現有特徵偵測完全涵蓋不到的全新型態時，才需要動程式：在 `troTHU/login_flow.py` 的 `resolve_credential_form` 加一條特徵偵測、並寫一個對應的送出策略，**以「協定／特徵」命名，絕不以學校命名**。登入狀態判讀、錯誤提示、session 驗證、瀏覽器後備都已統一，不必再碰。動手前先跑 `python -m troTHU.tron login-probe --school <代號>`，看流程在真實伺服器上偵測到什麼，多半會發現根本不用加。
 
 **途徑三：純 Cookie 匯入（免寫任何登入邏輯）。** 想直接從瀏覽器讀 cookie、跳過密碼登入：把該校 `auth_flow` 設成 `manual_cookie_only`，啟用進階設定的 `webview`，再用指令匯入。系統會在匯入當下與每次執行時自動向該校 API 驗證 session，確保 cookie 有效、不怕靜默過期。
 

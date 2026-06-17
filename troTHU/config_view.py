@@ -99,7 +99,14 @@ def config_doctor_report(config: Mapping[str, Any] | None = None) -> Dict[str, A
     warnings = list(summary.get("warnings", []))
     if summary["profile_count"] <= 0:
         warnings.append("尚未設定任何帳號 profile。")
-    if summary["provider"] not in {"thu", "fju", "tku", "tronclass"}:
+    try:
+        known_providers = {provider.key for provider in ctx.list_all_providers()}
+        cfg_available = (config if isinstance(config, Mapping) else ctx.CONFIG).get("provider", {}).get("available", {})
+        if isinstance(cfg_available, Mapping):
+            known_providers.update(cfg_available.keys())
+    except Exception:
+        known_providers = set()
+    if known_providers and summary["provider"] not in known_providers:
         warnings.append("provider 不在目前支援清單中，將 fallback 到 THU。")
     return {
         "status": "warn" if warnings else "ok",
