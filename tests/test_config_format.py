@@ -98,6 +98,26 @@ class ConfigFormatTest(unittest.TestCase):
         # The example group keeps its class label but drops the example members.
         self.assertTrue(all(group["users"] == [] for group in parsed["groups"]))
 
+    def test_save_account_header_parses(self) -> None:
+        parsed = tron.parse_basic_config_text("now = S1\n[save account]\nuser = S1\npasswd = P1\nschool = THU\n")
+        self.assertEqual(len(parsed["accounts"]), 1)
+        self.assertEqual(parsed["accounts"][0]["user"], "S1")
+        self.assertEqual(parsed["accounts"][0]["school"], "thu")
+
+    def test_legacy_account_header_still_parses(self) -> None:
+        # Back-compat: existing config.conf files written with [account] keep working.
+        parsed = tron.parse_basic_config_text("now = S1\n[account]\nuser = S1\npasswd = P1\nschool = THU\n")
+        self.assertEqual(len(parsed["accounts"]), 1)
+        self.assertEqual(parsed["accounts"][0]["user"], "S1")
+
+    def test_render_emits_save_account_and_lists_all_codes(self) -> None:
+        rendered = tron.render_basic_config({"accounts": [{"user": "S1", "passwd": "P1", "school": "thu"}]})
+        self.assertIn("[save account]", rendered)
+        self.assertNotIn("\n[account]", rendered)
+        # Every registry code appears in the single code-list comment, none singled out.
+        for code in ("THU", "TKU", "SCU", "FJU", "TRONCLASS", "ASIA", "NTOU"):
+            self.assertIn(code, rendered)
+
     def test_blank_now_uses_only_real_account(self) -> None:
         parsed = tron.parse_basic_config_text(
             "now =\n[account]\nuser = SINGLE\npasswd = SECRET\nschool = THU\n"

@@ -19,7 +19,6 @@ except ModuleNotFoundError:  # pragma: no cover - Python < 3.11
 PLACEHOLDER_PREFIXES = ("(", "（")
 SIMPLE_WEEKDAY_TO_INTERNAL = {0: 6, 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5}
 INTERNAL_WEEKDAY_TO_SIMPLE = {value: key for key, value in SIMPLE_WEEKDAY_TO_INTERNAL.items()}
-VISIBLE_DEFAULT_SCHOOLS = ("THU", "TKU", "TRONCLASS")
 
 ALIASES = {
     "學號": "user",
@@ -58,6 +57,11 @@ ALIASES = {
 # typo and Chinese names so beginners can't easily get it wrong.
 _SECTION_ALIASES = {
     "account": "account", "accounts": "account", "帳號": "account", "帳戶": "account",
+    # v1.6-alpha.2 renamed the generated header to [save account] (clarifies that
+    # extra blocks are *saved* accounts, not simultaneous detection). Old [account]
+    # configs keep working via the entries above.
+    "save account": "account", "saved account": "account", "save_account": "account",
+    "儲存帳號": "account", "已儲存帳號": "account", "存帳號": "account",
     "group": "group", "groups": "group", "grop": "group", "群組": "group", "班級": "group",
     "teacher": "teacher", "teachers": "teacher", "教師": "teacher", "老師": "teacher",
     "operating": "operating", "schedule": "operating", "排程": "operating",
@@ -644,37 +648,57 @@ def parse_advanced_config_toml(text: str) -> ctx.Dict[str, ctx.Any]:
     return loaded if isinstance(loaded, dict) else {}
 
 
+def _all_school_codes() -> ctx.List[str]:
+    """Every supported school code, from the registry — so the generated config lists
+    them all in ONE place, always current, with no school singled out."""
+    try:
+        return sorted({p.key.upper() for p in ctx.list_all_providers() if getattr(p, "user_visible", True)})
+    except Exception:
+        return ["THU", "TKU", "SCU", "FJU", "TRONCLASS"]
+
+
+def _render_school_value(raw: ctx.Any) -> str:
+    """Canonical UPPER code for a configured school, or a neutral placeholder when
+    nothing is set — never a privileged default like THU."""
+    if not _strip_value(raw):
+        return "（填上方任一代號）"
+    return (_canonical_school(raw) or "thu").upper()
+
+
 def render_basic_config(simple_dict: ctx.Mapping[str, ctx.Any] | None = None) -> str:
     simple = ctx.copy.deepcopy(dict(simple_dict or {}))
     accounts = list(simple.get("accounts") or [])
-    while len(accounts) < len(VISIBLE_DEFAULT_SCHOOLS):
-        index = len(accounts) + 1
-        accounts.append({"user": "", "passwd": "", "school": VISIBLE_DEFAULT_SCHOOLS[index - 1]})
+    if not accounts:
+        accounts.append({"user": "", "passwd": "", "school": ""})
     groups = list(simple.get("groups") or [])
-    while len(groups) < 2:
-        groups.append({"class": "A" if not groups else "B", "school": "THU", "users": [""]})
-    
+    if not groups:
+        groups.append({"class": "A", "school": "", "users": [""]})
+
     lines = [
         "# ===== 基本設定 config.conf =====（改完存檔關閉記事本即自動套用）",
         "# now：要用哪個帳號跑？填某帳號的 user，或填「class 群組名」。只有一個帳號可留空。",
         "#       也可填學校網址（如 https://tronclass.你的學校.edu.tw）→ 改用手動瀏覽器登入，免填帳密。",
         "now = {}".format(simple.get("now") or ""),
-        ""
+        "",
+        "# [save account] 已儲存的帳號。要存幾個就放幾塊；實際只會用上面 now 指定的那一個跑——",
+        "#   填多個並「不會」同時偵測多個。school 填下列任一支援代號＝自動登入：",
     ]
+    codes = _all_school_codes()
+    lines.extend("#   " + ", ".join(codes[i:i + 8]) for i in range(0, len(codes), 8))
+    lines.append("#   也可改填學校「網址」＝手動瀏覽器登入（passwd 可留空）。")
 
-    for index, account in enumerate(accounts, start=1):
+    for account in accounts:
         lines.extend([
-            "# [account] 你的帳號，要幾個就放幾塊。school 填代號＝自動登入：THU / TKU / TRONCLASS / SCU / FJU；填學校網址＝手動瀏覽器登入（passwd 可留空）",
-            "[account]",
+            "[save account]",
             "user = {}".format(account.get("user") or ""),
             "passwd = {}".format(account.get("passwd") or ""),
-            "school = {}".format((_canonical_school(account.get("school")) or "thu").upper()),
+            "school = {}".format(_render_school_value(account.get("school"))),
             ""
         ])
 
     teacher = simple.get("teacher") if isinstance(simple.get("teacher"), dict) else {}
     lines.extend([
-        "# [teacher]（選用）QR 教師輔助帳號。course 留空會自動抓第一門課",
+        "# [teacher]（選用）QR 教師輔助帳號。school 填任一支援代號（見上）；course 留空會自動抓第一門課",
         "[teacher]",
         "user = {}".format(teacher.get("user") or ""),
         "passwd = {}".format(teacher.get("passwd") or ""),
@@ -684,7 +708,7 @@ def render_basic_config(simple_dict: ctx.Mapping[str, ctx.Any] | None = None) ->
     ])
 
     for group in groups:
-        class_name = group.get("class") or ("A" if len(lines) == 0 else "B")
+        class_name = group.get("class") or "A"
         users = list(group.get("users") or [""])
         if not users:
             users = [""]
@@ -692,7 +716,7 @@ def render_basic_config(simple_dict: ctx.Mapping[str, ctx.Any] | None = None) ->
             "# [group]（選用）一人偵測、全員簽到。members 用逗號列出同組 user，再把上面 now 填成「class A」",
             "[group]",
             "class = {}".format(class_name),
-            "school = {}".format((_canonical_school(group.get("school")) or "thu").upper()),
+            "school = {}".format(_render_school_value(group.get("school"))),
             "members = {}".format(", ".join(users)),
             ""
         ])
@@ -829,11 +853,13 @@ def _append_provider_advanced_section(lines: ctx.List[str], overrides: ctx.Mappi
     lines.append("")
     lines.append("# " + _ADVANCED_COMMENTS["provider"])
     lines.append("# 一般情況下，學校由 config.conf 的 school 決定，這裡不用填。")
-    lines.append("# 要新增「內建清單沒有的學校」或自訂網址，照下面範例加一個區塊")
-    lines.append("#（區塊名 my_school 即 config.conf 的 school 值）：")
+    lines.append("# 新增「內建清單沒有的學校」：自 v1.6 起登入流程會自動偵測登入頁特徵，")
+    lines.append("# 「只要一行 base_url」就夠了——登入網址、登入方式、圖形驗證碼全都自動偵測，")
+    lines.append("# 不需也不應逐校指定。區塊名（下例的 my_school）就是 config.conf 裡要填的 school 值：")
     lines.append('#   [provider.available.my_school]')
     lines.append('#   base_url = "https://tronclass.my-school.edu.tw"')
-    lines.append('#   auth_flow = "thu_cas"   # 想直接讀瀏覽器 cookie 免密碼登入可填 manual_cookie_only')
+    lines.append("#")
+    lines.append("# 選填：label = \"顯示名稱\"、user_visible = true/false。其餘一律自動，毋須填寫。")
     if overrides:
         _emit_toml_table("provider", dict(overrides), lines)
 
