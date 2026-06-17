@@ -1,6 +1,6 @@
 # Auto-Rollcall-thu-Tronclass
 
-**TronClass 校園點名系統的全自動點名工具｜支援東海 (THU)「iLearn」、淡江 (TKU)「iClass」、東吳 (SCU)「TronClass」、輔仁 (FJU)「TronClass」，以及全台／港澳逾 30 所 TronClass 學校**
+**TronClass 校園點名系統的全自動點名工具｜支援全台、港澳數十所採用 TronClass 系統的大專校院（所有學校一律平等、共用同一套流程）**
 
 登入學校帳號後，它會在你設定的上課時段自動盯著課程，一偵測到點名就替你完成簽到——你不用一直盯著手機，也不用手忙腳亂找點名碼。
 
@@ -8,7 +8,7 @@
 
 ## 致謝與來源
 
-本專案 fork 自 [silvercow002/tronclass-script](https://github.com/silvercow002/tronclass-script)，並在此基礎上大幅延伸為支援 THU/TKU/SCU/FJU 使用情境的版本。
+本專案 fork 自 [silvercow002/tronclass-script](https://github.com/silvercow002/tronclass-script)，並在此基礎上大幅延伸為支援數十所 TronClass 校園的全自動點名版本。
 
 完整來源、原作者 MIT License notice 與本專案授權說明已併入本文件末尾的「致謝與來源 (Credits)」一節。
 
@@ -20,19 +20,46 @@
 - ✅ **雷達點名** — 完整支援。同樣經過大量實戰驗收，偵測到雷達點名後會自動完成定位簽到，不需要你開地圖、不需要對座標。就算哪天伺服器補掉了現在的捷徑，背後還有一套我自己寫的**「全球定位演算法」（WGS84 多點定位）**能反推教室座標頂上，不會因此失效。
 - ⚠️ **QR Code 點名** — 預設支援手動貼上 / 剪貼簿輔助；若你另外提供一個有權限發起 QR 點名的 TronClass 教師帳號，可啟用「教師輔助」自動完成、全程零操作。
 
-> 順帶一提，它不會「搶當第一個簽到的人」：偵測到點名後，會先確認這是一場真的、全班性的點名（已經有一定比例的同學陸續簽到）才出手，避免老師只是手滑誤開、又馬上關掉的「假點名」也把你簽進去。這是一道貼心的容錯保險，預設就開著、你什麼都不用設。
+順帶一提，它不會「搶當第一個簽到的人」：偵測到點名後，會先確認這是一場真的、全班性的點名（已經有一定比例的同學陸續簽到）才出手，避免老師只是手滑誤開、又馬上關掉的「假點名」也把你簽進去。這是一道貼心的容錯保險，預設就開著、你什麼都不用設。
 
 關於 QR：學生端 API 不會提供 QR 的 `data` token，所以未設定教師帳號時，程式只會提示你貼上 QR 內容或嘗試剪貼簿輔助。教師輔助模式會使用你自備的教師帳號即時發起一場 QR 點名取得 `data`，再用學生帳號送出；教師登入失敗不會影響數字 / 雷達點名。
 
-**內建支援的學校：東海大學 (THU)、淡江大學 (TKU)、東吳大學 (SCU)、輔仁大學 (FJU)，以及 TronClass 公有雲官網。** 這幾所只要填「學校代號」就會自動登入，數字、雷達都完整可用。
+**本工具支援數十所採用 TronClass 系統的學校，所有學校一律平等、共用同一套登入與點名流程，沒有任何一所享有特化待遇。** 只要在 `config.conf` 把 `school` 填成學校代號（或中文校名，如 `pu`／`靜宜大學`、`ntou`／`海洋大學`）就會自動登入，數字、雷達點名完整可用。完整名單見下方〈支援學校一覽〉，或隨時執行 `python -m troTHU.tron provider list` 查詢最新清單。
 
-> 🏫 **v1.5 起再內建逾 30 所 TronClass 學校**（靜宜、亞洲、世新、中山、彰師、雲科、虎尾、勤益、僑光、朝陽、大同、空中大學、明新、弘光、亞東、海洋、實踐、大葉、長榮、長庚科、真理、馬偕、中台、南亞、崇右、醒吾、樹德、北商、元培、臺大進修推廣學院、澳門城市、澳門鏡湖…）。同樣只要在 `config.conf` 把 `school` 填成代號或中文校名（如 `pu`／`靜宜大學`、`ntou`／`海洋大學`）即可自動登入。這些學校的登入頁多為標準 CAS／Keycloak，沿用與東海相同的登入流程；少數有圖形驗證碼的（如海洋）走與輔仁相同的本地 OCR 流程。萬一某校登入頁結構特殊，會自動退回「瀏覽器手動登入」一次後沿用 cookie，其餘點名功能完全相同。
+TronClass 是一套被許多學校採用的校園系統，**各校上架時會自取名稱**——有的叫「iLearn」、有的叫「iClass」、有的直接叫「TronClass」。名字不同，骨子裡卻是同一套 API；所以同一套登入＋點名流程，只要換掉網域與登入方式，就能套到不同學校。
 
-> 🔢 **輔仁 (FJU) 的登入頁有 4 碼數字圖形驗證碼**：程式用本地離線 OCR 自動辨識。為了讓主程式保持輕量，**打包版（exe）首次用到 FJU 時才自動下載 OCR 附加元件**（辨識引擎＋模型，與瀏覽器登入用的驅動打包成同一個下載檔，只下載一次）；原始碼安裝請加裝 `pip install -e .[ocr]`。下載不到時自動退回「手動瀏覽器登入」一次後沿用 cookie，其餘點名功能完全相同。
+少數學校的登入頁帶有圖形驗證碼，程式會用本地離線 OCR 自動辨識。為了讓主程式保持輕量，**打包版（exe）會在首次用到時才自動下載 OCR 附加元件**（辨識引擎＋模型，與瀏覽器登入用的驅動打包成同一個下載檔，只下載一次）；原始碼安裝請加裝 `pip install -e .[ocr]`。辨識不到時自動退回「手動瀏覽器登入」一次後沿用 cookie，其餘點名功能完全相同。
 
-> 🆕 **你的學校不在上面清單裡？也能用——把網址貼進設定就行。** 只要你的學校同樣是 TronClass 系統（網址長得像 `https://tronclass.你的學校.edu.tw` 或 `https://ilearn.…`、`https://iclass.…`），把那個網址填進設定，程式就會幫你開一個瀏覽器視窗、讓你像平常一樣手動登入，登入成功後它就接手自動盯點名。**不必把密碼寫進設定檔**，也不必會寫程式。詳見下面〈設定檔教學〉的「我的學校不在清單裡？」一節。
+**你的學校不在清單裡？也能用——把網址貼進設定就行。** 只要同樣是 TronClass 系統（網址長得像 `https://tronclass.你的學校.edu.tw`，或 `https://ilearn.…`、`https://iclass.…`），把網址填進設定，程式就會開一個瀏覽器視窗、讓你像平常一樣手動登入，成功後接手自動盯點名。**不必把密碼寫進設定檔**，也不必會寫程式。詳見下面〈設定檔教學〉的「我的學校不在清單裡？」一節。
 
-> 補充一個常見的誤會：TronClass 是一套被很多學校採用的校園系統，但**各校上架時都會自己取名**——在東海它叫「iLearn」、在淡江叫「iClass」、東吳大學和 TronClass 公有雲官網則直接叫「TronClass」。名字不一樣，骨子裡卻是同一套 API；所以同一套登入＋點名流程，只要換掉網域與登入方式，就能套到不同學校。
+### 支援學校一覽
+
+下表為目前內建、**填代號即可自動登入**的學校（共 38 所，依代號排序、一律平等）。此為發布當下的快照，最新名單請執行 `python -m troTHU.tron provider list`；不在表內的 TronClass 學校仍可用「貼網址手動登入」。
+
+| 代號 | 中文校名 | 代號 | 中文校名 |
+|------|----------|------|----------|
+| `AEUST` | 亞東科技大學 | `NSYSU` | 國立中山大學 |
+| `ASIA` | 亞洲大學 | `NTOU` | 國立臺灣海洋大學 |
+| `AU` | 真理大學 | `NTUB` | 國立臺北商業大學 |
+| `CGUST` | 長庚科技大學 | `NTUSPECS` | 臺灣大學進修推廣學院 |
+| `CITYUMO` | 澳門城市大學 | `OCU` | 僑光科技大學 |
+| `CJCU` | 長榮大學 | `PU` | 靜宜大學 |
+| `CTUST` | 中台科技大學 | `SCU` | 東吳大學 |
+| `CUFA` | 崇右影藝科技大學 | `SHU` | 世新大學 |
+| `CYUT` | 朝陽科技大學 | `STU` | 樹德科技大學 |
+| `DYU` | 大葉大學 | `THU` | 東海大學 |
+| `FJU` | 輔仁大學 | `TKU` | 淡江大學 |
+| `HK` | 弘光科技大學 | `TRONCLASS` | TronClass 公有雲 |
+| `HWU` | 醒吾科技大學 | `TTU` | 大同大學 |
+| `KWNC` | 澳門鏡湖護理學院 | `USC` | 實踐大學 |
+| `LHU` | 龍華科技大學 | `YPU` | 元培醫事科技大學 |
+| `MKC` | 馬偕醫護管理專科學校 | `YUNTECH` | 國立雲林科技大學 |
+| `MUST` | 明新科技大學 | | |
+| `NANYA` | 南亞技術學院 | | |
+| `NCUE` | 國立彰化師範大學 | | |
+| `NCUT` | 國立勤益科技大學 | | |
+| `NFU` | 國立虎尾科技大學 | | |
+| `NOU` | 國立空中大學 | | |
 
 ---
 
@@ -46,7 +73,7 @@
 
 > 📌 **下載哪個檔？** Releases 頁面會有兩個壓縮檔，請認清：
 > - ✅ **主程式（要下載這個）**：`THU_Auto_Rollcall-v1.6-alpha.1-windows-x64.zip` —— 解壓後執行裡面的 exe。
-> - ➕ **附加元件（通常不用手動下載）**：`addons-v1.6a1-win.zip` —— 只有「輔大 FJU 辨識驗證碼」或「手動瀏覽器登入」會用到，程式**需要時會自動下載**。**它不是程式本體、不要直接執行**；只有在自動下載失敗（如網路受限）時，才手動下載它、放到 exe 旁邊或 `state\addons\` 即可（程式會自動採用，不再重抓）。
+> - ➕ **附加元件（通常不用手動下載）**：`addons-v1.6a1-win.zip` —— 只有「圖形驗證碼辨識」或「手動瀏覽器登入」會用到，程式**需要時會自動下載**。**它不是程式本體、不要直接執行**；只有在自動下載失敗（如網路受限）時，才手動下載它、放到 exe 旁邊或 `state\addons\` 即可（程式會自動採用，不再重抓）。
 
 第一次啟動會在 exe 旁邊自動建立 `config.conf`、`config.advanced.toml`、`state/`、`log/` 四樣東西。程式一啟動就直接進入監控；**按任意鍵**就會用記事本打開 `config.conf` 讓你填帳號密碼，存檔關掉記事本後它會自動重新讀取設定。
 
@@ -89,7 +116,7 @@ python -m troTHU.tron run --no-input
 - **超寬鬆解析**：`=` 或 `:` 當分隔都行、前後空白可有可無、空行隨便加；連全形符號（`：`、`＝`、`，`、`「」`）、`[grop]` 這種錯字、甚至忘了打中括號直接寫 `account` 都認得。
 - **基本檔沒設的進階選項**會自動套用安全預設值，所以新手通常只要碰 `config.conf`。
 
-一般使用者主要改五個區塊：`now`、`[account]`、`[group]`、`[operating]`，若要啟用 QR 教師輔助則加填 `[teacher]`。
+一般使用者主要改五個區塊：`now`、`[save account]`、`[group]`、`[operating]`，若要啟用 QR 教師輔助則加填 `[teacher]`。（舊版的 `[account]` 仍可解析，不必急著改名。）
 
 ### 基本設定 `config.conf` 範例與逐塊說明
 
@@ -99,10 +126,10 @@ python -m troTHU.tron run --no-input
 #       也可以直接填學校網址（如 https://tronclass.你的學校.edu.tw）→ 改用手動瀏覽器登入，免填帳密。
 now = 
 
-# [account] 你的帳號，要幾個就放幾塊。
-#   school 填學校代號就自動登入：THU / TKU / TRONCLASS / SCU / FJU。
+# [save account] 你儲存的帳號，要存幾個就放幾塊（用 now 指定跑哪一個，不是同時偵測多個）。
+#   school 填學校代號就自動登入（完整代號見〈支援學校一覽〉或 provider list 指令）。
 #   school 也可以填學校「網址」→ 改用手動瀏覽器登入，passwd 可留空（你會在跳出的瀏覽器裡自己登）。
-[account]
+[save account]
 user = s1234567
 passwd = mypassword
 school = THU
@@ -127,16 +154,15 @@ enable = true
 times = 09:10-12:00, 13:20-17:30
 ```
 
-**`now`** — 現在要用哪個帳號。可以填某個帳號的學號（例如 `now = s1234567`），也可以填一個群組（例如 `now = class A`）。**也可以直接填一個學校網址**（例如 `now = https://tronclass.你的學校.edu.tw`）——這時程式會跳過設定檔裡的帳號，直接開瀏覽器讓你手動登入那個網站（見下面「我的學校不在清單裡？」一節）。
-> 小撇步：如果你整份 `config.conf` 只填了一個有效帳號，`now` 可以**留空**，程式會自動用那一個，不會逼你再填一次。
+**`now`** — 現在要用哪個帳號。可以填某個帳號的學號（例如 `now = s1234567`），也可以填一個群組（例如 `now = class A`）。**也可以直接填一個學校網址**（例如 `now = https://tronclass.你的學校.edu.tw`）——這時程式會跳過設定檔裡的帳號，直接開瀏覽器讓你手動登入那個網站（見下面「我的學校不在清單裡？」一節）。小撇步：如果你整份 `config.conf` 只填了一個有效帳號，`now` 可以**留空**，程式會自動用那一個，不會逼你再填一次。
 
-**`[account]`** — 你的帳號區塊，要幾個帳號就自己複製多個區塊。每個區塊包含 `user`（學號/帳號）、`passwd`（密碼）與 `school`（學校）。`school` 有兩種填法：
-- **填學校代號 → 自動登入**：`THU` / `TKU` / `TRONCLASS` / `SCU` / `FJU`。這時程式用你填的 `user` + `passwd` 自動登入，全程零操作。也接受中文別名（例如 `帳號 = s1234567`、`密碼 = mypassword`、`學校 = 東海` 或 `學校 = 輔仁`）。輔仁 (FJU) 的登入驗證碼由 OCR 自動辨識（打包版首次用到時自動下載附加元件；原始碼安裝用 `pip install -e .[ocr]`）。
+**`[save account]`** — 你儲存的帳號區塊，要存幾個就自己複製多塊；實際只會跑 `now` 指定的那一個，**多塊並不會同時偵測多個帳號**。每個區塊包含 `user`（學號/帳號）、`passwd`（密碼）與 `school`（學校）。`school` 有兩種填法：
+- **填學校代號 → 自動登入**：任一支援代號（完整名單見〈支援學校一覽〉，或執行 `python -m troTHU.tron provider list`）。這時程式用你填的 `user` + `passwd` 自動登入，全程零操作。也接受中文校名（例如 `帳號 = s1234567`、`密碼 = mypassword`、`學校 = 靜宜大學`）。少數登入頁帶圖形驗證碼的學校由本地 OCR 自動辨識（打包版首次用到時自動下載附加元件；原始碼安裝用 `pip install -e .[ocr]`）。
 - **填學校網址 → 手動瀏覽器登入**：`school = https://tronclass.你的學校.edu.tw`。這時 `passwd` 可以留空，程式會開一個瀏覽器視窗讓你自己登（見下一節）。
 
 **`[group]`** — （進階／選用）群組設定。群組功能可以「一人讀碼、全員簽到並確認 on_call_fine」。`class = A` 代表群組名稱為 A，`members` 用逗號列出該群組的成員帳號。
 
-**`[teacher]`** — （選用）QR 教師輔助帳號。`user` / `passwd` 是教師帳密，`school` 可填 `TRONCLASS`、`THU`、`TKU`；`course` 留空時會自動挑選第一個課程。
+**`[teacher]`** — （選用）QR 教師輔助帳號。`user` / `passwd` 是教師帳密，`school` 填任一支援代號；`course` 留空時會自動挑選第一個課程。
 
 **`[operating]`** — 上課時段，也就是「什麼時候才需要自動盯點名」。每一天用一個區塊設定：
 - `day`：**`0` = 星期日、`1` = 星期一 … `6` = 星期六**。
@@ -145,27 +171,27 @@ times = 09:10-12:00, 13:20-17:30
 
 ### 我的學校不在清單裡？貼上網址就能用（手動瀏覽器登入）
 
-內建支援的學校（THU / TKU / SCU / TronClass 公有雲）填代號就能自動登入。但只要你的學校也是 **TronClass 系統**，就算它不在清單裡，你一樣可以用——**把學校網址貼進設定，改用「手動瀏覽器登入」即可**。這是為了那些有特殊登入頁（多重驗證、學校自己的 SSO、圖形驗證碼…）而無法自動登入的學校準備的萬用後路：自動登不進去的，就讓你自己在瀏覽器裡登一次。
+內建清單裡的學校填代號就能自動登入（見〈支援學校一覽〉）。但只要你的學校也是 **TronClass 系統**，就算它不在清單裡，你一樣可以用——**把學校網址貼進設定，改用「手動瀏覽器登入」即可**。這是為了那些有特殊登入頁（多重驗證、學校自己的 SSO、圖形驗證碼…）而無法自動登入的學校準備的萬用後路：自動登不進去的，就讓你自己在瀏覽器裡登一次。
 
 **怎麼判斷我的學校能不能用？** 用學校帳號登入你們的校園系統，如果登入後網址列長得像 `https://tronclass.xxx.edu.tw`、`https://ilearn.xxx.edu.tw`、`https://iclass.xxx.edu.tw` 這類，那多半就是 TronClass，可以一試。
 
 **怎麼設定？** 兩種寫法擇一，把「學校代號」換成「學校網址」就好：
 
 ```text
-# 寫法 A：直接把 now 填成學校網址（最簡單，連 [account] 都不用）
+# 寫法 A：直接把 now 填成學校網址（最簡單，連 [save account] 都不用）
 now = https://tronclass.你的學校.edu.tw
 ```
 
 ```text
-# 寫法 B：在 [account] 裡把 school 填成網址，passwd 留空
+# 寫法 B：在 [save account] 裡把 school 填成網址，passwd 留空
 now =
-[account]
+[save account]
 user =
 passwd =
 school = https://tronclass.你的學校.edu.tw
 ```
 
-> 把網址換成你學校系統的「首頁網址」就好（開頭的 `https://` 與網域那段，例如 `https://tronclass.asia.edu.tw`）；後面那串路徑（像 `/user/index`）填不填都沒關係，程式會自動處理。
+把網址換成你學校系統的「首頁網址」就好（開頭的 `https://` 與網域那段，例如 `https://tronclass.你的學校.edu.tw`）；後面那串路徑（像 `/user/index`）填不填都沒關係，程式會自動處理。
 
 **接下來會發生什麼事（一步一步）：**
 
@@ -174,9 +200,9 @@ school = https://tronclass.你的學校.edu.tw
 3. **像平常一樣登入。** 在那個視窗裡輸入你的帳號密碼（需要簡訊 / OTP / 圖形驗證碼也照做），登到能看到課程主頁為止。**你的密碼是輸入在瀏覽器裡的，不會、也不需要寫進設定檔。**
 4. **程式自動接手。** 它偵測到你登入成功後，會自動把瀏覽器關掉、收下登入狀態，接著就跟自動登入一樣開始盯點名了。登入成功的狀態會被記住（cookie 快取），之後再開通常不必每次都重登。
 
-> 小提醒：手動登入視窗有 **5 分鐘**的時間，從容登入即可；逾時或你自己把視窗關掉，程式會視為這次沒登成、稍後再試。如果開了視窗卻一直沒反應，確認你最後有真的登進「課程主頁」（有些學校登入後會先停在公告頁，往課程頁再點一下即可）。
+小提醒：手動登入視窗有 **5 分鐘**的時間，從容登入即可；逾時或你自己把視窗關掉，程式會視為這次沒登成、稍後再試。如果開了視窗卻一直沒反應，確認你最後有真的登進「課程主頁」（有些學校登入後會先停在公告頁，往課程頁再點一下即可）。
 
-> 「填代號」和「填網址」差在哪？**填代號 = 走自動登入**（程式幫你打帳密）；**填網址 = 一律走手動登入**（你自己在瀏覽器登）。所以就算是已內建的東海，只要你把 `ilearn.thu.edu.tw` 當網址填進去，也會切成手動登入——這是刻意的，方便自動登入偶爾卡關時，隨時有手動這條路可走。
+「填代號」和「填網址」差在哪？**填代號 = 走自動登入**（程式幫你打帳密）；**填網址 = 一律走手動登入**（你自己在瀏覽器登）。所以就算是內建清單裡的學校，只要你把它的網址當成網址填進去，也會切成手動登入——這是刻意的，方便自動登入偶爾卡關時，隨時有手動這條路可走。
 
 ### 改完設定後
 
@@ -313,9 +339,9 @@ QR 點名的學生端 API 只接受 `data` + `deviceId`，但**不會**把 `data
 
 ## 技術細節（給想複製到其他學校的開發者）
 
-TronClass 是不少學校共用的底層校園系統（各校自行命名上架：東海＝iLearn、淡江＝iClass、公有雲＝TronClass…），下面整理核心 API 與做法，方便其他同樣用 TronClass 的學校快速理解、自行實作。除了 THU / TKU，這套 runtime 也能套用在 **TronClass 公有雲官網**以及其他基於 TronClass 的學校（換掉 base URL 與登入流程即可）。
+TronClass 是不少學校共用的底層校園系統（各校上架時自行命名，有的叫 iLearn、有的叫 iClass、有的直接叫 TronClass…），下面整理核心 API 與做法，方便其他同樣用 TronClass 的學校快速理解、自行實作。這套 runtime 適用於任何基於 TronClass 的校園（含公有雲），只要換掉 base URL，登入流程會自動偵測。
 
-> 端點以 `{base}` 代表學校的 TronClass 網域（東海 `https://ilearn.thu.edu.tw`、淡江 `https://iclass.tku.edu.tw`…）。所有請求都帶登入後的 session cookie。
+端點以 `{base}` 代表學校的 TronClass 網域（例如 `https://tronclass.你的學校.edu.tw`、`https://ilearn.…`、`https://iclass.…`）。所有請求都帶登入後的 session cookie。
 
 ### 列出目前的點名
 
@@ -384,7 +410,7 @@ PUT {teacher_base}/api/rollcall/{teacher_rollcall_id}/stop_qr_rollcall
 - `troTHU/qr_runtime.py`、`troTHU/qr_teacher_runtime.py`：QR 手動 / 剪貼簿送出與教師帳號輔助流程。
 - `troTHU/providers.py`：支援的學校登錄表（base URL、`auth_flow`、能力旗標）。沿用既有登入流程的新學校，從這裡加一筆即可，甚至可純用 `config.advanced.toml` 的 `[provider.available.<校名>]` 定義，完全不必改程式。
 - `troTHU/login_flow.py`：**唯一的統一登入流程**（`run_login_flow`）。抓登入頁一次後，純粹依「偵測到的頁面特徵」分流——有無驗證碼、哪一種驗證碼（靜態圖檔／Keycloak JSON）、是否為首頁 SSO 探索、是否為公有雲 email SPA、是否為 NetIQ NAM——**絕不以學校為分支或命名**。新增一種前所未見的登入「協定」才需要在這裡加一個特徵處理函式；換新學校通常什麼都不必碰。
-- `troTHU/login_probe.py`：`login-probe` 指令——對全部學校的真實登入頁做免帳密探測（可達性＋實際 adapter 解析），是回歸守門與「上線前驗證」的工具。
+- `troTHU/login_probe.py`：`login-probe` 指令——對每一所學校（含你在進階 config 自訂的）的真實登入頁做免帳密探測（可達性＋統一流程偵測到的表單／驗證碼特徵），是回歸守門與「上線前驗證」的工具。
 - `troTHU/tron_http.py`：端點驅動的 HTTP client（`run_login_flow` 在它之上執行）。
 - `troTHU/auth_runtime.py`：與學校無關的登入主流程（cookie 還原、呼叫統一流程、API session 驗證、瀏覽器後備、各種狀態與提示）。
 
@@ -392,28 +418,23 @@ PUT {teacher_base}/api/rollcall/{teacher_rollcall_id}/stop_qr_rollcall
 
 「多學校系統」刻意設計成新增學校的成本極低，而且**登入流程完全統一**：所有學校都走同一條 `run_login_flow`，由程式在執行時偵測登入頁特徵自動分流，沒有任何一所學校享有特化程式碼或特化命名。最省事的一條其實連開發者都不必當：**任何 TronClass 學校，使用者只要在 `config.conf` 把 `school` 或 `now` 填成該校網址，就能自動登入**（細節見上面〈我的學校不在清單裡？〉一節）。若想「填代號就自動登入」，依下面選一條路：
 
-**途徑一：加一筆 provider（最常見，通常就夠了）。** 因為登入流程會自動偵測特徵，新學校多半**只要一個 `base_url`**：
+**途徑一：只改一塊進階 config（最推薦，多數情況這樣就夠）。** 自 v1.6 起登入流程會自動偵測登入頁特徵，新增一所沿用現有協定的學校**完全不必動程式碼**——在 `config.advanced.toml` 加一個區塊、`config.conf` 的 `school` 填成同一個名字即可，所有 API 端點會自動推導、登入方式會自動判斷：
 
-- *永久新增（適合送 PR）*：在 `troTHU/providers.py` 的 `PROVIDERS` 加一筆 `ProviderDefinition`，並在 `PROVIDER_ALIASES` 補上中英文別名。
-  ```python
-  "scu": ProviderDefinition(
-      key="scu",
-      label="Soochow University TronClass",
-      base_url="https://tronclass.scu.edu.tw",
-      capabilities=ProviderCapabilities(number=True, radar=True, qrcode=True, ...),
-  ),
-  ```
-- *純設定檔新增（本機擴充、完全不動程式碼）*：在 `config.advanced.toml` 加一個區塊，再於 `config.conf` 把 `school` 填成同一個名字，所有 API 端點會自動推導。
-  ```toml
-  [provider.available.my_school]
-  base_url = "https://tronclass.my-school.edu.tw"
-  ```
-  ```conf
-  school = my_school
-  ```
-  **`auth_flow` 是「選填提示」，不是分流依據**：流程會在執行時自動偵測登入頁屬於下列哪一種，正常情況**不必設定**。它只保留供文件說明、向後相容，以及兩個與分流無關的判斷（缺 OCR 套件時的降級、`manual_cookie_only` / `interactive_browser` 模式）。所有值都以「協定／特徵」命名，**沒有學校名稱**：
-  - `cas`：標準 CAS／Keycloak 帳密登入頁（多數學校；東海、東吳亦同）。流程一律會在登入後再打一次 API 確認 session——因為 TronClass 載入登入頁時會在 LMS 網域種一顆匿名 `session` cookie，光看 cookie 在不在會誤判成功。
-  - `cas_ocr_captcha`：CAS 登入頁另有「靜態圖形驗證碼」（輔仁、海洋）。預設圖檔 `captcha.jpg`、欄名 `captcha`、4 碼，用本地 OCR 自動辨識；規格不同時於區塊內覆寫 `captcha_image_name` / `captcha_field` / `captcha_charset` / `captcha_length`：
+```toml
+[provider.available.my_school]
+base_url = "https://tronclass.my-school.edu.tw"
+```
+```conf
+school = my_school
+```
+
+其餘欄位全是**選填**，只有少數學校用得到：`login_url`（少數校 `/login` 不會轉到登入表單時）、`captcha_field` / `captcha_length` / `captcha_charset`（驗證碼規格非預設時）、`auth_flow`、`user_visible`。動手前先跑 `python -m troTHU.tron login-probe --school my_school`，看流程在真實伺服器上偵測到什麼——本版起 `login-probe` 也會探測你在進階 config 自訂的學校。
+
+> 想**送 PR 永久內建**？在 `troTHU/providers.py` 的 `PROVIDERS` 加一筆 `ProviderDefinition`（同樣多半只要 `base_url`），並在 `PROVIDER_ALIASES` 補上中文校名別名（讓使用者能用中文校名選校）。能力旗標沿用 `_STANDARD_CAPS` 即可。
+
+關於 **`auth_flow`**：它是「選填提示」，**不是分流依據**。流程會在執行時自動偵測登入頁屬於下列哪一種，正常情況**不必設定**；它只保留供文件說明、向後相容，以及兩個與分流無關的判斷（缺 OCR 套件時的降級、`manual_cookie_only` / `interactive_browser` 模式）。所有值都以「協定／特徵」命名，**沒有學校名稱**：
+  - `cas`：標準 CAS／Keycloak 帳密登入頁（多數學校）。流程一律會在登入後再打一次 API 確認 session——因為 TronClass 載入登入頁時會在 LMS 網域種一顆匿名 `session` cookie，光看 cookie 在不在會誤判成功。
+  - `cas_ocr_captcha`：CAS 登入頁另有「靜態圖形驗證碼」。預設圖檔 `captcha.jpg`、欄名 `captcha`、4 碼，用本地 OCR 自動辨識；規格不同時於區塊內覆寫 `captcha_image_name` / `captcha_field` / `captcha_charset` / `captcha_length`：
     ```toml
     [provider.available.my_school]
     base_url = "https://tronclass.my-school.edu.tw"
@@ -421,10 +442,10 @@ PUT {teacher_base}/api/rollcall/{teacher_rollcall_id}/stop_qr_rollcall
     captcha_charset = "0123456789abcdefghijklmnopqrstuvwxyz"  # 預設僅 0-9
     captcha_length = 5                                        # 預設 4
     ```
-  - `keycloak_ocr_captcha`：Keycloak（`tw-common` 佈景）的 JSON 驗證碼——JS 打 `GET /auth/realms/<realm>/captcha/code` 拿 `{image, key}`，送出時帶 `captchaCode`＋`captchaKey`。流程自動處理（亞洲、馬偕、虎尾）。
-  - `public_cloud_email`：TronClass 原生 email／密碼 SPA、沒有外部 CAS（公有雲官網、澳門鏡湖）。
-  - `nam_neai`：NetIQ Access Manager（NEAI）SSO（淡江）。SSO 主機由登入頁的 JS 自動推導，**不寫死**任何學校網址。
-  - 首頁帶「本校／統一登入」`kc_idp_hint` 的學校（彰師、龍華、雲科、勤益、北商、澳門城市）：流程會自動讀首頁 `orgSettings.loginSettings` 找出校內 SSO 入口、跟隨 JS 自動提交中轉表單，再依該頁型態自動處理（標準帳密表單即使欄名特殊如 `muid/mpassword`、`Ecom_User_ID/Ecom_Password` 也會自動偵測；含驗證碼自動 OCR；導向 Google／微軟聯邦式 IdP 則自動開瀏覽器）——同樣**不必設定**。
+  - `keycloak_ocr_captcha`：Keycloak（`tw-common` 佈景）的 JSON 驗證碼——JS 打 `GET /auth/realms/<realm>/captcha/code` 拿 `{image, key}`，送出時帶 `captchaCode`＋`captchaKey`。流程自動處理。
+  - `public_cloud_email`：TronClass 原生 email／密碼 SPA、沒有外部 CAS。
+  - `nam_neai`：NetIQ Access Manager（NEAI）SSO。SSO 主機由登入頁的 JS 自動推導，**不寫死**任何學校網址。
+  - 首頁帶「本校／統一登入」`kc_idp_hint` 的學校：流程會自動讀首頁 `orgSettings.loginSettings` 找出校內 SSO 入口、跟隨 JS 自動提交中轉表單，再依該頁型態自動處理（標準帳密表單即使欄名特殊如 `muid/mpassword`、`Ecom_User_ID/Ecom_Password` 也會自動偵測；含驗證碼自動 OCR；導向 Google／微軟聯邦式 IdP 則自動開瀏覽器）——同樣**不必設定**。
   - 若某校 `/login` 不會乾淨轉跳到登入表單（少數只在 `/cas/login` 提供），於區塊內指明 `login_url`。
 
 **途徑二：前所未見的登入協定（極少數）。** 只有當某校的登入「協定」是現有特徵偵測完全涵蓋不到的全新型態時，才需要動程式：在 `troTHU/login_flow.py` 的 `resolve_credential_form` 加一條特徵偵測、並寫一個對應的送出策略，**以「協定／特徵」命名，絕不以學校命名**。登入狀態判讀、錯誤提示、session 驗證、瀏覽器後備都已統一，不必再碰。動手前先跑 `python -m troTHU.tron login-probe --school <代號>`，看流程在真實伺服器上偵測到什麼，多半會發現根本不用加。
