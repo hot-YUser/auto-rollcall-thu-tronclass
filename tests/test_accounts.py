@@ -1,11 +1,224 @@
-import copy
+from __future__ import annotations
+
 import json
 import shutil
-import tempfile
 import unittest
+import uuid
+import tempfile
+import copy
 from pathlib import Path
+from troTHU.account_runtime_store import AccountRuntimeSnapshot, load_runtime_state, mark_bot_state, mark_check_result, mark_login_result, mark_monitor_state, mark_profile_error, runtime_profile_summary, runtime_state_path, save_runtime_state, update_profile_runtime_state
+from troTHU.account_store import save_session_cookies, load_session_cookies, cookie_cache_status, cookie_path
+from http.cookies import SimpleCookie
 from unittest.mock import AsyncMock, patch, MagicMock
+from troTHU import tron, tron_http, runtime_context
+from tests.fake_tron_server import FakeTronServer
+from troTHU.input_safety import masked_password_input, sanitize_config_values, sanitize_input_field
 
+
+# --- merged from tests/test_account_runtime_store.py ---
+TEST_WORKSPACE_DIR = Path(__file__).resolve().parents[1]
+
+
+def make_workspace_temp_dir() -> Path:
+    root = TEST_WORKSPACE_DIR / ".tmp-tests"
+    root.mkdir(exist_ok=True)
+    path = root / uuid.uuid4().hex
+    path.mkdir()
+    return path
+
+
+class DummyLoginResult:
+    status = "success"
+    credential_source = "config"
+    ok = True
+    should_auto_retry = False
+
+
+class AccountRuntimeStoreTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir = make_workspace_temp_dir()
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    def test_missing_and_corrupt_state_return_safe_empty_snapshot(self) -> None:
+        missing = load_runtime_state(self.temp_dir)
+        self.assertEqual(missing.store_status, "missing")
+        self.assertEqual(missing.profiles, {})
+
+        path = runtime_state_path(self.temp_dir)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{broken", encoding="utf-8")
+
+        corrupt = load_runtime_state(self.temp_dir)
+        self.assertEqual(corrupt.store_status, "corrupt")
+        self.assertEqual(corrupt.profiles, {})
+
+    def test_save_load_round_trip_and_atomic_shape(self) -> None:
+        snapshot = AccountRuntimeSnapshot(
+            profiles={
+                "default": {
+                    "bot_state": "running",
+                    "monitor_state": "stopped",
+                }
+            }
+        )
+
+        save_runtime_state(self.temp_dir, snapshot)
+        loaded = load_runtime_state(self.temp_dir)
+
+        self.assertEqual(loaded.store_status, "ok")
+        self.assertEqual(loaded.profiles["default"]["bot_state"], "running")
+        self.assertFalse(runtime_state_path(self.temp_dir).with_suffix(".json.tmp").exists())
+
+    def test_mark_helpers_update_profile_summary(self) -> None:
+        mark_bot_state(self.temp_dir, "default", "running")
+        mark_monitor_state(self.temp_dir, "default", "running")
+        mark_login_result(self.temp_dir, "default", DummyLoginResult())
+        mark_check_result(self.temp_dir, "default", "not_call", rollcall_id=12, rollcall_type="number")
+        mark_profile_error(self.temp_dir, "default", "network_error", "timeout")
+
+        summary = runtime_profile_summary(load_runtime_state(self.temp_dir), "default")
+
+        self.assertEqual(summary["bot_state"], "running")
+        self.assertEqual(summary["monitor_state"], "running")
+        self.assertEqual(summary["last_login"]["status"], "success")
+        self.assertEqual(summary["last_check"]["rollcall_id"], "12")
+        self.assertEqual(summary["last_error"]["status"], "network_error")
+
+    def test_sensitive_fields_are_sanitized_before_write(self) -> None:
+        update_profile_runtime_state(
+            self.temp_dir,
+            "default",
+            password="plain-password",
+            token="secret-token",
+            cookie_value="session-cookie",
+            qr_payload='{"rollcallId":88,"data":"secret"}',
+            last_error={"message": "password=plain-password token=secret-token"},
+        )
+
+        raw = runtime_state_path(self.temp_dir).read_text(encoding="utf-8")
+        data = json.loads(raw)
+
+        self.assertNotIn("plain-password", raw)
+        self.assertNotIn("secret-token", raw)
+        self.assertNotIn("session-cookie", raw)
+        self.assertNotIn("rollcallId", raw)
+        self.assertEqual(data["profiles"]["default"]["password"], "[redacted]")
+
+
+# --- merged from tests/test_account_store_cookies.py ---
+class FakeCookie:
+    def __init__(self, key, value, domain="", path="/", expires=None, secure=False, httponly=False, samesite=""):
+        self.key = key
+        self.value = value
+        self.domain = domain
+        self.path = path
+        self.expires = expires
+        self.secure = secure
+        self.httponly = httponly
+        self.samesite = samesite
+
+    def get(self, attr, default=None):
+        if attr == "max-age":
+            return getattr(self, "max_age", default)
+        return getattr(self, attr, default)
+
+class FakeCookieJar:
+    def __init__(self):
+        self.cookies = []
+
+    def __iter__(self):
+        return iter(self.cookies)
+
+    def update_cookies(self, cookies, response_url=None):
+        if isinstance(cookies, SimpleCookie):
+            for key, morsel in cookies.items():
+                c = FakeCookie(
+                    key=morsel.value,
+                    value=morsel.value,
+                    domain=morsel["domain"],
+                    path=morsel["path"],
+                    expires=morsel["expires"],
+                    secure=bool(morsel["secure"]),
+                    httponly=bool(morsel["httponly"]),
+                    samesite=morsel["samesite"],
+                )
+                c.key = morsel.key
+                self.cookies.append(c)
+        elif isinstance(cookies, dict):
+            for k, v in cookies.items():
+                self.cookies.append(FakeCookie(k, v))
+
+    def clear(self):
+        self.cookies.clear()
+
+class FakeSession:
+    def __init__(self):
+        self.cookie_jar = FakeCookieJar()
+
+class AccountStoreCookiesTest(unittest.TestCase):
+    def test_cookies_v2_round_trip(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base_dir = Path(temp_dir)
+            session = FakeSession()
+            cookie1 = FakeCookie("session", "my_session_id", domain=".example.com", path="/")
+            cookie1.max_age = "100000"
+            session.cookie_jar.cookies.append(cookie1)
+            
+            save_session_cookies(session, base_dir, "test_profile")
+            
+            session2 = FakeSession()
+            load_session_cookies(session2, base_dir, "test_profile")
+            
+            self.assertEqual(len(session2.cookie_jar.cookies), 1)
+            loaded = session2.cookie_jar.cookies[0]
+            self.assertEqual(loaded.key, "session")
+            self.assertEqual(loaded.value, "my_session_id")
+            self.assertEqual(loaded.domain, ".example.com")
+            
+            status = cookie_cache_status(base_dir, "test_profile")
+            self.assertTrue(status["restored"])
+            self.assertTrue(status["has_session"])
+            self.assertFalse(status["expired"])
+            self.assertFalse(status["near_expiry"])
+            self.assertIsNotNone(status["expires_at"])
+
+    def test_load_legacy_bare_list(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base_dir = Path(temp_dir)
+            legacy_data = [
+                {
+                    "key": "session",
+                    "value": "legacy_val",
+                    "domain": ".example.com",
+                    "path": "/login"
+                }
+            ]
+            path = cookie_path(base_dir, "test_profile")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(legacy_data), encoding="utf-8")
+            
+            session = FakeSession()
+            load_session_cookies(session, base_dir, "test_profile")
+            
+            self.assertEqual(len(session.cookie_jar.cookies), 1)
+            loaded = session.cookie_jar.cookies[0]
+            self.assertEqual(loaded.key, "session")
+            self.assertEqual(loaded.value, "legacy_val")
+            self.assertEqual(loaded.domain, ".example.com")
+            self.assertEqual(loaded.path, "/login")
+            
+            status = cookie_cache_status(base_dir, "test_profile")
+            self.assertTrue(status["restored"])
+            self.assertTrue(status["has_session"])
+            self.assertFalse(status["expired"])
+            self.assertFalse(status["near_expiry"])
+            self.assertIsNone(status["expires_at"])
+
+
+# --- merged from tests/test_group_runtime.py ---
 try:
     import aiohttp
     from aiohttp import web
@@ -13,8 +226,6 @@ except (ImportError, ModuleNotFoundError):
     aiohttp = None
     web = None
 
-from troTHU import tron, tron_http, runtime_context
-from tests.fake_tron_server import FakeTronServer
 
 
 def make_config():
@@ -349,6 +560,83 @@ class GroupRuntimeIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["status"], "submitted")
         # The active profile is restored to the monitor account after fan-out.
         self.assertEqual(tron.get_active_profile(tron.CONFIG).name, "user1")
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+# --- merged from tests/test_input_safety.py ---
+class InputSafetyTest(unittest.TestCase):
+    def test_common_text_fields_trim_and_collapse_spaces(self) -> None:
+        result = sanitize_input_field("  default   profile  ", field_type="profile", field_name="profile")
+        self.assertEqual(result.value, "default profile")
+        self.assertTrue(result.changed)
+        self.assertTrue(result.valid)
+        self.assertTrue(result.warnings)
+
+    def test_password_and_token_trim_without_echoing_value(self) -> None:
+        result = sanitize_input_field("  secret-value  ", field_type="password", field_name="password")
+        self.assertEqual(result.value, "secret-value")
+        self.assertEqual(result.reason, "sensitive")
+        self.assertNotIn("secret-value", " ".join(result.warnings))
+        self.assertEqual(result.to_dict()["value"], "[redacted]")
+
+    def test_qr_payload_preserves_internal_whitespace(self) -> None:
+        result = sanitize_input_field("  p=abc  def  ", field_type="qr_payload", field_name="qr")
+        self.assertEqual(result.value, "p=abc  def")
+        self.assertTrue(result.changed)
+
+    def test_port_validation(self) -> None:
+        self.assertTrue(sanitize_input_field(" 8787 ", field_type="port").valid)
+        invalid = sanitize_input_field(" 99999 ", field_type="port")
+        self.assertFalse(invalid.valid)
+        self.assertEqual(invalid.reason, "invalid_port")
+
+    def test_config_sanitizer_mutates_common_fields_safely(self) -> None:
+        config = {
+            "account": {"user": "  s123  ", "passwd": "  pw  "},
+            "accounts": {
+                "current": " default ",
+                "profiles": {" default ": {"user": " u1 ", "passwd": " p1 ", "label": " main  account "}},
+            },
+            "provider": {"current": " THU "},
+            "local_ui": {"host": " 127.0.0.1 ", "port": " 8765 "},
+        }
+        warnings = sanitize_config_values(config)
+        self.assertEqual(config["account"]["user"], "s123")
+        self.assertEqual(config["account"]["passwd"], "pw")
+        self.assertIn("default", config["accounts"]["profiles"])
+        self.assertEqual(config["provider"]["current"], "thu")
+        self.assertTrue(warnings)
+        self.assertNotIn(" p1 ", "\n".join(warnings))
+
+    def test_masked_password_fallback_trims_without_logging_value(self) -> None:
+        with (
+            patch("sys.platform", "unknown-test-os"),
+            patch("builtins.input", return_value="  secret  ") as input_mock,
+        ):
+            self.assertEqual(masked_password_input("pw> "), "secret")
+        input_mock.assert_called_once_with("pw> ")
+
+    def test_masked_password_pauses_status_line_while_reading(self) -> None:
+        events = []
+
+        class FakePause:
+            def __enter__(self):
+                events.append("enter")
+
+            def __exit__(self, exc_type, exc, tb):
+                events.append("exit")
+
+        with (
+            patch("troTHU.input_safety._optional_status_line_pause", return_value=FakePause()),
+            patch("sys.platform", "unknown-test-os"),
+            patch("builtins.input", return_value=" secret "),
+        ):
+            self.assertEqual(masked_password_input("pw> "), "secret")
+
+        self.assertEqual(events, ["enter", "exit"])
 
 
 if __name__ == "__main__":
