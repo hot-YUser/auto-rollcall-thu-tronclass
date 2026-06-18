@@ -150,19 +150,25 @@ def _dict_section(parent, key):
     return value
 
 
-def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
-    if not isinstance(raw_config, dict):
-        raw_config = {}
-    config = raw_config
-    advanced = config.pop('advanced', {})
-    if isinstance(advanced, dict):
-        for key, value in advanced.items():
-            if key not in config:
-                config[key] = value
-    try:
-        ctx.CONFIG_WARNINGS = ctx.sanitize_config_values(config)
-    except Exception:
-        ctx.CONFIG_WARNINGS = []
+def _normalize_radii(value: ctx.Any, default_value: ctx.Any) -> ctx.List[float]:
+    if isinstance(value, str):
+        raw_items = [item.strip() for item in value.split(',')]
+    elif isinstance(value, (list, tuple, set)):
+        raw_items = list(value)
+    else:
+        raw_items = list(default_value)
+    radii: ctx.List[float] = []
+    for item in raw_items:
+        try:
+            radius = abs(float(item))
+        except (TypeError, ValueError):
+            return [float(default_radius) for default_radius in default_value]
+        if radius > 0.0:
+            radii.append(radius)
+    return radii or [float(default_radius) for default_radius in default_value]
+
+
+def _normalize_account(config: ctx.Dict[str, ctx.Any]) -> None:
     account = _dict_section(config, 'account')
     account.setdefault('user', ctx.DEFAULT_CONFIG['account']['user'])
     account.setdefault('passwd', ctx.DEFAULT_CONFIG['account']['passwd'])
@@ -172,15 +178,27 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
         account['user'] = active_profile.user
     if not ctx.has_real_credential(account.get('passwd')) and ctx.has_real_credential(active_profile.passwd):
         account['passwd'] = active_profile.passwd
+
+
+def _normalize_teacher(config: ctx.Dict[str, ctx.Any]) -> None:
     teacher = _dict_section(config, 'teacher')
     default_teacher = ctx.DEFAULT_CONFIG['teacher']
     teacher['user'] = ctx.normalize_text(teacher.get('user', default_teacher['user']))
     teacher['passwd'] = ctx.normalize_text(teacher.get('passwd', default_teacher['passwd']))
     teacher['school'] = _normalize_teacher_school(teacher.get('school', default_teacher['school']))
     teacher['course'] = ctx.normalize_text(teacher.get('course', default_teacher['course']))
+
+
+def _normalize_provider(config: ctx.Dict[str, ctx.Any]) -> None:
     config['provider'] = ctx.normalize_provider_config(config.get('provider', ctx.DEFAULT_CONFIG['provider']))
+
+
+def _normalize_session(config: ctx.Dict[str, ctx.Any]) -> None:
     session_config = _dict_section(config, 'session')
     session_config['cache_cookies'] = ctx.coerce_bool(session_config.get('cache_cookies', ctx.DEFAULT_CONFIG['session']['cache_cookies']), ctx.DEFAULT_CONFIG['session']['cache_cookies'])
+
+
+def _normalize_auth(config: ctx.Dict[str, ctx.Any]) -> None:
     auth_config = _dict_section(config, 'auth')
     browser_login = _dict_section(auth_config, 'browser_assisted_login')
     default_browser_login = ctx.DEFAULT_CONFIG['auth']['browser_assisted_login']
@@ -190,18 +208,30 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
     browser_login['interactive_timeout_ms'] = ctx.coerce_positive_int(browser_login.get('interactive_timeout_ms', default_browser_login['interactive_timeout_ms']), default_browser_login['interactive_timeout_ms'], minimum=5000)
     browser_login['allow_browser_download'] = ctx.coerce_bool(browser_login.get('allow_browser_download', default_browser_login['allow_browser_download']), default_browser_login['allow_browser_download'])
     browser_login['interactive_poll_interval_ms'] = ctx.coerce_positive_int(browser_login.get('interactive_poll_interval_ms', default_browser_login['interactive_poll_interval_ms']), default_browser_login['interactive_poll_interval_ms'], minimum=100)
+
+
+def _normalize_ux(config: ctx.Dict[str, ctx.Any]) -> None:
     ux_config = _dict_section(config, 'ux')
     ux_config['pending_qr_ttl_seconds'] = ctx.coerce_positive_int(ux_config.get('pending_qr_ttl_seconds', ctx.DEFAULT_CONFIG['ux']['pending_qr_ttl_seconds']), ctx.DEFAULT_CONFIG['ux']['pending_qr_ttl_seconds'], minimum=30)
     ux_config['debug_bundle_log_limit'] = ctx.coerce_positive_int(ux_config.get('debug_bundle_log_limit', ctx.DEFAULT_CONFIG['ux']['debug_bundle_log_limit']), ctx.DEFAULT_CONFIG['ux']['debug_bundle_log_limit'], minimum=1)
+
+
+def _normalize_monitor(config: ctx.Dict[str, ctx.Any]) -> None:
     monitor_config = _dict_section(config, 'monitor')
     default_monitor = ctx.DEFAULT_CONFIG['monitor']
     monitor_config['ignore_attendance_rate_gate'] = ctx.coerce_bool(
         monitor_config.get('ignore_attendance_rate_gate', default_monitor['ignore_attendance_rate_gate']),
         default_monitor['ignore_attendance_rate_gate'],
     )
+
+
+def _normalize_local_ui(config: ctx.Dict[str, ctx.Any]) -> None:
     local_ui = _dict_section(config, 'local_ui')
     local_ui['host'] = ctx.normalize_text(local_ui.get('host')) or ctx.DEFAULT_CONFIG['local_ui']['host']
     local_ui['port'] = ctx.coerce_positive_int(local_ui.get('port', ctx.DEFAULT_CONFIG['local_ui']['port']), ctx.DEFAULT_CONFIG['local_ui']['port'], minimum=1)
+
+
+def _normalize_webview(config: ctx.Dict[str, ctx.Any]) -> None:
     webview = _dict_section(config, 'webview')
     cookie_sync = _dict_section(webview, 'cookie_sync')
     default_cookie_sync = ctx.DEFAULT_CONFIG['webview']['cookie_sync']
@@ -220,6 +250,9 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
     if not isinstance(allowed_names, (list, tuple, set)):
         allowed_names = default_cookie_sync['cookie_name_allowlist']
     cookie_sync['cookie_name_allowlist'] = sorted({ctx.normalize_text(value) for value in allowed_names if ctx.normalize_text(value)}) or list(default_cookie_sync['cookie_name_allowlist'])
+
+
+def _normalize_integrations(config: ctx.Dict[str, ctx.Any]) -> None:
     integrations = _dict_section(config, 'integrations')
     for name in ('discord', 'line', 'telegram'):
         integration = _dict_section(integrations, name)
@@ -244,12 +277,18 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
         allowed_channels[adapter] = sorted({ctx.normalize_text(value) for value in values if ctx.normalize_text(value)})
     security['dangerous_cooldown_seconds'] = ctx.coerce_positive_int(security.get('dangerous_cooldown_seconds', default_security['dangerous_cooldown_seconds']), default_security['dangerous_cooldown_seconds'], minimum=0)
     security['audit_log'] = ctx.coerce_bool(security.get('audit_log', default_security['audit_log']), default_security['audit_log'])
+
+
+def _normalize_notifications(config: ctx.Dict[str, ctx.Any]) -> None:
     notifications = _dict_section(config, 'notifications')
     for channel in ('tg', 'dc'):
         channel_config = _dict_section(notifications, channel)
         channel_config['enable'] = ctx.coerce_bool(channel_config.get('enable', ctx.DEFAULT_CONFIG['notifications'][channel]['enable']), ctx.DEFAULT_CONFIG['notifications'][channel]['enable'])
         channel_config.setdefault('key', ctx.DEFAULT_CONFIG['notifications'][channel]['key'])
         channel_config.setdefault('chat', ctx.DEFAULT_CONFIG['notifications'][channel]['chat'])
+
+
+def _normalize_runtime_config(config: ctx.Dict[str, ctx.Any]) -> None:
     runtime_config = _dict_section(config, 'config')
     runtime_config.setdefault('enable_log', ctx.DEFAULT_CONFIG['config']['enable_log'])
     runtime_config.setdefault('Senkaku', ctx.DEFAULT_CONFIG['config']['Senkaku'])
@@ -262,12 +301,18 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
         user_agents = []
     user_agents = [str(agent).strip() for agent in user_agents if str(agent).strip()]
     runtime_config['user-agent'] = user_agents or list(ctx.DEFAULT_USER_AGENTS)
+
+
+def _normalize_time(config: ctx.Dict[str, ctx.Any]) -> None:
     time_config = _dict_section(config, 'time')
     timezone_name = ctx.normalize_text(time_config.get('timezone') or time_config.get('tz') or ctx.DEFAULT_CONFIG['time']['timezone'])
     if _timezone_from_name(timezone_name) is None:
         ctx.CONFIG_WARNINGS.append('time.timezone 無法載入，已改用 {}。'.format(ctx.DEFAULT_CONFIG['time']['timezone']))
         timezone_name = ctx.DEFAULT_CONFIG['time']['timezone']
     time_config['timezone'] = timezone_name
+
+
+def _normalize_number(config: ctx.Dict[str, ctx.Any]) -> None:
     number_config = _dict_section(config, 'number')
     number_config['concurrency'] = min(ctx.NUMBER_CODE_LIMIT, ctx.coerce_positive_int(number_config.get('concurrency', ctx.DEFAULT_CONFIG['number']['concurrency']), ctx.DEFAULT_CONFIG['number']['concurrency'], minimum=1))
     number_config['min_concurrency'] = min(number_config['concurrency'], ctx.coerce_positive_int(number_config.get('min_concurrency', ctx.DEFAULT_CONFIG['number']['min_concurrency']), ctx.DEFAULT_CONFIG['number']['min_concurrency'], minimum=1))
@@ -289,6 +334,9 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
         'enabled': ctx.coerce_bool(direct_lookup_config.get('enabled', direct_lookup_default['enabled']), direct_lookup_default['enabled']),
         'fallback_bruteforce': ctx.coerce_bool(direct_lookup_config.get('fallback_bruteforce', direct_lookup_default['fallback_bruteforce']), direct_lookup_default['fallback_bruteforce']),
     }
+
+
+def _normalize_radar(config: ctx.Dict[str, ctx.Any]) -> None:
     radar_config = _dict_section(config, 'radar')
     strategy = ctx.normalize_text(radar_config.get('strategy', ctx.DEFAULT_CONFIG['radar']['strategy'])).lower().replace('-', '_')
     strategy_aliases = {
@@ -330,26 +378,8 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
     global_radar['transient_failure_ratio'] = max(0.0, min(1.0, global_ratio))
     global_radar['anchor_count'] = min(120, ctx.coerce_positive_int(global_radar.get('anchor_count', default_global_radar['anchor_count']), default_global_radar['anchor_count'], minimum=3))
     global_radar['bearing_count'] = min(72, ctx.coerce_positive_int(global_radar.get('bearing_count', default_global_radar['bearing_count']), default_global_radar['bearing_count'], minimum=3))
-
-    def normalize_radii(value: ctx.Any, default_value: ctx.Any) -> ctx.List[float]:
-        if isinstance(value, str):
-            raw_items = [item.strip() for item in value.split(',')]
-        elif isinstance(value, (list, tuple, set)):
-            raw_items = list(value)
-        else:
-            raw_items = list(default_value)
-        radii: ctx.List[float] = []
-        for item in raw_items:
-            try:
-                radius = abs(float(item))
-            except (TypeError, ValueError):
-                return [float(default_radius) for default_radius in default_value]
-            if radius > 0.0:
-                radii.append(radius)
-        return radii or [float(default_radius) for default_radius in default_value]
-
-    global_radar['standard_radii_meters'] = normalize_radii(global_radar.get('standard_radii_meters', global_radar.get('standard_radii', default_global_radar['standard_radii_meters'])), default_global_radar['standard_radii_meters'])
-    global_radar['supplement_radii_meters'] = normalize_radii(global_radar.get('supplement_radii_meters', global_radar.get('supplement_radii', default_global_radar['supplement_radii_meters'])), default_global_radar['supplement_radii_meters'])
+    global_radar['standard_radii_meters'] = _normalize_radii(global_radar.get('standard_radii_meters', global_radar.get('standard_radii', default_global_radar['standard_radii_meters'])), default_global_radar['standard_radii_meters'])
+    global_radar['supplement_radii_meters'] = _normalize_radii(global_radar.get('supplement_radii_meters', global_radar.get('supplement_radii', default_global_radar['supplement_radii_meters'])), default_global_radar['supplement_radii_meters'])
     global_radar['standard_query_count'] = global_radar['anchor_count'] + len(global_radar['standard_radii_meters']) * global_radar['bearing_count']
     global_radar['supplement_query_count'] = len(global_radar['supplement_radii_meters']) * global_radar['bearing_count']
     global_radar['present_hint_verify_enabled'] = ctx.coerce_bool(global_radar.get('present_hint_verify_enabled', default_global_radar.get('present_hint_verify_enabled', True)), default_global_radar.get('present_hint_verify_enabled', True))
@@ -360,7 +390,13 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
     global_radar['max_pattern_iterations'] = min(2000, ctx.coerce_positive_int(global_radar.get('max_pattern_iterations', default_global_radar['max_pattern_iterations']), default_global_radar['max_pattern_iterations'], minimum=20))
     global_radar['max_lm_iterations'] = min(200, ctx.coerce_positive_int(global_radar.get('max_lm_iterations', default_global_radar['max_lm_iterations']), default_global_radar['max_lm_iterations'], minimum=5))
     radar_config['global'] = global_radar
+
+
+def _normalize_research(config: ctx.Dict[str, ctx.Any]) -> None:
     config['research'] = ctx.normalize_research_mode_config(config.get('research', ctx.DEFAULT_CONFIG['research']))
+
+
+def _normalize_operating(config: ctx.Dict[str, ctx.Any]) -> None:
     operating = config.setdefault('operating', {})
     if not isinstance(operating, dict):
         operating = {}
@@ -381,6 +417,42 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
             merged['ranges'] = ctx.normalize_schedule_ranges(merged.get('range'), [default_schedule['range']])
         normalized_operating[day] = merged
     config['operating'] = normalized_operating
+
+
+# normalize_config is a thin orchestrator: the preamble (advanced-merge +
+# sanitize_config_values, which seeds CONFIG_WARNINGS) then each section's
+# normalizer IN ORDER (order matters — account seeds accounts/active_profile;
+# _normalize_time appends to the CONFIG_WARNINGS the preamble set).
+def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
+    if not isinstance(raw_config, dict):
+        raw_config = {}
+    config = raw_config
+    advanced = config.pop('advanced', {})
+    if isinstance(advanced, dict):
+        for key, value in advanced.items():
+            if key not in config:
+                config[key] = value
+    try:
+        ctx.CONFIG_WARNINGS = ctx.sanitize_config_values(config)
+    except Exception:
+        ctx.CONFIG_WARNINGS = []
+    _normalize_account(config)
+    _normalize_teacher(config)
+    _normalize_provider(config)
+    _normalize_session(config)
+    _normalize_auth(config)
+    _normalize_ux(config)
+    _normalize_monitor(config)
+    _normalize_local_ui(config)
+    _normalize_webview(config)
+    _normalize_integrations(config)
+    _normalize_notifications(config)
+    _normalize_runtime_config(config)
+    _normalize_time(config)
+    _normalize_number(config)
+    _normalize_radar(config)
+    _normalize_research(config)
+    _normalize_operating(config)
     return config
 
 

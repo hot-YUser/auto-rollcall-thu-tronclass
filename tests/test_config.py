@@ -389,6 +389,49 @@ class ConfigFormatHelperTest(unittest.TestCase):
         self.assertEqual(_split_time_range(""), [])
 
 
+# Rich raw config that exercises the non-default + malformed-fallback branches of
+# every normalize_config section (bad timezone, out-of-range clamps, str-as-list,
+# coercion from strings, bad radii item, an operating override). Kept identical to
+# the generator that produced tests/normalize_config_golden.json.
+_NORMALIZE_RICH_INPUT = {
+    "account": {"user": "real@example.com", "passwd": "pw"},
+    "teacher": {"user": "t", "passwd": "tp", "school": "THU", "course": "C1"},
+    "session": {"cache_cookies": "no"},
+    "auth": {"browser_assisted_login": {"enabled": "yes", "timeout_ms": 999999}},
+    "ux": {"pending_qr_ttl_seconds": 5},
+    "monitor": {"ignore_attendance_rate_gate": "true"},
+    "webview": {"cookie_sync": {"enabled": True, "allowed_domains": "Example.COM"}},
+    "integrations": {"discord": {"enable": "1", "ephemeral_replies": "no"}},
+    "notifications": {"tg": {"enable": "yes"}},
+    "config": {"http_timeout": "abc", "retries": 9, "user-agent": ["UA1", "  "]},
+    "time": {"timezone": "Not/AZone"},
+    "number": {"concurrency": 9999, "transient_failure_ratio": "5"},
+    "radar": {"strategy": "global", "max_final_attempts": 9999,
+              "global": {"standard_radii_meters": "10, 20, bad"}},
+    "operating": {"1": {"enable": "no", "ranges": "08:00-09:30"}},
+}
+
+
+class NormalizeConfigGoldenTest(unittest.TestCase):
+    """Golden master for normalize_config, so the per-section split stays provably
+    behavior-preserving. The volatile/large `provider` registry subtree is excluded
+    (it's one delegating line, not restructured here, and varies by local config);
+    everything the split touches is pinned. Output is compared in JSON-canonical
+    form so int operating keys / tuples / floats compare stably."""
+
+    def _normalized(self, raw):
+        out = tron.normalize_config(copy.deepcopy(raw))
+        out.pop("provider", None)
+        return json.loads(json.dumps(out, sort_keys=True, default=str))
+
+    def test_normalize_config_matches_golden(self) -> None:
+        golden = json.loads(
+            (Path(__file__).parent / "normalize_config_golden.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(self._normalized({}), golden["empty"])
+        self.assertEqual(self._normalized(_NORMALIZE_RICH_INPUT), golden["rich"])
+
+
 class AdvancedProviderRenderTest(unittest.TestCase):
     """v1.6-alpha.3: config.advanced.toml is the live source of truth for the FULL
     school registry — every school is materialized and editable; config wins over the

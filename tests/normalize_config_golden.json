@@ -1,0 +1,591 @@
+{
+  "empty": {
+    "account": {
+      "passwd": "YOUR_PASSWORD",
+      "user": "YOUR_STUDENT_ID"
+    },
+    "accounts": {
+      "current": "default",
+      "profiles": {
+        "default": {
+          "label": "legacy config",
+          "passwd": "YOUR_PASSWORD",
+          "user": "YOUR_STUDENT_ID"
+        }
+      }
+    },
+    "auth": {
+      "browser_assisted_login": {
+        "allow_browser_download": true,
+        "enabled": false,
+        "headless": true,
+        "interactive_poll_interval_ms": 1000,
+        "interactive_timeout_ms": 300000,
+        "timeout_ms": 45000
+      }
+    },
+    "config": {
+      "Senkaku": 1,
+      "enable_log": true,
+      "http_timeout": 20.0,
+      "notification_timeout": 10.0,
+      "retries": 20,
+      "user-agent": [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edge/136.0.0.0",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.5410.0 Safari/537.36",
+        "Mozilla/5.0 (Android 10; Mobile; rv:78.0) Gecko/20100101 Firefox/78.0",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:83.0) Gecko/20100101 Firefox/83.0"
+      ],
+      "verify_ssl": true
+    },
+    "integrations": {
+      "admins": {
+        "discord": [],
+        "line": []
+      },
+      "bindings": {},
+      "discord": {
+        "application_id_env": "DISCORD_APPLICATION_ID",
+        "channel_env": "DISCORD_CHANNEL_ID",
+        "enable": false,
+        "ephemeral_replies": true,
+        "guild_id_env": "DISCORD_GUILD_ID",
+        "public_key_env": "DISCORD_PUBLIC_KEY",
+        "token_env": "DISCORD_BOT_TOKEN"
+      },
+      "line": {
+        "enable": false,
+        "secret_env": "LINE_CHANNEL_SECRET",
+        "token_env": "LINE_CHANNEL_ACCESS_TOKEN"
+      },
+      "security": {
+        "allowed_channels": {
+          "discord": [],
+          "line": []
+        },
+        "audit_log": true,
+        "dangerous_cooldown_seconds": 30
+      },
+      "telegram": {
+        "chat_env": "TELEGRAM_CHAT_ID",
+        "enable": false,
+        "token_env": "TELEGRAM_BOT_TOKEN"
+      }
+    },
+    "local_ui": {
+      "host": "127.0.0.1",
+      "port": 8765
+    },
+    "monitor": {
+      "ignore_attendance_rate_gate": false
+    },
+    "notifications": {
+      "dc": {
+        "chat": "",
+        "enable": false,
+        "key": ""
+      },
+      "tg": {
+        "chat": "",
+        "enable": false,
+        "key": ""
+      }
+    },
+    "number": {
+      "concurrency": 100,
+      "cooldown_seconds": 5.0,
+      "direct_code_lookup": {
+        "enabled": true,
+        "fallback_bruteforce": true
+      },
+      "max_cooldowns": 3,
+      "min_concurrency": 5,
+      "request_retries": 3,
+      "transient_failure_ratio": 0.35,
+      "transient_failure_threshold": 20
+    },
+    "operating": {
+      "0": {
+        "enable": true,
+        "range": [
+          "00:00",
+          "00:00"
+        ],
+        "ranges": [
+          [
+            "00:00",
+            "00:00"
+          ]
+        ]
+      },
+      "1": {
+        "enable": true,
+        "range": [
+          "00:00",
+          "00:00"
+        ],
+        "ranges": [
+          [
+            "00:00",
+            "00:00"
+          ]
+        ]
+      },
+      "2": {
+        "enable": true,
+        "range": [
+          "00:00",
+          "00:00"
+        ],
+        "ranges": [
+          [
+            "00:00",
+            "00:00"
+          ]
+        ]
+      },
+      "3": {
+        "enable": true,
+        "range": [
+          "00:00",
+          "00:00"
+        ],
+        "ranges": [
+          [
+            "00:00",
+            "00:00"
+          ]
+        ]
+      },
+      "4": {
+        "enable": true,
+        "range": [
+          "00:00",
+          "00:00"
+        ],
+        "ranges": [
+          [
+            "00:00",
+            "00:00"
+          ]
+        ]
+      },
+      "5": {
+        "enable": true,
+        "range": [
+          "00:00",
+          "00:00"
+        ],
+        "ranges": [
+          [
+            "00:00",
+            "00:00"
+          ]
+        ]
+      },
+      "6": {
+        "enable": true,
+        "range": [
+          "00:00",
+          "00:00"
+        ],
+        "ranges": [
+          [
+            "00:00",
+            "00:00"
+          ]
+        ]
+      }
+    },
+    "radar": {
+      "allow_outside_probe": true,
+      "boundary_points": [
+        [
+          24.174503,
+          120.61199
+        ],
+        [
+          24.183279,
+          120.613658
+        ],
+        [
+          24.181276523213068,
+          120.5937236680773
+        ],
+        [
+          24.17735264149224,
+          120.59779550644511
+        ]
+      ],
+      "empty_answer_fallback_enabled": true,
+      "final_grid_radius_meters": 20.0,
+      "final_grid_step_meters": 100.0,
+      "global": {
+        "adaptive_estimate_enabled": true,
+        "anchor_count": 12,
+        "bearing_count": 12,
+        "cooldown_seconds": 5.0,
+        "max_cooldowns": 3,
+        "max_lm_iterations": 60,
+        "max_pattern_iterations": 220,
+        "max_queries": 120,
+        "measurement_sigma_meters": 0.289,
+        "present_hint_verify_enabled": true,
+        "request_retries": 3,
+        "robust_f_scale_meters": 50.0,
+        "standard_query_count": 72,
+        "standard_radii_meters": [
+          10000.0,
+          3000.0,
+          1000.0,
+          300.0,
+          100.0
+        ],
+        "supplement_query_count": 36,
+        "supplement_radii_meters": [
+          300.0,
+          100.0,
+          30.0
+        ],
+        "target_uncertainty_95_meters": 35.0,
+        "transient_failure_ratio": 0.35,
+        "transient_failure_threshold": 20
+      },
+      "max_distance_probes": 4,
+      "max_final_attempts": 100,
+      "outside_scale": 1.6,
+      "strategy": "empty_answer"
+    },
+    "research": {
+      "allow_api_exploration": false,
+      "allow_browser_capture": false,
+      "allow_direct_code_lookup": false,
+      "allow_risky_probe": false,
+      "enabled": false,
+      "log_raw_payloads": false,
+      "notes": "",
+      "redact_sensitive": true
+    },
+    "session": {
+      "cache_cookies": true
+    },
+    "teacher": {
+      "course": "",
+      "passwd": "",
+      "school": "tronclass",
+      "user": ""
+    },
+    "time": {
+      "timezone": "Asia/Taipei"
+    },
+    "ux": {
+      "debug_bundle_log_limit": 50,
+      "pending_qr_ttl_seconds": 600
+    },
+    "webview": {
+      "cookie_sync": {
+        "allow_cookie_import": false,
+        "allow_experimental_provider": false,
+        "allowed_domains": [],
+        "cookie_name_allowlist": [
+          "session"
+        ],
+        "enabled": false
+      }
+    }
+  },
+  "rich": {
+    "account": {
+      "passwd": "pw",
+      "user": "real@example.com"
+    },
+    "accounts": {
+      "current": "default",
+      "profiles": {
+        "default": {
+          "label": "legacy config",
+          "passwd": "pw",
+          "user": "real@example.com"
+        }
+      }
+    },
+    "auth": {
+      "browser_assisted_login": {
+        "allow_browser_download": true,
+        "enabled": true,
+        "headless": true,
+        "interactive_poll_interval_ms": 1000,
+        "interactive_timeout_ms": 300000,
+        "timeout_ms": 180000
+      }
+    },
+    "config": {
+      "Senkaku": 1,
+      "enable_log": true,
+      "http_timeout": 20.0,
+      "notification_timeout": 10.0,
+      "retries": 9,
+      "user-agent": [
+        "UA1"
+      ],
+      "verify_ssl": true
+    },
+    "integrations": {
+      "admins": {
+        "discord": [],
+        "line": []
+      },
+      "bindings": {},
+      "discord": {
+        "application_id_env": "DISCORD_APPLICATION_ID",
+        "channel_env": "DISCORD_CHANNEL_ID",
+        "enable": true,
+        "ephemeral_replies": false,
+        "guild_id_env": "DISCORD_GUILD_ID",
+        "public_key_env": "DISCORD_PUBLIC_KEY",
+        "token_env": "DISCORD_BOT_TOKEN"
+      },
+      "line": {
+        "enable": false,
+        "secret_env": "LINE_CHANNEL_SECRET",
+        "token_env": "LINE_CHANNEL_ACCESS_TOKEN"
+      },
+      "security": {
+        "allowed_channels": {
+          "discord": [],
+          "line": []
+        },
+        "audit_log": true,
+        "dangerous_cooldown_seconds": 30
+      },
+      "telegram": {
+        "chat_env": "TELEGRAM_CHAT_ID",
+        "enable": false,
+        "token_env": "TELEGRAM_BOT_TOKEN"
+      }
+    },
+    "local_ui": {
+      "host": "127.0.0.1",
+      "port": 8765
+    },
+    "monitor": {
+      "ignore_attendance_rate_gate": true
+    },
+    "notifications": {
+      "dc": {
+        "chat": "",
+        "enable": false,
+        "key": ""
+      },
+      "tg": {
+        "chat": "",
+        "enable": true,
+        "key": ""
+      }
+    },
+    "number": {
+      "concurrency": 9999,
+      "cooldown_seconds": 5.0,
+      "direct_code_lookup": {
+        "enabled": true,
+        "fallback_bruteforce": true
+      },
+      "max_cooldowns": 3,
+      "min_concurrency": 5,
+      "request_retries": 3,
+      "transient_failure_ratio": 1.0,
+      "transient_failure_threshold": 20
+    },
+    "operating": {
+      "0": {
+        "enable": true,
+        "range": [
+          "00:00",
+          "00:00"
+        ],
+        "ranges": [
+          [
+            "00:00",
+            "00:00"
+          ]
+        ]
+      },
+      "1": {
+        "enable": false,
+        "range": [
+          "08:00",
+          "09:30"
+        ],
+        "ranges": [
+          [
+            "08:00",
+            "09:30"
+          ]
+        ]
+      },
+      "2": {
+        "enable": true,
+        "range": [
+          "00:00",
+          "00:00"
+        ],
+        "ranges": [
+          [
+            "00:00",
+            "00:00"
+          ]
+        ]
+      },
+      "3": {
+        "enable": true,
+        "range": [
+          "00:00",
+          "00:00"
+        ],
+        "ranges": [
+          [
+            "00:00",
+            "00:00"
+          ]
+        ]
+      },
+      "4": {
+        "enable": true,
+        "range": [
+          "00:00",
+          "00:00"
+        ],
+        "ranges": [
+          [
+            "00:00",
+            "00:00"
+          ]
+        ]
+      },
+      "5": {
+        "enable": true,
+        "range": [
+          "00:00",
+          "00:00"
+        ],
+        "ranges": [
+          [
+            "00:00",
+            "00:00"
+          ]
+        ]
+      },
+      "6": {
+        "enable": true,
+        "range": [
+          "00:00",
+          "00:00"
+        ],
+        "ranges": [
+          [
+            "00:00",
+            "00:00"
+          ]
+        ]
+      }
+    },
+    "radar": {
+      "allow_outside_probe": true,
+      "boundary_points": [
+        [
+          24.174503,
+          120.61199
+        ],
+        [
+          24.183279,
+          120.613658
+        ],
+        [
+          24.181276523213068,
+          120.5937236680773
+        ],
+        [
+          24.17735264149224,
+          120.59779550644511
+        ]
+      ],
+      "empty_answer_fallback_enabled": true,
+      "final_grid_radius_meters": 20.0,
+      "final_grid_step_meters": 100.0,
+      "global": {
+        "adaptive_estimate_enabled": true,
+        "anchor_count": 12,
+        "bearing_count": 12,
+        "cooldown_seconds": 5.0,
+        "max_cooldowns": 3,
+        "max_lm_iterations": 60,
+        "max_pattern_iterations": 220,
+        "max_queries": 120,
+        "measurement_sigma_meters": 0.289,
+        "present_hint_verify_enabled": true,
+        "request_retries": 3,
+        "robust_f_scale_meters": 50.0,
+        "standard_query_count": 72,
+        "standard_radii_meters": [
+          10000.0,
+          3000.0,
+          1000.0,
+          300.0,
+          100.0
+        ],
+        "supplement_query_count": 36,
+        "supplement_radii_meters": [
+          300.0,
+          100.0,
+          30.0
+        ],
+        "target_uncertainty_95_meters": 35.0,
+        "transient_failure_ratio": 0.35,
+        "transient_failure_threshold": 20
+      },
+      "max_distance_probes": 4,
+      "max_final_attempts": 200,
+      "outside_scale": 1.6,
+      "strategy": "global_wgs84"
+    },
+    "research": {
+      "allow_api_exploration": false,
+      "allow_browser_capture": false,
+      "allow_direct_code_lookup": false,
+      "allow_risky_probe": false,
+      "enabled": false,
+      "log_raw_payloads": false,
+      "notes": "",
+      "redact_sensitive": true
+    },
+    "session": {
+      "cache_cookies": false
+    },
+    "teacher": {
+      "course": "C1",
+      "passwd": "tp",
+      "school": "thu",
+      "user": "t"
+    },
+    "time": {
+      "timezone": "Asia/Taipei"
+    },
+    "ux": {
+      "debug_bundle_log_limit": 50,
+      "pending_qr_ttl_seconds": 30
+    },
+    "webview": {
+      "cookie_sync": {
+        "allow_cookie_import": false,
+        "allow_experimental_provider": false,
+        "allowed_domains": [
+          "example.com"
+        ],
+        "cookie_name_allowlist": [
+          "session"
+        ],
+        "enabled": true
+      }
+    }
+  }
+}
