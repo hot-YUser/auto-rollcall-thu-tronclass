@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Mapping
 
+try:
+    from troTHU.redaction import DROP, KEEP, redact_structure
+except ImportError:  # pragma: no cover - direct script fallback
+    from redaction import DROP, KEEP, redact_structure
+
 
 SENSITIVE_KEY_PARTS = (
     "authorization",
@@ -59,24 +64,18 @@ def _safe_bool(value: Any) -> bool:
     return bool(value)
 
 
+def _classify_qr_key(key_text: str) -> str:
+    lowered = key_text.lower()
+    return DROP if any(part in lowered for part in SENSITIVE_KEY_PARTS) else KEEP
+
+
+def _qr_leaf(value: Any) -> Any:
+    return _safe_label(value, limit=160) if isinstance(value, str) else value
+
+
 def sanitize_qr_scan_result(value: Any) -> Any:
     """Return a redacted copy suitable for scanner UI responses."""
-    if isinstance(value, Mapping):
-        safe: Dict[str, Any] = {}
-        for key, item in value.items():
-            key_text = str(key)
-            if any(part in key_text.lower() for part in SENSITIVE_KEY_PARTS):
-                continue
-            else:
-                safe[key_text] = sanitize_qr_scan_result(item)
-        return safe
-    if isinstance(value, list):
-        return [sanitize_qr_scan_result(item) for item in value]
-    if isinstance(value, tuple):
-        return [sanitize_qr_scan_result(item) for item in value]
-    if isinstance(value, str):
-        return _safe_label(value, limit=160)
-    return value
+    return redact_structure(value, classify=_classify_qr_key, leaf=_qr_leaf)
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:

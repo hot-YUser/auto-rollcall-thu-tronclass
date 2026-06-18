@@ -19,9 +19,11 @@ from urllib.parse import urlparse
 try:  # pragma: no cover - script execution fallback
     from troTHU.account_store import cookie_path, normalize_profile_name
     from troTHU.providers import DEFAULT_PROVIDER, provider_support_report
+    from troTHU.redaction import KEEP, REDACT, redact_structure
 except ImportError:  # pragma: no cover
     from account_store import cookie_path, normalize_profile_name
     from providers import DEFAULT_PROVIDER, provider_support_report
+    from redaction import KEEP, REDACT, redact_structure
 
 
 SENSITIVE_RE = re.compile(
@@ -468,20 +470,13 @@ def _validate_api_session(
         return False
 
 
+def _classify_webview_key(key_text: str) -> str:
+    return REDACT if SENSITIVE_RE.search(key_text) else KEEP
+
+
+def _webview_leaf(value: Any) -> Any:
+    return _sanitize_text(value) if isinstance(value, str) else value
+
+
 def sanitize_webview_sync_value(value: Any) -> Any:
-    if isinstance(value, Mapping):
-        sanitized: Dict[str, Any] = {}
-        for key, item in value.items():
-            key_text = str(key)
-            if SENSITIVE_RE.search(key_text):
-                sanitized[key_text] = "[redacted]"
-            else:
-                sanitized[key_text] = sanitize_webview_sync_value(item)
-        return sanitized
-    if isinstance(value, list):
-        return [sanitize_webview_sync_value(item) for item in value]
-    if isinstance(value, tuple):
-        return [sanitize_webview_sync_value(item) for item in value]
-    if isinstance(value, str):
-        return _sanitize_text(value)
-    return value
+    return redact_structure(value, classify=_classify_webview_key, leaf=_webview_leaf)

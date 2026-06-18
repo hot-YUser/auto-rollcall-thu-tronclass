@@ -9,10 +9,10 @@ from urllib.parse import urlparse
 from urllib.parse import quote
 
 try:
-    from troTHU.debug_capture import sanitize_debug_payload
+    from troTHU.redaction import KEEP, REDACT, redact_structure
     from troTHU.research_mode import normalize_research_mode_config
 except ImportError:  # pragma: no cover - script execution fallback
-    from debug_capture import sanitize_debug_payload
+    from redaction import KEEP, REDACT, redact_structure
     from research_mode import normalize_research_mode_config
 
 
@@ -26,12 +26,16 @@ PROBE_TARGETS_NEED_ROLLCALL_ID = ("student_rollcalls", "lite")
 # only — the value itself is never recorded).
 PROBE_FIELD_PRESENCE_CHECKS = ("data", "number_code")
 
+# `chat` and `key` fold in what the former per-level sanitize_debug_payload pass
+# redacted, so the single redact_structure walk now covers it.
 RESEARCH_SENSITIVE_KEY_PARTS = (
     "authorization",
     "body",
+    "chat",
     "cookie",
     "data",
     "answer",
+    "key",
     "number_code",
     "numbercode",
     "passwd",
@@ -85,27 +89,24 @@ class _HttpCapture:
         )
 
 
-def sanitize_research_value(value: Any) -> Any:
-    if isinstance(value, Mapping):
-        sanitized: Dict[str, Any] = {}
-        for key, item in value.items():
-            key_text = str(key)
-            if any(part in key_text.lower() for part in RESEARCH_SENSITIVE_KEY_PARTS):
-                sanitized[key_text] = "[redacted]"
-            else:
-                sanitized[key_text] = sanitize_research_value(item)
-        return sanitize_debug_payload(sanitized)
-    if isinstance(value, list):
-        return [sanitize_research_value(item) for item in value]
-    if isinstance(value, tuple):
-        return [sanitize_research_value(item) for item in value]
-    if isinstance(value, str):
-        lowered = value.lower()
-        if any(part in lowered for part in ("password=", "cookie:", "bearer ", "session=", "token=")):
-            return "[redacted]"
-        if len(value) > 300:
-            return "{}...[truncated {} chars]".format(value[:120], len(value))
+def _classify_research_key(key_text: str) -> str:
+    lowered = key_text.lower()
+    return REDACT if any(part in lowered for part in RESEARCH_SENSITIVE_KEY_PARTS) else KEEP
+
+
+def _research_leaf(value: Any) -> Any:
+    if not isinstance(value, str):
+        return value
+    lowered = value.lower()
+    if any(part in lowered for part in ("password=", "cookie:", "bearer ", "session=", "token=")):
+        return "[redacted]"
+    if len(value) > 300:
+        return "{}...[truncated {} chars]".format(value[:120], len(value))
     return value
+
+
+def sanitize_research_value(value: Any) -> Any:
+    return redact_structure(value, classify=_classify_research_key, leaf=_research_leaf)
 
 
 def build_research_status(config: Mapping[str, Any], *, provider: Any = None) -> Dict[str, Any]:

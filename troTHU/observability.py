@@ -4,6 +4,11 @@ import re
 from collections import Counter
 from typing import Any, Dict, Iterable, List, Mapping, Sequence
 
+try:
+    from troTHU.redaction import KEEP, REDACT, redact_structure
+except ImportError:  # pragma: no cover - direct script fallback
+    from redaction import KEEP, REDACT, redact_structure
+
 
 SENSITIVE_KEY_PARTS = (
     "authorization",
@@ -77,24 +82,17 @@ def _safe_text(value: Any, *, limit: int = 160) -> str:
     return text
 
 
+def _classify_key(key_text: str) -> str:
+    lowered = key_text.lower()
+    return REDACT if any(part in lowered for part in SENSITIVE_KEY_PARTS) else KEEP
+
+
+def _safe_leaf(value: Any) -> Any:
+    return _safe_text(value) if isinstance(value, str) else value
+
+
 def _safe_value(value: Any) -> Any:
-    if isinstance(value, Mapping):
-        safe: Dict[str, Any] = {}
-        for key, item in value.items():
-            key_text = str(key)
-            lowered = key_text.lower()
-            if any(part in lowered for part in SENSITIVE_KEY_PARTS):
-                safe[key_text] = "[redacted]"
-            else:
-                safe[key_text] = _safe_value(item)
-        return safe
-    if isinstance(value, list):
-        return [_safe_value(item) for item in value]
-    if isinstance(value, tuple):
-        return [_safe_value(item) for item in value]
-    if isinstance(value, str):
-        return _safe_text(value)
-    return value
+    return redact_structure(value, classify=_classify_key, leaf=_safe_leaf)
 
 
 def _top_counts(value: Any, *, limit: int = 10) -> Dict[str, int]:
