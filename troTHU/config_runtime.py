@@ -141,6 +141,15 @@ def _normalize_teacher_school(value: ctx.Any) -> str:
         return ctx.DEFAULT_CONFIG['teacher']['school']
 
 
+def _dict_section(parent, key):
+    """Return parent[key] as a dict, replacing a missing/non-dict value with {}."""
+    value = parent.get(key)
+    if not isinstance(value, dict):
+        value = {}
+        parent[key] = value
+    return value
+
+
 def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
     if not isinstance(raw_config, dict):
         raw_config = {}
@@ -154,10 +163,7 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
         ctx.CONFIG_WARNINGS = ctx.sanitize_config_values(config)
     except Exception:
         ctx.CONFIG_WARNINGS = []
-    account = config.setdefault('account', {})
-    if not isinstance(account, dict):
-        account = {}
-        config['account'] = account
+    account = _dict_section(config, 'account')
     account.setdefault('user', ctx.DEFAULT_CONFIG['account']['user'])
     account.setdefault('passwd', ctx.DEFAULT_CONFIG['account']['passwd'])
     ctx.normalize_accounts_config(config)
@@ -166,29 +172,17 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
         account['user'] = active_profile.user
     if not ctx.has_real_credential(account.get('passwd')) and ctx.has_real_credential(active_profile.passwd):
         account['passwd'] = active_profile.passwd
-    teacher = config.setdefault('teacher', {})
-    if not isinstance(teacher, dict):
-        teacher = {}
-        config['teacher'] = teacher
+    teacher = _dict_section(config, 'teacher')
     default_teacher = ctx.DEFAULT_CONFIG['teacher']
     teacher['user'] = ctx.normalize_text(teacher.get('user', default_teacher['user']))
     teacher['passwd'] = ctx.normalize_text(teacher.get('passwd', default_teacher['passwd']))
     teacher['school'] = _normalize_teacher_school(teacher.get('school', default_teacher['school']))
     teacher['course'] = ctx.normalize_text(teacher.get('course', default_teacher['course']))
     config['provider'] = ctx.normalize_provider_config(config.get('provider', ctx.DEFAULT_CONFIG['provider']))
-    session_config = config.setdefault('session', {})
-    if not isinstance(session_config, dict):
-        session_config = {}
-        config['session'] = session_config
+    session_config = _dict_section(config, 'session')
     session_config['cache_cookies'] = ctx.coerce_bool(session_config.get('cache_cookies', ctx.DEFAULT_CONFIG['session']['cache_cookies']), ctx.DEFAULT_CONFIG['session']['cache_cookies'])
-    auth_config = config.setdefault('auth', {})
-    if not isinstance(auth_config, dict):
-        auth_config = {}
-        config['auth'] = auth_config
-    browser_login = auth_config.setdefault('browser_assisted_login', {})
-    if not isinstance(browser_login, dict):
-        browser_login = {}
-        auth_config['browser_assisted_login'] = browser_login
+    auth_config = _dict_section(config, 'auth')
+    browser_login = _dict_section(auth_config, 'browser_assisted_login')
     default_browser_login = ctx.DEFAULT_CONFIG['auth']['browser_assisted_login']
     browser_login['enabled'] = ctx.coerce_bool(browser_login.get('enabled', default_browser_login['enabled']), default_browser_login['enabled'])
     browser_login['headless'] = ctx.coerce_bool(browser_login.get('headless', default_browser_login['headless']), default_browser_login['headless'])
@@ -196,35 +190,20 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
     browser_login['interactive_timeout_ms'] = ctx.coerce_positive_int(browser_login.get('interactive_timeout_ms', default_browser_login['interactive_timeout_ms']), default_browser_login['interactive_timeout_ms'], minimum=5000)
     browser_login['allow_browser_download'] = ctx.coerce_bool(browser_login.get('allow_browser_download', default_browser_login['allow_browser_download']), default_browser_login['allow_browser_download'])
     browser_login['interactive_poll_interval_ms'] = ctx.coerce_positive_int(browser_login.get('interactive_poll_interval_ms', default_browser_login['interactive_poll_interval_ms']), default_browser_login['interactive_poll_interval_ms'], minimum=100)
-    ux_config = config.setdefault('ux', {})
-    if not isinstance(ux_config, dict):
-        ux_config = {}
-        config['ux'] = ux_config
+    ux_config = _dict_section(config, 'ux')
     ux_config['pending_qr_ttl_seconds'] = ctx.coerce_positive_int(ux_config.get('pending_qr_ttl_seconds', ctx.DEFAULT_CONFIG['ux']['pending_qr_ttl_seconds']), ctx.DEFAULT_CONFIG['ux']['pending_qr_ttl_seconds'], minimum=30)
     ux_config['debug_bundle_log_limit'] = ctx.coerce_positive_int(ux_config.get('debug_bundle_log_limit', ctx.DEFAULT_CONFIG['ux']['debug_bundle_log_limit']), ctx.DEFAULT_CONFIG['ux']['debug_bundle_log_limit'], minimum=1)
-    monitor_config = config.setdefault('monitor', {})
-    if not isinstance(monitor_config, dict):
-        monitor_config = {}
-        config['monitor'] = monitor_config
+    monitor_config = _dict_section(config, 'monitor')
     default_monitor = ctx.DEFAULT_CONFIG['monitor']
     monitor_config['ignore_attendance_rate_gate'] = ctx.coerce_bool(
         monitor_config.get('ignore_attendance_rate_gate', default_monitor['ignore_attendance_rate_gate']),
         default_monitor['ignore_attendance_rate_gate'],
     )
-    local_ui = config.setdefault('local_ui', {})
-    if not isinstance(local_ui, dict):
-        local_ui = {}
-        config['local_ui'] = local_ui
+    local_ui = _dict_section(config, 'local_ui')
     local_ui['host'] = ctx.normalize_text(local_ui.get('host')) or ctx.DEFAULT_CONFIG['local_ui']['host']
     local_ui['port'] = ctx.coerce_positive_int(local_ui.get('port', ctx.DEFAULT_CONFIG['local_ui']['port']), ctx.DEFAULT_CONFIG['local_ui']['port'], minimum=1)
-    webview = config.setdefault('webview', {})
-    if not isinstance(webview, dict):
-        webview = {}
-        config['webview'] = webview
-    cookie_sync = webview.setdefault('cookie_sync', {})
-    if not isinstance(cookie_sync, dict):
-        cookie_sync = {}
-        webview['cookie_sync'] = cookie_sync
+    webview = _dict_section(config, 'webview')
+    cookie_sync = _dict_section(webview, 'cookie_sync')
     default_cookie_sync = ctx.DEFAULT_CONFIG['webview']['cookie_sync']
     cookie_sync['enabled'] = ctx.coerce_bool(cookie_sync.get('enabled', default_cookie_sync['enabled']), default_cookie_sync['enabled'])
     cookie_sync['allow_cookie_import'] = ctx.coerce_bool(cookie_sync.get('allow_cookie_import', default_cookie_sync['allow_cookie_import']), default_cookie_sync['allow_cookie_import'])
@@ -241,15 +220,9 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
     if not isinstance(allowed_names, (list, tuple, set)):
         allowed_names = default_cookie_sync['cookie_name_allowlist']
     cookie_sync['cookie_name_allowlist'] = sorted({ctx.normalize_text(value) for value in allowed_names if ctx.normalize_text(value)}) or list(default_cookie_sync['cookie_name_allowlist'])
-    integrations = config.setdefault('integrations', {})
-    if not isinstance(integrations, dict):
-        integrations = {}
-        config['integrations'] = integrations
+    integrations = _dict_section(config, 'integrations')
     for name in ('discord', 'line', 'telegram'):
-        integration = integrations.setdefault(name, {})
-        if not isinstance(integration, dict):
-            integration = {}
-            integrations[name] = integration
+        integration = _dict_section(integrations, name)
         default_integration = ctx.DEFAULT_CONFIG['integrations'][name]
         integration['enable'] = ctx.coerce_bool(integration.get('enable', default_integration['enable']), default_integration['enable'])
         for key, value in default_integration.items():
@@ -257,19 +230,11 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
                 integration.setdefault(key, value)
         if name == 'discord':
             integration['ephemeral_replies'] = ctx.coerce_bool(integration.get('ephemeral_replies', default_integration['ephemeral_replies']), default_integration['ephemeral_replies'])
-    bindings = integrations.setdefault('bindings', {})
-    if not isinstance(bindings, dict):
-        integrations['bindings'] = {}
+    _dict_section(integrations, 'bindings')
     ctx.normalize_admins_config(config)
-    security = integrations.setdefault('security', {})
-    if not isinstance(security, dict):
-        security = {}
-        integrations['security'] = security
+    security = _dict_section(integrations, 'security')
     default_security = ctx.DEFAULT_CONFIG['integrations']['security']
-    allowed_channels = security.setdefault('allowed_channels', {})
-    if not isinstance(allowed_channels, dict):
-        allowed_channels = {}
-        security['allowed_channels'] = allowed_channels
+    allowed_channels = _dict_section(security, 'allowed_channels')
     for adapter in ('discord', 'line'):
         values = allowed_channels.get(adapter, default_security['allowed_channels'][adapter])
         if isinstance(values, str):
@@ -279,22 +244,13 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
         allowed_channels[adapter] = sorted({ctx.normalize_text(value) for value in values if ctx.normalize_text(value)})
     security['dangerous_cooldown_seconds'] = ctx.coerce_positive_int(security.get('dangerous_cooldown_seconds', default_security['dangerous_cooldown_seconds']), default_security['dangerous_cooldown_seconds'], minimum=0)
     security['audit_log'] = ctx.coerce_bool(security.get('audit_log', default_security['audit_log']), default_security['audit_log'])
-    notifications = config.setdefault('notifications', {})
-    if not isinstance(notifications, dict):
-        notifications = {}
-        config['notifications'] = notifications
+    notifications = _dict_section(config, 'notifications')
     for channel in ('tg', 'dc'):
-        channel_config = notifications.setdefault(channel, {})
-        if not isinstance(channel_config, dict):
-            channel_config = {}
-            notifications[channel] = channel_config
+        channel_config = _dict_section(notifications, channel)
         channel_config['enable'] = ctx.coerce_bool(channel_config.get('enable', ctx.DEFAULT_CONFIG['notifications'][channel]['enable']), ctx.DEFAULT_CONFIG['notifications'][channel]['enable'])
         channel_config.setdefault('key', ctx.DEFAULT_CONFIG['notifications'][channel]['key'])
         channel_config.setdefault('chat', ctx.DEFAULT_CONFIG['notifications'][channel]['chat'])
-    runtime_config = config.setdefault('config', {})
-    if not isinstance(runtime_config, dict):
-        runtime_config = {}
-        config['config'] = runtime_config
+    runtime_config = _dict_section(config, 'config')
     runtime_config.setdefault('enable_log', ctx.DEFAULT_CONFIG['config']['enable_log'])
     runtime_config.setdefault('Senkaku', ctx.DEFAULT_CONFIG['config']['Senkaku'])
     runtime_config.setdefault('retries', ctx.DEFAULT_CONFIG['config']['retries'])
@@ -306,19 +262,13 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
         user_agents = []
     user_agents = [str(agent).strip() for agent in user_agents if str(agent).strip()]
     runtime_config['user-agent'] = user_agents or list(ctx.DEFAULT_USER_AGENTS)
-    time_config = config.setdefault('time', {})
-    if not isinstance(time_config, dict):
-        time_config = {}
-        config['time'] = time_config
+    time_config = _dict_section(config, 'time')
     timezone_name = ctx.normalize_text(time_config.get('timezone') or time_config.get('tz') or ctx.DEFAULT_CONFIG['time']['timezone'])
     if _timezone_from_name(timezone_name) is None:
         ctx.CONFIG_WARNINGS.append('time.timezone 無法載入，已改用 {}。'.format(ctx.DEFAULT_CONFIG['time']['timezone']))
         timezone_name = ctx.DEFAULT_CONFIG['time']['timezone']
     time_config['timezone'] = timezone_name
-    number_config = config.setdefault('number', {})
-    if not isinstance(number_config, dict):
-        number_config = {}
-        config['number'] = number_config
+    number_config = _dict_section(config, 'number')
     number_config['concurrency'] = min(ctx.NUMBER_CODE_LIMIT, ctx.coerce_positive_int(number_config.get('concurrency', ctx.DEFAULT_CONFIG['number']['concurrency']), ctx.DEFAULT_CONFIG['number']['concurrency'], minimum=1))
     number_config['min_concurrency'] = min(number_config['concurrency'], ctx.coerce_positive_int(number_config.get('min_concurrency', ctx.DEFAULT_CONFIG['number']['min_concurrency']), ctx.DEFAULT_CONFIG['number']['min_concurrency'], minimum=1))
     number_config['request_retries'] = min(10, ctx.coerce_positive_int(number_config.get('request_retries', ctx.DEFAULT_CONFIG['number']['request_retries']), ctx.DEFAULT_CONFIG['number']['request_retries'], minimum=1))
@@ -339,10 +289,7 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
         'enabled': ctx.coerce_bool(direct_lookup_config.get('enabled', direct_lookup_default['enabled']), direct_lookup_default['enabled']),
         'fallback_bruteforce': ctx.coerce_bool(direct_lookup_config.get('fallback_bruteforce', direct_lookup_default['fallback_bruteforce']), direct_lookup_default['fallback_bruteforce']),
     }
-    radar_config = config.setdefault('radar', {})
-    if not isinstance(radar_config, dict):
-        radar_config = {}
-        config['radar'] = radar_config
+    radar_config = _dict_section(config, 'radar')
     strategy = ctx.normalize_text(radar_config.get('strategy', ctx.DEFAULT_CONFIG['radar']['strategy'])).lower().replace('-', '_')
     strategy_aliases = {
         'global': 'global_wgs84',

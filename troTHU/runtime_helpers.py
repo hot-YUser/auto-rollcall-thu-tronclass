@@ -208,7 +208,7 @@ def parse_time_value(value: Any) -> Optional[Any]:
     if isinstance(value, (int, float)) and float(value).is_integer():
         minutes = int(value)
         if 0 <= minutes < 24 * 60:
-            return datetime.strptime("{:02d}:{:02d}".format(minutes // 60, minutes % 60), "%H:%M").time()
+            return datetime(1, 1, 1, minutes // 60, minutes % 60).time()
 
     text = normalize_text(value).replace("：", ":")
     if not text:
