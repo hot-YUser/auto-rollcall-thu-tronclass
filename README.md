@@ -36,6 +36,8 @@ TronClass 是一套被許多學校採用的校園系統，**各校上架時會�
 
 下表為目前內建、**填代號即可自動登入**的學校（共 38 所，依代號排序、一律平等）。此為發布當下的快照，最新名單請執行 `python -m troTHU.tron provider list`；不在表內的 TronClass 學校仍可用「貼網址手動登入」。
 
+> 🆕 **v1.6-alpha.3 起，所有學校設定都搬進了進階設定檔**：第一次啟動時，這 38 所學校會全部寫進 `config.advanced.toml` 的 `[provider.available.*]` 區塊，**你可以在那一處一次看到、隨時修改每一所學校的代號、網址（`base_url`）與別名（`aliases`）**，程式碼裡不再寫死任何學校。改壞了或想還原？把這些區塊（或整個檔）刪掉，下次啟動就會自動以原廠清單重建。
+
 | 代號 | 中文校名 | 代號 | 中文校名 |
 |------|----------|------|----------|
 | `AEUST` | 亞東科技大學 | `NSYSU` | 國立中山大學 |
@@ -67,13 +69,14 @@ TronClass 是一套被許多學校採用的校園系統，**各校上架時會�
 
 ### 我只是想用（Windows，最簡單）
 
-1. 到 Releases，**只下載主程式這一個檔**：**`THU_Auto_Rollcall-v1.6-alpha.2-windows-x64.zip`**。
+1. 到 Releases，**只下載主程式這一個檔**：**`THU_Auto_Rollcall-v1.6-alpha.3-windows-x64.zip`**。
 2. **整包解壓縮**到一個固定資料夾（不要在 zip 裡直接雙擊）。
 3. 進到資料夾，執行 `auto-rollcall-thu-tronclass.exe`。
 
 > 📌 **下載哪個檔？** Releases 頁面會有兩個壓縮檔，請認清：
-> - ✅ **主程式（要下載這個）**：`THU_Auto_Rollcall-v1.6-alpha.2-windows-x64.zip` —— 解壓後執行裡面的 exe。
-> - ➕ **附加元件（通常不用手動下載）**：`addons-v1.6a2-win.zip` —— 只有「圖形驗證碼辨識」或「手動瀏覽器登入」會用到，程式**需要時會自動下載**。**它不是程式本體、不要直接執行**；只有在自動下載失敗（如網路受限）時，才手動下載它、放到 exe 旁邊或 `state\addons\` 即可（程式會自動採用，不再重抓）。
+> - ✅ **主程式（要下載這個）**：`THU_Auto_Rollcall-v1.6-alpha.3-windows-x64.zip` —— 解壓後執行裡面的 exe。
+> - ➕ **附加元件（通常不用手動下載）**：`addons-v1.6a3-win.zip` —— 只有「圖形驗證碼辨識」或「手動瀏覽器登入」會用到，程式**需要時會自動下載**。**它不是程式本體、不要直接執行**；只有在自動下載失敗（如網路受限）時，才手動下載它、放到 exe 旁邊或 `state\addons\` 即可（程式會自動採用，不再重抓）。
+> - 🔁 **下載錯了也沒關係（v1.6-alpha.3 起）**：萬一你下載到的是「附加元件」並直接執行了裡面的 `ocr-sidecar.exe`，它會發現自己不是主程式，**自動幫你下載主程式、把附加元件就定位、再啟動主程式**。所以不管你抓到大包還是小包，最後都會自動補齊、跑起來。
 
 第一次啟動會在 exe 旁邊自動建立 `config.conf`、`config.advanced.toml`、`state/`、`log/` 四樣東西。程式一啟動就直接進入監控；**按任意鍵**就會用記事本打開 `config.conf` 讓你填帳號密碼，存檔關掉記事本後它會自動重新讀取設定。
 
@@ -408,7 +411,7 @@ PUT {teacher_base}/api/rollcall/{teacher_rollcall_id}/stop_qr_rollcall
 - `troTHU/monitor_runtime.py`：預設的監控主迴圈（登入 → 依排程 → 偵測點名 → 分流）。
 - `troTHU/number_runtime.py`、`troTHU/radar_runtime.py`：兩種點名的實作核心（上面的 API 就在這裡）；雷達的全球定位求解器另放在 `troTHU/global_radar_solver.py`（純 Python WGS84 多點定位）。
 - `troTHU/qr_runtime.py`、`troTHU/qr_teacher_runtime.py`：QR 手動 / 剪貼簿送出與教師帳號輔助流程。
-- `troTHU/providers.py`：支援的學校登錄表（base URL、`auth_flow`、能力旗標）。沿用既有登入流程的新學校，從這裡加一筆即可，甚至可純用 `config.advanced.toml` 的 `[provider.available.<校名>]` 定義，完全不必改程式。
+- `troTHU/providers.py`：學校登錄表的**邏輯**（查表、別名解析、端點推導、合併）。**自 v1.6-alpha.3 起，程式碼裡沒有任何學校字面值**——原廠清單放在資料檔 `troTHU/schools.toml`（首次啟動時寫進 `config.advanced.toml`），之後 `config.advanced.toml` 就是唯一可編輯的真實來源；`refresh_provider_registry` 會在載入設定後讓使用者的修改立即生效（config 為準）。新增學校＝編輯 `config.advanced.toml`（或那份種子檔），不必動程式。
 - `troTHU/login_flow.py`：**唯一的統一登入流程**（`run_login_flow`）。抓登入頁一次後，純粹依「偵測到的頁面特徵」分流——有無驗證碼、哪一種驗證碼（靜態圖檔／Keycloak JSON）、是否為首頁 SSO 探索、是否為公有雲 email SPA、是否為 NetIQ NAM——**絕不以學校為分支或命名**。新增一種前所未見的登入「協定」才需要在這裡加一個特徵處理函式；換新學校通常什麼都不必碰。
 - `troTHU/login_probe.py`：`login-probe` 指令——對每一所學校（含你在進階 config 自訂的）的真實登入頁做免帳密探測（可達性＋統一流程偵測到的表單／驗證碼特徵），是回歸守門與「上線前驗證」的工具。
 - `troTHU/tron_http.py`：端點驅動的 HTTP client（`run_login_flow` 在它之上執行）。
@@ -418,30 +421,24 @@ PUT {teacher_base}/api/rollcall/{teacher_rollcall_id}/stop_qr_rollcall
 
 「多學校系統」刻意設計成新增學校的成本極低，而且**登入流程完全統一**：所有學校都走同一條 `run_login_flow`，由程式在執行時偵測登入頁特徵自動分流，沒有任何一所學校享有特化程式碼或特化命名。最省事的一條其實連開發者都不必當：**任何 TronClass 學校，使用者只要在 `config.conf` 把 `school` 或 `now` 填成該校網址，就能自動登入**（細節見上面〈我的學校不在清單裡？〉一節）。若想「填代號就自動登入」，依下面選一條路：
 
-**途徑一：只改一塊進階 config（最推薦，多數情況這樣就夠）。** 自 v1.6 起登入流程會自動偵測登入頁特徵，新增一所沿用現有協定的學校**完全不必動程式碼**——在 `config.advanced.toml` 加一個區塊、`config.conf` 的 `school` 填成同一個名字即可，所有 API 端點會自動推導、登入方式會自動判斷：
+**途徑一：直接編輯進階 config（最推薦，多數情況這樣就夠）。** 自 v1.6-alpha.3 起，所有學校本來就**全部列在 `config.advanced.toml` 的 `[provider.available.*]`** 裡——要新增一所沿用現有協定的學校，照樣加一個區塊、`config.conf` 的 `school` 填成同一個名字即可，所有 API 端點會自動推導、登入方式會自動判斷：
 
 ```toml
 [provider.available.my_school]
 base_url = "https://tronclass.my-school.edu.tw"
+aliases = ["我的學校"]   # 選填，讓使用者能用中文校名選校
 ```
 ```conf
 school = my_school
 ```
 
-其餘欄位全是**選填**，只有少數學校用得到：`login_url`（少數校 `/login` 不會轉到登入表單時）、`captcha_field` / `captcha_length` / `captcha_charset`（驗證碼規格非預設時）、`auth_flow`、`user_visible`。動手前先跑 `python -m troTHU.tron login-probe --school my_school`，看流程在真實伺服器上偵測到什麼——本版起 `login-probe` 也會探測你在進階 config 自訂的學校。
+其餘欄位全是**選填**：`label`（顯示名稱）、`aliases`（中文/英文別名）、`user_visible`。登入網址、登入方式、圖形驗證碼一律**自動偵測**，不需也不應逐校指定（`login_url` / `auth_flow` 仍保留為進階使用者的逃生口，但正常不必填）。動手前先跑 `python -m troTHU.tron login-probe --school my_school`，看流程在真實伺服器上偵測到什麼——`login-probe` 也會探測你在進階 config 自訂的學校。
 
-> 想**送 PR 永久內建**？在 `troTHU/providers.py` 的 `PROVIDERS` 加一筆 `ProviderDefinition`（同樣多半只要 `base_url`），並在 `PROVIDER_ALIASES` 補上中文校名別名（讓使用者能用中文校名選校）。能力旗標沿用 `_STANDARD_CAPS` 即可。
+> 想**送 PR 永久內建**？編輯資料檔 `troTHU/schools.toml`，加一個 `[<代號>]` 區塊（多半只要 `label` + `base_url` + `aliases`），它就會成為原廠清單的一部分，首次啟動時自動寫進使用者的 `config.advanced.toml`。能力旗標對所有學校一致，無須填寫。
 
 關於 **`auth_flow`**：它是「選填提示」，**不是分流依據**。流程會在執行時自動偵測登入頁屬於下列哪一種，正常情況**不必設定**；它只保留供文件說明、向後相容，以及兩個與分流無關的判斷（缺 OCR 套件時的降級、`manual_cookie_only` / `interactive_browser` 模式）。所有值都以「協定／特徵」命名，**沒有學校名稱**：
   - `cas`：標準 CAS／Keycloak 帳密登入頁（多數學校）。流程一律會在登入後再打一次 API 確認 session——因為 TronClass 載入登入頁時會在 LMS 網域種一顆匿名 `session` cookie，光看 cookie 在不在會誤判成功。
-  - `cas_ocr_captcha`：CAS 登入頁另有「靜態圖形驗證碼」。預設圖檔 `captcha.jpg`、欄名 `captcha`、4 碼，用本地 OCR 自動辨識；規格不同時於區塊內覆寫 `captcha_image_name` / `captcha_field` / `captcha_charset` / `captcha_length`：
-    ```toml
-    [provider.available.my_school]
-    base_url = "https://tronclass.my-school.edu.tw"
-    auth_flow = "cas_ocr_captcha"        # 多半可省略；偵測到驗證碼欄位就會自動處理
-    captcha_charset = "0123456789abcdefghijklmnopqrstuvwxyz"  # 預設僅 0-9
-    captcha_length = 5                                        # 預設 4
-    ```
+  - `cas_ocr_captcha`：CAS 登入頁另有「靜態圖形驗證碼」。流程會自動偵測驗證碼欄位、抓圖、用本地 OCR 辨識（圖檔名／欄名／長度／字元集全部自動判斷，**不需也不可逐校指定**）。
   - `keycloak_ocr_captcha`：Keycloak（`tw-common` 佈景）的 JSON 驗證碼——JS 打 `GET /auth/realms/<realm>/captcha/code` 拿 `{image, key}`，送出時帶 `captchaCode`＋`captchaKey`。流程自動處理。
   - `public_cloud_email`：TronClass 原生 email／密碼 SPA、沒有外部 CAS。
   - `nam_neai`：NetIQ Access Manager（NEAI）SSO。SSO 主機由登入頁的 JS 自動推導，**不寫死**任何學校網址。

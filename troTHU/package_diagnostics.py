@@ -7,8 +7,8 @@ from typing import Any, Dict, Iterable, List, Mapping, Sequence
 
 
 PROJECT_NAME = "auto-rollcall-thu-tronclass"
-PROJECT_VERSION = "1.6a2"
-PROJECT_RELEASE_LABEL = "1.6-alpha.2"
+PROJECT_VERSION = "1.6a3"
+PROJECT_RELEASE_LABEL = "1.6-alpha.3"
 SPEC_NAME = "auto-rollcall-thu-tronclass.spec"
 FORBIDDEN_BUNDLE_NAMES = (
     ".codex-worklog.md",

@@ -57,7 +57,7 @@ def addon_cache_dir() -> Path:
 
 
 def bundle_name() -> str:
-    """Short, distinct zip name (e.g. ``addons-v1.6a2-win.zip``) so users can't
+    """Short, distinct zip name (e.g. ``addons-v1.6a3-win.zip``) so users can't
     confuse it with the main ``THU_Auto_Rollcall-…`` program download."""
     from troTHU.package_diagnostics import PROJECT_VERSION
 
