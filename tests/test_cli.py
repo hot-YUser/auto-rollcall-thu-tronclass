@@ -430,16 +430,13 @@ class TronCliSmokeTest(unittest.TestCase):
 
 
 class TronBotServeCommandTest(unittest.IsolatedAsyncioTestCase):
-    async def test_discord_sync_and_gateway_dry_run_dispatch(self) -> None:
+    async def test_discord_sync_dry_run_dispatch(self) -> None:
         outputs = []
         with patch.object(tron, "bootstrap_config"), patch("builtins.print", side_effect=outputs.append):
             sync_result = await tron.bot_discord_sync_command(SimpleNamespace(apply=False, dry_run=True, json=True))
-            gateway_result = await tron.bot_discord_gateway_command(SimpleNamespace(dry_run=True, json=True))
 
         self.assertEqual(sync_result, 0)
-        self.assertEqual(gateway_result, 0)
         self.assertEqual(json.loads(outputs[0])["status"], "dry_run")
-        self.assertTrue(json.loads(outputs[1])["gateway_optional"])
 
     async def test_bot_serve_registers_line_sink_and_restores_existing_sinks(self) -> None:
         original_config = copy.deepcopy(tron.CONFIG)

@@ -205,7 +205,4 @@ def build_arg_parser() -> ctx.argparse.ArgumentParser:
     bot_discord_sync.add_argument('--apply', action='store_true', help='apply schema to Discord; default is dry-run')
     bot_discord_sync.add_argument('--dry-run', action='store_true', help='show planned sync without network')
     bot_discord_sync.add_argument('--json', action='store_true', help='print JSON')
-    bot_discord_gateway = bot_subcommands.add_parser('discord-gateway', help='run optional Discord Gateway')
-    bot_discord_gateway.add_argument('--dry-run', action='store_true', help='print safe health without connecting')
-    bot_discord_gateway.add_argument('--json', action='store_true', help='print JSON')
     return parser

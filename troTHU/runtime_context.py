@@ -236,10 +236,6 @@ _EAGER_REEXPORTS = {
     "troTHU.discord_adapter": (
         "sync_discord_command_schema",
     ),
-    "troTHU.discord_gateway": (
-        "build_gateway_health",
-        "run_discord_gateway",
-    ),
     "troTHU.tron_http": (
         "LOGIN_URL",
         "TRON",
@@ -818,7 +814,6 @@ _LEGACY_EXPORTS = {
     'binding_summary': ('troTHU.status_reports', 'binding_summary'),
     'bootstrap_config': ('troTHU.config_runtime', 'bootstrap_config'),
     'migrate_legacy_yaml_config': ('troTHU.config_runtime', 'migrate_legacy_yaml_config'),
-    'bot_discord_gateway_command': ('troTHU.cli_bot', 'bot_discord_gateway_command'),
     'bot_discord_schema_command': ('troTHU.cli_bot', 'bot_discord_schema_command'),
     'bot_discord_sync_command': ('troTHU.cli_bot', 'bot_discord_sync_command'),
     'bot_serve_command': ('troTHU.cli_bot', 'bot_serve_command'),

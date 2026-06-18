@@ -53,15 +53,6 @@ def main(argv: ctx.Optional[ctx.List[str]]=None) -> int:
                 else:
                     print('Discord command sync failed: {}'.format(exc))
                 return 1
-        if getattr(args, 'bot_command', None) == 'discord-gateway':
-            try:
-                return ctx.asyncio.run(ctx.bot_discord_gateway_command(args))
-            except Exception as exc:
-                if getattr(args, 'json', False):
-                    print(ctx.json_text({'status': 'failed', 'message': str(exc)}))
-                else:
-                    print('Discord Gateway failed: {}'.format(exc))
-                return 1
         parser.print_help()
         return 1
     if args.command == 'dashboard':

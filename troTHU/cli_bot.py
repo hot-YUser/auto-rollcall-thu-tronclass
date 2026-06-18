@@ -65,25 +65,3 @@ async def bot_discord_sync_command(args: ctx.argparse.Namespace) -> int:
         print('Discord command sync: {}'.format(report.get('status', 'unknown')))
         print('Dry run: {}'.format('yes' if report.get('dry_run') else 'no'))
     return 0 if report.get('status') in {'dry_run', 'ok'} else 1
-
-
-async def bot_discord_gateway_command(args: ctx.argparse.Namespace) -> int:
-    if getattr(args, 'dry_run', False):
-        report = ctx.build_gateway_health(ctx.CONFIG)
-        if getattr(args, 'json', False):
-            print(ctx.json_text(report))
-        else:
-            print('Discord Gateway optional: {}'.format(report.get('status', 'unknown')))
-            print('HTTP Interactions recommended: yes')
-        return 0
-    try:
-        from troTHU.bot_handlers import create_bot_runtime
-    except ImportError:
-        from bot_handlers import create_bot_runtime
-    runtime = create_bot_runtime(ctx.CONFIG, base_dir=ctx.BASE_DIR)
-    if getattr(args, 'json', False):
-        print(ctx.json_text({'status': 'starting', 'gateway_optional': True}))
-    else:
-        print('Starting optional Discord Gateway. HTTP Interactions remains the recommended production entry.')
-    await ctx.run_discord_gateway(ctx.CONFIG, runtime)
-    return 0

@@ -345,7 +345,6 @@ class PackageDiagnosticsTest(unittest.TestCase):
         self.assertEqual(report["forbidden_datas"], [])
         self.assertIn("tests", report["excludes"])
         self.assertIn("troTHU.app_qr_experience", report["hidden_imports"])
-        self.assertIn("troTHU.discord_gateway", report["hidden_imports"])
         self.assertIn("troTHU.global_radar_solver", report["hidden_imports"])
         self.assertIn("troTHU.radar_map_assist", report["hidden_imports"])
         self.assertIn("troTHU.telegram_adapter", report["hidden_imports"])
@@ -369,7 +368,6 @@ class PackageDiagnosticsTest(unittest.TestCase):
         gaps = discover_hidden_import_gaps(Path("troTHU"), hidden_imports=["troTHU.account_store"])
 
         self.assertIn("troTHU.app_qr_experience", gaps)
-        self.assertIn("troTHU.discord_gateway", gaps)
         self.assertIn("troTHU.global_radar_solver", gaps)
         self.assertIn("troTHU.radar_map_assist", gaps)
         self.assertIn("troTHU.telegram_adapter", gaps)
