@@ -155,30 +155,9 @@ def _canonical_school(value: ctx.Any) -> str:
         return result
     if kind == "url":
         return ctx.derive_url_provider_key(school_str)
-    school = school_str.lower()
-    aliases = {
-        "東海": "thu",
-        "東海大學": "thu",
-        "thu": "thu",
-        "淡江": "tku",
-        "淡江大學": "tku",
-        "tku": "tku",
-        "輔仁": "fju",
-        "輔仁大學": "fju",
-        "fju": "fju",
-        "tc": "tronclass",
-        "tron": "tronclass",
-        "tronclass": "tronclass",
-        "tronclass.com": "tronclass",
-        "tronclass.com.tw": "tronclass",
-        "www.tronclass.com.tw": "tronclass",
-        "官方": "tronclass",
-        "官方站": "tronclass",
-        "東吳": "scu",
-        "東吳大學": "scu",
-        "scu": "scu",
-    }
-    return aliases.get(school, school or "thu")
+    # Bare token that isn't a known URL/alias: resolve via the config-driven alias
+    # map (no hardcoded per-school table here — aliases live in schools.toml/config).
+    return ctx.normalize_provider_name(school_str)
 
 
 def _assign_school(entry: ctx.Dict[str, ctx.Any], raw_value: ctx.Any) -> None:
@@ -602,40 +581,6 @@ def _deep_merge_dict(base: ctx.Mapping[str, ctx.Any], overlay: ctx.Mapping[str, 
     return result
 
 
-def _provider_advanced_overrides(provider_cfg: ctx.Any) -> ctx.Dict[str, ctx.Any]:
-    """Return only the parts of a provider config worth persisting to advanced
-    config: ``allow_experimental`` when on, plus ``available`` entries that are
-    custom schools or that genuinely differ from the built-in registry. Built-in
-    providers at their default values are deliberately NOT written, so a future
-    registry fix (base_url / login_url / auth_flow …) can never be silently
-    shadowed by a stale saved config — the class of routing bug behind the SCU
-    issue. ``current`` is omitted on purpose: it is derived from the account's
-    school in ``merge_basic_and_advanced_config``."""
-    if not isinstance(provider_cfg, ctx.Mapping):
-        return {}
-    result: ctx.Dict[str, ctx.Any] = {}
-    if ctx.coerce_bool(provider_cfg.get("allow_experimental"), False):
-        result["allow_experimental"] = True
-    available = provider_cfg.get("available")
-    if isinstance(available, ctx.Mapping):
-        try:
-            builtin_keys = {p.key for p in ctx.list_all_providers()}
-        except Exception:
-            builtin_keys = set()
-        custom: ctx.Dict[str, ctx.Any] = {}
-        for key, value in available.items():
-            if key in builtin_keys:
-                try:
-                    if value == ctx.get_provider(key).to_config():
-                        continue  # built-in at its default value → never persist
-                except Exception:
-                    pass
-            custom[key] = ctx.copy.deepcopy(value)
-        if custom:
-            result["available"] = custom
-    return result
-
-
 def parse_advanced_config_toml(text: str) -> ctx.Dict[str, ctx.Any]:
     """Parse the advanced config as TOML. Returns {} on any parse error so a typo
     in the advanced file falls back to defaults instead of breaking startup."""
@@ -831,9 +776,9 @@ def render_advanced_config_toml(config: ctx.Mapping[str, ctx.Any] | None = None)
     control at its default value, with any overrides from ``config`` applied on
     top. This is what makes the advanced file self-documenting for beginners."""
     full = _deep_merge_dict(default_advanced_config(), config or {})
-    # Never dump the built-in provider registry into the file; only a trimmed
-    # delta is persisted, rendered separately as a commented section below.
-    provider_overrides = _provider_advanced_overrides(full.pop("provider", None))
+    # The provider section is rendered separately below: the FULL school registry,
+    # taken from the passed config when present (config wins) or the factory seed.
+    provider_cfg = full.pop("provider", None)
     lines = [
         "# ===== 進階設定 config.advanced.toml =====",
         "# TOML 格式：固定、嚴謹、不易出錯。下面列出所有可調整的項目，數值都是預設值，",
@@ -841,27 +786,85 @@ def render_advanced_config_toml(config: ctx.Mapping[str, ctx.Any] | None = None)
         "# 但完全不影響你的基本設定 config.conf。",
     ]
     _emit_toml_table("", full, lines)
-    _append_provider_advanced_section(lines, provider_overrides)
+    _append_provider_advanced_section(lines, provider_cfg)
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _append_provider_advanced_section(lines: ctx.List[str], overrides: ctx.Mapping[str, ctx.Any]) -> None:
-    """Emit a compact, commented [provider] section: a worked example of how to
-    add a school the built-in list doesn't cover (or read cookies directly),
-    followed by any real overrides the user actually set. The full built-in
-    registry is intentionally never written here."""
+def _provider_emit_rows(provider_cfg: ctx.Any) -> ctx.List[tuple]:
+    """Rows (key, base_url, label, aliases, notes, user_visible) for the provider
+    section: from the passed config's ``available`` when present (config wins), else
+    from the factory seed read fresh off disk — so a missing/deleted advanced file
+    is re-materialized from schools.toml, not from possibly-stale live globals."""
+    available = None
+    if isinstance(provider_cfg, ctx.Mapping):
+        avail = provider_cfg.get("available")
+        if isinstance(avail, ctx.Mapping) and avail:
+            available = avail
+    rows: ctx.List[tuple] = []
+    if available is not None:
+        for key in sorted(available):
+            value = available[key]
+            if not isinstance(value, ctx.Mapping):
+                continue
+            rows.append((
+                key,
+                str(value.get("base_url") or ""),
+                str(value.get("label") or ""),
+                list(value.get("aliases") or []),
+                str(value.get("notes") or ""),
+                bool(value.get("user_visible", True)),
+            ))
+    else:
+        try:
+            seed = ctx.seed_providers()
+        except Exception:
+            seed = {}
+        for key in sorted(seed):
+            provider = seed[key]
+            rows.append((
+                key, provider.base_url, provider.label,
+                list(provider.aliases), provider.notes, provider.user_visible,
+            ))
+    return rows
+
+
+def _append_provider_advanced_section(lines: ctx.List[str], provider_cfg: ctx.Any) -> None:
+    """Emit the FULL school registry as editable [provider.available.*] blocks —
+    this advanced file is the live source of truth for every school. Each block
+    carries base_url / label / aliases (login URL, login flow and image-captcha are
+    all auto-detected, so they are deliberately not written). Delete these blocks
+    (or the whole file) to re-seed from the bundled schools.toml on next launch."""
     lines.append("")
     lines.append("# " + _ADVANCED_COMMENTS["provider"])
-    lines.append("# 一般情況下，學校由 config.conf 的 school 決定，這裡不用填。")
-    lines.append("# 新增「內建清單沒有的學校」：自 v1.6 起登入流程會自動偵測登入頁特徵，")
-    lines.append("# 「只要一行 base_url」就夠了——登入網址、登入方式、圖形驗證碼全都自動偵測，")
-    lines.append("# 不需也不應逐校指定。區塊名（下例的 my_school）就是 config.conf 裡要填的 school 值：")
-    lines.append('#   [provider.available.my_school]')
-    lines.append('#   base_url = "https://tronclass.my-school.edu.tw"')
-    lines.append("#")
-    lines.append("# 選填：label = \"顯示名稱\"、user_visible = true/false。其餘一律自動，毋須填寫。")
-    if overrides:
-        _emit_toml_table("provider", dict(overrides), lines)
+    lines.append("# 以下列出「所有學校」，每一所都可直接在這裡改：")
+    lines.append("#   base_url = 網站根網址（登入網址／登入方式／圖形驗證碼全自動偵測，毋須填）")
+    lines.append("#   label    = 顯示名稱（選填）")
+    lines.append('#   aliases  = 別名清單，可用中文/英文代稱，例：["東海", "tunghai"]（選填）')
+    lines.append("# 區塊名 [provider.available.XXX] 的 XXX 就是 config.conf 裡 school 要填的代號。")
+    lines.append("# 新增學校：照樣加一塊、填一行 base_url 即可。")
+    lines.append("# 想恢復原廠學校清單：刪掉下面所有 [provider.*] 區塊（或整個檔），下次啟動自動重建。")
+
+    if isinstance(provider_cfg, ctx.Mapping) and ctx.coerce_bool(provider_cfg.get("allow_experimental"), False):
+        lines.append("")
+        lines.append("[provider]")
+        lines.append("# " + _ADVANCED_COMMENTS["provider.allow_experimental"])
+        lines.append("allow_experimental = true")
+
+    for key, base_url, label, aliases, notes, user_visible in _provider_emit_rows(provider_cfg):
+        # url_* keys are synthesised on the fly from a pasted URL; never persist them.
+        if not key or str(key).startswith("url_"):
+            continue
+        lines.append("")
+        lines.append("[provider.available.{}]".format(key))
+        lines.append("base_url = {}".format(_toml_value(base_url)))
+        if label:
+            lines.append("label = {}".format(_toml_value(label)))
+        if aliases:
+            lines.append("aliases = {}".format(_toml_value(list(aliases))))
+        if notes:
+            lines.append("notes = {}".format(_toml_value(notes)))
+        if not user_visible:
+            lines.append("user_visible = false")
 
 
 def _simple_target_account(simple: ctx.Mapping[str, ctx.Any]) -> ctx.Dict[str, str]:
@@ -1063,11 +1066,10 @@ def split_normalized_config(config: ctx.Mapping[str, ctx.Any]) -> ctx.Tuple[ctx.
         if key in ctx.DEFAULT_CONFIG and value == ctx.DEFAULT_CONFIG.get(key):
             continue
         advanced[key] = ctx.copy.deepcopy(value)
-    # Persist only the provider delta (custom/overridden schools), never the
-    # full built-in registry — see _provider_advanced_overrides.
-    provider_overrides = _provider_advanced_overrides(advanced.get("provider"))
-    if provider_overrides:
-        advanced["provider"] = provider_overrides
-    else:
-        advanced.pop("provider", None)
+    # v1.6-alpha.3: config.advanced.toml is the live source of truth for the FULL
+    # school registry (not a delta). Keep the whole merged provider so the rendered
+    # file lists every school and preserves any per-school edits the user made.
+    # (Only `available` + `allow_experimental` are actually emitted; `current` etc.
+    # are derived on load.) Delete the file to re-seed from schools.toml.
+    advanced["provider"] = ctx.copy.deepcopy(normalized.get("provider", {}))
     return simple, advanced

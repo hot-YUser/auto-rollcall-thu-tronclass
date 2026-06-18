@@ -82,7 +82,11 @@ class ConfigFormatTest(unittest.TestCase):
         rendered = tron.render_basic_config(simple)
 
         self.assertEqual(config["account"]["user"], "")
-        self.assertEqual(advanced, {})
+        # v1.6-alpha.3: the advanced split now carries the FULL school registry (the
+        # advanced file is the live source of truth) and nothing else when other
+        # sections are at defaults.
+        self.assertEqual(set(advanced), {"provider"})
+        self.assertIn("thu", advanced["provider"]["available"])
         self.assertIn("now = ", rendered)
         self.assertIn("# now：要用哪個帳號跑？", rendered)
 
@@ -163,7 +167,8 @@ class ConfigFormatTest(unittest.TestCase):
         reparsed = tron.parse_basic_config_text(rendered)
 
         self.assertEqual(config["teacher"], {"user": "T1", "passwd": "TP1", "school": "tronclass", "course": ""})
-        self.assertEqual(advanced, {})
+        # v1.6-alpha.3: advanced split carries the full school registry, nothing else here.
+        self.assertEqual(set(advanced), {"provider"})
         self.assertIn("[teacher]", rendered)
         self.assertIn("user = T1", rendered)
         self.assertEqual(reparsed["teacher"]["school"], "tronclass")
@@ -335,29 +340,57 @@ class ConfigFormatTest(unittest.TestCase):
 
 
 class AdvancedProviderRenderTest(unittest.TestCase):
-    def test_render_does_not_dump_builtin_registry(self) -> None:
-        toml = tron.render_advanced_config_toml(tron.default_advanced_config())
-        # The full built-in registry must never be written into advanced config
-        # (staleness guard: persisted built-ins would shadow future registry fixes).
-        self.assertNotIn("[provider.available.thu]", toml)
-        self.assertNotIn("[provider.available.scu]", toml)
-        self.assertNotIn("ilearn.thu.edu.tw", toml)
-        # ...but the section stays documented with a commented worked example.
-        self.assertIn("provider.available.my_school", toml)
+    """v1.6-alpha.3: config.advanced.toml is the live source of truth for the FULL
+    school registry — every school is materialized and editable; config wins over the
+    bundled schools.toml seed; deleting the file re-seeds."""
 
-    def test_custom_school_override_round_trips_without_builtins(self) -> None:
+    def setUp(self) -> None:
+        import troTHU.providers as providers
+        self._providers = providers
+        self._saved = (providers.PROVIDERS, providers.PROVIDER_ALIASES)
+
+    def tearDown(self) -> None:
+        # refresh_provider_registry mutates module globals — restore them so this
+        # test can't leak an edited registry into the rest of the suite.
+        self._providers.PROVIDERS, self._providers.PROVIDER_ALIASES = self._saved
+
+    def test_render_materializes_full_registry(self) -> None:
+        toml = tron.render_advanced_config_toml(tron.default_advanced_config())
+        # EVERY school is written as an editable block (seeded from schools.toml).
+        self.assertIn("[provider.available.thu]", toml)
+        self.assertIn("[provider.available.scu]", toml)
+        self.assertIn("[provider.available.nou]", toml)
+        self.assertIn("ilearn.thu.edu.tw", toml)
+        self.assertIn("aliases", toml)  # per-school aliases are written too
+
+    def test_empty_provider_config_renders_the_seed(self) -> None:
+        # A fresh / deleted advanced file (no provider section) re-materializes from
+        # the bundled seed, not from possibly-mutated live globals.
+        toml = tron.render_advanced_config_toml({})
+        self.assertIn("[provider.available.thu]", toml)
+        self.assertIn("ilearn.thu.edu.tw", toml)
+
+    def test_custom_school_and_builtins_all_persist(self) -> None:
         parsed = tron.parse_basic_config_text(
             "now = X1\n[account]\nuser = X1\npasswd = P1\nschool = my_school\n"
         )
-        advanced = {"provider": {"available": {"my_school": {
-            "base_url": "https://lms.my.edu", "auth_flow": "thu_cas",
-        }}}}
+        advanced = {"provider": {"available": {"my_school": {"base_url": "https://lms.my.edu"}}}}
         config = tron.normalize_config(tron.merge_basic_and_advanced_config(parsed, advanced))
         _simple, advanced_out = tron.split_normalized_config(config)
         available = advanced_out.get("provider", {}).get("available", {})
-        self.assertIn("my_school", available)   # custom school is persisted
-        self.assertNotIn("thu", available)      # built-ins are not
-        self.assertNotIn("scu", available)
+        self.assertIn("my_school", available)   # custom school persisted
+        self.assertIn("thu", available)         # AND every built-in (full registry now)
+        self.assertIn("scu", available)
+
+    def test_config_base_url_and_alias_win_over_seed(self) -> None:
+        advanced = {"provider": {"available": {"scu": {
+            "base_url": "https://changed.example.edu", "aliases": ["測試東吳"],
+        }}}}
+        config = tron.normalize_config(tron.merge_basic_and_advanced_config(
+            tron.parse_basic_config_text("now = \n"), advanced))
+        tron.refresh_provider_registry(config["provider"]["available"])
+        self.assertEqual(tron.get_provider("scu").base_url, "https://changed.example.edu")
+        self.assertEqual(tron.get_provider("測試東吳").key, "scu")  # config-defined alias resolves
 
 
 class LegacyConfigMigrationTest(unittest.TestCase):

@@ -571,6 +571,27 @@ def bootstrap_config(force: bool=False) -> ctx.Dict[str, ctx.Any]:
         warnings.append('警告: 已停用 TLS 憑證驗證 (`config.verify_ssl=false`)。')
     ctx.CONFIG.clear()
     ctx.CONFIG.update(ctx.normalize_config(config))
+    # Make the loaded config the live source of truth for the school registry, so
+    # edits to config.advanced.toml ([provider.available.*]) take effect everywhere.
+    try:
+        provider_cfg = ctx.CONFIG.get("provider", {})
+        ctx.refresh_provider_registry(provider_cfg.get("available", {}) if isinstance(provider_cfg, dict) else {})
+    except Exception:
+        pass
+    # One-time materialization: configs written before v1.6-alpha.3 have no school
+    # blocks on disk. Write the full registry in (preserving the user's other
+    # settings) so every school is visible/editable in the advanced file. New
+    # installs already get them via ensure_config_exists; once present we never
+    # rewrite (config stays authoritative — delete the file to re-seed).
+    try:
+        raw_adv = ctx.load_advanced_config()
+        raw_provider = raw_adv.get("provider") if isinstance(raw_adv, dict) else None
+        has_schools = isinstance(raw_provider, dict) and bool(raw_provider.get("available"))
+        if not has_schools:
+            _, advanced = ctx.split_normalized_config(ctx.CONFIG)
+            ctx.write_advanced_config_file(advanced)
+    except Exception:
+        pass
     ctx.BOOTSTRAP_WARNINGS = warnings
     ctx.CONFIG_BOOTSTRAPPED = True
     return ctx.CONFIG
