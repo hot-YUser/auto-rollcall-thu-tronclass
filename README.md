@@ -259,8 +259,6 @@ python -m troTHU.tron bot discord-sync --dry-run --json
 python -m troTHU.tron bot serve --adapter discord    # 本機起服務
 ```
 
-也保留了選用的 Gateway 模式，但不是預設推薦的部署方式。
-
 ### LINE
 
 支援 webhook 簽章驗證、回覆與推播通知。常用環境變數：
