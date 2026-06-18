@@ -1,8 +1,16 @@
 from __future__ import annotations
+import sys
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Mapping
+from pathlib import Path
+from typing import Any, Dict, List, Mapping, Tuple
+
+try:  # py3.11+ stdlib; tomli backport on 3.10 (declared in pyproject deps)
+    import tomllib as _toml_reader
+except ModuleNotFoundError:  # pragma: no cover - exercised only on 3.10
+    import tomli as _toml_reader  # type: ignore
 
 
+# Fallback only; the real value comes from schools.toml's `default` key on load.
 DEFAULT_PROVIDER = "thu"
 
 
@@ -49,6 +57,7 @@ class ProviderDefinition:
     capabilities: ProviderCapabilities = field(default_factory=ProviderCapabilities)
     notes: str = ""
     user_visible: bool = True
+    aliases: Tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         # No per-school login URL: every provider's login_url derives from base_url.
@@ -100,6 +109,7 @@ class ProviderDefinition:
             "user_visible": self.user_visible,
             "capabilities": self.capabilities.to_dict(),
             "notes": self.notes,
+            "aliases": list(self.aliases),
         }
 
 
@@ -112,111 +122,8 @@ def tronclass_api_endpoints(base_url: Any) -> Dict[str, str]:
     }
 
 
-PROVIDERS: Dict[str, ProviderDefinition] = {
-    "thu": ProviderDefinition(
-        key="thu",
-        label="Tunghai University iLearn",
-        base_url="https://ilearn.thu.edu.tw",
-        status="ready",
-        support_level="ready",
-        capabilities=ProviderCapabilities(
-            number=True,
-            radar=True,
-            qrcode=True,
-            course_discovery=True,
-            teacher_rollcall=True,
-            manual_qr=True,
-            local_scanner=True,
-            direct_code_lookup=True,
-        ),
-        notes="Primary supported provider. Kept compatible with the legacy config.conf flow.",
-    ),
-    "fju": ProviderDefinition(
-        key="fju",
-        label="Fu Jen Catholic University TronClass",
-        base_url="https://elearn2.fju.edu.tw",
-        status="ready",
-        support_level="ready",
-        capabilities=ProviderCapabilities(
-            number=True,
-            radar=True,
-            qrcode=True,
-            course_discovery=True,
-            teacher_rollcall=True,
-            manual_qr=True,
-            local_scanner=True,
-            direct_code_lookup=True,
-        ),
-        notes="A CAS login that also shows a static numeric image captcha; the flow detects it and solves it locally via the optional 'ocr' extra (ddddocr) or the downloadable OCR sidecar. Authenticated TronClass API flows share the common runtime.",
-    ),
-    "tku": ProviderDefinition(
-        key="tku",
-        label="Tamkang University TronClass",
-        base_url="https://iclass.tku.edu.tw",
-        status="ready",
-        support_level="ready",
-        capabilities=ProviderCapabilities(
-            number=True,
-            radar=True,
-            qrcode=True,
-            course_discovery=True,
-            teacher_rollcall=True,
-            manual_qr=True,
-            local_scanner=True,
-            direct_code_lookup=True,
-        ),
-        notes="Ready for user-level daily flow. TKU SSO uses HTTP fast SSO first and falls back to browser-assisted login when the SSO form changes.",
-    ),
-    "tronclass": ProviderDefinition(
-        key="tronclass",
-        label="TronClass Public Cloud",
-        base_url="https://www.tronclass.com.tw",
-        status="ready",
-        support_level="ready",
-        capabilities=ProviderCapabilities(
-            number=True,
-            radar=True,
-            qrcode=True,
-            course_discovery=True,
-            teacher_rollcall=True,
-            manual_qr=True,
-            local_scanner=True,
-            direct_code_lookup=True,
-        ),
-        notes="Public TronClass cloud tenant. Uses the shared TronClass APIs after an email/password login form POST.",
-    ),
-    "scu": ProviderDefinition(
-        key="scu",
-        label="Soochow University TronClass",
-        base_url="https://tronclass.scu.edu.tw",
-        status="ready",
-        capabilities=ProviderCapabilities(
-            number=True,
-            radar=True,
-            qrcode=True,
-            course_discovery=True,
-            teacher_rollcall=True,
-            manual_qr=True,
-            local_scanner=True,
-            direct_code_lookup=True,
-        ),
-        notes="Soochow University TronClass provider. Uses standard CAS login form extraction.",
-    ),
-}
-
-
-# Bulk-registered TronClass schools. All share the same full capability set and carry
-# ZERO per-school login presets — each row is just (key, label, base_url). login_url is
-# derived as base_url + "/login" (see ProviderDefinition.__post_init__) and auth_flow
-# defaults to "auto" for every provider. There is deliberately no per-school login_url
-# override and no per-school auth_flow: the login is fully feature-detected at runtime.
-#   * login_flow.run_login_flow inspects the live page (captcha kind, SSO discovery,
-#     email SPA, NAM) — it never reads auth_flow.
-#   * resolve_login_settings_url runs for every login to discover a campus-SSO URL.
-#   * resolve_credential_form probes /login then /cas/login, so a school that only
-#     serves its form at /cas/login (e.g. NOU) needs no override.
-# Adding a school = appending a 3-tuple here (or a pure-config base_url); never a URL or
-# flow. Enforced by tests/test_no_school_privilege.py.
+# Uniform capability set applied to every school — all supported schools share the
+# same full feature set, so capabilities are a code default, never per-school data.
 _STANDARD_CAPS = ProviderCapabilities(
     number=True,
     radar=True,
@@ -228,167 +135,106 @@ _STANDARD_CAPS = ProviderCapabilities(
     direct_code_lookup=True,
 )
 
-# (key, label, base_url) — no login_url, no auth_flow. See the note above.
-_TRONCLASS_SCHOOLS = [
-    ("asia", "Asia University TronClass", "https://tronclass.asia.edu.tw"),
-    ("au", "Aletheia University TronClass", "https://tronclass.au.edu.tw"),
-    ("aeust", "Oriental Institute of Technology TronClass", "https://elearning.aeust.edu.tw"),
-    ("cgust", "Chang Gung University of Science and Technology TronClass", "https://tronclass.cgust.edu.tw"),
-    ("cityumo", "City University of Macau TronClass", "https://tronclass.cityu.edu.mo"),
-    ("cjcu", "Chang Jung Christian University TronClass", "https://tronclass.cjcu.edu.tw"),
-    ("ctust", "Central Taiwan University of Science and Technology TronClass", "https://tronclass.ctust.edu.tw"),
-    ("cufa", "Chungyu University of Film and Arts TronClass", "https://tronclass.cufa.edu.tw"),
-    ("cyut", "Chaoyang University of Technology TronClass", "https://tronclass.cyut.edu.tw"),
-    ("dyu", "Da-Yeh University TronClass", "https://tronclass.dyu.edu.tw"),
-    ("hk", "Hungkuang University TronClass", "https://tronclass.hk.edu.tw"),
-    ("hwu", "Hsing Wu University TronClass", "https://iclass.hwu.edu.tw"),
-    ("lhu", "Lunghwa University of Science and Technology TronClass", "https://elearn.lhu.edu.tw"),
-    ("mkc", "MacKay Junior College of Medicine, Nursing and Management TronClass", "https://tronclass.mkc.edu.tw"),
-    ("must", "Minghsin University of Science and Technology TronClass", "https://tronclass.must.edu.tw"),
-    ("nanya", "Nanya Institute of Technology TronClass", "https://tronclass.nanya.edu.tw"),
-    ("ncue", "National Changhua University of Education TronClass", "https://tronclass.ncue.edu.tw"),
-    ("ncut", "National Chin-Yi University of Technology TronClass", "https://tronclass.ncut.edu.tw"),
-    ("nfu", "National Formosa University TronClass", "https://ulearn.nfu.edu.tw"),
-    ("nou", "National Open University TronClass", "https://tronclass.nou.edu.tw"),
-    ("nsysu", "National Sun Yat-sen University TronClass", "https://elearn.nsysu.edu.tw"),
-    ("ntou", "National Taiwan Ocean University TronClass", "https://tronclass.ntou.edu.tw"),
-    ("ntub", "National Taipei University of Business TronClass", "https://tronclass.ntub.edu.tw"),
-    ("ntuspecs", "NTU School of Professional Education and Continuing Studies TronClass", "https://elearn.ntuspecs.ntu.edu.tw"),
-    ("ocu", "Overseas Chinese University TronClass", "https://tronclass.ocu.edu.tw"),
-    ("pu", "Providence University TronClass", "https://tronclass.pu.edu.tw"),
-    ("shu", "Shih Hsin University TronClass", "https://tronclass.shu.edu.tw"),
-    ("stu", "Shu-Te University TronClass", "https://tc.stu.edu.tw"),
-    ("ttu", "Tatung University TronClass", "https://ilearn.ttu.edu.tw"),
-    ("usc", "Shih Chien University TronClass", "https://tronclass.usc.edu.tw"),
-    ("ypu", "Yuanpei University of Medical Technology TronClass", "https://tronclass.ypu.edu.tw"),
-    ("yuntech", "National Yunlin University of Science and Technology TronClass", "https://eclass.yuntech.edu.tw"),
-    ("kwnc", "Kiang Wu Nursing College of Macau TronClass", "https://tronclass.kwnc.edu.mo"),
-]
 
-for _key, _label, _base_url in _TRONCLASS_SCHOOLS:
-    PROVIDERS[_key] = ProviderDefinition(
-        key=_key,
-        label=_label,
-        base_url=_base_url,
+# --- School registry --------------------------------------------------------
+# There are deliberately ZERO school literals in this module. Every school's code,
+# path, alias and parameter lives in DATA: the bundled schools.toml seed fills
+# config.advanced.toml on first run, and from then on config.advanced.toml is the
+# live source of truth (refresh_provider_registry overwrites the seed with config).
+# Adding / editing / removing a school = editing config.advanced.toml (or the seed)
+# — never this file. Enforced by tests/test_no_school_privilege.py.
+
+def _seed_path() -> Path:
+    """Locate the bundled factory-default registry (schools.toml). Resolves from a
+    source/editable checkout (next to this module) and from a PyInstaller bundle
+    (collected under troTHU/ via the .spec DATAS entry / _MEIPASS)."""
+    candidates = [Path(__file__).with_name("schools.toml")]
+    meipass = getattr(sys, "_MEIPASS", "")
+    if meipass:
+        candidates.append(Path(meipass) / "troTHU" / "schools.toml")
+    for path in candidates:
+        try:
+            if path.is_file():
+                return path
+        except OSError:
+            continue
+    return candidates[0]
+
+
+def _load_seed() -> Dict[str, Any]:
+    try:
+        with open(_seed_path(), "rb") as handle:
+            data = _toml_reader.load(handle)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        # A correct build always ships schools.toml; degrade to an empty registry
+        # rather than crash the whole CLI (get_provider stays defensive below).
+        return {}
+
+
+def _aliases_tuple(value: Any) -> Tuple[str, ...]:
+    if not isinstance(value, (list, tuple)):
+        return ()
+    return tuple(str(a).strip() for a in value if str(a).strip())
+
+
+def _provider_from_seed(key: str, block: Mapping[str, Any]) -> ProviderDefinition:
+    return ProviderDefinition(
+        key=key,
+        label=str(block.get("label") or key.upper()),
+        base_url=str(block.get("base_url") or ""),
         status="ready",
         support_level="ready",
         capabilities=_STANDARD_CAPS,
-        notes="Bulk-registered TronClass school; login fully feature-detected.",
+        notes=str(block.get("notes") or ""),
+        user_visible=bool(block.get("user_visible", True)),
+        aliases=_aliases_tuple(block.get("aliases")),
     )
 
 
-PROVIDER_ALIASES = {
-    "": DEFAULT_PROVIDER,
-    "tunghai": "thu",
-    "thu.edu": "thu",
-    "ilearn": "thu",
-    "ilearn.thu": "thu",
-    "東海": "thu",
-    "東海大學": "thu",
-    "fju.edu": "fju",
-    "輔仁": "fju",
-    "輔仁大學": "fju",
-    "tamkang": "tku",
-    "淡江": "tku",
-    "淡江大學": "tku",
-    "tc": "tronclass",
-    "tron": "tronclass",
-    "tronclass": "tronclass",
-    "tronclass.com": "tronclass",
-    "tronclass.com.tw": "tronclass",
-    "www.tronclass.com.tw": "tronclass",
-    "官方": "tronclass",
-    "官方站": "tronclass",
-    "scu": "scu",
-    "scu.edu": "scu",
-    "soochow": "scu",
-    "東吳": "scu",
-    "東吳大學": "scu",
-    # --- Bulk-registered TronClass schools (中文別名；key 本身已可解析) ---
-    "亞洲大學": "asia",
-    "亞洲": "asia",
-    "真理大學": "au",
-    "真理": "au",
-    "亞東科技大學": "aeust",
-    "亞東": "aeust",
-    "長庚科技大學": "cgust",
-    "長庚科大": "cgust",
-    "澳門城市大學": "cityumo",
-    "城市大學": "cityumo",
-    "長榮大學": "cjcu",
-    "長榮": "cjcu",
-    "中台科技大學": "ctust",
-    "中台科大": "ctust",
-    "崇右影藝科技大學": "cufa",
-    "崇右": "cufa",
-    "朝陽科技大學": "cyut",
-    "朝陽科大": "cyut",
-    "大葉大學": "dyu",
-    "大葉": "dyu",
-    "弘光科技大學": "hk",
-    "弘光科大": "hk",
-    "醒吾科技大學": "hwu",
-    "醒吾": "hwu",
-    "龍華科技大學": "lhu",
-    "龍華科大": "lhu",
-    "龍華": "lhu",
-    "lunghwa": "lhu",
-    "馬偕醫護管理專科學校": "mkc",
-    "馬偕": "mkc",
-    "明新科技大學": "must",
-    "明新科大": "must",
-    "南亞技術學院": "nanya",
-    "南亞": "nanya",
-    "國立彰化師範大學": "ncue",
-    "彰師大": "ncue",
-    "彰化師範大學": "ncue",
-    "國立勤益科技大學": "ncut",
-    "勤益": "ncut",
-    "勤益科大": "ncut",
-    "國立虎尾科技大學": "nfu",
-    "虎尾科大": "nfu",
-    "虎尾": "nfu",
-    "國立空中大學": "nou",
-    "空中大學": "nou",
-    "空大": "nou",
-    "國立中山大學": "nsysu",
-    "中山大學": "nsysu",
-    "國立臺灣海洋大學": "ntou",
-    "國立台灣海洋大學": "ntou",
-    "海洋大學": "ntou",
-    "海大": "ntou",
-    "國立臺北商業大學": "ntub",
-    "國立台北商業大學": "ntub",
-    "北商大": "ntub",
-    "臺灣大學進修推廣學院": "ntuspecs",
-    "台灣大學進修推廣學院": "ntuspecs",
-    "臺大進修推廣學院": "ntuspecs",
-    "台大進修推廣學院": "ntuspecs",
-    "僑光科技大學": "ocu",
-    "僑光科大": "ocu",
-    "僑光": "ocu",
-    "靜宜大學": "pu",
-    "靜宜": "pu",
-    "世新大學": "shu",
-    "世新": "shu",
-    "樹德科技大學": "stu",
-    "樹德科大": "stu",
-    "樹德": "stu",
-    "大同大學": "ttu",
-    "大同": "ttu",
-    "實踐大學": "usc",
-    "實踐": "usc",
-    "元培醫事科技大學": "ypu",
-    "元培": "ypu",
-    "元培科大": "ypu",
-    "國立雲林科技大學": "yuntech",
-    "雲林科技大學": "yuntech",
-    "雲科大": "yuntech",
-    "雲科": "yuntech",
-    "澳門鏡湖護理學院": "kwnc",
-    "鏡湖護理學院": "kwnc",
-    "鏡湖": "kwnc",
-}
+def _build_alias_map(providers: Mapping[str, ProviderDefinition], default: str) -> Dict[str, str]:
+    """Map every alias (and the bare key) to its provider key. Lookups lower-case
+    the query, so ASCII aliases are stored lower-cased; CJK is unaffected."""
+    out: Dict[str, str] = {"": default}
+    for key, provider in providers.items():
+        out[key.lower()] = key
+        for alias in provider.aliases:
+            text = str(alias).strip().lower()
+            if text:
+                out.setdefault(text, key)
+    return out
+
+
+def _registry_from_seed() -> Tuple[Dict[str, ProviderDefinition], Dict[str, str], str]:
+    seed = _load_seed()
+    default = str(seed.get("default") or "thu")
+    providers: Dict[str, ProviderDefinition] = {}
+    for key, block in seed.items():
+        if key == "default" or not isinstance(block, Mapping):
+            continue
+        providers[str(key)] = _provider_from_seed(str(key), block)
+    if providers and default not in providers:
+        default = sorted(providers)[0]
+    return providers, _build_alias_map(providers, default), default
+
+
+# Module-global registry — seeded at import, then overwritten by
+# refresh_provider_registry() once config.advanced.toml is loaded (config wins).
+PROVIDERS, PROVIDER_ALIASES, DEFAULT_PROVIDER = _registry_from_seed()
+
+
+_SEED_CACHE: Dict[str, ProviderDefinition] | None = None
+
+
+def seed_providers() -> Dict[str, ProviderDefinition]:
+    """The factory-default registry from schools.toml (NOT the live, possibly
+    config-refreshed globals). The seed file is immutable at runtime, so it is
+    parsed once and cached. Used as the deterministic baseline for
+    normalize_provider_config and to (re)materialize a fresh/deleted advanced file."""
+    global _SEED_CACHE
+    if _SEED_CACHE is None:
+        _SEED_CACHE = _registry_from_seed()[0]
+    return _SEED_CACHE
 
 
 def normalize_provider_name(value: Any) -> str:
@@ -398,7 +244,13 @@ def normalize_provider_name(value: Any) -> str:
 
 def get_provider(name: Any = "") -> ProviderDefinition:
     key = normalize_provider_name(name)
-    return PROVIDERS.get(key, PROVIDERS[DEFAULT_PROVIDER])
+    if key in PROVIDERS:
+        return PROVIDERS[key]
+    if DEFAULT_PROVIDER in PROVIDERS:
+        return PROVIDERS[DEFAULT_PROVIDER]
+    # Empty registry (corrupt build / missing seed): a defensive default so the CLI
+    # still runs instead of raising KeyError at every call site.
+    return ProviderDefinition(key=DEFAULT_PROVIDER, label=DEFAULT_PROVIDER.upper(), base_url="")
 
 
 def list_providers() -> List[ProviderDefinition]:
@@ -543,7 +395,11 @@ def normalize_provider_config(value: Any) -> Dict[str, Any]:
     if not isinstance(available, Mapping):
         available = {}
 
-    all_keys = set(PROVIDERS.keys())
+    # Baseline on the immutable factory seed (not the mutable, config-refreshed
+    # global registry) so this is a pure function of (config, seed): config schools
+    # win and extend, and a config with no schools falls back to exactly the seed.
+    seed = seed_providers()
+    all_keys = set(seed.keys())
     for key, override in available.items():
         if isinstance(override, Mapping) and "base_url" in override:
             all_keys.add(key)
@@ -555,8 +411,8 @@ def normalize_provider_config(value: Any) -> Dict[str, Any]:
 
     merged_available: Dict[str, Dict[str, Any]] = {}
     for key in sorted(all_keys):
-        if key in PROVIDERS:
-            merged = PROVIDERS[key].to_config()
+        if key in seed:
+            merged = seed[key].to_config()
         else:
             base_url = ""
             override = available.get(key)
@@ -577,17 +433,9 @@ def normalize_provider_config(value: Any) -> Dict[str, Any]:
                 "ready": True,
                 "daily_ready": True,
                 "user_visible": True,
-                "capabilities": ProviderCapabilities(
-                    number=True,
-                    radar=True,
-                    qrcode=True,
-                    course_discovery=True,
-                    teacher_rollcall=True,
-                    manual_qr=True,
-                    local_scanner=True,
-                    direct_code_lookup=True,
-                ).to_dict(),
+                "capabilities": _STANDARD_CAPS.to_dict(),
                 "notes": "Custom configured provider.",
+                "aliases": [],
             }
 
         override = available.get(key)
@@ -598,7 +446,7 @@ def normalize_provider_config(value: Any) -> Dict[str, Any]:
                 merged["rollcalls_url"] = endpoints["rollcalls_url"]
                 merged["current_semester_url"] = endpoints["current_semester_url"]
                 merged["courses_url"] = endpoints["courses_url"]
-                if key not in PROVIDERS:
+                if key not in seed:
                     merged["login_url"] = merged["base_url"] + "/login" if merged["base_url"] else ""
             # Captcha params are intentionally NOT overridable per provider: the flow
             # detects the captcha field/length from the live page and lets OCR decide.
@@ -614,6 +462,8 @@ def normalize_provider_config(value: Any) -> Dict[str, Any]:
             ):
                 if override_key in override:
                     merged[override_key] = str(override[override_key] or "")
+            if "aliases" in override:
+                merged["aliases"] = list(_aliases_tuple(override.get("aliases")))
             if "user_visible" in override:
                 merged["user_visible"] = _coerce_bool(override.get("user_visible"), bool(merged.get("user_visible", True)))
         merged_available[key] = merged
@@ -625,3 +475,52 @@ def normalize_provider_config(value: Any) -> Dict[str, Any]:
         "allow_experimental": _coerce_bool(raw_config.get("allow_experimental"), False),
         "available": merged_available,
     }
+
+
+def _provider_from_config(cfg: Mapping[str, Any]) -> ProviderDefinition:
+    """Rebuild a ProviderDefinition from a merged config (to_config-shaped) dict."""
+    caps = cfg.get("capabilities")
+    if isinstance(caps, Mapping):
+        cap_fields = ProviderCapabilities.__dataclass_fields__
+        capabilities = ProviderCapabilities(**{k: bool(v) for k, v in caps.items() if k in cap_fields})
+    else:
+        capabilities = _STANDARD_CAPS
+    return ProviderDefinition(
+        key=str(cfg.get("key") or ""),
+        label=str(cfg.get("label") or ""),
+        base_url=str(cfg.get("base_url") or ""),
+        login_url=str(cfg.get("login_url") or ""),
+        auth_flow=str(cfg.get("auth_flow") or "auto"),
+        rollcalls_url=str(cfg.get("rollcalls_url") or ""),
+        current_semester_url=str(cfg.get("current_semester_url") or ""),
+        courses_url=str(cfg.get("courses_url") or ""),
+        status=str(cfg.get("status") or "ready"),
+        support_level=str(cfg.get("support_level") or ""),
+        capabilities=capabilities,
+        notes=str(cfg.get("notes") or ""),
+        user_visible=_coerce_bool(cfg.get("user_visible"), True),
+        aliases=_aliases_tuple(cfg.get("aliases")),
+    )
+
+
+def refresh_provider_registry(available: Any) -> None:
+    """Rebuild the in-memory registry from the merged config ``available`` map so
+    edits in config.advanced.toml (base_url / aliases / label …) take effect for
+    every consumer (get_provider, list_all_providers, normalize_provider_name) with
+    no call-site changes. Config wins over the seed. Call once after config load."""
+    global PROVIDERS, PROVIDER_ALIASES
+    if not isinstance(available, Mapping) or not available:
+        return
+    rebuilt: Dict[str, ProviderDefinition] = {}
+    for key, cfg in available.items():
+        if not isinstance(cfg, Mapping):
+            continue
+        merged = dict(cfg)
+        merged.setdefault("key", str(key))
+        try:
+            rebuilt[str(key)] = _provider_from_config(merged)
+        except Exception:
+            continue
+    if rebuilt:
+        PROVIDERS = rebuilt
+        PROVIDER_ALIASES = _build_alias_map(rebuilt, DEFAULT_PROVIDER)

@@ -36,11 +36,27 @@ class NoSchoolPrivilegeTest(unittest.TestCase):
                 "provider {!r} overrides login_url ({!r}); derive it from base_url".format(p.key, p.login_url),
             )
 
-    def test_bulk_school_rows_carry_no_url_or_flow(self) -> None:
-        # The bulk table is (key, label, base_url) only — structurally impossible to slip a
-        # per-school login_url or auth_flow back in.
-        for row in providers._TRONCLASS_SCHOOLS:
-            self.assertEqual(len(row), 3, "bulk school row must be (key, label, base_url): {!r}".format(row))
+    def test_seed_carries_no_per_school_login_presets(self) -> None:
+        # The factory seed (schools.toml) is the ONLY place school data is written down.
+        # It must carry zero per-school login privilege: no login_url / auth_flow / captcha
+        # keys anywhere, and every school must have a base_url. Login is feature-detected.
+        seed = providers._load_seed()
+        banned = {"login_url", "auth_flow", "captcha_field", "captcha_length",
+                  "captcha_charset", "captcha_image_name"}
+        self.assertTrue(seed, "schools.toml seed must load")
+        for key, block in seed.items():
+            if key == "default" or not isinstance(block, dict):
+                continue
+            leaked = banned & set(block)
+            self.assertEqual(leaked, set(), "school {!r} in schools.toml carries banned keys {}".format(key, leaked))
+            self.assertTrue(str(block.get("base_url") or "").strip(), "school {!r} missing base_url".format(key))
+
+    def test_module_has_no_hardcoded_school_registry(self) -> None:
+        # providers.py must contain no school literals — the registry comes from data.
+        # Sentinels from the old literals (bulk table / known base_urls) must be gone.
+        text = (ROOT / "providers.py").read_text(encoding="utf-8")
+        for needle in ("_TRONCLASS_SCHOOLS", "ilearn.thu.edu.tw", "tronclass.scu.edu.tw", "elearn2.fju.edu.tw"):
+            self.assertNotIn(needle, text, "providers.py still hardcodes school data ({!r})".format(needle))
 
     def test_login_flow_has_no_school_named_identifiers(self) -> None:
         # NAME tokens only — comments and docstrings may mention THU/FJU/TKU as examples,

@@ -1,0 +1,209 @@
+# Factory-default school registry — the SEED that fills config.advanced.toml on
+# first run. After that, config.advanced.toml is the live, editable source of
+# truth: edit / add / remove schools THERE, not here. Delete config.advanced.toml
+# to re-seed everything from this file.
+#
+# Each [<key>] block — the key IS the school code (the config.conf `school` value):
+#   label    = display name
+#   base_url = site root; login URL / auth flow / image-captcha are all auto-detected
+#              at runtime, so there is deliberately NO per-school login_url/auth_flow.
+#   aliases  = extra names (中文/英文) that resolve to this code (optional)
+#   notes    = informational only (optional)
+# Capabilities are uniform for every school and applied in code, not listed here.
+
+default = "thu"
+
+[thu]
+label = "Tunghai University iLearn"
+base_url = "https://ilearn.thu.edu.tw"
+aliases = ["東海", "東海大學", "tunghai", "ilearn", "ilearn.thu", "thu.edu"]
+notes = "Primary supported provider. Kept compatible with the legacy config.conf flow."
+
+[fju]
+label = "Fu Jen Catholic University TronClass"
+base_url = "https://elearn2.fju.edu.tw"
+aliases = ["輔仁", "輔仁大學", "fju.edu"]
+notes = "CAS login with a static numeric image captcha, solved locally via the 'ocr' extra (ddddocr) or the downloadable OCR sidecar."
+
+[tku]
+label = "Tamkang University TronClass"
+base_url = "https://iclass.tku.edu.tw"
+aliases = ["淡江", "淡江大學", "tamkang"]
+notes = "Tamkang SSO (NetIQ NAM); the SSO host is auto-derived from the login page."
+
+[tronclass]
+label = "TronClass Public Cloud"
+base_url = "https://www.tronclass.com.tw"
+aliases = ["tc", "tron", "tronclass.com", "tronclass.com.tw", "www.tronclass.com.tw", "官方", "官方站"]
+notes = "Public TronClass cloud tenant; email/password login form."
+
+[scu]
+label = "Soochow University TronClass"
+base_url = "https://tronclass.scu.edu.tw"
+aliases = ["東吳", "東吳大學", "scu.edu", "soochow"]
+notes = "Standard CAS login form extraction."
+
+[asia]
+label = "Asia University TronClass"
+base_url = "https://tronclass.asia.edu.tw"
+aliases = ["亞洲大學", "亞洲"]
+
+[au]
+label = "Aletheia University TronClass"
+base_url = "https://tronclass.au.edu.tw"
+aliases = ["真理大學", "真理"]
+
+[aeust]
+label = "Oriental Institute of Technology TronClass"
+base_url = "https://elearning.aeust.edu.tw"
+aliases = ["亞東科技大學", "亞東"]
+
+[cgust]
+label = "Chang Gung University of Science and Technology TronClass"
+base_url = "https://tronclass.cgust.edu.tw"
+aliases = ["長庚科技大學", "長庚科大"]
+
+[cityumo]
+label = "City University of Macau TronClass"
+base_url = "https://tronclass.cityu.edu.mo"
+aliases = ["澳門城市大學", "城市大學"]
+
+[cjcu]
+label = "Chang Jung Christian University TronClass"
+base_url = "https://tronclass.cjcu.edu.tw"
+aliases = ["長榮大學", "長榮"]
+
+[ctust]
+label = "Central Taiwan University of Science and Technology TronClass"
+base_url = "https://tronclass.ctust.edu.tw"
+aliases = ["中台科技大學", "中台科大"]
+
+[cufa]
+label = "Chungyu University of Film and Arts TronClass"
+base_url = "https://tronclass.cufa.edu.tw"
+aliases = ["崇右影藝科技大學", "崇右"]
+
+[cyut]
+label = "Chaoyang University of Technology TronClass"
+base_url = "https://tronclass.cyut.edu.tw"
+aliases = ["朝陽科技大學", "朝陽科大"]
+
+[dyu]
+label = "Da-Yeh University TronClass"
+base_url = "https://tronclass.dyu.edu.tw"
+aliases = ["大葉大學", "大葉"]
+
+[hk]
+label = "Hungkuang University TronClass"
+base_url = "https://tronclass.hk.edu.tw"
+aliases = ["弘光科技大學", "弘光科大"]
+
+[hwu]
+label = "Hsing Wu University TronClass"
+base_url = "https://iclass.hwu.edu.tw"
+aliases = ["醒吾科技大學", "醒吾"]
+
+[lhu]
+label = "Lunghwa University of Science and Technology TronClass"
+base_url = "https://elearn.lhu.edu.tw"
+aliases = ["龍華科技大學", "龍華科大", "龍華", "lunghwa"]
+
+[mkc]
+label = "MacKay Junior College of Medicine, Nursing and Management TronClass"
+base_url = "https://tronclass.mkc.edu.tw"
+aliases = ["馬偕醫護管理專科學校", "馬偕"]
+
+[must]
+label = "Minghsin University of Science and Technology TronClass"
+base_url = "https://tronclass.must.edu.tw"
+aliases = ["明新科技大學", "明新科大"]
+
+[nanya]
+label = "Nanya Institute of Technology TronClass"
+base_url = "https://tronclass.nanya.edu.tw"
+aliases = ["南亞技術學院", "南亞"]
+
+[ncue]
+label = "National Changhua University of Education TronClass"
+base_url = "https://tronclass.ncue.edu.tw"
+aliases = ["國立彰化師範大學", "彰化師範大學", "彰師大"]
+
+[ncut]
+label = "National Chin-Yi University of Technology TronClass"
+base_url = "https://tronclass.ncut.edu.tw"
+aliases = ["國立勤益科技大學", "勤益科大", "勤益"]
+
+[nfu]
+label = "National Formosa University TronClass"
+base_url = "https://ulearn.nfu.edu.tw"
+aliases = ["國立虎尾科技大學", "虎尾科大", "虎尾"]
+
+[nou]
+label = "National Open University TronClass"
+base_url = "https://tronclass.nou.edu.tw"
+aliases = ["國立空中大學", "空中大學", "空大"]
+
+[nsysu]
+label = "National Sun Yat-sen University TronClass"
+base_url = "https://elearn.nsysu.edu.tw"
+aliases = ["國立中山大學", "中山大學"]
+
+[ntou]
+label = "National Taiwan Ocean University TronClass"
+base_url = "https://tronclass.ntou.edu.tw"
+aliases = ["國立臺灣海洋大學", "國立台灣海洋大學", "海洋大學", "海大"]
+
+[ntub]
+label = "National Taipei University of Business TronClass"
+base_url = "https://tronclass.ntub.edu.tw"
+aliases = ["國立臺北商業大學", "國立台北商業大學", "北商大"]
+
+[ntuspecs]
+label = "NTU School of Professional Education and Continuing Studies TronClass"
+base_url = "https://elearn.ntuspecs.ntu.edu.tw"
+aliases = ["臺灣大學進修推廣學院", "台灣大學進修推廣學院", "臺大進修推廣學院", "台大進修推廣學院"]
+
+[ocu]
+label = "Overseas Chinese University TronClass"
+base_url = "https://tronclass.ocu.edu.tw"
+aliases = ["僑光科技大學", "僑光科大", "僑光"]
+
+[pu]
+label = "Providence University TronClass"
+base_url = "https://tronclass.pu.edu.tw"
+aliases = ["靜宜大學", "靜宜"]
+
+[shu]
+label = "Shih Hsin University TronClass"
+base_url = "https://tronclass.shu.edu.tw"
+aliases = ["世新大學", "世新"]
+
+[stu]
+label = "Shu-Te University TronClass"
+base_url = "https://tc.stu.edu.tw"
+aliases = ["樹德科技大學", "樹德科大", "樹德"]
+
+[ttu]
+label = "Tatung University TronClass"
+base_url = "https://ilearn.ttu.edu.tw"
+aliases = ["大同大學", "大同"]
+
+[usc]
+label = "Shih Chien University TronClass"
+base_url = "https://tronclass.usc.edu.tw"
+aliases = ["實踐大學", "實踐"]
+
+[ypu]
+label = "Yuanpei University of Medical Technology TronClass"
+base_url = "https://tronclass.ypu.edu.tw"
+aliases = ["元培醫事科技大學", "元培科大", "元培"]
+
+[yuntech]
+label = "National Yunlin University of Science and Technology TronClass"
+base_url = "https://eclass.yuntech.edu.tw"
+aliases = ["國立雲林科技大學", "雲林科技大學", "雲科大", "雲科"]
+
+[kwnc]
+label = "Kiang Wu Nursing College of Macau TronClass"
+base_url = "https://tronclass.kwnc.edu.mo"
+aliases = ["澳門鏡湖護理學院", "鏡湖護理學院", "鏡湖"]
