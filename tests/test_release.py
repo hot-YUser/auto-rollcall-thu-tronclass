@@ -449,7 +449,7 @@ class PackageDiagnosticsTest(unittest.TestCase):
 
         self.assertTrue(workflow.exists())
         self.assertIn("python -m unittest discover -v", text)
-        self.assertIn("tests.test_app_shell", text)
+        self.assertIn("tests.test_local_surfaces", text)
         self.assertIn("tests.test_release", text)
         self.assertIn("tests.test_cli", text)
         self.assertIn("tests.test_contracts", text)

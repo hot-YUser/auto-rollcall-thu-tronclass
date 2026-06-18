@@ -17,14 +17,14 @@ from troTHU.pending_qr import add_pending_qr, list_pending_qr, match_pending_qr,
 from troTHU.ux_tools import export_debug_bundle, tail_log_records
 
 
-# --- merged from tests/test_app_shell.py ---
+# Live local-surface tests: observability/dashboard snapshot, webview cookie
+# sync, the local QR scanner, adapter bindings, pending-QR, and ux helpers.
 try:
     import aiohttp
     from aiohttp import web
 except (ImportError, ModuleNotFoundError):
     aiohttp = None
     web = None
-
 
 
 # --- merged from tests/test_observability.py ---

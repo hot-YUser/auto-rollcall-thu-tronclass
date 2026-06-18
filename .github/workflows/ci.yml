@@ -34,7 +34,7 @@ jobs:
         run: python -m pip install -e .
 
       - name: Targeted smoke tests
-        run: python -m unittest -v tests.test_app_shell tests.test_release tests.test_cli tests.test_contracts
+        run: python -m unittest -v tests.test_local_surfaces tests.test_release tests.test_cli tests.test_contracts
 
       - name: Release checklist smoke
         run: python -m troTHU.tron release-check --json
