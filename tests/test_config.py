@@ -352,6 +352,43 @@ class ConfigFormatTest(unittest.TestCase):
             tron.CONFIG.update(original)
 
 
+class ConfigFormatHelperTest(unittest.TestCase):
+    """Direct pins for the config.conf parsing primitives. They touch user input
+    (full-width IME tokens, quoted values, comma/time lists) and feed credential +
+    schedule parsing, but had no unit guard until now."""
+
+    def test_to_halfwidth_folds_ascii_range_and_space_only(self) -> None:
+        from troTHU.config_format import _to_halfwidth
+        self.assertEqual(_to_halfwidth("ＡＢＣ０１２＝：［］"), "ABC012=:[]")
+        self.assertEqual(_to_halfwidth("　"), " ")  # full-width space -> ASCII space
+        self.assertEqual(_to_halfwidth("東海 THU"), "東海 THU")  # CJK + ASCII untouched
+        self.assertEqual(_to_halfwidth(""), "")
+
+    def test_strip_quotes_matched_unmatched_and_cjk_pairs(self) -> None:
+        from troTHU.config_format import _strip_quotes
+        self.assertEqual(_strip_quotes('"hi"'), "hi")
+        self.assertEqual(_strip_quotes("'x'"), "x")
+        self.assertEqual(_strip_quotes("「class A」"), "class A")
+        self.assertEqual(_strip_quotes("“y”"), "y")
+        self.assertEqual(_strip_quotes('"unbalanced'), '"unbalanced')  # only one side -> kept
+        self.assertEqual(_strip_quotes("  spaced  "), "spaced")
+        self.assertEqual(_strip_quotes(""), "")
+
+    def test_split_list_tolerates_fullwidth_and_ideographic_separators(self) -> None:
+        from troTHU.config_format import _split_list
+        self.assertEqual(_split_list("a, b、c；d;e"), ["a", "b", "c", "d", "e"])
+        self.assertEqual(_split_list(" , , x ,"), ["x"])  # blanks dropped
+        self.assertEqual(_split_list(""), [])
+
+    def test_split_time_range_tolerates_dash_variants_and_malformed(self) -> None:
+        from troTHU.config_format import _split_time_range
+        self.assertEqual(_split_time_range("08:00-09:30"), ["08:00", "09:30"])
+        self.assertEqual(_split_time_range("08:00～09:30"), ["08:00", "09:30"])  # full-width tilde
+        self.assertEqual(_split_time_range("08:00－09:30"), ["08:00", "09:30"])  # full-width dash
+        self.assertEqual(_split_time_range("08:00-"), ["08:00"])  # trailing mark dropped
+        self.assertEqual(_split_time_range(""), [])
+
+
 class AdvancedProviderRenderTest(unittest.TestCase):
     """v1.6-alpha.3: config.advanced.toml is the live source of truth for the FULL
     school registry — every school is materialized and editable; config wins over the
