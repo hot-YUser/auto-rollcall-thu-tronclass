@@ -103,7 +103,7 @@ LOGIN_NEEDS_USER_STATUSES = frozenset({
 
 # One source of truth for the user-facing line shown on each non-success login.
 # Every LoginResult.status (except 'success') MUST have an entry here — the coverage
-# is asserted by tests/test_login_messages.py so a new status can't ship message-less.
+# is asserted by tests/test_http_login.py so a new status can't ship message-less.
 # Secrets (password / captcha contents) are never included.
 _LOGIN_FAILURE_MESSAGES = {
     'missing_credentials': '未設定帳號密碼。請按任意鍵編輯 config.conf，填好後關閉記事本。',

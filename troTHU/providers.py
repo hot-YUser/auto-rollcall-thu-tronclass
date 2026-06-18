@@ -142,7 +142,7 @@ _STANDARD_CAPS = ProviderCapabilities(
 # config.advanced.toml on first run, and from then on config.advanced.toml is the
 # live source of truth (refresh_provider_registry overwrites the seed with config).
 # Adding / editing / removing a school = editing config.advanced.toml (or the seed)
-# — never this file. Enforced by tests/test_no_school_privilege.py.
+# — never this file. Enforced by tests/test_contracts.py.
 
 def _seed_path() -> Path:
     """Locate the bundled factory-default registry (schools.toml). Resolves from a
