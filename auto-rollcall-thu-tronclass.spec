@@ -22,7 +22,11 @@ def safe_collect_submodules(package_name):
 # log/, cookies/, tests/, and external reference projects must never be bundled.
 # Keep HIDDEN_IMPORTS in sync with `python -m troTHU.tron package-check --json`;
 # frozen builds require lazy connection-probe, radar, and teacher helper modules.
-DATAS = []
+# Bundle the factory-default school registry so providers.py can seed
+# config.advanced.toml on first run (loaded via __file__/_MEIPASS in providers._seed_path).
+DATAS = [
+    (str(ROOT / "troTHU" / "schools.toml"), "troTHU"),
+]
 
 HIDDEN_IMPORTS = sorted(
     set(
