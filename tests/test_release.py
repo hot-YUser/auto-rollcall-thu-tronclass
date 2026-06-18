@@ -344,11 +344,7 @@ class PackageDiagnosticsTest(unittest.TestCase):
         self.assertTrue(report["exists"])
         self.assertEqual(report["forbidden_datas"], [])
         self.assertIn("tests", report["excludes"])
-        self.assertIn("troTHU.app_blueprint", report["hidden_imports"])
         self.assertIn("troTHU.app_qr_experience", report["hidden_imports"])
-        self.assertIn("troTHU.app_shell", report["hidden_imports"])
-        self.assertIn("troTHU.app_shell_dashboard", report["hidden_imports"])
-        self.assertIn("troTHU.app_shell_polish", report["hidden_imports"])
         self.assertIn("troTHU.discord_gateway", report["hidden_imports"])
         self.assertIn("troTHU.global_radar_solver", report["hidden_imports"])
         self.assertIn("troTHU.radar_map_assist", report["hidden_imports"])
@@ -372,11 +368,7 @@ class PackageDiagnosticsTest(unittest.TestCase):
     def test_hidden_import_gap_detection_reports_missing_runtime_module(self) -> None:
         gaps = discover_hidden_import_gaps(Path("troTHU"), hidden_imports=["troTHU.account_store"])
 
-        self.assertIn("troTHU.app_blueprint", gaps)
         self.assertIn("troTHU.app_qr_experience", gaps)
-        self.assertIn("troTHU.app_shell", gaps)
-        self.assertIn("troTHU.app_shell_dashboard", gaps)
-        self.assertIn("troTHU.app_shell_polish", gaps)
         self.assertIn("troTHU.discord_gateway", gaps)
         self.assertIn("troTHU.global_radar_solver", gaps)
         self.assertIn("troTHU.radar_map_assist", gaps)

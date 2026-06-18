@@ -112,17 +112,6 @@ def main(argv: ctx.Optional[ctx.List[str]]=None) -> int:
             return ctx.provider_show_command(getattr(args, 'name', ''), json_output=getattr(args, 'json', False))
         parser.print_help()
         return 1
-    if args.command == 'app':
-        if getattr(args, 'app_command', None) == 'blueprint':
-            return ctx.app_blueprint_command(json_output=args.json)
-        if getattr(args, 'app_command', None) == 'serve':
-            try:
-                return ctx.asyncio.run(ctx.app_serve_command(args))
-            except Exception as exc:
-                print('App shell failed: {}'.format(exc))
-                return 1
-        parser.print_help()
-        return 1
     if args.command == 'webview':
         webview_command = getattr(args, 'webview_command', None) or 'status'
         if webview_command == 'status':

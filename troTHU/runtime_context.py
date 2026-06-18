@@ -105,19 +105,6 @@ _EAGER_REEXPORTS = {
         "binding_key",
         "map_adapter_command",
     ),
-    "troTHU.app_blueprint": (
-        "build_app_blueprint",
-        "format_app_blueprint_summary",
-        "validate_app_blueprint",
-    ),
-    "troTHU.app_shell": (
-        "run_app_shell",
-    ),
-    "troTHU.app_shell_polish": (
-        "build_shell_action_catalog",
-        "build_shell_drilldown",
-        "build_shell_ui_model",
-    ),
     "troTHU.bot_runtime": (
         "normalize_admins_config",
     ),
@@ -815,15 +802,6 @@ LAST_LOGIN_RESULT = LoginResult(status="missing_credentials", credential_source=
 TEACHER_LOGIN_RESULT = LoginResult(status="missing_credentials", credential_source="missing")
 
 _LEGACY_EXPORTS = {
-    '_app_shell_accounts': ('troTHU.cli_app', '_app_shell_accounts'),
-    '_app_shell_drilldown': ('troTHU.cli_app', '_app_shell_drilldown'),
-    '_app_shell_integrations': ('troTHU.cli_app', '_app_shell_integrations'),
-    '_app_shell_logs_summary': ('troTHU.cli_app', '_app_shell_logs_summary'),
-    '_app_shell_polish_reports': ('troTHU.cli_app', '_app_shell_polish_reports'),
-    '_app_shell_release_check': ('troTHU.cli_app', '_app_shell_release_check'),
-    '_app_shell_release_plan': ('troTHU.cli_app', '_app_shell_release_plan'),
-    '_app_shell_snapshot': ('troTHU.cli_app', '_app_shell_snapshot'),
-    '_app_shell_ui_model': ('troTHU.cli_app', '_app_shell_ui_model'),
     '_read_json_input': ('troTHU.cli_provider', '_read_json_input'),
     '_read_webview_cookie_input': ('troTHU.cli_app', '_read_webview_cookie_input'),
     '_research_gate_failure': ('troTHU.cli_research', '_research_gate_failure'),
@@ -834,9 +812,7 @@ _LEGACY_EXPORTS = {
     'account_show': ('troTHU.cli_accounts', 'account_show'),
     'account_state': ('troTHU.cli_accounts', 'account_state'),
     'account_state_report': ('troTHU.status_reports', 'account_state_report'),
-    'app_blueprint_command': ('troTHU.cli_app', 'app_blueprint_command'),
     'app_main': ('troTHU.monitor_runtime', 'app_main'),
-    'app_serve_command': ('troTHU.cli_app', 'app_serve_command'),
     'announce_rollcall_start': ('troTHU.rollcall_runtime', 'announce_rollcall_start'),
     'bind_account': ('troTHU.cli_accounts', 'bind_account'),
     'binding_summary': ('troTHU.status_reports', 'binding_summary'),
