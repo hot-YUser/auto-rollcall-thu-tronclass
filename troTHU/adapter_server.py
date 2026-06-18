@@ -19,7 +19,6 @@ except Exception:  # pragma: no cover
 try:
     from troTHU.bot_runtime import BotCommandResult, BotRuntime
     from troTHU.discord_adapter import (
-        DiscordDeliveryError,
         DiscordSignatureError,
         build_deferred_interaction_response,
         build_interaction_response,
@@ -33,7 +32,6 @@ try:
         get_discord_public_key,
         interaction_channel_id,
         interaction_to_command,
-        sanitize_discord_response_body,
         verify_discord_signature,
     )
     from troTHU.line_adapter import (
@@ -46,7 +44,6 @@ try:
 except ImportError:  # pragma: no cover - script execution fallback
     from bot_runtime import BotCommandResult, BotRuntime
     from discord_adapter import (
-        DiscordDeliveryError,
         DiscordSignatureError,
         build_deferred_interaction_response,
         build_interaction_response,
@@ -60,7 +57,6 @@ except ImportError:  # pragma: no cover - script execution fallback
         get_discord_public_key,
         interaction_channel_id,
         interaction_to_command,
-        sanitize_discord_response_body,
         verify_discord_signature,
     )
     from line_adapter import (
@@ -191,17 +187,6 @@ def _sender_error_result(exc: BaseException) -> Mapping[str, Any]:
         "status": 0,
         "endpoint": "reply",
         "error": sanitize_line_response_body(str(exc)),
-    }
-
-
-def _discord_sender_error_result(exc: BaseException) -> Mapping[str, Any]:
-    if isinstance(exc, DiscordDeliveryError):
-        return exc.to_dict()
-    return {
-        "ok": False,
-        "status": 0,
-        "endpoint": "edit_original",
-        "error": sanitize_discord_response_body(str(exc)),
     }
 
 

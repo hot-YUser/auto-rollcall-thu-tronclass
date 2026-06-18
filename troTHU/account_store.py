@@ -328,26 +328,23 @@ def load_session_cookies(session: Any, base_dir: Path, profile_name: str) -> boo
     return True
 
 
+_EMPTY_COOKIE_STATUS = {
+    "restored": False,
+    "has_session": False,
+    "expired": False,
+    "near_expiry": False,
+    "expires_at": None,
+}
+
+
 def cookie_cache_status(base_dir: Path, profile_name: str) -> Dict[str, Any]:
     path = cookie_path(base_dir, profile_name)
     if not path.exists():
-        return {
-            "restored": False,
-            "has_session": False,
-            "expired": False,
-            "near_expiry": False,
-            "expires_at": None,
-        }
+        return dict(_EMPTY_COOKIE_STATUS)
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except Exception:
-        return {
-            "restored": False,
-            "has_session": False,
-            "expired": False,
-            "near_expiry": False,
-            "expires_at": None,
-        }
+        return dict(_EMPTY_COOKIE_STATUS)
 
     cookies = []
     if isinstance(data, list):
@@ -355,13 +352,7 @@ def cookie_cache_status(base_dir: Path, profile_name: str) -> Dict[str, Any]:
     elif isinstance(data, dict) and data.get("version") == 2:
         cookies = data.get("cookies", [])
     else:
-        return {
-            "restored": False,
-            "has_session": False,
-            "expired": False,
-            "near_expiry": False,
-            "expires_at": None,
-        }
+        return dict(_EMPTY_COOKIE_STATUS)
 
     import time
     now = time.time()
