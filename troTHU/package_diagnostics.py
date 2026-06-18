@@ -159,17 +159,6 @@ def _parse_toml(path: Path) -> Dict[str, Any]:
         return {}
 
 
-def _requirement_lines(path: Path) -> List[str]:
-    if not path.exists():
-        return []
-    lines = []
-    for line in _read_text(path).splitlines():
-        stripped = line.strip()
-        if stripped and not stripped.startswith("#"):
-            lines.append(stripped)
-    return lines
-
-
 def _runtime_package_modules(package_dir: Path) -> List[str]:
     if not package_dir.exists():
         return []

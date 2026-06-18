@@ -59,13 +59,3 @@ def provider_show_command(name: str='', json_output: bool=False) -> int:
     return 0
 
 
-def _read_json_input(path_value: str) -> ctx.Any:
-    path = ctx.Path(path_value or '')
-    if not path.exists() or not path.is_file():
-        raise ValueError('input_not_found')
-    try:
-        return ctx.json.loads(path.read_text(encoding='utf-8'))
-    except OSError as exc:
-        raise ValueError('input_unreadable') from exc
-    except ValueError as exc:
-        raise ValueError('invalid_json') from exc

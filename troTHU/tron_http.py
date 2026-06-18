@@ -391,14 +391,6 @@ class TronHttpClient:
         async with self.session.get(url, headers=headers, **self.request_kwargs()) as resp:
             return await resp.text(), str(resp.url)
 
-    async def _get_login_form_page(
-        self,
-        url: str,
-        headers: Optional[Dict[str, str]] = None,
-    ) -> str:
-        html_text, _ = await self._get_login_form_response(url, headers)
-        return html_text
-
     async def fetch_captcha_image(self, captcha_url: str) -> bytes:
         """GET a login captcha image in the current session and return its bytes.
 

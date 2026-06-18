@@ -268,10 +268,6 @@ def list_supported_providers(include_hidden: bool = False) -> List[ProviderDefin
     return [provider for provider in providers if provider.user_visible]
 
 
-def provider_to_config(provider: ProviderDefinition) -> Dict[str, Any]:
-    return provider.to_config()
-
-
 def provider_registry_config() -> Dict[str, Any]:
     return {
         "current": DEFAULT_PROVIDER,

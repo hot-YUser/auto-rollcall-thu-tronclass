@@ -632,10 +632,6 @@ def format_found_code_banner(code: str) -> str:
     return "\n".join(lines)
 
 
-def format_radar_success_banner(rollcall_id: Any, method: Any = "", detail: Any = "") -> str:
-    return format_rollcall_success_banner("radar", rollcall_id, method, detail)
-
-
 def build_number_progress_message(
     rollcall_id: int,
     request_count: int,

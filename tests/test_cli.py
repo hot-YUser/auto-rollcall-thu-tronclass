@@ -993,22 +993,6 @@ class RuntimeHelpersTest(unittest.TestCase):
         )
         self.assertFalse(predicted[1])
 
-    def test_radar_success_banner_matches_expected_shape(self) -> None:
-        banner = runtime_helpers.format_radar_success_banner(
-            30017,
-            "global_wgs84",
-            "estimate-standard-ring-1",
-        )
-        fallback_banner = runtime_helpers.format_radar_success_banner("", "", "")
-
-        self.assertIn("雷達點名成功！", banner)
-        self.assertIn("Rollcall: 30017", banner)
-        self.assertIn("Method: global_wgs84", banner)
-        self.assertIn("Hit: estimate-standard-ring-1", banner)
-        self.assertIn("Rollcall: unknown", fallback_banner)
-        self.assertIn("Method: radar", fallback_banner)
-        self.assertIn("Hit: success", fallback_banner)
-
     def test_radar_boundary_points_normalizes_or_falls_back(self) -> None:
         points = runtime_helpers.normalize_radar_boundary_points(
             [{"lat": "24.1", "lng": "120.1"}, [24.2, 120.2], (24.3, 120.3)]

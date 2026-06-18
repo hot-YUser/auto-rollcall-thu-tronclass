@@ -179,7 +179,6 @@ _EAGER_REEXPORTS = {
         "capture_browser_target_metadata",
         "capture_research_api_target",
         "capture_rollcall_probe",
-        "capture_student_rollcalls_probe",
     ),
     "troTHU.webview_sync": (
         "WebViewSyncError",
@@ -274,7 +273,6 @@ _EAGER_REEXPORTS = {
         "format_countdown",
         "format_found_code_banner",
         "format_hhmm",
-        "format_radar_success_banner",
         "format_rollcall_start_message",
         "format_rollcall_success_banner",
         "format_success_banner_attendance_rate",
@@ -319,12 +317,6 @@ def _install_eager_reexports() -> None:
 
 
 _install_eager_reexports()
-
-CURRENT_PROMPT = "切換學號 (輸入 exit 離開) > "
-
-PROMPT_INPUT_ACTIVE = False
-
-CONSOLE_DEFERRED_LINES: List[str] = []
 
 LAST_STATUS = "初始化中"
 
@@ -700,12 +692,6 @@ DEFAULT_CONFIG = {
     },
 }
 
-YAML_ERROR_TYPES = tuple(
-    error_type
-    for error_type in (getattr(yaml, "YAMLError", None), ValueError)
-    if isinstance(error_type, type) and issubclass(error_type, BaseException)
-)
-
 if getattr(sys, "frozen", False):
     BASE_DIR = Path(sys.executable).parent
 else:
@@ -793,7 +779,6 @@ LAST_LOGIN_RESULT = LoginResult(status="missing_credentials", credential_source=
 TEACHER_LOGIN_RESULT = LoginResult(status="missing_credentials", credential_source="missing")
 
 _LEGACY_EXPORTS = {
-    '_read_json_input': ('troTHU.cli_provider', '_read_json_input'),
     '_read_webview_cookie_input': ('troTHU.cli_app', '_read_webview_cookie_input'),
     '_research_gate_failure': ('troTHU.cli_research', '_research_gate_failure'),
     '_resolve_webview_profile': ('troTHU.cli_app', '_resolve_webview_profile'),
@@ -846,7 +831,6 @@ _LEGACY_EXPORTS = {
     'course_discovery_report': ('troTHU.status_reports', 'course_discovery_report'),
     'courses_command': ('troTHU.cli_courses', 'courses_command'),
     'capture_rollcall_probe': ('troTHU.research_sandbox', 'capture_rollcall_probe'),
-    'capture_student_rollcalls_probe': ('troTHU.research_sandbox', 'capture_student_rollcalls_probe'),
     'validate_probe_target': ('troTHU.research_sandbox', 'validate_probe_target'),
     'RISKY_PROBE_TARGETS': ('troTHU.research_sandbox', 'RISKY_PROBE_TARGETS'),
     'PROBE_TARGETS_NEED_ROLLCALL_ID': ('troTHU.research_sandbox', 'PROBE_TARGETS_NEED_ROLLCALL_ID'),
@@ -968,12 +952,10 @@ _LEGACY_EXPORTS = {
     'radar': ('troTHU.radar_runtime', 'radar'),
     'random_id': ('troTHU.auth_runtime', 'random_id'),
     'random_ua': ('troTHU.auth_runtime', 'random_ua'),
-    'masked_login_user': ('troTHU.auth_runtime', 'masked_login_user'),
     'record_check_runtime': ('troTHU.rollcall_runtime', 'record_check_runtime'),
     'try_clipboard_qr_autosubmit': ('troTHU.rollcall_runtime', 'try_clipboard_qr_autosubmit'),
     'read_clipboard_qr_payload': ('troTHU.clipboard_qr', 'read_clipboard_qr_payload'),
     'clipboard_autosubmit_enabled': ('troTHU.clipboard_qr', 'clipboard_autosubmit_enabled'),
-    'report_rollcall_progress': ('troTHU.rollcall_progress', 'report_rollcall_progress'),
     'fetch_rollcall_progress': ('troTHU.rollcall_progress', 'fetch_rollcall_progress'),
     'format_rollcall_progress_text': ('troTHU.rollcall_progress', 'format_rollcall_progress_text'),
     'format_attendance_rate_text': ('troTHU.rollcall_progress', 'format_attendance_rate_text'),
@@ -998,7 +980,6 @@ _LEGACY_EXPORTS = {
     'research_probe_command': ('troTHU.cli_research', 'research_probe_command'),
     'research_report': ('troTHU.status_reports', 'research_report'),
     'research_status_command': ('troTHU.cli_research', 'research_status_command'),
-    'redacted_login_user': ('troTHU.auth_runtime', 'redacted_login_user'),
     'run_connection_probe': ('troTHU.connection_probe', 'run_connection_probe'),
     'reset_unsupported_rollcall_state': ('troTHU.rollcall_runtime', 'reset_unsupported_rollcall_state'),
     'resolve_credentials': ('troTHU.config_runtime', 'resolve_credentials'),

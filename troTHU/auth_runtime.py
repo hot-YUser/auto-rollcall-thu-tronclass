@@ -147,39 +147,16 @@ def should_auto_login_without_session() -> bool:
     return ctx.LAST_LOGIN_RESULT.status not in LOGIN_NEEDS_USER_STATUSES
 
 
-def redacted_login_user(user: ctx.Any) -> str:
-    return ctx.normalize_text(user)
-
-
-def masked_login_user(user: ctx.Any) -> str:
-    return ctx.normalize_text(user)
-
-
 # The unified login flow (login_flow.run_login_flow) DISPATCHES purely on detected page
 # features and never reads auth_flow. The only remaining pre-login use is the
-# `interactive_browser` mode (synthesised for pasted-URL providers). Manual cookies are
-# no longer a provider mode — they are just cookie detection (see the monitor loop), so
-# there is no per-provider manual-cookie gate. Legacy filled-config values still normalise
-# so old configs keep working.
-_LEGACY_AUTH_FLOW_ALIASES = {
-    'thu_cas': 'cas',
-    'cas_api_validated': 'cas',
-    'cas_login_settings': 'cas',
-    'tku_sso_browser': 'nam_neai',
-}
-
-
-def _active_auth_flow() -> str:
+# `interactive_browser` mode (synthesised for pasted-URL providers).
+def provider_requires_interactive_browser_login() -> bool:
     try:
         provider = ctx.get_active_provider_config()
     except Exception:
         provider = {}
     flow = ctx.normalize_text(provider.get('auth_flow') if isinstance(provider, dict) else '').lower()
-    return _LEGACY_AUTH_FLOW_ALIASES.get(flow, flow)
-
-
-def provider_requires_interactive_browser_login() -> bool:
-    return _active_auth_flow() == 'interactive_browser'
+    return flow == 'interactive_browser'
 
 
 def provider_prefers_browser_assisted_login() -> bool:

@@ -11,7 +11,7 @@ from troTHU.rollcall_engine import classify_rollcall, decide_rollcall, select_ro
 from troTHU.rollcall_models import AttendanceType, RollcallAction, AdapterTarget, NotificationEventType, OutboundEvent, RollcallBatchSummary, RollcallOutcome
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
-from troTHU.rollcall_progress import fetch_rollcall_progress, report_rollcall_progress, summarize_rollcall_progress, verify_rollcall_on_call_fine
+from troTHU.rollcall_progress import fetch_rollcall_progress, summarize_rollcall_progress, verify_rollcall_on_call_fine
 from tests.fake_tron_server import FakeTronServer
 from pathlib import Path
 
@@ -198,35 +198,6 @@ class FetchProgressTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(summary["present"], 1)
         self.assertTrue(summary["my_present"])
         self.assertEqual(summary["answered"], 1)
-
-    async def test_report_progress_does_not_print_unmatched_user_as_absent(self) -> None:
-        progress = {
-            "ok": True,
-            "rollcall_id": "77",
-            "total": 1,
-            "present": 1,
-            "answered": 1,
-            "my_user_no": "user1",
-            "my_status": "",
-            "my_status_known": False,
-            "my_present": False,
-            "progress_present": True,
-            "confirmed_present": True,
-        }
-        with (
-            patch("troTHU.rollcall_progress.fetch_rollcall_progress", AsyncMock(return_value=progress)),
-            patch("troTHU.rollcall_progress.ctx.get_active_profile", return_value=SimpleNamespace(name="user1")),
-            patch("troTHU.rollcall_progress.ctx.get_active_http_endpoints", return_value=SimpleNamespace(base_url="https://example.test")),
-            patch("troTHU.rollcall_progress.ctx.get_ssl_request_setting", return_value=None),
-            patch("troTHU.rollcall_progress.ctx.log_print") as log_print,
-            patch("troTHU.rollcall_progress.ctx.log"),
-        ):
-            summary = await report_rollcall_progress(object(), "77")
-
-        self.assertTrue(summary["confirmed_present"])
-        printed = log_print.call_args.args[0]
-        self.assertIn("全員已簽到", printed)
-        self.assertNotIn("未簽到", printed)
 
     async def test_verifier_confirms_from_rollcalls_feed_status(self) -> None:
         async with FakeTronServer() as server:

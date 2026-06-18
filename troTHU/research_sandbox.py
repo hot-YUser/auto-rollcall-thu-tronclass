@@ -283,10 +283,6 @@ def _rollcall_probe_url(endpoints: Any, target: str, rollcall_id: Any) -> str:
     raise ResearchCaptureError("probe_target_not_allowed", "Unknown probe target.")
 
 
-def _student_rollcalls_probe_url(endpoints: Any, rollcall_id: Any) -> str:
-    return _rollcall_probe_url(endpoints, "student_rollcalls", rollcall_id)
-
-
 async def _capture_one(session: Any, target: str, *, endpoints: Any, request_ssl: Any = None) -> Dict[str, Any]:
     url = _target_url(endpoints, target)
     kwargs = {}
@@ -428,24 +424,6 @@ async def capture_rollcall_probe(
         "warnings": ["probe_only_no_answer_values_recorded"],
     }
     return sanitize_research_value(report)
-
-
-async def capture_student_rollcalls_probe(
-    session: Any,
-    rollcall_id: Any,
-    *,
-    endpoints: Any,
-    config: Mapping[str, Any],
-    request_ssl: Any = None,
-) -> Dict[str, Any]:
-    return await capture_rollcall_probe(
-        session,
-        "student_rollcalls",
-        rollcall_id,
-        endpoints=endpoints,
-        config=config,
-        request_ssl=request_ssl,
-    )
 
 
 def append_research_capture(path: Path, record: Mapping[str, Any]) -> Path:

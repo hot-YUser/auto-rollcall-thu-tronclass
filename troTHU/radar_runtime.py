@@ -947,17 +947,8 @@ async def global_radar(
                 and final_estimate is not None
                 and (not stop_event.is_set())
                 and request_count < max_queries
-                and (found is False)
-                and ctx.should_request_supplement(final_estimate, solver_config)
-            )
-            if (
-                fatal_error is None
-                and final_estimate is not None
-                and (not stop_event.is_set())
-                and request_count < max_queries
                 and found is False
-            ):
-                needs_supplement = True
+            )
             if needs_supplement:
                 ctx.log_print("標準估計仍未命中，追加 36 點精修採樣...")
                 if await submit_stage(
