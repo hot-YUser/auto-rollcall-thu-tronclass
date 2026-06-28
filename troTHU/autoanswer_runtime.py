@@ -81,23 +81,56 @@ async def _refresh_courses(client: Any, now: float) -> List[str]:
     return _courses
 
 
+async def _get(client: Any, path: str) -> Any:
+    try:
+        return await client.request_json("GET", client.api_url(path))
+    except ctx.TronHttpError:
+        return {}
+
+
+def _activity(course_id: str, atype: ActivityType, raw: Dict[str, Any], title_key: str = "title") -> Activity:
+    return Activity(activity_id=normalize_text(raw.get("id")), activity_type=atype,
+                    course_id=course_id, title=normalize_text(raw.get(title_key)), raw=raw)
+
+
 async def _poll_course(client: Any, course_id: str, wanted: Set[ActivityType]) -> List[Activity]:
-    """Open (in-progress) question activities in a course. Exam only for now (P5: others)."""
+    """Open (in-progress) question activities in a course, per requested type."""
     out: List[Activity] = []
+
     if ActivityType.EXAM in wanted:
-        try:
-            body = await client.request_json("GET", client.api_url(
-                "/api/courses/{}/exam-list?conditions=&page=1&page_size=50".format(course_id)))
-        except ctx.TronHttpError:
-            body = {}
-        for exam in (body.get("exams") if isinstance(body, dict) else None) or []:
-            if isinstance(exam, dict) and exam.get("is_started") and not exam.get("is_closed"):
-                out.append(Activity(
-                    activity_id=normalize_text(exam.get("id")),
-                    activity_type=ActivityType.EXAM,
-                    course_id=course_id,
-                    title=normalize_text(exam.get("title")),
-                ))
+        body = await _get(client, "/api/courses/{}/exam-list?conditions=&page=1&page_size=50".format(course_id))
+        for e in (body.get("exams") if isinstance(body, dict) else None) or []:
+            if isinstance(e, dict) and e.get("is_started") and not e.get("is_closed"):
+                out.append(_activity(course_id, ActivityType.EXAM, e))
+
+    if ActivityType.QUESTIONNAIRE in wanted:
+        body = await _get(client, "/api/courses/{}/questionnaire-list".format(course_id))
+        for q in (body.get("questionnaires") if isinstance(body, dict) else None) or []:
+            if isinstance(q, dict) and q.get("is_started") and not q.get("is_closed"):
+                out.append(_activity(course_id, ActivityType.QUESTIONNAIRE, q))
+
+    if ActivityType.HOMEWORK in wanted:
+        body = await _get(client, "/api/courses/{}/homework-activities".format(course_id))
+        for h in (body.get("homework_activities") if isinstance(body, dict) else None) or []:
+            if isinstance(h, dict) and not h.get("is_closed"):
+                out.append(_activity(course_id, ActivityType.HOMEWORK, h))
+
+    if ActivityType.VOTE in wanted:
+        body = await _get(client, "/api/courses/{}/interactions".format(course_id))
+        for i in (body.get("interactions") if isinstance(body, dict) else None) or []:
+            if isinstance(i, dict) and normalize_text(i.get("type")) == "vote" \
+                    and normalize_text(i.get("status")) == "start":
+                out.append(_activity(course_id, ActivityType.VOTE, i))
+
+    if ActivityType.CLASSROOM_EXAM in wanted:
+        body = await _get(client, "/api/courses/{}/classroom-list".format(course_id))
+        items = body.get("classrooms") if isinstance(body, dict) else (body if isinstance(body, list) else None)
+        for c in items or []:
+            if isinstance(c, dict) and normalize_text(c.get("status")) in ("start", "1"):
+                out.append(_activity(course_id, ActivityType.CLASSROOM_EXAM, c))
+
+    # courseware_quiz auto-detect needs activity->quiz resolution; left to direct targeting
+    # (untestable on this tenant — no AI credits). Wired in answer_flow for when a quiz id is known.
     return out
 
 

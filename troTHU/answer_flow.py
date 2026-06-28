@@ -99,10 +99,88 @@ async def _fetch_courseware(client: Any, activity: Activity) -> Tuple[Activity, 
     return activity, questions
 
 
+async def _fetch_questionnaire(client: Any, activity: Activity) -> Tuple[Activity, List[Question]]:
+    # Mirrors exam: distribute returns the paper (instance id + subjects). Unscored.
+    paper = await client.request_json(
+        "GET", client.api_url("/api/questionnaire/{}/distribute".format(activity.activity_id)))
+    paper = paper if isinstance(paper, dict) else {}
+    questions = [parse_question(s) for s in (paper.get("subjects") or []) if isinstance(s, dict)]
+    activity = Activity(
+        activity_id=activity.activity_id, activity_type=activity.activity_type,
+        course_id=activity.course_id, title=activity.title,
+        paper_instance_id=paper.get("exam_paper_instance_id"), scored=False, raw=activity.raw,
+    )
+    return activity, questions
+
+
+def _prompt_from(raw: Dict[str, Any]) -> str:
+    data = raw.get("data") if isinstance(raw.get("data"), dict) else {}
+    return normalize_text(raw.get("description") or data.get("description"))
+
+
+async def _fetch_homework(client: Any, activity: Activity) -> Tuple[Activity, List[Question]]:
+    # Free-form: the prompt becomes one short-answer question; the LLM writes the body.
+    # Prefer the poll item (activity.raw); only GET the detail if needed (it is teacher-only
+    # on some tenants). Never hard-fail — homework submission works even with a thin prompt.
+    raw = activity.raw if isinstance(activity.raw, dict) else {}
+    prompt = _prompt_from(raw)
+    if not prompt:
+        try:
+            body = await client.request_json(
+                "GET", client.api_url("/api/activities/{}".format(activity.activity_id)))
+            prompt = _prompt_from(body if isinstance(body, dict) else {})
+        except ctx.TronHttpError:
+            prompt = ""
+    prompt = prompt or normalize_text(activity.title) or "請依題目作答。"
+    question = Question(subject_id=_as_int(activity.activity_id),
+                        qtype=QuestionType.SHORT_ANSWER, stem=prompt)
+    return activity, [question]
+
+
+async def _fetch_classroom(client: Any, activity: Activity) -> Tuple[Activity, List[Question]]:
+    # distribute (not /subject) returns the paper instance id needed at submit, and
+    # leaks correct_answers/is_answer so scored classroom replays without the LLM.
+    paper = await client.request_json(
+        "GET", client.api_url("/api/classroom/{}/distribute".format(activity.activity_id)))
+    paper = paper if isinstance(paper, dict) else {}
+    questions = [parse_question(s) for s in (paper.get("subjects") or []) if isinstance(s, dict)]
+    activity = Activity(
+        activity_id=activity.activity_id, activity_type=activity.activity_type,
+        course_id=activity.course_id, title=activity.title,
+        paper_instance_id=paper.get("exam_paper_instance_id"), scored=True, raw=activity.raw,
+    )
+    return activity, questions
+
+
+async def _fetch_vote(client: Any, activity: Activity) -> Tuple[Activity, List[Question]]:
+    # A vote is a one-question poll. /api/votes/{id} returns interaction.data.vote_options
+    # as a "Label1/Label2" string; we expose them as options so default-pick picks one.
+    body = await client.request_json(
+        "GET", client.api_url("/api/votes/{}".format(activity.activity_id)))
+    data = ((body or {}).get("interaction") or {}).get("data") or {} if isinstance(body, dict) else {}
+    labels = [s for s in normalize_text(data.get("vote_options")).split("/") if s]
+    options = tuple(Option(id=i + 1, content=label, sort=i) for i, label in enumerate(labels))
+    if not options:
+        return activity, []
+    question = Question(subject_id=_as_int(activity.activity_id),
+                        qtype=QuestionType.SINGLE, stem=normalize_text(data.get("topic")),
+                        options=options)
+    activity = Activity(
+        activity_id=activity.activity_id, activity_type=activity.activity_type,
+        course_id=activity.course_id, title=activity.title, scored=False,
+        raw={"vote_labels": labels},
+    )
+    return activity, [question]
+
+
 # type -> async fetch(client, activity) -> (activity, questions)
 _FETCHERS = {
     ActivityType.EXAM: _fetch_exam,
     ActivityType.COURSEWARE_QUIZ: _fetch_courseware,
+    ActivityType.QUESTIONNAIRE: _fetch_questionnaire,
+    ActivityType.HOMEWORK: _fetch_homework,
+    ActivityType.CLASSROOM_EXAM: _fetch_classroom,
+    ActivityType.VOTE: _fetch_vote,
 }
 
 
@@ -137,14 +215,62 @@ async def _submit_exam(client: Any, activity: Activity, answers: Tuple[Answer, .
 
 
 async def _submit_courseware(client: Any, activity: Activity, answers: Tuple[Answer, ...]) -> Dict[str, Any]:
+    # body is {subjects:[...]} (a bare array 404/422s).
     return await client.request_json(
         "POST", client.api_url("/api/courseware-quiz/quiz/{}/submissions".format(activity.activity_id)),
-        json_payload=[a.to_payload() for a in answers], expected_status=(200, 201))
+        json_payload={"subjects": [a.to_payload() for a in answers]}, expected_status=(200, 201))
+
+
+async def _submit_questionnaire(client: Any, activity: Activity, answers: Tuple[Answer, ...]) -> Dict[str, Any]:
+    body = {"exam_paper_instance_id": activity.paper_instance_id,
+            "subjects": [a.to_payload() for a in answers]}
+    return await client.request_json(
+        "POST", client.api_url("/api/questionnaire/{}/submissions".format(activity.activity_id)),
+        json_payload=body, expected_status=(200, 201))
+
+
+async def _submit_homework(client: Any, activity: Activity, answers: Tuple[Answer, ...]) -> Dict[str, Any]:
+    text = answers[0].answer_text if answers else ""
+    return await client.request_json(
+        "POST", client.api_url("/api/course/activities/{}/submissions".format(activity.activity_id)),
+        json_payload={"comment": text, "is_draft": False, "uploads": []}, expected_status=(200, 201))
+
+
+async def _submit_classroom(client: Any, activity: Activity, answers: Tuple[Answer, ...]) -> Dict[str, Any]:
+    # Classroom exam submits ONE subject per call (URL carries the subject id), but the
+    # body is the same {exam_paper_instance_id, subjects:[...]} wrapper as exam — the
+    # per-subject flat body 400s. (即時測驗 live submit is additionally gated by the
+    # teacher's live-session state server-side; see README.)
+    last: Dict[str, Any] = {}
+    for answer in answers:
+        body = {"exam_paper_instance_id": activity.paper_instance_id,
+                "subjects": [answer.to_payload()]}
+        resp = await client.request_json(
+            "POST", client.api_url("/api/classroom/{}/submit/{}".format(activity.activity_id, answer.subject_id)),
+            json_payload=body, expected_status=(200, 201))
+        last = resp if isinstance(resp, dict) else last
+    return last
+
+
+async def _submit_vote(client: Any, activity: Activity, answers: Tuple[Answer, ...]) -> Dict[str, Any]:
+    # ponytail: vote cast endpoint is confirmed (PUT /api/votes/{id}/vote) but the exact
+    # body is unconfirmed — every shape tried returned a server 500 in live testing, and
+    # the cast body is not recoverable from the decompiled client. Best-effort below;
+    # revisit in alpha.2 once the body is known (only this dict literal should need changing).
+    labels = (activity.raw or {}).get("vote_labels") or []
+    picked = [labels[i - 1] for a in answers for i in a.answer_option_ids if 0 < i <= len(labels)]
+    return await client.request_json(
+        "PUT", client.api_url("/api/votes/{}/vote".format(activity.activity_id)),
+        json_payload={"voted_options": picked}, expected_status=(200, 201))
 
 
 _SUBMITTERS = {
     ActivityType.EXAM: _submit_exam,
     ActivityType.COURSEWARE_QUIZ: _submit_courseware,
+    ActivityType.QUESTIONNAIRE: _submit_questionnaire,
+    ActivityType.HOMEWORK: _submit_homework,
+    ActivityType.CLASSROOM_EXAM: _submit_classroom,
+    ActivityType.VOTE: _submit_vote,
 }
 
 
