@@ -134,6 +134,20 @@ class SubmitTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("/api/votes/9/vote", url)
         self.assertEqual(body["voted_options"], ["Alpha"])  # index 1 -> first label
 
+    async def test_submit_once_exam_does_not_resubmit(self):
+        # 作答次數=1 exam: submit response has no allow_retake_exam -> the resubmit-for-correct
+        # pass must NOT fire (it would otherwise read /submissions/{id} and POST again, wasting
+        # the single attempt). Verified live on a strictest-settings exam; pinned here offline.
+        client = FakeClient({"/submissions": {"submission_id": 555}})  # no allow_retake_exam
+        prepared = {"activity": _act(ActivityType.EXAM, paper_instance_id=777),
+                    "answers": (Answer(1001, (11,)),), "source": None, "submitted": False}
+        result = await answer_flow.submit_prepared(client, prepared, resubmit_for_correct=True)
+        self.assertTrue(result.ok)
+        self.assertEqual(result.submission_id, 555)
+        # exactly one call: the single POST submission, no review-GET / resubmit-POST
+        self.assertEqual(len(client.calls), 1)
+        self.assertEqual(client.calls[0][0], "POST")
+
 
 if __name__ == "__main__":
     unittest.main()

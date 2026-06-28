@@ -322,9 +322,19 @@ async def submit_prepared(
     prepared["submitted"] = True
 
     # Optional "submit -> read correct -> resubmit" pass (exam with retake allowed).
+    # Gated on allow_retake_exam: a single-attempt exam (作答次數=1) reports it false, so
+    # this never fires and the one attempt is never spent on a retake. Live-verified on a
+    # strictest-settings exam (正式/1次/不公布答案). Wrapped so a retake hiccup can never
+    # undo the successful first submission — we still report that submission as submitted.
     if (resubmit_for_correct and activity.activity_type == ActivityType.EXAM
             and resp.get("allow_retake_exam") and submission_id):
-        corrected = await _resubmit_exam_with_correct(client, activity, submission_id)
+        try:
+            corrected = await _resubmit_exam_with_correct(client, activity, submission_id)
+        except ctx.TronHttpError as exc:
+            corrected = None
+            ctx.log(event="autoanswer", status="resubmit_skipped",
+                    message="重交正解未完成，保留首次作答。", error=exc,
+                    extra={"activity_id": activity.activity_id})
         if corrected is not None:
             resp = corrected
             submission_id = resp.get("submission_id") or submission_id
