@@ -340,8 +340,10 @@ api_key_env = "NVIDIA_API_KEY"   # 存放 API Key 的環境變數名稱
 > v1.7-alpha.1 全 6 型都用同一套「單一入口、動態分流」接好並有離線測試。實機驗證狀態：
 > **exam（線上測驗）、questionnaire（問卷）、homework（作業）、classroom_exam（即時測驗）** 四型皆已
 > 端到端實機驗證（真實出題→真實作答→確認送出；classroom 另確認 LLM 答對且計分正確）；
-> **vote（投票）** 的建立已實機驗證，但學生投票送出（`PUT /api/votes/{id}/vote`）的 request body
-> 無法從還原碼／側錄還原，且 PUT/POST × 十餘種 body × 有無指派受測者實測全數回 500，列為待補；
+> **vote（投票）** 的建立已實機驗證；但「即時投票」是**手機 App 專屬**的即時互動 —— 網頁端只顯示結果
+> （「學生可在 app 中參與投票」）、根本不載入投票送出的程式碼，且學生送出（`PUT /api/votes/{id}/vote`）
+> 經 API 與**已登入學生瀏覽器 fetch**、PUT/POST × 十餘種 body × 是否指派受測者實測全數回 500，
+> 還原碼／網頁 bundle／側錄皆無此 cast 契約。要取得正確 body 需攔截實體 App 的 TLS 流量，超出本工具範圍，列為待補；
 > **courseware_quiz（教材測驗）** 因測試租戶無 AI 額度無法建題，端點為逆出假設。
 > vote 送出與 courseware 留待 v1.7-alpha.2 補強。可在 `types` 移除你尚未需要的題型。
 

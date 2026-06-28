@@ -253,10 +253,13 @@ async def _submit_classroom(client: Any, activity: Activity, answers: Tuple[Answ
 
 
 async def _submit_vote(client: Any, activity: Activity, answers: Tuple[Answer, ...]) -> Dict[str, Any]:
-    # ponytail: vote cast endpoint is confirmed (PUT /api/votes/{id}/vote) but the exact
-    # body is unconfirmed — every shape tried returned a server 500 in live testing, and
-    # the cast body is not recoverable from the decompiled client. Best-effort below;
-    # revisit in alpha.2 once the body is known (only this dict literal should need changing).
+    # ponytail: 即時投票 is a MOBILE-APP-EXCLUSIVE live interaction. Exhaustively verified
+    # (v1.7-alpha.1): the web has no voting UI ("學生可在app中參與投票", results-only) and
+    # never loads the cast chunk; PUT /api/votes/{id}/vote returns a server 500 for every
+    # body/method/state tried from API *and* an authenticated student-browser fetch; the
+    # cast body is in neither the decompiled app bundle nor any web bundle. Capturing it
+    # needs the physical app's TLS traffic. Best-effort cast kept for completeness — it is
+    # expected to fail outside the app; revisit in alpha.2 only with a real captured body.
     labels = (activity.raw or {}).get("vote_labels") or []
     picked = [labels[i - 1] for a in answers for i in a.answer_option_ids if 0 < i <= len(labels)]
     return await client.request_json(
