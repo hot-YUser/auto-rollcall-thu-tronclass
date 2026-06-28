@@ -63,17 +63,37 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(q.blank_count, 2)
         self.assertEqual(q.correct_texts, ("a0", "b1"))   # sorted by blank order
 
-    def test_parse_questions_matching_injects_deduped_container_options(self):
-        # matching subs have no options of their own; the right-side choices live on the
-        # container (with duplicates). parse_questions injects the deduped set into each sub.
+    def test_parse_questions_matching_chunks_container_options_per_sub(self):
+        # The container holds ALL right options (a DISTINCT id per (left,right) pair) and the
+        # subs come back empty. Each sub gets its own id-ordered block so the per-sub correct
+        # id is submittable (sub2's "dog" id != sub1's "dog" id). parent_id links the pair.
         raw = [{"id": 1, "type": "matching",
-                "options": [{"id": 10, "content": "cat"}, {"id": 11, "content": "cat"},
-                            {"id": 12, "content": "dog"}],
-                "sub_subjects": [{"id": 21, "type": "single_selection", "description": "貓", "options": []},
-                                 {"id": 22, "type": "single_selection", "description": "狗", "options": []}]}]
+                "options": [{"id": 13, "content": "dog"}, {"id": 11, "content": "dog"},
+                            {"id": 12, "content": "cat"}, {"id": 10, "content": "cat"}],
+                "sub_subjects": [{"id": 21, "type": "matching", "description": "貓", "options": []},
+                                 {"id": 22, "type": "matching", "description": "狗", "options": []}]}]
         qs = answer_flow.parse_questions(raw)
         self.assertEqual([q.subject_id for q in qs], [21, 22])
-        self.assertEqual([o.content for o in qs[0].options], ["cat", "dog"])  # deduped by content
+        self.assertEqual([q.parent_id for q in qs], [1, 1])
+        self.assertEqual([o.id for o in qs[0].options], [10, 11])  # sub1's block (by id)
+        self.assertEqual([o.id for o in qs[1].options], [12, 13])  # sub2's block (distinct ids)
+
+    def test_parse_questions_matching_keeps_per_sub_options_and_leaked_answer(self):
+        # When subs carry their OWN options (the proper shape), keep them as-is so leaked
+        # is_answer flags allow a precise per-pair replay. Duplicate right ids across subs
+        # are fine — subject_id disambiguates the left item.
+        raw = [{"id": 1, "type": "matching", "options": [],
+                "sub_subjects": [
+                    {"id": 21, "type": "matching", "description": "貓",
+                     "options": [{"id": 10, "content": "cat", "is_answer": True},
+                                 {"id": 11, "content": "dog", "is_answer": False}]},
+                    {"id": 22, "type": "matching", "description": "狗",
+                     "options": [{"id": 10, "content": "cat", "is_answer": False},
+                                 {"id": 11, "content": "dog", "is_answer": True}]}]}]
+        qs = answer_flow.parse_questions(raw)
+        self.assertEqual([q.parent_id for q in qs], [1, 1])
+        self.assertEqual(qs[0].correct_option_ids, (10,))  # precise leaked answer per sub
+        self.assertEqual(qs[1].correct_option_ids, (11,))
 
     def test_parse_questions_flattens_group_and_skips_section(self):
         raw = [
@@ -117,13 +137,19 @@ class FetchTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(activity.paper_instance_id, 777)  # from distribute, needed at submit
         self.assertEqual(questions[0].subject_id, 1001)
 
-    async def test_fetch_vote_parses_slash_labels(self):
+    async def test_fetch_vote_parses_option_items_map(self):
+        # Real shape: interaction.data.vote_option_items is a letter->text map.
         client = FakeClient({"/votes/9": {"interaction": {"data": {
-            "vote_options": "Alpha/Beta", "topic": "pick"}}}})
+            "vote_option_items": {"A": "Alpha", "B": "Beta"}, "vote_type": "single", "topic": "pick"}}}})
         activity, questions = await answer_flow._fetch_vote(client, _act(ActivityType.VOTE))
         self.assertFalse(activity.scored)
+        self.assertEqual(questions[0].qtype, QuestionType.SINGLE)
         self.assertEqual([o.content for o in questions[0].options], ["Alpha", "Beta"])
-        self.assertEqual(activity.raw["vote_labels"], ["Alpha", "Beta"])
+
+    async def test_fetch_vote_legacy_slash_fallback(self):
+        client = FakeClient({"/votes/9": {"interaction": {"data": {"vote_options": "Alpha/Beta"}}}})
+        _activity, questions = await answer_flow._fetch_vote(client, _act(ActivityType.VOTE))
+        self.assertEqual([o.content for o in questions[0].options], ["Alpha", "Beta"])
 
 
 class SubmitTest(unittest.IsolatedAsyncioTestCase):
@@ -137,14 +163,21 @@ class SubmitTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(body["exam_paper_instance_id"], 777)
         self.assertEqual(body["subjects"][0]["answer_option_ids"], [11])
 
-    async def test_submit_courseware_wraps_subjects(self):
+    async def test_submit_courseware_subjects_answers_with_type(self):
         client = FakeClient()
-        await answer_flow._submit_courseware(client, _act(ActivityType.COURSEWARE_QUIZ),
-                                             (Answer(1, (2,)),))
+        await answer_flow._submit_courseware(
+            client, _act(ActivityType.COURSEWARE_QUIZ),
+            (Answer(1, (2,), answer_type="single_selection"),
+             Answer(3, (), blanks=((0, "天"),), answer_type="fill_in_blank"),))
         _m, url, body = client.calls[0]
         self.assertIn("/courseware-quiz/quiz/9/submissions", url)
-        self.assertIn("subjects", body)   # NOT a bare array
-        self.assertEqual(body["subjects"][0]["subject_id"], 1)
+        self.assertIn("subjects_answers", body)   # NOT "subjects"
+        first = body["subjects_answers"][0]
+        self.assertEqual(first["subject_id"], 1)
+        self.assertEqual(first["type"], "single_selection")
+        self.assertEqual(first["answer_option_ids"], [2])
+        self.assertEqual(first["answers"], [])
+        self.assertEqual(body["subjects_answers"][1]["answers"], [{"sort": 0, "content": "天"}])
 
     async def test_submit_homework_comment_body(self):
         client = FakeClient()
@@ -166,14 +199,15 @@ class SubmitTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(body["exam_paper_instance_id"], 777)
         self.assertEqual(body["subjects"][0]["subject_id"], 101)
 
-    async def test_submit_vote_maps_index_to_label(self):
+    async def test_submit_vote_posts_letters(self):
+        # Real cast: POST {"votes":["A",...]} — option-position letters, not display text.
         client = FakeClient()
-        activity = _act(ActivityType.VOTE, raw={"vote_labels": ["Alpha", "Beta"]})
-        await answer_flow._submit_vote(client, activity, (Answer(9, (1,)),))
+        activity = _act(ActivityType.VOTE)
+        await answer_flow._submit_vote(client, activity, (Answer(9, (1, 3)),))
         method, url, body = client.calls[0]
-        self.assertEqual(method, "PUT")
+        self.assertEqual(method, "POST")
         self.assertIn("/api/votes/9/vote", url)
-        self.assertEqual(body["voted_options"], ["Alpha"])  # index 1 -> first label
+        self.assertEqual(body["votes"], ["A", "C"])  # id 1 -> A, id 3 -> C
 
     async def test_submit_once_exam_does_not_resubmit(self):
         # 作答次數=1 exam: submit response has no allow_retake_exam -> the resubmit-for-correct

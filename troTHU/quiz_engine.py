@@ -19,11 +19,18 @@ def option_label(index: int) -> str:
     return "A" + chr(ord("A") + (index % 26))
 
 
+def _mk(question: Question, **kw: Any) -> Answer:
+    """Build an Answer carrying the question's parent_id (matching) and type (courseware).
+    Both default-empty for top-level non-matching questions, so other payloads are unchanged."""
+    return Answer(subject_id=question.subject_id, parent_id=question.parent_id,
+                  answer_type=question.qtype.value, **kw)
+
+
 def _default_answer(question: Question, pick: str) -> Answer:
     if not question.options:
-        return Answer(subject_id=question.subject_id)
+        return _mk(question)
     option = question.options[-1] if pick == "last" else question.options[0]
-    return Answer(subject_id=question.subject_id, answer_option_ids=(option.id,))
+    return _mk(question, answer_option_ids=(option.id,))
 
 
 def _replay_answer(question: Question) -> Answer:
@@ -32,12 +39,11 @@ def _replay_answer(question: Question) -> Answer:
     Choice -> correct option ids; fill/cloze -> per-blank texts; short -> answer text.
     """
     if question.correct_option_ids:
-        return Answer(question.subject_id, answer_option_ids=question.correct_option_ids)
+        return _mk(question, answer_option_ids=question.correct_option_ids)
     if question.correct_texts:
         if question.is_blank:
-            return Answer(question.subject_id,
-                          blanks=tuple((i, t) for i, t in enumerate(question.correct_texts)))
-        return Answer(question.subject_id, answer_text=question.correct_texts[0])
+            return _mk(question, blanks=tuple((i, t) for i, t in enumerate(question.correct_texts)))
+        return _mk(question, answer_text=question.correct_texts[0])
     return None  # type: ignore[return-value]
 
 
@@ -118,7 +124,7 @@ def answer_from_labels(question: Question, labels: Iterable[str]) -> Answer:
     if question.qtype in (QuestionType.SINGLE, QuestionType.TRUE_FALSE):
         indices = indices[:1]
     option_ids: Tuple[int, ...] = tuple(question.options[i].id for i in indices)
-    return Answer(subject_id=question.subject_id, answer_option_ids=option_ids)
+    return _mk(question, answer_option_ids=option_ids)
 
 
 def parse_blank_answers(text: str, count: int) -> List[str]:
@@ -137,8 +143,7 @@ def parse_blank_answers(text: str, count: int) -> List[str]:
 
 def answer_from_blanks(question: Question, reply_text: str) -> Answer:
     parts = parse_blank_answers(reply_text, question.blank_count or 0)
-    return Answer(subject_id=question.subject_id,
-                  blanks=tuple((i, p) for i, p in enumerate(parts)))
+    return _mk(question, blanks=tuple((i, p) for i, p in enumerate(parts)))
 
 
 def answer_from_llm_reply(question: Question, reply_text: str) -> Answer:
@@ -149,4 +154,4 @@ def answer_from_llm_reply(question: Question, reply_text: str) -> Answer:
         return answer_from_labels(question, labels)
     if question.is_blank:
         return answer_from_blanks(question, reply_text)
-    return Answer(subject_id=question.subject_id, answer_text=normalize_text(reply_text))
+    return _mk(question, answer_text=normalize_text(reply_text))

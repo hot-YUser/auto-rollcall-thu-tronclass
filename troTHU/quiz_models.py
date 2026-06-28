@@ -68,6 +68,8 @@ class Question:
     blank_count: int = 0
     # Correct text(s) the server leaked (fill/cloze/short): per-blank, sorted.
     correct_texts: Tuple[str, ...] = field(default_factory=tuple)
+    # matching: the container subject id this sub (a left item) belongs to. 0 = top-level.
+    parent_id: int = 0
 
     @property
     def correct_option_ids(self) -> Tuple[int, ...]:
@@ -107,6 +109,10 @@ class Answer:
     answer_text: str = ""
     # Per-blank answers for fill_in_blank / cloze: (sort, content), in blank order.
     blanks: Tuple[Tuple[int, str], ...] = field(default_factory=tuple)
+    # matching: container subject id (for per-pair scoring). 0 = top-level question.
+    parent_id: int = 0
+    # The question's API type string (e.g. "single_selection"); courseware submit needs it.
+    answer_type: str = ""
 
     def to_payload(self) -> Dict[str, Any]:
         payload: Dict[str, Any] = {
@@ -118,6 +124,11 @@ class Answer:
         # fill_in_blank / cloze put one entry per blank here, not in `answer`.
         if self.blanks:
             payload["answers"] = [{"sort": s, "content": c} for s, c in self.blanks]
+        # matching: link the sub (left item) to its container so the server scores the
+        # pair. Emitted ONLY when set, so non-matching payloads stay byte-identical to the
+        # 9 already-validated exam/classroom/questionnaire types.
+        if self.parent_id:
+            payload["parent_id"] = self.parent_id
         return payload
 
 

@@ -324,8 +324,9 @@ python -m troTHU.tron bot serve --adapter generic
 
 ✅ = 已實機驗證（真實出題→真實 LLM 作答→送出成功；選擇題另確認內容正解）。
 homework（作業）為單一自由作答，由 LLM 生成內容後送出（已驗證）。
-＊matching：腳本會把容器的右側選項去重後注入各左項子題，由 LLM 逐項配對並送出；
-TronClass 配對題的右側選項帶有重複 id，精確計分依伺服器端配對邏輯，列為 best-effort。
+＊matching（v1.7-alpha.2 已升級為精確計分）：TronClass 把每個（左項×右選項）配對存成**獨立 id**，
+子題回傳時選項為空、右選項全掛在容器上。腳本依 id 順序把容器選項切成每個左項**自己的區塊**，
+連同 `parent_id`（容器 id）一起送出，讓伺服器精確配對計分；實測每對正確即滿分（10/10）。
 
 ### 設定 LLM（預設 NVIDIA NIM）
 
@@ -364,15 +365,16 @@ model = "minimaxai/minimax-m3"   # NVIDIA NIM 模型（多模態，可看題目�
 api_key_env = "NVIDIA_API_KEY"   # 存放 API Key 的環境變數名稱
 ```
 
-> v1.7-alpha.1 全 6 型都用同一套「單一入口、動態分流」接好並有離線測試。實機驗證狀態：
-> **exam（線上測驗）、questionnaire（問卷）、homework（作業）、classroom_exam（即時測驗）** 四型皆已
-> 端到端實機驗證（真實出題→真實作答→確認送出；classroom 另確認 LLM 答對且計分正確）；
-> **vote（投票）** 的建立已實機驗證；但「即時投票」是**手機 App 專屬**的即時互動 —— 網頁端只顯示結果
-> （「學生可在 app 中參與投票」）、根本不載入投票送出的程式碼，且學生送出（`PUT /api/votes/{id}/vote`）
-> 經 API 與**已登入學生瀏覽器 fetch**、PUT/POST × 十餘種 body × 是否指派受測者實測全數回 500，
-> 還原碼／網頁 bundle／側錄皆無此 cast 契約。要取得正確 body 需攔截實體 App 的 TLS 流量，超出本工具範圍，列為待補；
-> **courseware_quiz（教材測驗）** 因測試租戶無 AI 額度無法建題，端點為逆出假設。
-> vote 送出與 courseware 留待 v1.7-alpha.2 補強。可在 `types` 移除你尚未需要的題型。
+> 全 6 型都用同一套「單一入口、動態分流」接好並有離線測試。實機驗證狀態（測試課 55379／自有帳號）：
+> **exam（線上測驗）、classroom_exam（即時測驗）、questionnaire（問卷）、homework（作業）** 四型端到端實機驗證；
+> **vote（投票）** v1.7-alpha.2 已實機驗證：真正的送出契約是 `POST /api/votes/{id}/vote`、body `{"votes":["A",...]}`
+> （選項**字母**）——教師建+開投票、學生經產品碼送出，伺服器確認本人已記入 `interaction_student_ids`
+> （alpha.1 的全數 500 其實是我們用錯了方法/欄位/值：`PUT` + `{voted_options:[文字]}`，並非手機 App 專屬）；
+> **matching（配對）** v1.7-alpha.2 升級為精確計分（見上＊，實測每對正確滿分）；
+> **courseware_quiz（教材測驗）** 學生端取題/送出已依還原碼契約修正（送出 wrapper 為 `subjects_answers`、每題帶 `type`）
+> 並有離線測試，但**測試租戶 www.tronclass.com.tw 未開通教材測驗（AI Quiz）模組** —— `/settings`、`/generate-*`、
+> 建題端點全回 404／「未找到資源」，`/upload_references` 永遠為空（真實老師在此租戶亦無法建題），
+> 故無法在此租戶實機驗證，待有開通該模組的租戶再補。可在 `types` 移除你尚未需要的題型。
 
 ---
 

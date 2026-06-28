@@ -128,5 +128,28 @@ class AnswerMappingTest(unittest.TestCase):
         self.assertEqual(ans.answer_option_ids, ())
 
 
+class MatchingParentIdTest(unittest.TestCase):
+    def _matching_sub(self, subject_id, parent_id, correct_index):
+        opts = tuple(Option(id=10 + i, content=str(i), is_answer=(i == correct_index)) for i in range(2))
+        return Question(subject_id=subject_id, qtype=QuestionType.SINGLE, options=opts,
+                        parent_id=parent_id)
+
+    def test_replay_carries_parent_id_into_payload(self):
+        plan = decide_paper([self._matching_sub(21, parent_id=1, correct_index=0)])
+        payload = plan.answers[0].to_payload()
+        self.assertEqual(payload["answer_option_ids"], [10])
+        self.assertEqual(payload["parent_id"], 1)   # links the pair for scoring
+
+    def test_llm_match_carries_parent_id(self):
+        ans = answer_from_llm_reply(self._matching_sub(22, parent_id=1, correct_index=None), "B")
+        self.assertEqual(ans.parent_id, 1)
+        self.assertEqual(ans.to_payload()["parent_id"], 1)
+
+    def test_non_matching_payload_omits_parent_id(self):
+        # Regression guard: the 9 validated types must keep byte-identical payloads.
+        ans = answer_from_labels(_single(1), ["A"])
+        self.assertNotIn("parent_id", ans.to_payload())
+
+
 if __name__ == "__main__":
     unittest.main()

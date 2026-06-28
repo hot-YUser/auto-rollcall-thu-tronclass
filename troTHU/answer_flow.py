@@ -19,14 +19,14 @@ except ImportError:  # pragma: no cover
 
 try:
     from troTHU import llm_answerer
-    from troTHU.quiz_engine import answer_from_llm_reply, decide_paper, normalize_text
+    from troTHU.quiz_engine import answer_from_llm_reply, decide_paper, normalize_text, option_label
     from troTHU.quiz_models import (
         BLANK_TYPES, GROUP_TYPES, SKIP_TYPES, Activity, ActivityType, Answer, AnswerResult,
         AnswerSource, Option, Question, QuestionType,
     )
 except ImportError:  # pragma: no cover - script execution fallback
     import llm_answerer  # type: ignore
-    from quiz_engine import answer_from_llm_reply, decide_paper, normalize_text  # type: ignore
+    from quiz_engine import answer_from_llm_reply, decide_paper, normalize_text, option_label  # type: ignore
     from quiz_models import (  # type: ignore
         BLANK_TYPES, GROUP_TYPES, SKIP_TYPES, Activity, ActivityType, Answer, AnswerResult,
         AnswerSource, Option, Question, QuestionType,
@@ -62,7 +62,7 @@ def map_qtype(value: Any) -> QuestionType:
     return _QTYPE_MAP.get(normalize_text(value).lower(), QuestionType.UNKNOWN)
 
 
-def parse_question(raw: Dict[str, Any]) -> Question:
+def parse_question(raw: Dict[str, Any], parent_id: int = 0) -> Question:
     options = []
     for opt in raw.get("options") or []:
         if not isinstance(opt, dict):
@@ -93,26 +93,38 @@ def parse_question(raw: Dict[str, Any]) -> Question:
         point=normalize_text(raw.get("point")),
         blank_count=blank_count,
         correct_texts=correct_texts,
+        parent_id=parent_id,
     )
 
 
-def _dedup_options_by_content(options: Any) -> List[Dict[str, Any]]:
-    """Matching containers list the right-side items with duplicates (one copy per sub);
-    collapse to one option per distinct content so the LLM picks a clean letter."""
-    seen: Dict[str, Dict[str, Any]] = {}
-    for o in options or []:
-        if isinstance(o, dict):
-            key = normalize_text(o.get("content"))
-            if key and key not in seen:
-                seen[key] = o
-    return list(seen.values())
+def _matching_sub_options(container_options: Any, sub_index: int, sub_count: int) -> List[Dict[str, Any]]:
+    """Assign one left item (sub) its OWN right-side options.
+
+    TronClass puts ALL right options on the matching container (one DISTINCT id per
+    (left-item, right-choice) pair — e.g. each left item gets its own "cat"/"dog" ids)
+    and returns the subs with empty options. The client assigns each sub a consecutive
+    block of the container options ordered by id: sub i -> options[i*k:(i+1)*k] where
+    k = options / sub_count. Submitting another sub's same-content id scores WRONG, so the
+    block must match the sub. ponytail: assumes the server emits options in sub-creation id
+    order (holds with option-shuffle off); falls back to all options if it can't chunk."""
+    opts = sorted((o for o in (container_options or []) if isinstance(o, dict)),
+                  key=lambda o: _as_int(o.get("id")))
+    k = (len(opts) // sub_count) if sub_count else 0
+    if k <= 0:
+        return opts
+    return opts[sub_index * k:(sub_index + 1) * k]
 
 
 def parse_questions(raw_subjects: Any) -> List[Question]:
     """Flatten a paper's subjects into answerable questions: expand 題組/cloze/matching
-    sub_subjects, drop non-answerable sections (paragraph_desc). For matching, each sub
-    (a left item) has no options of its own — the right-side choices live on the container,
-    so we inject the deduped container options into each sub for the LLM to pick from."""
+    sub_subjects, drop non-answerable sections (paragraph_desc).
+
+    matching: each sub is a LEFT item answered as a single_selection. The right options
+    live on the CONTAINER (a distinct id per (left,right) pair) and the subs come back
+    empty, so we assign each sub its own id-ordered block of container options
+    (_matching_sub_options) and tag it with parent_id = the container id for per-pair
+    scoring. If a sub already carries its own options (some tenants), we keep them.
+    Fallback: a degenerate container with no sub_subjects is parsed as-is."""
     out: List[Question] = []
     for raw in raw_subjects or []:
         if not isinstance(raw, dict):
@@ -120,14 +132,21 @@ def parse_questions(raw_subjects: Any) -> List[Question]:
         qtype = map_qtype(raw.get("type"))
         if qtype in SKIP_TYPES:
             continue
-        subs = raw.get("sub_subjects") or []
-        if qtype in GROUP_TYPES or qtype in (QuestionType.MATCHING, QuestionType.CLOZE) or subs:
-            container_opts = _dedup_options_by_content(raw.get("options")) if qtype == QuestionType.MATCHING else None
+        subs = [s for s in (raw.get("sub_subjects") or [])
+                if isinstance(s, dict) and map_qtype(s.get("type")) not in SKIP_TYPES]
+        if qtype == QuestionType.MATCHING:
+            parent_id = _as_int(raw.get("id") or raw.get("subject_id"))
+            if not subs:
+                out.append(parse_question(raw))  # degenerate: no left items
+                continue
+            subs = sorted(subs, key=lambda s: _as_int(s.get("id")))
+            for i, sub in enumerate(subs):
+                block = sub.get("options") or _matching_sub_options(raw.get("options"), i, len(subs))
+                out.append(parse_question(dict(sub, options=block, type="single_selection"),
+                                          parent_id=parent_id))
+            continue
+        if qtype in GROUP_TYPES or qtype == QuestionType.CLOZE or subs:
             for sub in subs:
-                if not isinstance(sub, dict) or map_qtype(sub.get("type")) in SKIP_TYPES:
-                    continue
-                if container_opts and not (sub.get("options")):
-                    sub = dict(sub, options=container_opts, type="single_selection")
                 out.append(parse_question(sub))
             continue
         out.append(parse_question(raw))
@@ -211,23 +230,38 @@ async def _fetch_classroom(client: Any, activity: Activity) -> Tuple[Activity, L
     return activity, questions
 
 
+def _vote_labels(data: Dict[str, Any]) -> List[str]:
+    """Option display texts ordered by letter. The cast sends the LETTER (A/B/C), so the
+    display text is only for the LLM/log; letters are derived from option position.
+    Real shape: interaction.data.vote_option_items is a letter->text map {"A":"..","B":".."};
+    vote_options is the option COUNT (not a slash-joined string — that was an old guess)."""
+    items = data.get("vote_option_items")
+    if isinstance(items, dict) and items:
+        return [normalize_text(items[k]) for k in sorted(items.keys())]
+    count = data.get("vote_options")
+    if isinstance(count, int) and count > 0:
+        return [""] * count  # letters only; texts unknown
+    return [s for s in normalize_text(count).split("/") if s]  # legacy fallback
+
+
 async def _fetch_vote(client: Any, activity: Activity) -> Tuple[Activity, List[Question]]:
-    # A vote is a one-question poll. /api/votes/{id} returns interaction.data.vote_options
-    # as a "Label1/Label2" string; we expose them as options so default-pick picks one.
+    # A vote is a one-question poll. We expose options so default-pick picks one; the
+    # picked option's POSITION maps to the cast letter (A/B/C) in _submit_vote.
     body = await client.request_json(
         "GET", client.api_url("/api/votes/{}".format(activity.activity_id)))
     data = ((body or {}).get("interaction") or {}).get("data") or {} if isinstance(body, dict) else {}
-    labels = [s for s in normalize_text(data.get("vote_options")).split("/") if s]
-    options = tuple(Option(id=i + 1, content=label, sort=i) for i, label in enumerate(labels))
-    if not options:
+    labels = _vote_labels(data)
+    if not labels:
         return activity, []
+    # id = 1-based position so the option is never falsy; letter = option_label(id - 1).
+    options = tuple(Option(id=i + 1, content=lbl or option_label(i), sort=i)
+                    for i, lbl in enumerate(labels))
+    qtype = QuestionType.MULTIPLE if "multi" in normalize_text(data.get("vote_type")) else QuestionType.SINGLE
     question = Question(subject_id=_as_int(activity.activity_id),
-                        qtype=QuestionType.SINGLE, stem=normalize_text(data.get("topic")),
-                        options=options)
+                        qtype=qtype, stem=normalize_text(data.get("topic")), options=options)
     activity = Activity(
         activity_id=activity.activity_id, activity_type=activity.activity_type,
-        course_id=activity.course_id, title=activity.title, scored=False,
-        raw={"vote_labels": labels},
+        course_id=activity.course_id, title=activity.title, scored=False, raw=activity.raw,
     )
     return activity, [question]
 
@@ -273,11 +307,24 @@ async def _submit_exam(client: Any, activity: Activity, answers: Tuple[Answer, .
         json_payload=body, expected_status=(200, 201))
 
 
+def _courseware_payload(answer: Answer) -> Dict[str, Any]:
+    """courseware "AI Quiz" submit element (decompiled AiQuizFormSubject): carries the
+    question `type` and uses `answers` for blanks — NOT the exam-style scalar `answer`."""
+    return {
+        "subject_id": answer.subject_id,
+        "type": answer.answer_type,
+        "answer_option_ids": list(answer.answer_option_ids),
+        "answers": [{"sort": s, "content": c} for s, c in answer.blanks],
+    }
+
+
 async def _submit_courseware(client: Any, activity: Activity, answers: Tuple[Answer, ...]) -> Dict[str, Any]:
-    # body is {subjects:[...]} (a bare array 404/422s).
+    # Whole-paper submit; wrapper key is "subjects_answers" (AiQuizForm.subjectsAnswers),
+    # NOT "subjects" — that belongs to the GET-subjects response / exam submit.
     return await client.request_json(
         "POST", client.api_url("/api/courseware-quiz/quiz/{}/submissions".format(activity.activity_id)),
-        json_payload={"subjects": [a.to_payload() for a in answers]}, expected_status=(200, 201))
+        json_payload={"subjects_answers": [_courseware_payload(a) for a in answers]},
+        expected_status=(200, 201))
 
 
 async def _submit_questionnaire(client: Any, activity: Activity, answers: Tuple[Answer, ...]) -> Dict[str, Any]:
@@ -312,18 +359,20 @@ async def _submit_classroom(client: Any, activity: Activity, answers: Tuple[Answ
 
 
 async def _submit_vote(client: Any, activity: Activity, answers: Tuple[Answer, ...]) -> Dict[str, Any]:
-    # ponytail: 即時投票 is a MOBILE-APP-EXCLUSIVE live interaction. Exhaustively verified
-    # (v1.7-alpha.1): the web has no voting UI ("學生可在app中參與投票", results-only) and
-    # never loads the cast chunk; PUT /api/votes/{id}/vote returns a server 500 for every
-    # body/method/state tried from API *and* an authenticated student-browser fetch; the
-    # cast body is in neither the decompiled app bundle nor any web bundle. Capturing it
-    # needs the physical app's TLS traffic. Best-effort cast kept for completeness — it is
-    # expected to fail outside the app; revisit in alpha.2 only with a real captured body.
-    labels = (activity.raw or {}).get("vote_labels") or []
-    picked = [labels[i - 1] for a in answers for i in a.answer_option_ids if 0 < i <= len(labels)]
+    # Real cast contract (from app webview chunk chunk-common-9627c25b): POST with
+    # body {"votes": ["A", ...]} — the selected option LETTERS (1 for single/judgment,
+    # N for multi). The earlier alpha.1 500s were our own bug: PUT + {voted_options:[text]}.
+    # Failures (not ongoing / already voted) come back as a server msg, surfaced via the
+    # raised TronHttpError, not silently dropped.
+    letters: List[str] = []
+    for answer in answers:
+        for oid in answer.answer_option_ids:
+            label = option_label(oid - 1) if oid >= 1 else ""
+            if label and label not in letters:
+                letters.append(label)
     return await client.request_json(
-        "PUT", client.api_url("/api/votes/{}/vote".format(activity.activity_id)),
-        json_payload={"voted_options": picked}, expected_status=(200, 201))
+        "POST", client.api_url("/api/votes/{}/vote".format(activity.activity_id)),
+        json_payload={"votes": letters}, expected_status=(200, 201))
 
 
 _SUBMITTERS = {
@@ -417,7 +466,8 @@ async def _resubmit_exam_with_correct(
         return None
     answers = tuple(
         Answer(subject_id=_as_int(c.get("subject_id")),
-               answer_option_ids=tuple(_as_int(o) for o in (c.get("answer_option_ids") or [])))
+               answer_option_ids=tuple(_as_int(o) for o in (c.get("answer_option_ids") or [])),
+               parent_id=_as_int(c.get("parent_id")))
         for c in correct if isinstance(c, dict)
     )
     fresh_activity, _questions = await _fetch_exam(client, activity)
