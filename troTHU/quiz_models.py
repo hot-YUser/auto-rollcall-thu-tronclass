@@ -150,3 +150,6 @@ class AnswerResult:
     source: AnswerSource = AnswerSource.NONE
     message: str = ""
     data: Dict[str, Any] = field(default_factory=dict)
+    # The answers ACTUALLY submitted (post-resubmit if a correct-answer resubmit fired), so the
+    # console can show the FINAL answer. Empty falls back to the prepared answers at the call site.
+    final_answers: Tuple["Answer", ...] = field(default_factory=tuple)

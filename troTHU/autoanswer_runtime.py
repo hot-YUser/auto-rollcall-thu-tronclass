@@ -16,18 +16,22 @@ except ImportError:  # pragma: no cover
     import runtime_context as ctx  # type: ignore
 
 try:
-    from troTHU import answer_flow
+    from troTHU import answer_flow, autoanswer_store
     from troTHU.config_runtime import get_autoanswer_config
-    from troTHU.quiz_engine import normalize_text
+    from troTHU.quiz_engine import format_paper_canonical, normalize_text
     from troTHU.quiz_models import Activity, ActivityType
 except ImportError:  # pragma: no cover - script execution fallback
     import answer_flow  # type: ignore
+    import autoanswer_store  # type: ignore
     from config_runtime import get_autoanswer_config  # type: ignore
-    from quiz_engine import normalize_text  # type: ignore
+    from quiz_engine import format_paper_canonical, normalize_text  # type: ignore
     from quiz_models import Activity, ActivityType  # type: ignore
 
 
 ATTEMPT_COOLDOWN_SECONDS = 30.0
+# A submit that fails (e.g. a classroom_exam with no live teacher session) is retried far less
+# often than the normal cooldown, so it can't re-detect/re-announce every 30s and spam the screen.
+FAILED_RETRY_COOLDOWN_SECONDS = 300.0
 POLL_INTERVAL_SECONDS = 10.0
 COURSE_REFRESH_SECONDS = 300.0
 
@@ -67,6 +71,29 @@ def _attempts_exhausted(raw: Dict[str, Any]) -> bool:
 _last_poll = 0.0
 _courses: List[str] = []
 _courses_at = 0.0
+_loaded_profile: Any = None
+
+
+def _active_profile_name() -> str:
+    try:
+        return ctx.get_active_profile(ctx.CONFIG).name
+    except Exception:
+        return "default"
+
+
+def _ensure_persisted_loaded() -> None:
+    """Load the active profile's permanently-completed activity ids into the in-memory dedup set,
+    once per profile, so a restart doesn't re-answer a week-long homework. Best-effort."""
+    global _loaded_profile
+    profile = _active_profile_name()
+    if profile == _loaded_profile:
+        return
+    try:
+        for activity_id in autoanswer_store.load_completed(ctx.BASE_DIR, profile):
+            ctx.COMPLETED_QUESTION_SUBMISSIONS.setdefault(activity_id, True)
+    except Exception:
+        pass
+    _loaded_profile = profile
 
 
 def autoanswer_enabled(config: Any = None) -> bool:
@@ -199,15 +226,23 @@ async def _prepare(client: Any, session: Any, activity: Activity, aa: Dict[str, 
     if now - float(ctx.QUESTION_ANSWER_ATTEMPTS.get(key, 0.0) or 0.0) < ATTEMPT_COOLDOWN_SECONDS:
         return
     ctx.QUESTION_ANSWER_ATTEMPTS[key] = now
+    delay = int(aa.get("delay_seconds", 15) or 0)
+    label = activity.title or activity.activity_type.value
+    # Announce on DETECTION and start the countdown NOW — before preparing (which may call the LLM
+    # and take a while), so the user sees the timer immediately, not only once the answer is ready.
+    ctx.log_print("偵測到「{}」，{} 秒後自動送出（按任意鍵立即送）。".format(label, delay))
     prepared = await answer_flow.prepare_answer(client, session, activity, llm_config=aa.get("llm", {}))
     if not prepared:
+        ctx.log_print("「{}」沒有可作答的題目，略過。".format(label))
         return
     prepared["detected_at"] = now
-    prepared["delay_seconds"] = int(aa.get("delay_seconds", 15) or 0)
+    prepared["delay_seconds"] = delay
+    prepared["label"] = label
     ctx.ACTIVE_QUESTION_ANSWERS[key] = prepared
-    label = activity.title or activity.activity_type.value
-    ctx.log_print("偵測到「{}」，已備妥答案，{} 秒後自動送出（按任意鍵立即送）。".format(
-        label, prepared["delay_seconds"]))
+    source = getattr(prepared.get("source"), "value", prepared.get("source"))
+    answer_text = format_paper_canonical(prepared.get("questions") or [], prepared.get("answers") or [])
+    # Echo the prepared answer once, in the canonical LLM format (so it's always shown the same way).
+    ctx.log_print("「{}」已備妥答案（{}）：\n{}".format(label, source, answer_text))
     ctx.log(event="autoanswer", status="prepared", message="已備妥答案，等待送出。",
             extra={"activity_id": key, "source": str(prepared.get("source"))})
 
@@ -225,13 +260,27 @@ async def _submit_due(client: Any, aa: Dict[str, Any], now: float) -> None:
             continue
         result = await answer_flow.submit_prepared(client, prepared, resubmit_for_correct=resubmit)
         ctx.ACTIVE_QUESTION_ANSWERS.pop(key, None)
+        label = prepared.get("label") or key
         if result.ok:
             ctx.COMPLETED_QUESTION_SUBMISSIONS[key] = True
+            try:  # persist permanently so a restart never re-answers it
+                autoanswer_store.mark_completed(ctx.BASE_DIR, _active_profile_name(), key)
+            except Exception:
+                pass
             source = getattr(result.source, "value", result.source)
-            ctx.log_print("已自動作答完成：{}（{}）。".format(key, source))
+            final = result.final_answers or prepared.get("answers") or []
+            answer_text = format_paper_canonical(prepared.get("questions") or [], final)
+            atype = getattr(prepared.get("activity"), "activity_type", "")
+            atype_text = getattr(atype, "value", atype)
+            # Same banner style as 點名成功, showing the FINAL submitted answer in canonical format.
+            ctx.log_print(ctx.format_autoanswer_success_banner(label, key, atype_text, source, answer_text))
             ctx.log(event="autoanswer", status="submitted", message="已自動作答完成。",
                     extra={"activity_id": key, "submission_id": str(result.submission_id), "source": str(source)})
         else:
+            # Failure backoff: push the next attempt out so an un-submittable activity stops
+            # re-detecting/re-announcing every 30s and spamming the screen.
+            ctx.QUESTION_ANSWER_ATTEMPTS[key] = now + max(
+                0.0, FAILED_RETRY_COOLDOWN_SECONDS - ATTEMPT_COOLDOWN_SECONDS)
             ctx.log(event="autoanswer", status=result.status, message="自動作答失敗。",
                     extra={"activity_id": key})
 
@@ -242,6 +291,7 @@ async def autoanswer_tick(session: Any) -> None:
         aa = get_autoanswer_config(ctx.CONFIG)
         if not aa.get("enabled"):
             return
+        _ensure_persisted_loaded()
         client = ctx.create_tron_http_client(session, request_ssl=ctx.get_ssl_request_setting())
         now = ctx.time.monotonic() if hasattr(ctx, "time") else time.monotonic()
         await _submit_due(client, aa, now)

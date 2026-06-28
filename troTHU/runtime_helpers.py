@@ -568,6 +568,34 @@ def format_rollcall_success_banner(
     return _format_banner_box(rows)
 
 
+def format_autoanswer_success_banner(
+    label: Any = "",
+    activity_id: Any = "",
+    activity_type: Any = "",
+    source: Any = "",
+    answer_lines: Any = "",
+) -> str:
+    """Same box style as rollcall success, for auto-answer. Shows the FINAL submitted answer in
+    the canonical LLM format (answer_lines: a pre-rendered multi-line string or list of lines)."""
+    rows = ["自動作答成功！"]
+    label_text = normalize_text(label)
+    if label_text:
+        rows.append("Title: {}".format(label_text))
+    rows.append("Activity: {}".format(normalize_text(activity_id) or "unknown"))
+    type_text = normalize_text(activity_type)
+    if type_text:
+        rows.append("Type: {}".format(type_text))
+    source_text = normalize_text(source)
+    if source_text:
+        rows.append("Source: {}".format(source_text))
+    rows.append("Answer:")
+    if isinstance(answer_lines, (list, tuple)):
+        rows.extend(normalize_text(line) for line in answer_lines)
+    else:
+        rows.extend(normalize_text(line) for line in str(answer_lines or "").splitlines())
+    return _format_banner_box(rows)
+
+
 def format_success_banner_attendance_rate(progress: Any) -> str:
     if not isinstance(progress, dict):
         return ""

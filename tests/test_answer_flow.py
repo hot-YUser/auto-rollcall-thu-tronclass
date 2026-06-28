@@ -1,8 +1,8 @@
 from __future__ import annotations
 import unittest
 
-from troTHU import answer_flow
-from troTHU.quiz_models import Activity, ActivityType, Answer, QuestionType
+from troTHU import answer_flow, llm_answerer
+from troTHU.quiz_models import Activity, ActivityType, Answer, Option, Question, QuestionType
 
 
 class FakeClient:
@@ -259,6 +259,53 @@ class SubmitTest(unittest.IsolatedAsyncioTestCase):
         # exactly one call: the single POST submission, no review-GET / resubmit-POST
         self.assertEqual(len(client.calls), 1)
         self.assertEqual(client.calls[0][0], "POST")
+
+
+class DecideAnswersWiringTest(unittest.IsolatedAsyncioTestCase):
+    """decide_answers must offer the material tools + image fetcher to the LLM only when a
+    TronClass client (and activity) is available and tools are enabled."""
+
+    def _pending_question(self):
+        # scored selection with no leaked answer -> goes to the LLM (plan.pending)
+        return Question(subject_id=1, qtype=QuestionType.SINGLE, stem="?",
+                        options=(Option(id=10, content="x"), Option(id=11, content="y")))
+
+    async def _capture(self, *, client, activity, llm_config):
+        captured = {}
+
+        async def fake_answer(session, question, cfg, *, tools=None, tool_executor=None, image_fetcher=None):
+            captured.update(tools=tools, executor=tool_executor, fetcher=image_fetcher)
+            return "A"
+
+        orig = llm_answerer.answer_question
+        llm_answerer.answer_question = fake_answer
+        try:
+            await answer_flow.decide_answers(None, [self._pending_question()], scored=True,
+                                             llm_config=llm_config, client=client, activity=activity)
+        finally:
+            llm_answerer.answer_question = orig
+        return captured
+
+    async def test_tools_and_fetcher_passed_with_client_and_activity(self):
+        cap = await self._capture(client=FakeClient(), activity=_act(ActivityType.EXAM),
+                                  llm_config={"enable_tools": True})
+        self.assertIsNotNone(cap["tools"])
+        self.assertIsNotNone(cap["executor"])
+        self.assertIsNotNone(cap["fetcher"])
+
+    async def test_no_tools_without_client(self):
+        cap = await self._capture(client=None, activity=_act(ActivityType.EXAM),
+                                  llm_config={"enable_tools": True})
+        self.assertIsNone(cap["tools"])
+        self.assertIsNone(cap["executor"])
+        self.assertIsNone(cap["fetcher"])
+
+    async def test_tools_off_keeps_fetcher_only(self):
+        cap = await self._capture(client=FakeClient(), activity=_act(ActivityType.EXAM),
+                                  llm_config={"enable_tools": False})
+        self.assertIsNone(cap["tools"])        # tools disabled
+        self.assertIsNone(cap["executor"])
+        self.assertIsNotNone(cap["fetcher"])   # but images still get embedded
 
 
 if __name__ == "__main__":

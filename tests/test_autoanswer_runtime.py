@@ -1,8 +1,11 @@
 from __future__ import annotations
 import unittest
 
-from troTHU import autoanswer_runtime
-from troTHU.quiz_models import ActivityType
+import troTHU.runtime_context as ctx
+from troTHU import answer_flow, autoanswer_runtime, autoanswer_store
+from troTHU.quiz_models import (
+    Activity, ActivityType, Answer, AnswerResult, AnswerSource, Option, Question, QuestionType,
+)
 
 
 class FakeClient:
@@ -85,6 +88,79 @@ class CoursewareDetectionTest(unittest.IsolatedAsyncioTestCase):
         })
         out = await autoanswer_runtime._poll_course(client, "55379", {ActivityType.COURSEWARE_QUIZ})
         self.assertEqual(out, [])
+
+
+class PrepareDedupTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        ctx.COMPLETED_QUESTION_SUBMISSIONS.clear()
+        ctx.ACTIVE_QUESTION_ANSWERS.clear()
+        ctx.QUESTION_ANSWER_ATTEMPTS.clear()
+
+    async def test_persisted_completed_activity_is_skipped(self):
+        ctx.COMPLETED_QUESTION_SUBMISSIONS["EX1"] = True  # as if loaded from state/
+        called = []
+        orig = answer_flow.prepare_answer
+
+        async def fake_prepare(*a, **k):
+            called.append(1)
+            return None
+
+        answer_flow.prepare_answer = fake_prepare
+        try:
+            act = Activity(activity_id="EX1", activity_type=ActivityType.EXAM, course_id="c")
+            await autoanswer_runtime._prepare(object(), object(), act, {"delay_seconds": 15, "llm": {}}, 100.0)
+        finally:
+            answer_flow.prepare_answer = orig
+        self.assertEqual(called, [])  # already completed -> never prepared again
+
+
+class SubmitDueTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        ctx.COMPLETED_QUESTION_SUBMISSIONS.clear()
+        ctx.ACTIVE_QUESTION_ANSWERS.clear()
+        ctx.QUESTION_ANSWER_ATTEMPTS.clear()
+        ctx.AUTOANSWER_SUBMIT_NOW = False
+
+    async def test_success_persists_and_marks_completed(self):
+        marks = []
+        orig_submit, orig_mark = answer_flow.submit_prepared, autoanswer_store.mark_completed
+
+        async def fake_submit(client, prepared, *, resubmit_for_correct=True):
+            return AnswerResult(ok=True, status="submitted", activity_id="EX2", submission_id="s1",
+                                source=AnswerSource.LLM, final_answers=(Answer(1, (11,)),))
+
+        answer_flow.submit_prepared = fake_submit
+        autoanswer_store.mark_completed = lambda base, profile, aid: marks.append(aid)
+        q = Question(subject_id=1, qtype=QuestionType.SINGLE,
+                     options=(Option(id=10, content="a"), Option(id=11, content="b")))
+        ctx.ACTIVE_QUESTION_ANSWERS["EX2"] = {
+            "activity": Activity(activity_id="EX2", activity_type=ActivityType.EXAM),
+            "questions": [q], "answers": (Answer(1, (10,)),), "source": AnswerSource.LLM,
+            "submitted": False, "detected_at": 1.0, "delay_seconds": 15, "label": "X"}
+        try:
+            await autoanswer_runtime._submit_due(object(), {"resubmit_for_correct": True}, 100.0)
+        finally:
+            answer_flow.submit_prepared, autoanswer_store.mark_completed = orig_submit, orig_mark
+        self.assertTrue(ctx.COMPLETED_QUESTION_SUBMISSIONS.get("EX2"))
+        self.assertEqual(marks, ["EX2"])  # persisted permanently
+
+    async def test_failure_backs_off(self):
+        orig = answer_flow.submit_prepared
+
+        async def fake_submit(client, prepared, *, resubmit_for_correct=True):
+            return AnswerResult(ok=False, status="submit_failed", activity_id="EX3")
+
+        answer_flow.submit_prepared = fake_submit
+        ctx.ACTIVE_QUESTION_ANSWERS["EX3"] = {
+            "activity": Activity(activity_id="EX3", activity_type=ActivityType.CLASSROOM_EXAM),
+            "questions": [], "answers": (), "submitted": False,
+            "detected_at": 1.0, "delay_seconds": 15, "label": "Y"}
+        try:
+            await autoanswer_runtime._submit_due(object(), {}, 100.0)
+        finally:
+            answer_flow.submit_prepared = orig
+        self.assertFalse(ctx.COMPLETED_QUESTION_SUBMISSIONS.get("EX3"))
+        self.assertGreater(ctx.QUESTION_ANSWER_ATTEMPTS.get("EX3", 0.0), 100.0)  # next retry pushed out
 
 
 if __name__ == "__main__":

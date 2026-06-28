@@ -155,3 +155,29 @@ def answer_from_llm_reply(question: Question, reply_text: str) -> Answer:
     if question.is_blank:
         return answer_from_blanks(question, reply_text)
     return _mk(question, answer_text=normalize_text(reply_text))
+
+
+# ---------------------------------------------------------------- canonical rendering (for display)
+
+def format_answer_canonical(question: Question, answer: Answer) -> str:
+    """Render ONE decided answer back in the canonical LLM output format, so the console always
+    shows answers the same way: choice/matching -> option letters (A / A,C); fill/cloze -> blanks
+    joined by ' ||| '; short -> the text. Inverse of answer_from_llm_reply, for human display."""
+    if (question.is_selection or question.qtype == QuestionType.MATCHING) and question.options:
+        index_by_id = {opt.id: i for i, opt in enumerate(question.options)}
+        letters = [option_label(index_by_id[oid]) for oid in answer.answer_option_ids if oid in index_by_id]
+        return ",".join(letters)
+    if question.is_blank or answer.blanks:
+        return " ||| ".join(content for _sort, content in answer.blanks)
+    return normalize_text(answer.answer_text)
+
+
+def format_paper_canonical(questions: Iterable[Question], answers: Iterable[Answer]) -> str:
+    """One numbered line per question in canonical format, e.g. '1. B\\n2. A,C\\n3. 巴黎'."""
+    by_id = {a.subject_id: a for a in answers}
+    lines: List[str] = []
+    for index, question in enumerate(questions, 1):
+        answer = by_id.get(question.subject_id)
+        rendered = format_answer_canonical(question, answer) if answer is not None else ""
+        lines.append("{}. {}".format(index, rendered or "(空)"))
+    return "\n".join(lines)

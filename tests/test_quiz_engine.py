@@ -5,10 +5,12 @@ from troTHU.quiz_engine import (
     answer_from_labels,
     answer_from_llm_reply,
     decide_paper,
+    format_answer_canonical,
+    format_paper_canonical,
     parse_blank_answers,
     parse_choice_labels,
 )
-from troTHU.quiz_models import AnswerSource, Option, Question, QuestionType
+from troTHU.quiz_models import Answer, AnswerSource, Option, Question, QuestionType
 
 
 def _single(subject_id, correct_index=None):
@@ -149,6 +151,33 @@ class MatchingParentIdTest(unittest.TestCase):
         # Regression guard: the 9 validated types must keep byte-identical payloads.
         ans = answer_from_labels(_single(1), ["A"])
         self.assertNotIn("parent_id", ans.to_payload())
+
+
+class CanonicalRenderTest(unittest.TestCase):
+    def _opts(self, *contents):
+        return tuple(Option(id=10 + i, content=c) for i, c in enumerate(contents))
+
+    def test_single_renders_letter(self):
+        q = Question(subject_id=1, qtype=QuestionType.SINGLE, options=self._opts("a", "b", "c"))
+        self.assertEqual(format_answer_canonical(q, Answer(1, (11,))), "B")
+
+    def test_multiple_renders_letters(self):
+        q = Question(subject_id=2, qtype=QuestionType.MULTIPLE, options=self._opts("a", "b", "c"))
+        self.assertEqual(format_answer_canonical(q, Answer(2, (10, 12))), "A,C")
+
+    def test_fill_renders_blanks_joined(self):
+        q = Question(subject_id=3, qtype=QuestionType.FILL_BLANK, blank_count=2)
+        self.assertEqual(format_answer_canonical(q, Answer(3, blanks=((0, "藍"), (1, "綠")))), "藍 ||| 綠")
+
+    def test_short_renders_text(self):
+        q = Question(subject_id=4, qtype=QuestionType.SHORT_ANSWER)
+        self.assertEqual(format_answer_canonical(q, Answer(4, answer_text="巴黎")), "巴黎")
+
+    def test_paper_numbers_each_question(self):
+        q1 = Question(subject_id=1, qtype=QuestionType.SINGLE, options=self._opts("a", "b"))
+        q2 = Question(subject_id=2, qtype=QuestionType.SHORT_ANSWER)
+        out = format_paper_canonical([q1, q2], [Answer(1, (11,)), Answer(2, answer_text="x")])
+        self.assertEqual(out, "1. B\n2. x")
 
 
 if __name__ == "__main__":

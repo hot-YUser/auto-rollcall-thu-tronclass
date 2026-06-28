@@ -275,6 +275,7 @@ _EAGER_REEXPORTS = {
         "format_hhmm",
         "format_rollcall_start_message",
         "format_rollcall_success_banner",
+        "format_autoanswer_success_banner",
         "format_success_banner_attendance_rate",
         "format_time_value",
         "is_within_any_schedule",
@@ -693,9 +694,19 @@ DEFAULT_CONFIG = {
             "base_url": "https://integrate.api.nvidia.com/v1",
             "model": "minimaxai/minimax-m3",
             "api_key_env": "NVIDIA_API_KEY",
-            "max_tokens": 8192,
-            "temperature": 0.2,
+            # Reasoning ALWAYS on (chat_template_kwargs.thinking_mode on NIM/vLLM) — strict
+            # answer formatting needs it. Sampling = MiniMax's recommended M3 values (1.0/0.95/40);
+            # reasoning provides determinism, very low temp degrades reasoning models. max_tokens
+            # is large because reasoning spends tokens before the answer (too small truncates it).
+            "thinking_mode": "enabled",
+            "max_tokens": 0,   # 0 = 不填 → 不送 max_tokens，完全交給模型自身上限
+            "temperature": 0.6,
             "top_p": 0.95,
+            "top_k": 40,
+            # Tool-calling: let the model fetch course materials/attachments (incl. PDF text)
+            # when a question lacks context. Read-only GETs; bounded by max_tool_iterations.
+            "enable_tools": True,
+            "max_tool_iterations": 3,
         },
     },
     "operating": {

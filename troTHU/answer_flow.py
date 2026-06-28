@@ -18,13 +18,14 @@ except ImportError:  # pragma: no cover
     import runtime_context as ctx  # type: ignore
 
 try:
-    from troTHU import llm_answerer
+    from troTHU import course_context, llm_answerer
     from troTHU.quiz_engine import answer_from_llm_reply, decide_paper, normalize_text, option_label
     from troTHU.quiz_models import (
         BLANK_TYPES, GROUP_TYPES, SKIP_TYPES, Activity, ActivityType, Answer, AnswerResult,
         AnswerSource, Option, Question, QuestionType,
     )
 except ImportError:  # pragma: no cover - script execution fallback
+    import course_context  # type: ignore
     import llm_answerer  # type: ignore
     from quiz_engine import answer_from_llm_reply, decide_paper, normalize_text, option_label  # type: ignore
     from quiz_models import (  # type: ignore
@@ -288,11 +289,22 @@ async def fetch_questions(client: Any, activity: Activity) -> Tuple[Activity, Li
 
 async def decide_answers(
     session: Any, questions: List[Question], *, scored: bool, llm_config: Dict[str, Any],
+    client: Any = None, activity: Optional[Activity] = None,
 ) -> Tuple[Tuple[Answer, ...], AnswerSource]:
     plan = decide_paper(questions, scored=scored)
     answers: List[Answer] = list(plan.answers)
+    # Give the LLM the TronClass client so it can (a) base64-embed login-gated images and
+    # (b) call material-lookup tools when a question lacks context. Needs a real client.
+    tools = executor = image_fetcher = None
+    if plan.pending and client is not None:
+        image_fetcher = course_context.make_image_fetcher(client)
+        if llm_config.get("enable_tools", True) and activity is not None:
+            tools = course_context.material_tool_specs()
+            executor = course_context.make_tool_executor(client, getattr(activity, "course_id", "") or "")
     for question in plan.pending:
-        reply = await llm_answerer.answer_question(session, question, llm_config)
+        reply = await llm_answerer.answer_question(
+            session, question, llm_config,
+            tools=tools, tool_executor=executor, image_fetcher=image_fetcher)
         answers.append(answer_from_llm_reply(question, reply))
     return tuple(answers), plan.source
 
@@ -405,7 +417,8 @@ async def prepare_answer(
     if not questions:
         return None
     scored = activity.scored and activity.activity_type not in _UNSCORED
-    answers, source = await decide_answers(session, questions, scored=scored, llm_config=llm_config)
+    answers, source = await decide_answers(
+        session, questions, scored=scored, llm_config=llm_config, client=client, activity=activity)
     return {
         "activity": activity,
         "questions": questions,
@@ -433,6 +446,7 @@ async def submit_prepared(
     resp = resp if isinstance(resp, dict) else {}
     submission_id = resp.get("submission_id") or resp.get("id")
     prepared["submitted"] = True
+    final_answers = answers  # what we actually submitted (updated below if a resubmit corrects it)
 
     # Optional "submit -> read correct -> resubmit" pass (exam with retake allowed).
     # Gated on allow_retake_exam: a single-attempt exam (作答次數=1) reports it false, so
@@ -449,19 +463,19 @@ async def submit_prepared(
                     message="重交正解未完成，保留首次作答。", error=exc,
                     extra={"activity_id": activity.activity_id})
         if corrected is not None:
-            resp = corrected
+            resp, final_answers = corrected
             submission_id = resp.get("submission_id") or submission_id
 
     return AnswerResult(
         ok=True, status="submitted", activity_id=activity.activity_id,
         submission_id=submission_id, score=resp.get("exam_score") or resp.get("score"),
-        source=prepared.get("source", AnswerSource.NONE),
+        source=prepared.get("source", AnswerSource.NONE), final_answers=final_answers,
     )
 
 
 async def _resubmit_exam_with_correct(
     client: Any, activity: Activity, submission_id: Any, prior_answers: Tuple[Answer, ...] = (),
-) -> Optional[Dict[str, Any]]:
+) -> Optional[Tuple[Dict[str, Any], Tuple[Answer, ...]]]:
     """Read the just-submitted exam's review (leaks correct answers) and resubmit them.
 
     The review's correct_answers entry (decompiled class F) carries the correct value per
@@ -494,5 +508,7 @@ async def _resubmit_exam_with_correct(
             parent_id=base.parent_id if base else _as_int(c.get("parent_id")),
             answer_type=base.answer_type if base else "",
         )
+    corrected_answers = tuple(by_id.values())
     fresh_activity, _questions = await _fetch_exam(client, activity)
-    return await _submit_exam(client, fresh_activity, tuple(by_id.values()))
+    resp = await _submit_exam(client, fresh_activity, corrected_answers)
+    return resp, corrected_answers
