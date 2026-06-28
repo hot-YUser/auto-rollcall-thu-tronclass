@@ -24,6 +24,30 @@
         "timeout_ms": 45000
       }
     },
+    "autoanswer": {
+      "allow_keypress_immediate": true,
+      "default_pick": "first",
+      "delay_seconds": 15,
+      "enabled": true,
+      "llm": {
+        "api_key_env": "NVIDIA_API_KEY",
+        "base_url": "https://integrate.api.nvidia.com/v1",
+        "max_tokens": 8192,
+        "model": "minimaxai/minimax-m3",
+        "provider": "nvidia",
+        "temperature": 0.2,
+        "top_p": 0.95
+      },
+      "resubmit_for_correct": true,
+      "types": [
+        "exam",
+        "classroom_exam",
+        "courseware_quiz",
+        "questionnaire",
+        "vote",
+        "homework"
+      ]
+    },
     "config": {
       "Senkaku": 1,
       "enable_log": true,
@@ -318,6 +342,30 @@
         "interactive_timeout_ms": 300000,
         "timeout_ms": 180000
       }
+    },
+    "autoanswer": {
+      "allow_keypress_immediate": true,
+      "default_pick": "first",
+      "delay_seconds": 15,
+      "enabled": true,
+      "llm": {
+        "api_key_env": "NVIDIA_API_KEY",
+        "base_url": "https://integrate.api.nvidia.com/v1",
+        "max_tokens": 8192,
+        "model": "minimaxai/minimax-m3",
+        "provider": "nvidia",
+        "temperature": 0.2,
+        "top_p": 0.95
+      },
+      "resubmit_for_correct": true,
+      "types": [
+        "exam",
+        "classroom_exam",
+        "courseware_quiz",
+        "questionnaire",
+        "vote",
+        "homework"
+      ]
     },
     "config": {
       "Senkaku": 1,

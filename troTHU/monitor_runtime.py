@@ -406,6 +406,7 @@ async def monitor_loop(
         next_poll_delay = ctx.get_poll_interval()
         try:
             poll = await ctx.poll_rollcall_decision(session, ctx.cnt)
+            await ctx.autoanswer_tick(session)  # v1.7 auto-answer; self-contained, never raises
             error_cnt = 0
             status_msg = ctx.normalize_text(poll.get('status'))
             rollcall_id = _poll_rollcall_id(poll)

@@ -396,6 +396,43 @@ def _normalize_research(config: ctx.Dict[str, ctx.Any]) -> None:
     config['research'] = ctx.normalize_research_mode_config(config.get('research', ctx.DEFAULT_CONFIG['research']))
 
 
+def _normalize_autoanswer(config: ctx.Dict[str, ctx.Any]) -> None:
+    section = _dict_section(config, 'autoanswer')
+    default = ctx.DEFAULT_CONFIG['autoanswer']
+    section['enabled'] = ctx.coerce_bool(section.get('enabled', default['enabled']), default['enabled'])
+    section['delay_seconds'] = min(300, ctx.coerce_positive_int(
+        section.get('delay_seconds', default['delay_seconds']), default['delay_seconds'], minimum=0))
+    section['allow_keypress_immediate'] = ctx.coerce_bool(
+        section.get('allow_keypress_immediate', default['allow_keypress_immediate']),
+        default['allow_keypress_immediate'])
+    section['resubmit_for_correct'] = ctx.coerce_bool(
+        section.get('resubmit_for_correct', default['resubmit_for_correct']), default['resubmit_for_correct'])
+    pick = ctx.normalize_text(section.get('default_pick', default['default_pick'])).lower()
+    section['default_pick'] = pick if pick in ('first', 'last') else default['default_pick']
+    valid_types = set(default['types'])
+    raw_types = section.get('types', default['types'])
+    if not isinstance(raw_types, list):
+        raw_types = default['types']
+    section['types'] = [ctx.normalize_text(t) for t in raw_types if ctx.normalize_text(t) in valid_types] \
+        or list(default['types'])
+    llm = _dict_section(section, 'llm')
+    default_llm = default['llm']
+    for key in ('provider', 'base_url', 'model', 'api_key_env'):
+        llm[key] = ctx.normalize_text(llm.get(key, default_llm[key])) or default_llm[key]
+    llm['max_tokens'] = ctx.coerce_positive_int(
+        llm.get('max_tokens', default_llm['max_tokens']), default_llm['max_tokens'], minimum=16)
+    llm['temperature'] = ctx.coerce_positive_float(
+        llm.get('temperature', default_llm['temperature']), default_llm['temperature'], minimum=0.0)
+    llm['top_p'] = ctx.coerce_positive_float(
+        llm.get('top_p', default_llm['top_p']), default_llm['top_p'], minimum=0.0)
+
+
+def get_autoanswer_config(config: ctx.Any = None) -> ctx.Dict[str, ctx.Any]:
+    source = config if isinstance(config, dict) else ctx.CONFIG
+    section = source.get('autoanswer') if isinstance(source, dict) else None
+    return section if isinstance(section, dict) else dict(ctx.DEFAULT_CONFIG['autoanswer'])
+
+
 def _normalize_operating(config: ctx.Dict[str, ctx.Any]) -> None:
     operating = config.setdefault('operating', {})
     if not isinstance(operating, dict):
@@ -452,6 +489,7 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
     _normalize_number(config)
     _normalize_radar(config)
     _normalize_research(config)
+    _normalize_autoanswer(config)
     _normalize_operating(config)
     return config
 

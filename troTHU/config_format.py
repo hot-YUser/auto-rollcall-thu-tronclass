@@ -558,6 +558,7 @@ def parse_legacy_basic_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
 ADVANCED_SECTION_KEYS = (
     "time", "session", "monitor", "auth", "ux", "local_ui", "webview",
     "integrations", "notifications", "config", "number", "radar", "research",
+    "autoanswer",
 )
 
 
@@ -722,6 +723,15 @@ _ADVANCED_COMMENTS = {
     "radar.boundary_points": "THU 校園邊界座標 [緯度, 經度]，雷達備援求解用",
     "radar.global": "全球定位求解器的細部參數",
     "research": "研究／封包擷取（預設全部關閉，請勿任意開啟）",
+    "autoanswer": "自動答題（v1.7，預設開）：偵測進行中的測驗/作業/問卷/投票並自動作答",
+    "autoanswer.enabled": "true = 啟用自動答題；false = 完全關閉",
+    "autoanswer.delay_seconds": "偵測到題目後等幾秒才送出（這段期間先備好答案；按任意鍵可立即送）",
+    "autoanswer.allow_keypress_immediate": "true = 等待期間按任意鍵立即送出已備好的答案",
+    "autoanswer.resubmit_for_correct": "true = 允許「先交→讀正解→再交」（需該活動允許多次作答；取最高分）",
+    "autoanswer.types": "要自動作答的題型清單",
+    "autoanswer.llm": "答題用的 LLM；API key 從環境變數讀（預設 NVIDIA_API_KEY），不會寫在這裡",
+    "autoanswer.llm.api_key_env": "存放 API key 的環境變數名稱（請自行設定該環境變數）",
+    "autoanswer.llm.model": "模型名稱（NVIDIA NIM，預設 minimaxai/minimax-m3）",
 }
 
 

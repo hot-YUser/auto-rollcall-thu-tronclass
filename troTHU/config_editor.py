@@ -117,6 +117,12 @@ async def watch_any_key_to_edit_config(shutdown_event: ctx.asyncio.Event, sessio
             msvcrt.getwch()
         except Exception:
             pass
+        # v1.7: while an auto-answer is prepared in its delay window, a keypress submits it
+        # immediately instead of opening the config editor.
+        if ctx.autoanswer_has_pending():
+            ctx.request_immediate_autoanswer()
+            ctx.log_print("偵測到按鍵，立即送出已備妥的自動答題。")
+            continue
         ctx.log_print("偵測到按鍵，開啟 config.conf。關閉記事本後會重新載入設定。")
         before = effective_config_now_value(ctx.CONFIG)
         with ctx.pause_status_line():

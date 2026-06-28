@@ -290,6 +290,57 @@ python -m troTHU.tron bot serve --adapter generic
 
 ---
 
+## 自動答題（LLM 整合，v1.7 新功能，**預設開啟**）
+
+> ⚠️ **這個功能會對「真實的成績活動」自動作答。** 請只在你自己的、獲授權的帳號上使用，並理解其用途與後果。可隨時用 `autoanswer.enabled = false` 整個關閉。
+
+開啟監控後，工具會在背景偵測課程裡**進行中的測驗**並自動作答：
+
+1. **偵測到題目 → 等 15 秒才送出。** 這 15 秒裡它已經先把答案準備好（取題、用 LLM 想答案），但**還沒送**——給你一個反悔/介入的窗口。
+2. **按任意鍵 = 立即送出**已備好的答案（不想等 15 秒時用）。
+3. **怎麼決定答案**：拿得到正解就直接填（例如設定「立即公布答案＋可重複作答」的測驗，會「先交一次→讀到正解→再交一次」拿高分）；拿不到正解就交給 **LLM** 看題目作答。
+
+### 設定 LLM（預設 NVIDIA NIM）
+
+答題用的 LLM 預設走 **NVIDIA NIM**（[build.nvidia.com](https://build.nvidia.com/models)），你需要**自行申請並設定 API Key**：
+
+1. 到 [build.nvidia.com](https://build.nvidia.com/models) 申請一支 API Key（格式類似 `nvapi-...`）。
+2. 把它設成**環境變數** `NVIDIA_API_KEY`（工具只從環境變數讀，不會寫進設定檔）：
+
+   PowerShell：
+   ```powershell
+   $env:NVIDIA_API_KEY = "nvapi-你的金鑰"
+   python -m troTHU.tron run
+   ```
+   cmd：
+   ```bat
+   set NVIDIA_API_KEY=nvapi-你的金鑰
+   python -m troTHU.tron run
+   ```
+
+沒設定 key 時，需要 LLM 的題目會自動略過（不會中斷監控）。
+
+### 進階設定（`config.advanced.toml` 的 `[autoanswer]`）
+
+```toml
+[autoanswer]
+enabled = true                 # 總開關（預設開）
+delay_seconds = 15             # 偵測到題目後等幾秒送出（這段期間先備答；按任意鍵可立即送）
+allow_keypress_immediate = true
+resubmit_for_correct = true    # 允許「先交→讀正解→再交」（需該測驗可重複作答；取最高分）
+types = ["exam", "classroom_exam", "courseware_quiz", "questionnaire", "vote", "homework"]
+
+[autoanswer.llm]
+provider = "nvidia"
+base_url = "https://integrate.api.nvidia.com/v1"
+model = "minimaxai/minimax-m3"   # NVIDIA NIM 模型（多模態，可看題目附圖）
+api_key_env = "NVIDIA_API_KEY"   # 存放 API Key 的環境變數名稱
+```
+
+> v1.7-alpha.1 已實機驗證 **exam（線上測驗）** 端到端自動作答；其餘題型的端點已備妥、逐型開放中。可在 `types` 移除尚未驗證的題型。
+
+---
+
 ## 其他功能
 
 - **多帳號 / 群組**：一份設定管多個學號，用 `now` 一鍵切換（見上面 config 教學）。

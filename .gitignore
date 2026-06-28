@@ -78,6 +78,7 @@ APP和網頁前端/
 # Local/private live school verification helpers.
 # These call real-school flows through TRON_USER / TRON_PASS and are not
 # part of the public source tree.
+/scripts/
 test_app_runtime.py
 tests/_credentials.py
 tests/debug_login.py

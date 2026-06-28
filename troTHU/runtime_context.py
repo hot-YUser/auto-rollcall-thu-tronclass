@@ -681,6 +681,23 @@ DEFAULT_CONFIG = {
         },
     },
     "research": normalize_research_mode_config({}),
+    "autoanswer": {
+        "enabled": True,
+        "delay_seconds": 15,
+        "allow_keypress_immediate": True,
+        "resubmit_for_correct": True,
+        "default_pick": "first",
+        "types": ["exam", "classroom_exam", "courseware_quiz", "questionnaire", "vote", "homework"],
+        "llm": {
+            "provider": "nvidia",
+            "base_url": "https://integrate.api.nvidia.com/v1",
+            "model": "minimaxai/minimax-m3",
+            "api_key_env": "NVIDIA_API_KEY",
+            "max_tokens": 8192,
+            "temperature": 0.2,
+            "top_p": 0.95,
+        },
+    },
     "operating": {
         0: {"enable": True, "range": list(DEFAULT_OPERATING_RANGE)},
         1: {"enable": True, "range": list(DEFAULT_OPERATING_RANGE)},
@@ -715,6 +732,30 @@ COMPLETED_QR_ROLLCALLS: Dict[str, bool] = {}
 QR_ASSIST_ATTEMPTS: Dict[str, float] = {}
 
 ACTIVE_TEACHER_QR_ASSISTS: Dict[str, Dict[str, Any]] = {}
+
+# Auto-answer (v1.7): prepared-but-unsubmitted answers, completed submissions, attempt cooldowns.
+ACTIVE_QUESTION_ANSWERS: Dict[str, Dict[str, Any]] = {}
+
+COMPLETED_QUESTION_SUBMISSIONS: Dict[str, bool] = {}
+
+QUESTION_ANSWER_ATTEMPTS: Dict[str, float] = {}
+
+# Set by the any-key watcher to submit a prepared answer immediately (skip the delay gate).
+AUTOANSWER_SUBMIT_NOW = False
+
+
+def autoanswer_has_pending() -> bool:
+    """True when an answer is prepared and waiting in the delay window (so a keypress submits it)."""
+    return any(
+        isinstance(item, dict) and not item.get("submitted")
+        for item in ACTIVE_QUESTION_ANSWERS.values()
+    )
+
+
+def request_immediate_autoanswer() -> None:
+    global AUTOANSWER_SUBMIT_NOW
+    AUTOANSWER_SUBMIT_NOW = True
+
 
 TEACHER_SESSION = None
 
@@ -839,6 +880,8 @@ _LEGACY_EXPORTS = {
     'create_http_connector': ('troTHU.auth_runtime', 'create_http_connector'),
     'create_notification_timeout': ('troTHU.auth_runtime', 'create_notification_timeout'),
     'create_tron_http_client': ('troTHU.auth_runtime', 'create_tron_http_client'),
+    'autoanswer_tick': ('troTHU.autoanswer_runtime', 'autoanswer_tick'),
+    'autoanswer_enabled': ('troTHU.autoanswer_runtime', 'autoanswer_enabled'),
     'credential_report': ('troTHU.status_reports', 'credential_report'),
     'current_datetime': ('troTHU.config_runtime', 'current_datetime'),
     'daily_log_path': ('troTHU.logging_runtime', 'daily_log_path'),
@@ -876,6 +919,7 @@ _LEGACY_EXPORTS = {
     'get_number_config': ('troTHU.config_runtime', 'get_number_config'),
     'get_poll_interval': ('troTHU.config_runtime', 'get_poll_interval'),
     'get_radar_config': ('troTHU.config_runtime', 'get_radar_config'),
+    'get_autoanswer_config': ('troTHU.config_runtime', 'get_autoanswer_config'),
     'get_retry_limit': ('troTHU.config_runtime', 'get_retry_limit'),
     'get_runtime_credentials': ('troTHU.config_runtime', 'get_runtime_credentials'),
     'get_schedule_for_day': ('troTHU.config_runtime', 'get_schedule_for_day'),
