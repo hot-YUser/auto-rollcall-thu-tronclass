@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -136,11 +137,20 @@ def _command_display(command: Sequence[str], *, base_dir: Path) -> str:
 def _default_command_runner(command: Sequence[str], cwd: Path, step: str) -> Mapping[str, Any]:
     timeout = 1500 if step in {"unittest", "pyinstaller"} else 180
     started = time.time()
+    # Force UTF-8 on BOTH sides: the child's stdout (PYTHONUTF8/PYTHONIOENCODING) and our decode.
+    # On a non-UTF-8 Windows locale (e.g. cp950 zh-TW) the JSON from the check subcommands carries
+    # CJK; decoding the pipe with the locale codec then raises and stdout comes back empty, which
+    # would falsely fail the package_check/release_check gate. ponytail: errors="replace" so one
+    # stray byte can never abort a build.
+    child_env = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"}
     try:
         completed = subprocess.run(
             list(command),
             cwd=str(cwd),
             text=True,
+            encoding="utf-8",
+            errors="replace",
+            env=child_env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             timeout=timeout,

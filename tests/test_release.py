@@ -8,9 +8,22 @@ import zipfile
 from pathlib import Path
 from troTHU.package_diagnostics import PROJECT_NAME, PROJECT_VERSION, build_package_diagnostic_report, discover_hidden_import_gaps, validate_pyinstaller_spec
 from troTHU.release_checklist import EXPECTED_WINDOWS_ZIP, build_release_artifact_manifest, build_release_build_plan, build_release_checklist, format_release_checklist, validate_release_artifact
-from troTHU.release_builder import RELEASE_NOTES_FILE, ReleaseBuildError, build_release_build_preflight, package_addon_bundle, package_release_artifact, run_release_build_pipeline
+from troTHU.release_builder import RELEASE_NOTES_FILE, ReleaseBuildError, _default_command_runner, build_release_build_preflight, package_addon_bundle, package_release_artifact, run_release_build_pipeline
 from troTHU import tron
 from unittest.mock import patch
+import sys
+
+
+class CommandRunnerEncodingTest(unittest.TestCase):
+    def test_runner_decodes_cjk_subprocess_output(self) -> None:
+        # The check subcommands emit JSON containing CJK. On a non-UTF-8 Windows locale
+        # (cp950 zh-TW) decoding the pipe with the locale codec raised and stdout came back
+        # empty, falsely failing the package_check gate. The runner must force UTF-8 decode.
+        with tempfile.TemporaryDirectory() as d:
+            result = _default_command_runner(
+                [sys.executable, "-c", "print('東海大學')"], Path(d), "package_check")
+        self.assertEqual(result["returncode"], 0)
+        self.assertIn("東海大學", result["stdout"])
 
 
 # --- merged from tests/test_release_builder.py ---
