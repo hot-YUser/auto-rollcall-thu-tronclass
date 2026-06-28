@@ -371,10 +371,17 @@ api_key_env = "NVIDIA_API_KEY"   # 存放 API Key 的環境變數名稱
 > （選項**字母**）——教師建+開投票、學生經產品碼送出，伺服器確認本人已記入 `interaction_student_ids`
 > （alpha.1 的全數 500 其實是我們用錯了方法/欄位/值：`PUT` + `{voted_options:[文字]}`，並非手機 App 專屬）；
 > **matching（配對）** v1.7-alpha.2 升級為精確計分（見上＊，實測每對正確滿分）；
-> **courseware_quiz（教材測驗）** 學生端取題/送出已依還原碼契約修正（送出 wrapper 為 `subjects_answers`、每題帶 `type`）
-> 並有離線測試，但**測試租戶 www.tronclass.com.tw 未開通教材測驗（AI Quiz）模組** —— `/settings`、`/generate-*`、
-> 建題端點全回 404／「未找到資源」，`/upload_references` 永遠為空（真實老師在此租戶亦無法建題），
-> 故無法在此租戶實機驗證，待有開通該模組的租戶再補。可在 `types` 移除你尚未需要的題型。
+> **courseware_quiz（教材測驗）** 學生端取題/送出已依還原碼契約修正（送出 wrapper 為 `subjects_answers`、每題帶 `type`），
+> 監控偵測也已接好（教材活動 → `activity/{id}/quizzes` → quiz → 取題/送出/`my-submission` 判已交），有離線測試；
+> 但**測試租戶 www.tronclass.com.tw 未開通教材測驗（AI Quiz）模組**（`/settings`、`/generate-*`、建題端點全 404、`/upload_references` 永遠為空），
+> 故偵測與送出**無法在此租戶實機驗證**，待有開通該模組的租戶再補。可在 `types` 移除你尚未需要的題型。
+>
+> **v1.7-alpha.3 — 自動答題 API 深度稽核（逐欄位對照還原碼，已實機驗證）**：
+> ① 「先交→讀正解→再交」改為**把公布的正解疊加到首次答案上**，不再整份重建——避免把填空/簡答/配對洗成空白；
+>    實測一份「可重複作答＋公布答案」的測驗，首次部分答對 0 分 → 重交後**滿分**且填空保留（每題 10/10）。
+> ② exam 最終送出補上 `examFinished`（對齊真實 client，標記為「完成」而非草稿）。
+> ③ exam 偵測會跳過「作答次數已用盡」的測驗（依學生 `submission_count`/`submit_times`，實測單次測驗送出後不再重複偵測）——
+>    伺服器本就會擋下重複/逾次送出（不會覆蓋你的作答），此守門只是省去重啟後的無謂重試。
 
 ---
 

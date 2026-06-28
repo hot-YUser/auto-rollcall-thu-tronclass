@@ -185,7 +185,8 @@ class SubmitTest(unittest.IsolatedAsyncioTestCase):
                                            (Answer(9, (), "the essay"),))
         _m, url, body = client.calls[0]
         self.assertIn("/api/course/activities/9/submissions", url)
-        self.assertEqual(body, {"comment": "the essay", "is_draft": False, "uploads": []})
+        self.assertEqual(body, {"comment": "the essay", "is_draft": False,
+                                "slides": [], "uploads": []})
 
     async def test_submit_classroom_is_per_subject_wrapped_body(self):
         client = FakeClient()
@@ -208,6 +209,42 @@ class SubmitTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(method, "POST")
         self.assertIn("/api/votes/9/vote", url)
         self.assertEqual(body["votes"], ["A", "C"])  # id 1 -> A, id 3 -> C
+
+    async def test_submit_exam_marks_finished(self):
+        # The real submit form sends examFinished:true to finalize (not draft-save) the paper.
+        client = FakeClient()
+        await answer_flow._submit_exam(client, _act(ActivityType.EXAM, paper_instance_id=777),
+                                       (Answer(1001, (11,)),))
+        self.assertIs(client.calls[0][2]["examFinished"], True)
+
+    async def test_resubmit_overlays_correct_without_wiping_blanks(self):
+        # Retake exam, answers announced. Review leaks the correct OPTION for the choice and the
+        # correct TEXT for the blank/short. Resubmit must keep the first-pass blanks/short and
+        # matching parent_id (review carries no parent_id), only overlaying what leaked — never
+        # rebuild the paper from the review alone (that wiped non-choice subjects to 0).
+        review = {"correct_answers_data": {"correct_answers": [
+            {"subject_id": 1, "answer_option_ids": [12]},                       # choice: leaked id
+            {"subject_id": 2, "correct_answers": [{"sort": 0, "content": "天"}]},  # fill: leaked text
+            {"subject_id": 3, "answer_option_ids": [99]},                        # matching sub: leaked id
+            {"subject_id": 4},                                                   # short: nothing leaked
+        ]}}
+        client = FakeClient({"/submissions/555": review, "/distribute": _PAPER})
+        prior = (
+            Answer(1, (11,), answer_type="single_selection"),
+            Answer(2, blanks=((0, "X"),), answer_type="fill_in_blank"),
+            Answer(3, (50,), parent_id=7, answer_type="matching"),
+            Answer(4, answer_text="my essay", answer_type="short_answer"),
+        )
+        await answer_flow._resubmit_exam_with_correct(
+            client, _act(ActivityType.EXAM, paper_instance_id=777), 555, prior)
+        # last call is the resubmit POST
+        body = client.calls[-1][2]
+        by_id = {s["subject_id"]: s for s in body["subjects"]}
+        self.assertEqual(by_id[1]["answer_option_ids"], [12])               # overlaid choice
+        self.assertEqual(by_id[2]["answers"], [{"sort": 0, "content": "天"}])  # overlaid blank, not wiped
+        self.assertEqual(by_id[3]["answer_option_ids"], [99])               # overlaid matching id
+        self.assertEqual(by_id[3]["parent_id"], 7)                          # parent_id preserved
+        self.assertEqual(by_id[4]["answer"], "my essay")                    # short kept (nothing leaked)
 
     async def test_submit_once_exam_does_not_resubmit(self):
         # 作答次數=1 exam: submit response has no allow_retake_exam -> the resubmit-for-correct

@@ -40,6 +40,30 @@ _TYPE_BY_NAME = {
     "homework": ActivityType.HOMEWORK,
 }
 
+# Activity types that can carry an AI Quiz (courseware). The decompiled route is
+# /course/:courseId/material/:activityId/aiQuiz/:quizId — i.e. material activities.
+# ponytail: just "material"; widen if a live tenant shows quizzes on other courseware types.
+_COURSEWARE_TYPES = ("material",)
+
+
+def _already_submitted(raw: Dict[str, Any]) -> bool:
+    """A per-student 'already submitted' boolean, if the list exposes one. Defensive: the
+    student exam-list does NOT carry one (verified live — see _attempts_exhausted), but other
+    tenants/types may, and the server anyway rejects a 2nd submit, so this is a no-op where the
+    field is absent. The harm it would prevent (overwrite) does not occur — re-submits are
+    server-rejected, not applied."""
+    return bool(raw.get("has_submitted") or raw.get("submitted") or raw.get("is_submitted"))
+
+
+def _attempts_exhausted(raw: Dict[str, Any]) -> bool:
+    """No submit attempts left. The student exam-list carries per-student `submission_count`
+    and the `submit_times` cap (verified live: submit_times=1 -> count 1 after one submit).
+    Once used up, re-detecting on restart only wastes an LLM prepare on a submit the server
+    will reject — so skip it. submit_times<=0 means unlimited."""
+    cap = raw.get("submit_times")
+    used = raw.get("submission_count")
+    return isinstance(cap, int) and cap > 0 and isinstance(used, int) and used >= cap
+
 _last_poll = 0.0
 _courses: List[str] = []
 _courses_at = 0.0
@@ -100,19 +124,21 @@ async def _poll_course(client: Any, course_id: str, wanted: Set[ActivityType]) -
     if ActivityType.EXAM in wanted:
         body = await _get(client, "/api/courses/{}/exam-list?conditions=&page=1&page_size=50".format(course_id))
         for e in (body.get("exams") if isinstance(body, dict) else None) or []:
-            if isinstance(e, dict) and e.get("is_started") and not e.get("is_closed"):
+            if isinstance(e, dict) and e.get("is_started") and not e.get("is_closed") \
+                    and not _already_submitted(e) and not _attempts_exhausted(e):
                 out.append(_activity(course_id, ActivityType.EXAM, e))
 
     if ActivityType.QUESTIONNAIRE in wanted:
         body = await _get(client, "/api/courses/{}/questionnaire-list".format(course_id))
         for q in (body.get("questionnaires") if isinstance(body, dict) else None) or []:
-            if isinstance(q, dict) and q.get("is_started") and not q.get("is_closed"):
+            if isinstance(q, dict) and q.get("is_started") and not q.get("is_closed") \
+                    and not _already_submitted(q):
                 out.append(_activity(course_id, ActivityType.QUESTIONNAIRE, q))
 
     if ActivityType.HOMEWORK in wanted:
         body = await _get(client, "/api/courses/{}/homework-activities".format(course_id))
         for h in (body.get("homework_activities") if isinstance(body, dict) else None) or []:
-            if isinstance(h, dict) and not h.get("is_closed"):
+            if isinstance(h, dict) and not h.get("is_closed") and not _already_submitted(h):
                 out.append(_activity(course_id, ActivityType.HOMEWORK, h))
 
     if ActivityType.VOTE in wanted:
@@ -129,9 +155,41 @@ async def _poll_course(client: Any, course_id: str, wanted: Set[ActivityType]) -
             if isinstance(c, dict) and normalize_text(c.get("status")) in ("start", "1"):
                 out.append(_activity(course_id, ActivityType.CLASSROOM_EXAM, c))
 
-    # courseware_quiz auto-detect needs activity->quiz resolution; left to direct targeting
-    # (untestable on this tenant — no AI credits). Wired in answer_flow for when a quiz id is known.
+    if ActivityType.COURSEWARE_QUIZ in wanted:
+        await _poll_courseware(client, course_id, out)
     return out
+
+
+async def _poll_courseware(client: Any, course_id: str, out: List[Activity]) -> None:
+    """AI-Quiz (courseware) detection: course material activity -> its quiz id(s).
+
+    Contract from the decompiled endpoint registry (activity/{id}/quizzes ->
+    quiz/{id}/subjects + /submissions + /my-submission). UN-LIVE-VALIDATED on this tenant —
+    the AI-Quiz module is not provisioned (all endpoints 404) — so it is wired to the contract
+    and offline-tested only. ponytail: probes quizzes per material activity; the COURSE_REFRESH
+    throttle bounds it — cache activity->quiz if a course ever carries many materials."""
+    body = await _get(client, "/api/courses/{}/activities?page=1&page_size=200".format(course_id))
+    activities = body.get("activities") if isinstance(body, dict) else (body if isinstance(body, list) else None)
+    for act in activities or []:
+        if not isinstance(act, dict) or normalize_text(act.get("type")) not in _COURSEWARE_TYPES:
+            continue
+        aid = normalize_text(act.get("id"))
+        if not aid:
+            continue
+        quizzes = await _get(client, "/api/courseware-quiz/activity/{}/quizzes".format(aid))
+        items = quizzes.get("quizzes") if isinstance(quizzes, dict) else (quizzes if isinstance(quizzes, list) else None)
+        for quiz in items or []:
+            if not isinstance(quiz, dict):
+                continue
+            qid = normalize_text(quiz.get("id"))
+            if not qid or quiz.get("is_closed") or quiz.get("is_started") is False:
+                continue
+            mine = await _get(client, "/api/courseware-quiz/quiz/{}/my-submission".format(qid))
+            if mine:  # already submitted (empty/{} when not) — don't overwrite
+                continue
+            out.append(Activity(activity_id=qid, activity_type=ActivityType.COURSEWARE_QUIZ,
+                                course_id=course_id,
+                                title=normalize_text(quiz.get("title") or act.get("title")), raw=quiz))
 
 
 async def _prepare(client: Any, session: Any, activity: Activity, aa: Dict[str, Any], now: float) -> None:

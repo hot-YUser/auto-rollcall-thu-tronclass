@@ -300,8 +300,12 @@ async def decide_answers(
 # ----------------------------------------------------------------------------- submit (branch)
 
 async def _submit_exam(client: Any, activity: Activity, answers: Tuple[Answer, ...]) -> Dict[str, Any]:
+    # examFinished (camelCase, per the real submit form class `me`) marks the paper DONE rather
+    # than a partial/draft save. We worked without it on this tenant (server defaulted finished),
+    # but strict tenants may otherwise leave the submission ungraded — so send it explicitly.
     body = {"exam_paper_instance_id": activity.paper_instance_id,
-            "subjects": [a.to_payload() for a in answers]}
+            "subjects": [a.to_payload() for a in answers],
+            "examFinished": True}
     return await client.request_json(
         "POST", client.api_url("/api/exams/{}/submissions".format(activity.activity_id)),
         json_payload=body, expected_status=(200, 201))
@@ -339,7 +343,8 @@ async def _submit_homework(client: Any, activity: Activity, answers: Tuple[Answe
     text = answers[0].answer_text if answers else ""
     return await client.request_json(
         "POST", client.api_url("/api/course/activities/{}/submissions".format(activity.activity_id)),
-        json_payload={"comment": text, "is_draft": False, "uploads": []}, expected_status=(200, 201))
+        json_payload={"comment": text, "is_draft": False, "slides": [], "uploads": []},
+        expected_status=(200, 201))
 
 
 async def _submit_classroom(client: Any, activity: Activity, answers: Tuple[Answer, ...]) -> Dict[str, Any]:
@@ -437,7 +442,7 @@ async def submit_prepared(
     if (resubmit_for_correct and activity.activity_type == ActivityType.EXAM
             and resp.get("allow_retake_exam") and submission_id):
         try:
-            corrected = await _resubmit_exam_with_correct(client, activity, submission_id)
+            corrected = await _resubmit_exam_with_correct(client, activity, submission_id, answers)
         except ctx.TronHttpError as exc:
             corrected = None
             ctx.log(event="autoanswer", status="resubmit_skipped",
@@ -455,20 +460,39 @@ async def submit_prepared(
 
 
 async def _resubmit_exam_with_correct(
-    client: Any, activity: Activity, submission_id: Any,
+    client: Any, activity: Activity, submission_id: Any, prior_answers: Tuple[Answer, ...] = (),
 ) -> Optional[Dict[str, Any]]:
-    """Read the just-submitted exam's review (leaks correct answers), resubmit them."""
+    """Read the just-submitted exam's review (leaks correct answers) and resubmit them.
+
+    The review's correct_answers entry (decompiled class F) carries the correct value per
+    AUTO-SCORED subject: `answer_option_ids` (choice), `correct_answers`=[{sort,content}]
+    (fill/cloze blanks) and `answer` (short-answer text) — but NOT parent_id, and nothing at
+    all for un-leaked types. So we OVERLAY the leak onto the first-pass answers (which already
+    carry parent_id/blanks for matching/fill) instead of rebuilding the paper from the review
+    alone — otherwise non-choice subjects would be wiped to empty and score 0 on resubmit."""
     review = await client.request_json(
         "GET", client.api_url("/api/exams/{}/submissions/{}".format(activity.activity_id, submission_id)),
         expected_status=(200,))
     correct = (review or {}).get("correct_answers_data", {}).get("correct_answers") or []
     if not correct:
         return None
-    answers = tuple(
-        Answer(subject_id=_as_int(c.get("subject_id")),
-               answer_option_ids=tuple(_as_int(o) for o in (c.get("answer_option_ids") or [])),
-               parent_id=_as_int(c.get("parent_id")))
-        for c in correct if isinstance(c, dict)
-    )
+    by_id: Dict[int, Answer] = {a.subject_id: a for a in prior_answers}
+    for c in correct:
+        if not isinstance(c, dict):
+            continue
+        sid = _as_int(c.get("subject_id"))
+        base = by_id.get(sid)
+        option_ids = tuple(_as_int(o) for o in (c.get("answer_option_ids") or []))
+        blanks = tuple((_as_int(b.get("sort")), normalize_text(b.get("content")))
+                       for b in (c.get("correct_answers") or []) if isinstance(b, dict))
+        answer_text = normalize_text(c.get("answer"))
+        by_id[sid] = Answer(
+            subject_id=sid,
+            answer_option_ids=option_ids or (base.answer_option_ids if base else ()),
+            answer_text=answer_text or (base.answer_text if base else ""),
+            blanks=blanks or (base.blanks if base else ()),
+            parent_id=base.parent_id if base else _as_int(c.get("parent_id")),
+            answer_type=base.answer_type if base else "",
+        )
     fresh_activity, _questions = await _fetch_exam(client, activity)
-    return await _submit_exam(client, fresh_activity, answers)
+    return await _submit_exam(client, fresh_activity, tuple(by_id.values()))
