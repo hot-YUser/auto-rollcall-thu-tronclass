@@ -305,6 +305,28 @@ python -m troTHU.tron bot serve --adapter generic
 > `allow_retake_exam` 為否），不會浪費掉唯一的作答機會；第二次嘗試會被伺服器以「作答次數已滿」擋下。瀏覽器端的防作弊／禁用開發者工具／
 > 全螢幕／禁止複製貼上對本工具完全無效——它走 API 作答，不經瀏覽器。題目／選項隨機排序也不影響（讀取的是實際派發的題目與選項 id）。
 
+### 支援的題型（已逐型實機驗證）
+
+涵蓋 TronClass 全部題型；題組（media/analysis/cloze）會自動展開子題逐一作答，敘述段（paragraph_desc）自動略過：
+
+| 題型 | exam 線上測驗 | classroom 即時測驗 | questionnaire 問卷 |
+|---|---|---|---|
+| 單選 single_selection | ✅ | ✅ | ✅ |
+| 多選 multiple_selection | ✅ | ✅ | ✅ |
+| 是非 true_or_false | ✅ | ✅ | （適用） |
+| 填空 fill_in_blank | ✅ | ✅ | （適用） |
+| 簡答 short_answer | ✅ | ✅ | ✅ |
+| 題組 media（含子題） | ✅ | （適用） | — |
+| 綜合 analysis（含子題） | ✅ | （適用） | — |
+| 克漏字 cloze（下拉子題） | ✅ | （適用） | — |
+| 配對 matching | ✅＊ | （適用） | — |
+| 敘述段 paragraph_desc | ✅（自動略過） | ✅ | ✅ |
+
+✅ = 已實機驗證（真實出題→真實 LLM 作答→送出成功；選擇題另確認內容正解）。
+homework（作業）為單一自由作答，由 LLM 生成內容後送出（已驗證）。
+＊matching：腳本會把容器的右側選項去重後注入各左項子題，由 LLM 逐項配對並送出；
+TronClass 配對題的右側選項帶有重複 id，精確計分依伺服器端配對邏輯，列為 best-effort。
+
 ### 設定 LLM（預設 NVIDIA NIM）
 
 答題用的 LLM 預設走 **NVIDIA NIM**（[build.nvidia.com](https://build.nvidia.com/models)），你需要**自行申請並設定 API Key**：
