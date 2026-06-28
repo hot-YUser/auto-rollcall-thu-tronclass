@@ -358,12 +358,36 @@ allow_keypress_immediate = true
 resubmit_for_correct = true    # 允許「先交→讀正解→再交」（需該測驗可重複作答；取最高分）
 types = ["exam", "classroom_exam", "courseware_quiz", "questionnaire", "vote", "homework"]
 
-[autoanswer.llm]
-provider = "nvidia"
-base_url = "https://integrate.api.nvidia.com/v1"
-model = "minimaxai/minimax-m3"   # NVIDIA NIM 模型（多模態，可看題目附圖）
-api_key_env = "NVIDIA_API_KEY"   # 存放 API Key 的環境變數名稱
+[autoanswer.llm]                 # 「行為」設定（連線設定在 config.conf 的 [llm]）
+thinking_mode = "enabled"        # 推理強度：常開（預設，作答最穩）/ adaptive / disabled
+max_tokens = 0                   # 0 = 不填 → 交給模型自身上限（預設）
+enable_tools = true              # 題目資訊不足時，允許模型自行讀取課程教材/附件（含 PDF）來作答
+max_tool_iterations = 3          # 單題最多讓模型呼叫工具幾輪
 ```
+
+LLM 的**連線設定**（v1.7-alpha.4 起）改放在 **`config.conf` 的 `[llm]`**（留空＝用預設）：
+
+```ini
+[llm]
+provider = nvidia
+base_url = https://integrate.api.nvidia.com/v1
+model = minimaxai/minimax-m3
+api_key_env = NVIDIA_API_KEY     # 存放金鑰的「環境變數名稱」，不是金鑰本身
+```
+
+> **模型互動加強（v1.7）**：作答用的 LLM **預設常開 reasoning**（`thinking_mode = "enabled"`，
+> NVIDIA NIM / MiniMax-M3 的 `chat_template_kwargs.thinking_mode`，這已是 M3 最高推理檔），嚴格作答對格更穩；
+> 推理文字會與最終答案分離，只取乾淨答案送出。`max_tokens` 預設不填＝交給模型自身上限。
+> **工具呼叫**：題幹資訊不足時，模型可自行呼叫 `search_course_materials` 到課程裡找教材／講義
+> （**PDF 會抽成文字**，pypdf）並據此作答（皆為唯讀；輪數由 `max_tool_iterations` 控）。
+> **多模態**：需登入的題目／教材圖片會由本工具下載後以 base64 內嵌，NVIDIA 才看得到（公開圖維持直接帶 URL）。
+> 實機驗證（測試課 55379／自有帳號）：reasoning 常開、模型呼叫工具讀取教材文字並據以作答，皆已實測通過。
+
+> **v1.7-alpha.4 — 體驗與穩定性**：①「已作答過」的活動**永久記錄**在 `state/autoanswer_completed.json`
+> （per-帳號、原子寫入），重啟監控**不再重交、不再刷版面**（一週的作業也只會作答一次）。② 輸出流程改為
+> **偵測即提示並開始 15 秒倒數** → 備妥後回顯一次答案 → 送出成功後以「點名成功」同款橫幅顯示**最終**提交答案，
+> 全部以規範的 LLM 輸出格式統一呈現。③ 無法送出的活動（如無直播階段的即時測驗）改為長退避，不再每 30 秒洗畫面。
+> ④ LLM 連線設定搬到 `config.conf [llm]`（含防呆回落）。皆已在測試課 55379／自有帳號實機驗證。
 
 > 全 6 型都用同一套「單一入口、動態分流」接好並有離線測試。實機驗證狀態（測試課 55379／自有帳號）：
 > **exam（線上測驗）、classroom_exam（即時測驗）、questionnaire（問卷）、homework（作業）** 四型端到端實機驗證；

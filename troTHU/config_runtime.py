@@ -419,12 +419,24 @@ def _normalize_autoanswer(config: ctx.Dict[str, ctx.Any]) -> None:
     default_llm = default['llm']
     for key in ('provider', 'base_url', 'model', 'api_key_env'):
         llm[key] = ctx.normalize_text(llm.get(key, default_llm[key])) or default_llm[key]
-    llm['max_tokens'] = ctx.coerce_positive_int(
-        llm.get('max_tokens', default_llm['max_tokens']), default_llm['max_tokens'], minimum=16)
+    thinking = ctx.normalize_text(llm.get('thinking_mode', default_llm['thinking_mode'])).lower()
+    llm['thinking_mode'] = thinking if thinking in ('enabled', 'adaptive', 'disabled') else default_llm['thinking_mode']
+    # max_tokens: 0 (or blank/None) means UNSET -> not sent (defer to the model);
+    # any other value is coerced to a sane int (>=16).
+    raw_max_tokens = llm.get('max_tokens', default_llm['max_tokens'])
+    if raw_max_tokens in (None, '', 0, '0'):
+        llm['max_tokens'] = 0
+    else:
+        llm['max_tokens'] = ctx.coerce_positive_int(raw_max_tokens, 0, minimum=16)
     llm['temperature'] = ctx.coerce_positive_float(
         llm.get('temperature', default_llm['temperature']), default_llm['temperature'], minimum=0.0)
     llm['top_p'] = ctx.coerce_positive_float(
         llm.get('top_p', default_llm['top_p']), default_llm['top_p'], minimum=0.0)
+    llm['top_k'] = ctx.coerce_positive_int(
+        llm.get('top_k', default_llm['top_k']), default_llm['top_k'], minimum=0)
+    llm['enable_tools'] = ctx.coerce_bool(llm.get('enable_tools', default_llm['enable_tools']), default_llm['enable_tools'])
+    llm['max_tool_iterations'] = ctx.coerce_positive_int(
+        llm.get('max_tool_iterations', default_llm['max_tool_iterations']), default_llm['max_tool_iterations'], minimum=0)
 
 
 def get_autoanswer_config(config: ctx.Any = None) -> ctx.Dict[str, ctx.Any]:

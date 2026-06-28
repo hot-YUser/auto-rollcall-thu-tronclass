@@ -432,6 +432,39 @@ class NormalizeConfigGoldenTest(unittest.TestCase):
         self.assertEqual(self._normalized(_NORMALIZE_RICH_INPUT), golden["rich"])
 
 
+class LlmConfigSectionTest(unittest.TestCase):
+    """v1.7-alpha.4: LLM connection settings live in config.conf [llm]; behaviour keys stay in
+    config.advanced.toml; config.conf wins; blank falls back to defaults; max_tokens unset = 0."""
+
+    def test_llm_section_parsed_and_merged(self):
+        simple = tron.parse_basic_config_text(
+            "now =\n[llm]\nprovider = nvidia\nbase_url = https://x/v1\nmodel = my-model\napi_key_env = MY_KEY\n")
+        self.assertEqual(simple["llm"]["model"], "my-model")
+        llm = tron.normalize_config(tron.merge_basic_and_advanced_config(simple, {}))["autoanswer"]["llm"]
+        self.assertEqual(llm["model"], "my-model")
+        self.assertEqual(llm["api_key_env"], "MY_KEY")
+        self.assertEqual(llm["base_url"], "https://x/v1")
+
+    def test_blank_llm_falls_back_to_defaults(self):
+        simple = tron.parse_basic_config_text("now =\n")
+        llm = tron.normalize_config(tron.merge_basic_and_advanced_config(simple, {}))["autoanswer"]["llm"]
+        self.assertEqual(llm["model"], "minimaxai/minimax-m3")
+        self.assertEqual(llm["api_key_env"], "NVIDIA_API_KEY")
+
+    def test_render_basic_has_llm_advanced_omits_connection_keys(self):
+        simple = tron.parse_basic_config_text("now =\n[llm]\nmodel = abc\n")
+        config = tron.normalize_config(tron.merge_basic_and_advanced_config(simple, {}))
+        rendered_basic, advanced = tron.split_normalized_config(config)
+        basic_text = tron.render_basic_config(rendered_basic)
+        self.assertIn("[llm]", basic_text)
+        self.assertIn("model = abc", basic_text)
+        adv_text = tron.render_advanced_config_toml(advanced)
+        self.assertNotIn("api_key_env =", adv_text)  # connection keys no longer emitted (moved to config.conf)
+        self.assertNotIn("\nmodel =", adv_text)
+        self.assertIn("thinking_mode", adv_text)     # behaviour keys stay
+        self.assertIn("max_tokens = 0", adv_text)    # unset sentinel renders cleanly
+
+
 class AdvancedProviderRenderTest(unittest.TestCase):
     """v1.6-alpha.3: config.advanced.toml is the live source of truth for the FULL
     school registry — every school is materialized and editable; config wins over the

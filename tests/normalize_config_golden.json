@@ -32,10 +32,14 @@
       "llm": {
         "api_key_env": "NVIDIA_API_KEY",
         "base_url": "https://integrate.api.nvidia.com/v1",
-        "max_tokens": 8192,
+        "enable_tools": true,
+        "max_tokens": 0,
+        "max_tool_iterations": 3,
         "model": "minimaxai/minimax-m3",
         "provider": "nvidia",
-        "temperature": 0.2,
+        "temperature": 0.6,
+        "thinking_mode": "enabled",
+        "top_k": 40,
         "top_p": 0.95
       },
       "resubmit_for_correct": true,
@@ -351,10 +355,14 @@
       "llm": {
         "api_key_env": "NVIDIA_API_KEY",
         "base_url": "https://integrate.api.nvidia.com/v1",
-        "max_tokens": 8192,
+        "enable_tools": true,
+        "max_tokens": 0,
+        "max_tool_iterations": 3,
         "model": "minimaxai/minimax-m3",
         "provider": "nvidia",
-        "temperature": 0.2,
+        "temperature": 0.6,
+        "thinking_mode": "enabled",
+        "top_k": 40,
         "top_p": 0.95
       },
       "resubmit_for_correct": true,

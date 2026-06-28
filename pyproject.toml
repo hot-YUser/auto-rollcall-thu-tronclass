@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "auto-rollcall-thu-tronclass"
-version = "1.7a3"
+version = "1.7a4"
 description = "THU TronClass auto rollcall helper"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -34,6 +34,9 @@ dependencies = [
   "PyNaCl>=1.5.0",
   # Reading config.advanced.toml: stdlib tomllib on 3.11+, tomli backport on 3.10.
   "tomli>=2.0.1; python_version < '3.11'",
+  # Auto-answer tool-calling reads course PDF handouts as text (pure-Python, no native deps,
+  # PyInstaller-friendly). course_context import-guards it, so a missing wheel degrades gracefully.
+  "pypdf>=4",
 ]
 
 [project.optional-dependencies]
