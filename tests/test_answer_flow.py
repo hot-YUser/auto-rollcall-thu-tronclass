@@ -47,6 +47,47 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(q.qtype, QuestionType.MULTIPLE)
         self.assertEqual(q.correct_option_ids, (1,))
 
+    def test_true_or_false_is_recognised_as_selection(self):
+        # API string is "true_or_false" (not "true_false") — must map to a selection type.
+        q = answer_flow.parse_question({"id": 3, "type": "true_or_false",
+                                        "options": [{"id": 1, "content": "對"}, {"id": 2, "content": "錯"}]})
+        self.assertEqual(q.qtype, QuestionType.TRUE_FALSE)
+        self.assertTrue(q.is_selection)
+
+    def test_fill_in_blank_parses_blank_count_and_leaked_texts(self):
+        q = answer_flow.parse_question({
+            "id": 4, "type": "fill_in_blank", "answer_number": 2,
+            "correct_answers": [{"sort": 1, "content": "b1"}, {"sort": 0, "content": "a0"}]})
+        self.assertEqual(q.qtype, QuestionType.FILL_BLANK)
+        self.assertTrue(q.is_blank)
+        self.assertEqual(q.blank_count, 2)
+        self.assertEqual(q.correct_texts, ("a0", "b1"))   # sorted by blank order
+
+    def test_parse_questions_matching_injects_deduped_container_options(self):
+        # matching subs have no options of their own; the right-side choices live on the
+        # container (with duplicates). parse_questions injects the deduped set into each sub.
+        raw = [{"id": 1, "type": "matching",
+                "options": [{"id": 10, "content": "cat"}, {"id": 11, "content": "cat"},
+                            {"id": 12, "content": "dog"}],
+                "sub_subjects": [{"id": 21, "type": "single_selection", "description": "貓", "options": []},
+                                 {"id": 22, "type": "single_selection", "description": "狗", "options": []}]}]
+        qs = answer_flow.parse_questions(raw)
+        self.assertEqual([q.subject_id for q in qs], [21, 22])
+        self.assertEqual([o.content for o in qs[0].options], ["cat", "dog"])  # deduped by content
+
+    def test_parse_questions_flattens_group_and_skips_section(self):
+        raw = [
+            {"id": 1, "type": "paragraph_desc", "description": "intro section"},
+            {"id": 2, "type": "media", "sub_subjects": [
+                {"id": 21, "type": "single_selection", "options": [{"id": 1}]},
+                {"id": 22, "type": "paragraph_desc"},  # section inside group -> skipped
+                {"id": 23, "type": "short_answer"},
+            ]},
+            {"id": 3, "type": "single_selection", "options": [{"id": 9}]},
+        ]
+        qs = answer_flow.parse_questions(raw)
+        self.assertEqual([q.subject_id for q in qs], [21, 23, 3])  # section dropped, group flattened
+
 
 class FetchTest(unittest.IsolatedAsyncioTestCase):
     async def test_fetch_exam_sets_paper_instance(self):

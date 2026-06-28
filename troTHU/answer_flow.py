@@ -7,7 +7,10 @@ review reveals the correct answer — resubmit the correct answer for a guarante
 (controlled by autoanswer.resubmit_for_correct; validated live on exam, P0).
 """
 from __future__ import annotations
+import re
 from typing import Any, Dict, List, Optional, Tuple
+
+_BLANK_MARKER_RE = re.compile(r"__blank__|_{2,}|＿{2,}")
 
 try:  # pragma: no cover - package import path
     import troTHU.runtime_context as ctx
@@ -18,26 +21,30 @@ try:
     from troTHU import llm_answerer
     from troTHU.quiz_engine import answer_from_llm_reply, decide_paper, normalize_text
     from troTHU.quiz_models import (
-        Activity, ActivityType, Answer, AnswerResult, AnswerSource, Option, Question, QuestionType,
+        BLANK_TYPES, GROUP_TYPES, SKIP_TYPES, Activity, ActivityType, Answer, AnswerResult,
+        AnswerSource, Option, Question, QuestionType,
     )
 except ImportError:  # pragma: no cover - script execution fallback
     import llm_answerer  # type: ignore
     from quiz_engine import answer_from_llm_reply, decide_paper, normalize_text  # type: ignore
     from quiz_models import (  # type: ignore
-        Activity, ActivityType, Answer, AnswerResult, AnswerSource, Option, Question, QuestionType,
+        BLANK_TYPES, GROUP_TYPES, SKIP_TYPES, Activity, ActivityType, Answer, AnswerResult,
+        AnswerSource, Option, Question, QuestionType,
     )
 
 
 _QTYPE_MAP = {
-    "single_selection": QuestionType.SINGLE,
-    "single": QuestionType.SINGLE,
-    "multiple_selection": QuestionType.MULTIPLE,
-    "multiple": QuestionType.MULTIPLE,
-    "true_false": QuestionType.TRUE_FALSE,
-    "fill_blank": QuestionType.FILL_BLANK,
+    "single_selection": QuestionType.SINGLE, "single": QuestionType.SINGLE,
+    "multiple_selection": QuestionType.MULTIPLE, "multiple": QuestionType.MULTIPLE,
+    "true_or_false": QuestionType.TRUE_FALSE, "true_false": QuestionType.TRUE_FALSE,
+    "fill_in_blank": QuestionType.FILL_BLANK, "fill_blank": QuestionType.FILL_BLANK,
     "completion": QuestionType.FILL_BLANK,
-    "short_answer": QuestionType.SHORT_ANSWER,
-    "essay": QuestionType.SHORT_ANSWER,
+    "short_answer": QuestionType.SHORT_ANSWER, "essay": QuestionType.SHORT_ANSWER,
+    "cloze": QuestionType.CLOZE,
+    "matching": QuestionType.MATCHING,
+    "media": QuestionType.MEDIA,
+    "analysis": QuestionType.ANALYSIS,
+    "paragraph_desc": QuestionType.SECTION,
 }
 
 # Activity types where there is no right/wrong answer (just pick something valid).
@@ -66,13 +73,65 @@ def parse_question(raw: Dict[str, Any]) -> Question:
             is_answer=opt.get("is_answer") if "is_answer" in opt else None,
             sort=_as_int(opt.get("sort")),
         ))
+    qtype = map_qtype(raw.get("type"))
+    # Leaked correct text answers (fill/cloze/short), ordered by blank sort.
+    raw_correct = raw.get("correct_answers")
+    correct_texts: Tuple[str, ...] = ()
+    if isinstance(raw_correct, list):
+        ordered = sorted((c for c in raw_correct if isinstance(c, dict)), key=lambda c: _as_int(c.get("sort")))
+        correct_texts = tuple(normalize_text(c.get("content")) for c in ordered)
+    blank_count = _as_int(raw.get("answer_number"))
+    if not blank_count and qtype in BLANK_TYPES:
+        # cloze stores answer_number 0; the blanks are markers in the description.
+        markers = len(_BLANK_MARKER_RE.findall(str(raw.get("description") or "")))
+        blank_count = markers or len(correct_texts) or 1
     return Question(
         subject_id=_as_int(raw.get("id") or raw.get("subject_id")),
-        qtype=map_qtype(raw.get("type")),
+        qtype=qtype,
         stem=normalize_text(raw.get("description") or raw.get("content") or raw.get("stem")),
         options=tuple(options),
         point=normalize_text(raw.get("point")),
+        blank_count=blank_count,
+        correct_texts=correct_texts,
     )
+
+
+def _dedup_options_by_content(options: Any) -> List[Dict[str, Any]]:
+    """Matching containers list the right-side items with duplicates (one copy per sub);
+    collapse to one option per distinct content so the LLM picks a clean letter."""
+    seen: Dict[str, Dict[str, Any]] = {}
+    for o in options or []:
+        if isinstance(o, dict):
+            key = normalize_text(o.get("content"))
+            if key and key not in seen:
+                seen[key] = o
+    return list(seen.values())
+
+
+def parse_questions(raw_subjects: Any) -> List[Question]:
+    """Flatten a paper's subjects into answerable questions: expand 題組/cloze/matching
+    sub_subjects, drop non-answerable sections (paragraph_desc). For matching, each sub
+    (a left item) has no options of its own — the right-side choices live on the container,
+    so we inject the deduped container options into each sub for the LLM to pick from."""
+    out: List[Question] = []
+    for raw in raw_subjects or []:
+        if not isinstance(raw, dict):
+            continue
+        qtype = map_qtype(raw.get("type"))
+        if qtype in SKIP_TYPES:
+            continue
+        subs = raw.get("sub_subjects") or []
+        if qtype in GROUP_TYPES or qtype in (QuestionType.MATCHING, QuestionType.CLOZE) or subs:
+            container_opts = _dedup_options_by_content(raw.get("options")) if qtype == QuestionType.MATCHING else None
+            for sub in subs:
+                if not isinstance(sub, dict) or map_qtype(sub.get("type")) in SKIP_TYPES:
+                    continue
+                if container_opts and not (sub.get("options")):
+                    sub = dict(sub, options=container_opts, type="single_selection")
+                out.append(parse_question(sub))
+            continue
+        out.append(parse_question(raw))
+    return out
 
 
 # ----------------------------------------------------------------------------- fetch (branch)
@@ -81,7 +140,7 @@ async def _fetch_exam(client: Any, activity: Activity) -> Tuple[Activity, List[Q
     paper = await client.request_json(
         "GET", client.api_url("/api/exams/{}/distribute".format(activity.activity_id)))
     paper = paper if isinstance(paper, dict) else {}
-    questions = [parse_question(s) for s in (paper.get("subjects") or []) if isinstance(s, dict)]
+    questions = parse_questions(paper.get("subjects"))
     activity = Activity(
         activity_id=activity.activity_id, activity_type=activity.activity_type,
         course_id=activity.course_id, title=activity.title,
@@ -95,7 +154,7 @@ async def _fetch_courseware(client: Any, activity: Activity) -> Tuple[Activity, 
     body = await client.request_json(
         "GET", client.api_url("/api/courseware-quiz/quiz/{}/subjects".format(activity.activity_id)))
     subjects = body.get("subjects") if isinstance(body, dict) else body
-    questions = [parse_question(s) for s in (subjects or []) if isinstance(s, dict)]
+    questions = parse_questions(subjects)
     return activity, questions
 
 
@@ -104,7 +163,7 @@ async def _fetch_questionnaire(client: Any, activity: Activity) -> Tuple[Activit
     paper = await client.request_json(
         "GET", client.api_url("/api/questionnaire/{}/distribute".format(activity.activity_id)))
     paper = paper if isinstance(paper, dict) else {}
-    questions = [parse_question(s) for s in (paper.get("subjects") or []) if isinstance(s, dict)]
+    questions = parse_questions(paper.get("subjects"))
     activity = Activity(
         activity_id=activity.activity_id, activity_type=activity.activity_type,
         course_id=activity.course_id, title=activity.title,
@@ -143,7 +202,7 @@ async def _fetch_classroom(client: Any, activity: Activity) -> Tuple[Activity, L
     paper = await client.request_json(
         "GET", client.api_url("/api/classroom/{}/distribute".format(activity.activity_id)))
     paper = paper if isinstance(paper, dict) else {}
-    questions = [parse_question(s) for s in (paper.get("subjects") or []) if isinstance(s, dict)]
+    questions = parse_questions(paper.get("subjects"))
     activity = Activity(
         activity_id=activity.activity_id, activity_type=activity.activity_type,
         course_id=activity.course_id, title=activity.title,

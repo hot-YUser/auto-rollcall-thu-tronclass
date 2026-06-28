@@ -18,18 +18,21 @@ except ImportError:  # pragma: no cover - direct script fallback
 
 try:
     from troTHU.quiz_engine import normalize_text, option_label
-    from troTHU.quiz_models import Question
+    from troTHU.quiz_models import Question, QuestionType
 except ImportError:  # pragma: no cover - script execution fallback
     from quiz_engine import normalize_text, option_label  # type: ignore
-    from quiz_models import Question  # type: ignore
+    from quiz_models import Question, QuestionType  # type: ignore
 
 
 SYSTEM_PROMPT = (
-    "You are an exam-answering assistant. You are given one question and its lettered options. "
-    "Reply with ONLY the letter(s) of the correct option(s) and nothing else — no explanation, "
-    "no punctuation other than commas. For multiple correct answers separate letters with commas "
-    "(e.g. A,C). For a single answer reply just the letter (e.g. B). "
-    "If the question is open-ended (no options), reply with a short, direct answer only."
+    "You are an exam-answering assistant. You are given ONE question. Reply with ONLY the answer "
+    "itself — no explanation, no labels, no extra punctuation.\n"
+    "- Multiple choice (lettered options): the correct letter(s). One letter for a single answer "
+    "(e.g. B); comma-separated for multiple (e.g. A,C).\n"
+    "- Fill-in-the-blank or cloze: the blank answers in order, separated by ' ||| ' (three "
+    "vertical bars) when there is more than one blank, and nothing else.\n"
+    "- Short answer / open question: a short, direct answer.\n"
+    "- Matching: pairs mapping each numbered left item to a lettered right item, e.g. 1-A, 2-C."
 )
 
 DEFAULT_LLM: Dict[str, Any] = {
@@ -75,6 +78,12 @@ def build_question_text(question: Question) -> str:
     lines = [strip_html(question.stem) or "(question)"]
     for index, opt in enumerate(question.options):
         lines.append("{}. {}".format(option_label(index), strip_html(opt.content)))
+    if question.is_blank:
+        n = question.blank_count or 1
+        lines.append("[Fill in {} blank(s), in order, separated by ' ||| '.]".format(n)
+                     if n > 1 else "[Fill in the blank.]")
+    elif question.qtype == QuestionType.MATCHING:
+        lines.append("[Matching: pair each numbered left item with a lettered option, e.g. 1-A, 2-C.]")
     return "\n".join(lines)
 
 

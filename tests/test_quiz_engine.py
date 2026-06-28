@@ -5,6 +5,7 @@ from troTHU.quiz_engine import (
     answer_from_labels,
     answer_from_llm_reply,
     decide_paper,
+    parse_blank_answers,
     parse_choice_labels,
 )
 from troTHU.quiz_models import AnswerSource, Option, Question, QuestionType
@@ -46,6 +47,38 @@ class DecidePaperTest(unittest.TestCase):
         self.assertEqual(plan.source, AnswerSource.LLM)
         self.assertEqual(len(plan.answers), 1)   # the leaked one is pre-filled
         self.assertEqual(len(plan.pending), 1)   # the other needs LLM
+
+
+class BlankAndTextTest(unittest.TestCase):
+    def test_fill_blank_leaked_texts_replayed_as_blanks(self):
+        q = Question(subject_id=5, qtype=QuestionType.FILL_BLANK, blank_count=2,
+                     correct_texts=("cat", "dog"))
+        plan = decide_paper([q])
+        self.assertEqual(plan.source, AnswerSource.REPLAY)
+        self.assertEqual(plan.answers[0].blanks, ((0, "cat"), (1, "dog")))
+        self.assertEqual(plan.answers[0].to_payload()["answers"],
+                         [{"sort": 0, "content": "cat"}, {"sort": 1, "content": "dog"}])
+
+    def test_short_answer_leaked_text_replayed(self):
+        q = Question(subject_id=6, qtype=QuestionType.SHORT_ANSWER, correct_texts=("Paris",))
+        plan = decide_paper([q])
+        self.assertEqual(plan.source, AnswerSource.REPLAY)
+        self.assertEqual(plan.answers[0].answer_text, "Paris")
+
+    def test_fill_blank_scored_no_leak_goes_to_llm(self):
+        q = Question(subject_id=7, qtype=QuestionType.FILL_BLANK, blank_count=2)
+        plan = decide_paper([q])
+        self.assertEqual(plan.source, AnswerSource.LLM)
+        self.assertEqual(len(plan.pending), 1)
+
+    def test_llm_reply_fill_blank_split_into_blanks(self):
+        q = Question(subject_id=8, qtype=QuestionType.FILL_BLANK, blank_count=2)
+        ans = answer_from_llm_reply(q, "cat ||| dog")
+        self.assertEqual(ans.blanks, ((0, "cat"), (1, "dog")))
+
+    def test_parse_blank_answers_pads_to_count(self):
+        self.assertEqual(parse_blank_answers("only one", 2), ["only one", ""])
+        self.assertEqual(parse_blank_answers("a ||| b ||| c", 2), ["a", "b"])
 
 
 class LabelParsingTest(unittest.TestCase):

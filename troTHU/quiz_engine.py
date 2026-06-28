@@ -26,6 +26,21 @@ def _default_answer(question: Question, pick: str) -> Answer:
     return Answer(subject_id=question.subject_id, answer_option_ids=(option.id,))
 
 
+def _replay_answer(question: Question) -> Answer:
+    """Build an Answer from the server-leaked correct answer, or None if nothing leaked.
+
+    Choice -> correct option ids; fill/cloze -> per-blank texts; short -> answer text.
+    """
+    if question.correct_option_ids:
+        return Answer(question.subject_id, answer_option_ids=question.correct_option_ids)
+    if question.correct_texts:
+        if question.is_blank:
+            return Answer(question.subject_id,
+                          blanks=tuple((i, t) for i, t in enumerate(question.correct_texts)))
+        return Answer(question.subject_id, answer_text=question.correct_texts[0])
+    return None  # type: ignore[return-value]
+
+
 def decide_paper(
     questions: Iterable[Question],
     *,
@@ -43,13 +58,16 @@ def decide_paper(
     saw_replay = saw_default = False
 
     for question in questions:
-        if question.correct_option_ids:
-            answers.append(Answer(question.subject_id, question.correct_option_ids))
+        replay = _replay_answer(question)
+        if replay is not None:
+            answers.append(replay)
             saw_replay = True
-        elif not scored:
+        elif not scored and (question.is_selection or question.options):
+            # Unscored choice (questionnaire/vote) — any valid option completes it.
             answers.append(_default_answer(question, default_pick))
             saw_default = True
         else:
+            # Scored without a leaked answer, or unscored free-text -> needs the LLM.
             pending.append(question)
 
     if pending:
@@ -103,9 +121,32 @@ def answer_from_labels(question: Question, labels: Iterable[str]) -> Answer:
     return Answer(subject_id=question.subject_id, answer_option_ids=option_ids)
 
 
+def parse_blank_answers(text: str, count: int) -> List[str]:
+    """Split an LLM fill/cloze reply into per-blank answers (we prompt for ' ||| ' between blanks).
+
+    Falls back to newlines, then to the whole reply as a single blank. Pads/truncates to `count`.
+    """
+    text = normalize_text(text)
+    parts = [p.strip() for p in re.split(r"\s*\|\|\|\s*|\n+", text) if p.strip()]
+    if not parts and text:
+        parts = [text]
+    if count > 0:
+        parts = (parts + [""] * count)[:count]
+    return parts
+
+
+def answer_from_blanks(question: Question, reply_text: str) -> Answer:
+    parts = parse_blank_answers(reply_text, question.blank_count or 0)
+    return Answer(subject_id=question.subject_id,
+                  blanks=tuple((i, p) for i, p in enumerate(parts)))
+
+
 def answer_from_llm_reply(question: Question, reply_text: str) -> Answer:
-    """Selection questions -> map letters; free-text questions -> use the reply verbatim."""
-    if question.is_selection and question.options:
+    """Map the LLM reply to an Answer by question type:
+    selection/matching -> option ids; fill/cloze -> per-blank texts; else -> reply verbatim."""
+    if (question.is_selection or question.qtype == QuestionType.MATCHING) and question.options:
         labels = parse_choice_labels(reply_text, len(question.options))
         return answer_from_labels(question, labels)
+    if question.is_blank:
+        return answer_from_blanks(question, reply_text)
     return Answer(subject_id=question.subject_id, answer_text=normalize_text(reply_text))

@@ -17,11 +17,17 @@ class ActivityType(str, Enum):
 
 
 class QuestionType(str, Enum):
+    # Values are the TronClass API type strings (decompiled enum `s`).
     SINGLE = "single_selection"
     MULTIPLE = "multiple_selection"
-    TRUE_FALSE = "true_false"
-    FILL_BLANK = "fill_blank"
+    TRUE_FALSE = "true_or_false"
+    FILL_BLANK = "fill_in_blank"
     SHORT_ANSWER = "short_answer"
+    CLOZE = "cloze"
+    MATCHING = "matching"
+    MEDIA = "media"            # 題組/聽力 — carries sub_subjects
+    ANALYSIS = "analysis"      # 綜合題 — carries sub_subjects
+    SECTION = "paragraph_desc"  # 敘述段 — not answerable, skip
     UNKNOWN = "unknown"
 
 
@@ -34,6 +40,12 @@ class AnswerSource(str, Enum):
 
 
 SELECTION_TYPES = (QuestionType.SINGLE, QuestionType.MULTIPLE, QuestionType.TRUE_FALSE)
+# Free-text blank answers go in the submission's `answers` array (one per blank).
+BLANK_TYPES = (QuestionType.FILL_BLANK, QuestionType.CLOZE)
+# Parent questions that carry sub_subjects (answered as their flattened children).
+GROUP_TYPES = (QuestionType.MEDIA, QuestionType.ANALYSIS)
+# Not answerable — a section/description; the auto-answer skips it entirely.
+SKIP_TYPES = (QuestionType.SECTION,)
 
 
 @dataclass(frozen=True)
@@ -53,6 +65,9 @@ class Question:
     options: Tuple[Option, ...] = field(default_factory=tuple)
     point: str = ""
     image_urls: Tuple[str, ...] = field(default_factory=tuple)
+    blank_count: int = 0
+    # Correct text(s) the server leaked (fill/cloze/short): per-blank, sorted.
+    correct_texts: Tuple[str, ...] = field(default_factory=tuple)
 
     @property
     def correct_option_ids(self) -> Tuple[int, ...]:
@@ -61,11 +76,16 @@ class Question:
 
     @property
     def has_leaked_answer(self) -> bool:
-        return any(opt.is_answer is not None for opt in self.options) and bool(self.correct_option_ids)
+        return (any(opt.is_answer is not None for opt in self.options) and bool(self.correct_option_ids)) \
+            or bool(self.correct_texts)
 
     @property
     def is_selection(self) -> bool:
         return self.qtype in SELECTION_TYPES
+
+    @property
+    def is_blank(self) -> bool:
+        return self.qtype in BLANK_TYPES
 
 
 @dataclass(frozen=True)
@@ -85,13 +105,20 @@ class Answer:
     subject_id: int
     answer_option_ids: Tuple[int, ...] = field(default_factory=tuple)
     answer_text: str = ""
+    # Per-blank answers for fill_in_blank / cloze: (sort, content), in blank order.
+    blanks: Tuple[Tuple[int, str], ...] = field(default_factory=tuple)
 
     def to_payload(self) -> Dict[str, Any]:
-        return {
+        payload: Dict[str, Any] = {
             "subject_id": self.subject_id,
             "answer_option_ids": list(self.answer_option_ids),
             "answer": self.answer_text,
         }
+        # The submission model carries a separate `answers` array (decompiled class F);
+        # fill_in_blank / cloze put one entry per blank here, not in `answer`.
+        if self.blanks:
+            payload["answers"] = [{"sort": s, "content": c} for s, c in self.blanks]
+        return payload
 
 
 @dataclass(frozen=True)
