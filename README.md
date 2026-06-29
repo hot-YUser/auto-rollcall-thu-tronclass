@@ -389,6 +389,11 @@ api_key_env = NVIDIA_API_KEY     # 存放金鑰的「環境變數名稱」，不
 > 全部以規範的 LLM 輸出格式統一呈現。③ 無法送出的活動（如無直播階段的即時測驗）改為長退避，不再每 30 秒洗畫面。
 > ④ LLM 連線設定搬到 `config.conf [llm]`（含防呆回落）。皆已在測試課 55379／自有帳號實機驗證。
 
+> **v1.7-alpha.5 — 即時測驗偵測治本**：實機逐欄位確認 classroom_exam 狀態機後，偵測改為
+> `status=="start" 且 started_subjects_count>=1`（真的開放收答才作答）；移除 alpha.4 的失敗退避 band-aid。
+> classroom-list 的 `status` 只有 none/start/finish，且 "start" 必要非充分（停止收答時仍是 "start" 但送出會被擋）。
+> 只動即時測驗偵測，其他活動型不受影響（已實機回歸 exam/vote/questionnaire/classroom）。
+
 > 全 6 型都用同一套「單一入口、動態分流」接好並有離線測試。實機驗證狀態（測試課 55379／自有帳號）：
 > **exam（線上測驗）、classroom_exam（即時測驗）、questionnaire（問卷）、homework（作業）** 四型端到端實機驗證；
 > **vote（投票）** v1.7-alpha.2 已實機驗證：真正的送出契約是 `POST /api/votes/{id}/vote`、body `{"votes":["A",...]}`
