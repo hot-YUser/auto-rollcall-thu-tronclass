@@ -13,11 +13,11 @@ RUNTIME_STATE_FILENAME = "account_runtime.json"
 RUNTIME_STALE_SECONDS = 300
 MAX_TEXT_LENGTH = 200
 SENSITIVE_KEY_RE = re.compile(
-    r"(authorization|cookie|passwd|password|secret|session|token|payload|raw|response|body)",
+    r"(api_key|authorization|cookie|passwd|password|secret|session|token|payload|raw|response|body)",
     re.IGNORECASE,
 )
 SENSITIVE_ASSIGNMENT_RE = re.compile(
-    r"(?i)(authorization|cookie|passwd|password|secret|session|token|payload)=\S+"
+    r"(?i)(api_key|authorization|cookie|passwd|password|secret|session|token|payload)=\S+"
 )
 
 

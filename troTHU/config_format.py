@@ -230,12 +230,19 @@ def infer_single_account_now(simple: ctx.Mapping[str, ctx.Any]) -> str:
     return ""
 
 
+# The config.conf [llm] connection keys, in render order. SINGLE source of truth: parse, render,
+# merge, split, and the advanced-strip all reference this so adding a key never drifts across sites
+# (the duplicated-literal pattern that produced the round-1 [llm]-template bug). api_key is the
+# secret; api_key_env is the env-var name. The behaviour keys (thinking_mode/...) are NOT here.
+LLM_CONNECTION_KEYS = ("provider", "base_url", "model", "api_key", "api_key_env")
+
+
 def parse_basic_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
     simple: ctx.Dict[str, ctx.Any] = {
         "now": "",
         "accounts": [],
         "teacher": {"user": "", "passwd": "", "school": "tronclass", "course": ""},
-        "llm": {"provider": "", "base_url": "", "model": "", "api_key_env": ""},
+        "llm": {key: "" for key in LLM_CONNECTION_KEYS},
         "groups": [],
         "operating": {},
         "warnings": [],
@@ -366,7 +373,7 @@ def parse_basic_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
         elif current_section == "teacher":
             simple["teacher"][canon_key] = val
         elif current_section == "llm":
-            if canon_key in ("provider", "base_url", "model", "api_key_env"):
+            if canon_key in LLM_CONNECTION_KEYS:
                 simple["llm"][canon_key] = val
         elif current_section == "operating":
             if canon_key == "day" and "day" in current_operating:
@@ -405,7 +412,7 @@ def parse_legacy_basic_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
         "now": "",
         "accounts": [],
         "teacher": {"user": "", "passwd": "", "school": "tronclass", "course": ""},
-        "llm": {"provider": "", "base_url": "", "model": "", "api_key_env": ""},
+        "llm": {key: "" for key in LLM_CONNECTION_KEYS},
         "groups": [],
         "operating": {},
         "warnings": [],
@@ -664,12 +671,15 @@ def render_basic_config(simple_dict: ctx.Mapping[str, ctx.Any] | None = None) ->
         getattr(ctx, "DEFAULT_CONFIG", None), dict) else {}
     lines.extend([
         "# [llm]（選用）自動答題用的 LLM 連線設定；留空＝用預設（NVIDIA NIM / minimax-m3）。",
-        "#   api_key_env 是「存放金鑰的環境變數名稱」，不是金鑰本身——金鑰請設成該環境變數，切勿寫在這裡。",
-        "#   進階行為（reasoning/溫度/工具…）仍在 config.advanced.toml 的 [autoanswer.llm]。",
+        "#   api_key：直接把金鑰填在這裡最簡單（建議一般使用者用這個）。",
+        "#   進階：想用環境變數就把 api_key 留空、改設 api_key_env 指定的環境變數（預設 NVIDIA_API_KEY）。",
+        "#   金鑰是機密；config.conf 預設不會被提交（.gitignore），但仍請勿自行外流或截圖分享。",
+        "#   進階行為（reasoning／溫度／工具…）仍在 config.advanced.toml 的 [autoanswer.llm]。",
         "[llm]",
         "provider = {}".format(llm.get("provider") or llm_defaults.get("provider") or "nvidia"),
         "base_url = {}".format(llm.get("base_url") or llm_defaults.get("base_url") or ""),
         "model = {}".format(llm.get("model") or llm_defaults.get("model") or ""),
+        "api_key = {}".format(llm.get("api_key") or ""),
         "api_key_env = {}".format(llm.get("api_key_env") or llm_defaults.get("api_key_env") or "NVIDIA_API_KEY"),
         ""
     ])
@@ -749,7 +759,7 @@ _ADVANCED_COMMENTS = {
     "autoanswer.delay_seconds": "偵測到題目後等幾秒才送出（這段期間先備好答案；按任意鍵可立即送）",
     "autoanswer.resubmit_for_correct": "true = 允許「先交→讀正解→再交」（需該活動允許多次作答；取最高分）",
     "autoanswer.types": "要自動作答的題型清單",
-    "autoanswer.llm": "答題 LLM 的「行為」設定；連線設定（provider/base_url/model/api_key_env）改在 config.conf 的 [llm]",
+    "autoanswer.llm": "答題 LLM 的「行為」設定；連線設定（provider/base_url/model/api_key/api_key_env）改在 config.conf 的 [llm]",
     "autoanswer.llm.thinking_mode": "推理強度：enabled=常開（預設，作答最穩）/ adaptive=模型自決 / disabled=關閉",
     "autoanswer.llm.max_tokens": "回覆 token 上限；0 = 不填（交給模型自身上限，預設）",
     "autoanswer.llm.enable_tools": "true = 題目資訊不足時，允許模型自行讀取課程教材/附件（含 PDF 文字）來作答",
@@ -808,11 +818,12 @@ def render_advanced_config_toml(config: ctx.Mapping[str, ctx.Any] | None = None)
     control at its default value, with any overrides from ``config`` applied on
     top. This is what makes the advanced file self-documenting for beginners."""
     full = _deep_merge_dict(default_advanced_config(), config or {})
-    # LLM connection keys (provider/base_url/model/api_key_env) live in config.conf [llm] now —
-    # don't duplicate them here. The behaviour keys (thinking_mode/max_tokens/...) stay.
+    # LLM connection keys (provider/base_url/model/api_key/api_key_env) live in config.conf [llm]
+    # now — don't duplicate them here (and never write the secret api_key into this file). The
+    # behaviour keys (thinking_mode/max_tokens/...) stay.
     autoanswer_full = full.get("autoanswer")
     if isinstance(autoanswer_full, dict) and isinstance(autoanswer_full.get("llm"), dict):
-        for moved_key in ("provider", "base_url", "model", "api_key_env"):
+        for moved_key in LLM_CONNECTION_KEYS:
             autoanswer_full["llm"].pop(moved_key, None)
     # The provider section is rendered separately below: the FULL school registry,
     # taken from the passed config when present (config wins) or the factory seed.
@@ -972,7 +983,7 @@ def merge_basic_and_advanced_config(simple: ctx.Mapping[str, ctx.Any], advanced:
     if isinstance(autoanswer_section, dict):
         autoanswer_llm = autoanswer_section.setdefault("llm", {})
         if isinstance(autoanswer_llm, dict):
-            for key in ("provider", "base_url", "model", "api_key_env"):
+            for key in LLM_CONNECTION_KEYS:
                 value = _strip_value(llm_source.get(key))
                 if value:
                     autoanswer_llm[key] = value
@@ -1109,8 +1120,7 @@ def split_normalized_config(config: ctx.Mapping[str, ctx.Any]) -> ctx.Tuple[ctx.
         "course": teacher_course,
     }
     autoanswer_llm = (normalized.get("autoanswer") or {}).get("llm") or {}
-    simple_llm = {key: _strip_value(autoanswer_llm.get(key))
-                  for key in ("provider", "base_url", "model", "api_key_env")}
+    simple_llm = {key: _strip_value(autoanswer_llm.get(key)) for key in LLM_CONNECTION_KEYS}
     simple = {"now": now, "accounts": accounts, "teacher": simple_teacher, "llm": simple_llm,
               "groups": groups, "operating": simple_operating}
     advanced = {}

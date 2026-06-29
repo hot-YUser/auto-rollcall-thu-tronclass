@@ -27,7 +27,7 @@ except ImportError:  # pragma: no cover
 
 
 SENSITIVE_RE = re.compile(
-    r"(authorization|cookie|passwd|password|secret|session|token|payload|raw|response|value|body)",
+    r"(api_key|authorization|cookie|passwd|password|secret|session|token|payload|raw|response|value|body)",
     re.IGNORECASE,
 )
 DEFAULT_COOKIE_NAME_ALLOWLIST = ("session",)

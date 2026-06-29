@@ -134,6 +134,31 @@ class ApiKeyTest(unittest.TestCase):
     def test_missing_key_is_empty(self):
         self.assertEqual(resolve_api_key({"api_key_env": "DEFINITELY_UNSET_KEY_123"}), "")
 
+    def test_direct_api_key_wins_over_env(self):
+        # Beginner default: a key in config.conf [llm] api_key takes precedence over the env var.
+        os.environ["TEST_NVKEY_XYZ"] = "from-env"
+        try:
+            self.assertEqual(
+                resolve_api_key({"api_key": "sk-direct", "api_key_env": "TEST_NVKEY_XYZ"}), "sk-direct")
+        finally:
+            del os.environ["TEST_NVKEY_XYZ"]
+
+    def test_blank_direct_api_key_falls_back_to_env(self):
+        os.environ["TEST_NVKEY_XYZ"] = "from-env"
+        try:
+            self.assertEqual(
+                resolve_api_key({"api_key": "  ", "api_key_env": "TEST_NVKEY_XYZ"}), "from-env")
+        finally:
+            del os.environ["TEST_NVKEY_XYZ"]
+
+
+class DefaultLlmParityTest(unittest.TestCase):
+    def test_default_llm_matches_config_default(self):
+        # Two hand-maintained copies of the LLM defaults must not drift (the round-1 bug class).
+        import troTHU.runtime_context as ctx
+        from troTHU.llm_answerer import DEFAULT_LLM
+        self.assertEqual(DEFAULT_LLM, ctx.DEFAULT_CONFIG["autoanswer"]["llm"])
+
 
 class CompleteTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self):

@@ -458,12 +458,14 @@ course =
 
 [llm]
 # （選用）自動答題用的 LLM 連線設定；留空＝用預設（NVIDIA NIM / minimax-m3）。
-#   api_key_env 是「存放金鑰的環境變數名稱」，不是金鑰本身——
-#   金鑰請設成「該名稱的環境變數」（預設 NVIDIA_API_KEY），切勿直接寫在這裡。
+#   api_key：直接把你的金鑰填在這裡最簡單（建議一般使用者用這個）。
+#   進階：想用環境變數就把 api_key 留空、改設 api_key_env 指定的環境變數（預設 NVIDIA_API_KEY）。
+#   金鑰是機密；config.conf 預設不會被提交（.gitignore），但仍請勿自行外流或截圖分享。
 #   進階行為（reasoning／溫度／工具…）在 config.advanced.toml 的 [autoanswer.llm]。
 provider = nvidia
 base_url = https://integrate.api.nvidia.com/v1
 model = minimaxai/minimax-m3
+api_key =
 api_key_env = NVIDIA_API_KEY
 
 [group]
@@ -701,6 +703,10 @@ DEFAULT_CONFIG = {
             "provider": "nvidia",
             "base_url": "https://integrate.api.nvidia.com/v1",
             "model": "minimaxai/minimax-m3",
+            # Beginner default: the key goes directly in config.conf [llm] api_key. Advanced users
+            # leave it blank and set the env var named by api_key_env. (Redacted from JSON/log/
+            # status/debug output; stored verbatim only in the gitignored config.conf itself.)
+            "api_key": "",
             "api_key_env": "NVIDIA_API_KEY",
             # Reasoning ALWAYS on (chat_template_kwargs.thinking_mode on NIM/vLLM) — strict
             # answer formatting needs it. temperature 0.6 (not MiniMax's recommended 1.0) is far

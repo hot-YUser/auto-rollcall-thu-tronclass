@@ -473,6 +473,26 @@ class LlmConfigSectionTest(unittest.TestCase):
         self.assertIn("thinking_mode", adv_text)     # behaviour keys stay
         self.assertIn("max_tokens = 0", adv_text)    # unset sentinel renders cleanly
 
+    def test_direct_api_key_round_trips_and_never_enters_advanced(self):
+        # The SECRET api_key must survive config.conf round-trip but NEVER be written to the
+        # (README-says-shareable) advanced TOML. Uses a sentinel so the strip is proven, not vacuous.
+        sentinel = "nvapi-SENTINEL-DO-NOT-LEAK"
+        simple = tron.parse_basic_config_text("now =\n[llm]\napi_key = {}\n".format(sentinel))
+        self.assertEqual(simple["llm"]["api_key"], sentinel)
+        config = tron.normalize_config(tron.merge_basic_and_advanced_config(simple, {}))
+        self.assertEqual(config["autoanswer"]["llm"]["api_key"], sentinel)  # survives merge+normalize
+        rendered_basic, advanced = tron.split_normalized_config(config)
+        self.assertIn(sentinel, tron.render_basic_config(rendered_basic))   # round-trips into config.conf
+        self.assertNotIn(sentinel, tron.render_advanced_config_toml(advanced))  # never into advanced TOML
+
+    def test_json_text_redacts_api_key(self):
+        # Every --json/status surface routes through json_text -> sanitize_public_payload; it must
+        # scrub a config api_key like it scrubs passwd, so the secret never leaks in structured output.
+        out = tron.json_text({"llm": {"api_key": "nvapi-SECRETXYZ", "model": "m"}, "passwd": "p"})
+        self.assertNotIn("nvapi-SECRETXYZ", out)
+        self.assertIn("[redacted]", out)
+        self.assertIn("\"m\"", out)  # non-secret values still pass through
+
 
 class AdvancedProviderRenderTest(unittest.TestCase):
     """v1.6-alpha.3: config.advanced.toml is the live source of truth for the FULL

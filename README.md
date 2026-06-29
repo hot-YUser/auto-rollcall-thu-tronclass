@@ -330,10 +330,13 @@ homework（作業）為單一自由作答，由 LLM 生成內容後送出（已�
 
 ### 設定 LLM（預設 NVIDIA NIM）
 
-答題用的 LLM 預設走 **NVIDIA NIM**（[build.nvidia.com](https://build.nvidia.com/models)），你需要**自行申請並設定 API Key**：
+答題用的 LLM 預設走 **NVIDIA NIM**（[build.nvidia.com](https://build.nvidia.com/models)），你需要**自行申請並填入 API Key**：
 
 1. 到 [build.nvidia.com](https://build.nvidia.com/models) 申請一支 API Key（格式類似 `nvapi-...`）。
-2. 把它設成**環境變數** `NVIDIA_API_KEY`（工具只從環境變數讀，不會寫進設定檔）：
+2. **最簡單（一般使用者）**：直接把金鑰填進 `config.conf` 的 `[llm]` 區塊的 `api_key`（見下方範例）。
+   `config.conf` 預設不會被提交（`.gitignore`），但金鑰仍是機密，請勿外流或截圖分享。
+3. **進階（可選）**：若不想把金鑰寫在檔案裡，把 `api_key` 留空，改設環境變數——名稱由 `api_key_env`
+   指定（預設 `NVIDIA_API_KEY`）。`config.conf` 的 `api_key` 有填就優先用，留空才回退到環境變數：
 
    PowerShell：
    ```powershell
@@ -346,7 +349,8 @@ homework（作業）為單一自由作答，由 LLM 生成內容後送出（已�
    python -m troTHU.tron run
    ```
 
-沒設定 key 時，需要 LLM 的題目會自動略過（不會中斷監控）。
+兩者都沒設時，需要 LLM 的題目會自動略過、**不會送出空白答案**，也不會中斷監控。
+（金鑰會從 JSON／log／status／debug 等輸出中遮蔽；只有 `config.conf` 檔案本身與其預覽會明碼顯示。）
 
 ### 進階設定（`config.advanced.toml` 的 `[autoanswer]`）
 
@@ -371,7 +375,8 @@ LLM 的**連線設定**（v1.7-alpha.4 起）改放在 **`config.conf` 的 `[llm
 provider = nvidia
 base_url = https://integrate.api.nvidia.com/v1
 model = minimaxai/minimax-m3
-api_key_env = NVIDIA_API_KEY     # 存放金鑰的「環境變數名稱」，不是金鑰本身
+api_key = nvapi-你的金鑰          # 一般使用者：直接把金鑰填在這（config.conf 已 gitignore）
+api_key_env = NVIDIA_API_KEY     # 進階：把 api_key 留空，改設「這個名稱」的環境變數
 ```
 
 > **模型互動加強（v1.7）**：作答用的 LLM **預設常開 reasoning**（`thinking_mode = "enabled"`，
@@ -383,10 +388,10 @@ api_key_env = NVIDIA_API_KEY     # 存放金鑰的「環境變數名稱」，不
 > 實機驗證（測試課 55379／自有帳號）：reasoning 常開、模型呼叫工具讀取教材文字並據以作答，皆已實測通過。
 
 > **v1.7-alpha.4 — 體驗與穩定性**：①「已作答過」的活動**永久記錄**在 `state/autoanswer_completed.json`
-> （per-帳號、原子寫入），重啟監控**不再重交、不再刷版面**（一週的作業也只會作答一次）。② 輸出流程改為
-> **偵測即提示並開始 15 秒倒數** → 備妥後回顯一次答案 → 送出成功後以「點名成功」同款橫幅顯示**最終**提交答案，
-> 全部以規範的 LLM 輸出格式統一呈現。③ 無法送出的活動（如無直播階段的即時測驗）改為長退避，不再每 30 秒洗畫面。
-> ④ LLM 連線設定搬到 `config.conf [llm]`（含防呆回落）。皆已在測試課 55379／自有帳號實機驗證。
+> （per-帳號、原子寫入），重啟監控**不再重交、不再刷版面**（一週的作業也只會作答一次）。② 輸出流程：
+> **備妥答案後**才提示並開始 15 秒倒數、同時回顯一次答案 → 送出成功後以「點名成功」同款橫幅顯示**最終**提交答案，
+> 全部以規範的 LLM 輸出格式統一呈現。③ LLM 連線設定搬到 `config.conf [llm]`（含防呆回落）。
+> 皆已在測試課 55379／自有帳號實機驗證。
 
 > **v1.7-alpha.5 — 即時測驗偵測治本**：實機逐欄位確認 classroom_exam 狀態機後，偵測改為
 > `status=="start" 且 started_subjects_count>=1`（真的開放收答才作答）；移除 alpha.4 的失敗退避 band-aid。

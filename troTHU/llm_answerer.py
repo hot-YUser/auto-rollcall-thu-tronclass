@@ -54,6 +54,9 @@ DEFAULT_LLM: Dict[str, Any] = {
     "provider": "nvidia",
     "base_url": "https://integrate.api.nvidia.com/v1",
     "model": "minimaxai/minimax-m3",
+    # Beginner default: the key is read straight from config.conf [llm] api_key. Advanced users
+    # leave api_key blank and set the env var named by api_key_env instead. resolve_api_key() below.
+    "api_key": "",
     "api_key_env": "NVIDIA_API_KEY",
     "thinking_mode": "enabled",   # always reason — strict answer formatting needs it
     "max_tokens": 0,              # 0 = unset -> not sent -> defer to the model's own limit
@@ -167,6 +170,14 @@ async def build_user_content(question: Question, image_fetcher: Optional[ImageFe
 
 
 def resolve_api_key(llm_config: Dict[str, Any]) -> str:
+    """The auto-answer LLM key. Beginner default: the key sits directly in config.conf [llm]
+    api_key (this project favours convenience for non-technical users). Advanced: leave api_key
+    blank and set the env var named by api_key_env. The direct value wins; env is the fallback.
+    The key is redacted from the JSON / log / status / debug output surfaces; it is of course stored
+    verbatim in config.conf itself (gitignored) and shown by the `config compact` preview of it."""
+    direct = normalize_text(llm_config.get("api_key"))
+    if direct:
+        return direct
     env_name = normalize_text(llm_config.get("api_key_env")) or DEFAULT_LLM["api_key_env"]
     return normalize_text(os.getenv(env_name))
 

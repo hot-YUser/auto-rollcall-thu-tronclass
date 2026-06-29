@@ -23,6 +23,7 @@ PUBLIC_SECRET_EXACT_KEYS = {
 
 PUBLIC_SECRET_KEY_PARTS = (
     "access_token",
+    "api_key",       # the LLM key when stored in config.conf [llm] api_key (also catches api_key_env, harmless)
     "auth_header",
     "bot_token",
     "cookie_value",

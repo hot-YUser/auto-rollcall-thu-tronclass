@@ -28,6 +28,7 @@
       "delay_seconds": 15,
       "enabled": true,
       "llm": {
+        "api_key": "",
         "api_key_env": "NVIDIA_API_KEY",
         "base_url": "https://integrate.api.nvidia.com/v1",
         "enable_tools": true,
@@ -349,6 +350,7 @@
       "delay_seconds": 15,
       "enabled": true,
       "llm": {
+        "api_key": "",
         "api_key_env": "NVIDIA_API_KEY",
         "base_url": "https://integrate.api.nvidia.com/v1",
         "enable_tools": true,

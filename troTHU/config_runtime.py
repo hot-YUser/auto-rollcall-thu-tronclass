@@ -414,6 +414,9 @@ def _normalize_autoanswer(config: ctx.Dict[str, ctx.Any]) -> None:
     default_llm = default['llm']
     for key in ('provider', 'base_url', 'model', 'api_key_env'):
         llm[key] = ctx.normalize_text(llm.get(key, default_llm[key])) or default_llm[key]
+    # api_key (the actual secret, optional): keep the user's value verbatim when present, else
+    # blank — no default. Blank means "fall back to the api_key_env environment variable".
+    llm['api_key'] = ctx.normalize_text(llm.get('api_key', default_llm.get('api_key', '')))
     thinking = ctx.normalize_text(llm.get('thinking_mode', default_llm['thinking_mode'])).lower()
     llm['thinking_mode'] = thinking if thinking in ('enabled', 'adaptive', 'disabled') else default_llm['thinking_mode']
     # max_tokens: 0 (or blank/None) means UNSET -> not sent (defer to the model);

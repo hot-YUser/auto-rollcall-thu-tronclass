@@ -11,6 +11,7 @@ except ImportError:  # pragma: no cover - direct script fallback
 
 
 SENSITIVE_KEY_PARTS = (
+    "api_key",
     "authorization",
     "body",
     "cookie_value",
@@ -27,6 +28,7 @@ SENSITIVE_KEY_PARTS = (
     "token",
 )
 SENSITIVE_TEXT_PARTS = (
+    "api_key",
     "authorization",
     "cookie",
     "passwd",
@@ -38,7 +40,7 @@ SENSITIVE_TEXT_PARTS = (
     "token",
 )
 SENSITIVE_ASSIGNMENT_RE = re.compile(
-    r"(?i)(authorization|cookie|passwd|password|payload|secret|session|signature|token)=\S+"
+    r"(?i)(api_key|authorization|cookie|passwd|password|payload|secret|session|signature|token)=\S+"
 )
 
 
