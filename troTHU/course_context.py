@@ -14,6 +14,8 @@ from __future__ import annotations
 import io
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
+import aiohttp
+
 try:  # pragma: no cover - package import path
     import troTHU.runtime_context as ctx
 except ImportError:  # pragma: no cover - direct script fallback
@@ -87,8 +89,11 @@ async def _get_json(client: Any, path: str) -> Any:
 async def _get_bytes(client: Any, url: str) -> Tuple[Optional[bytes], str]:
     """Authenticated raw GET (the student session); returns (bytes, mime) or (None, '')."""
     full = url if url.startswith("http") else client.api_url(url)
+    # No timeout (same rationale as the LLM call): a large PDF/image attachment can exceed the
+    # monitor session's 20s API cap; total=None lets it finish. Failures still return (None, "").
     try:
-        async with client.session.get(full, **client.request_kwargs()) as resp:
+        async with client.session.get(full, timeout=aiohttp.ClientTimeout(total=None),
+                                      **client.request_kwargs()) as resp:
             if resp.status != 200:
                 return None, ""
             data = await resp.read()

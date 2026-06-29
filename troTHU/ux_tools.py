@@ -1,6 +1,5 @@
 from __future__ import annotations
 import json
-import os
 import zipfile
 from collections import Counter
 from datetime import datetime
@@ -50,12 +49,6 @@ def sanitize_public_payload(value: Any) -> Any:
 
 def json_text(value: Any) -> str:
     return json.dumps(sanitize_public_payload(value), ensure_ascii=False, indent=2, default=str)
-
-
-def write_json(path: Path, value: Any) -> Path:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json_text(value) + "\n", encoding="utf-8")
-    return path
 
 
 def file_age_seconds(path: Path, now: Optional[datetime] = None) -> Optional[float]:
@@ -200,10 +193,3 @@ def export_debug_bundle(
         for name, value in bundle_items.items():
             archive.writestr(name, json_text(value) + "\n")
     return output_path
-
-
-def safe_mtime(path: Path) -> Optional[float]:
-    try:
-        return os.path.getmtime(path)
-    except OSError:
-        return None

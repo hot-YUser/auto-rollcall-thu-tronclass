@@ -16,6 +16,8 @@ import os
 import re
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
+import aiohttp
+
 try:  # pragma: no cover - package import path
     import troTHU.runtime_context as ctx
 except ImportError:  # pragma: no cover - direct script fallback
@@ -103,9 +105,9 @@ def strip_think(text: Any) -> str:
 
 
 def image_urls(question: Question) -> List[str]:
-    urls: List[str] = list(question.image_urls)
-    for opt in question.options:
-        urls.extend(opt.image_urls)
+    # Images are extracted from the question/option HTML (<img src=...>); TronClass papers carry
+    # them inline, not as a structured field.
+    urls: List[str] = []
     for raw in [question.stem] + [opt.content for opt in question.options]:
         for m in _IMG_SRC_RE.finditer(str(raw or "")):
             urls.append(m.group(2))
@@ -169,8 +171,18 @@ def resolve_api_key(llm_config: Dict[str, Any]) -> str:
     return normalize_text(os.getenv(env_name))
 
 
-def llm_configured(llm_config: Dict[str, Any]) -> bool:
-    return bool(resolve_api_key(llm_config))
+def _http_status_hint(status: int) -> str:
+    """A short, actionable Chinese hint by HTTP status class so a user can self-diagnose
+    (most often a bad/missing NVIDIA_API_KEY). No key/headers/body are placed here."""
+    if status in (401, 403):
+        return "金鑰可能無效或未授權（檢查 NVIDIA_API_KEY）"
+    if status in (400, 404):
+        return "模型或請求參數可能有誤（檢查 model / base_url）"
+    if status == 429:
+        return "請求過於頻繁或額度不足"
+    if status >= 500:
+        return "服務端暫時錯誤，可稍後重試"
+    return ""
 
 
 def _build_payload(messages: List[Dict[str, Any]], llm_config: Dict[str, Any],
@@ -211,11 +223,26 @@ async def _request_message(session: Any, messages: List[Dict[str, Any]], llm_con
     payload = _build_payload(messages, llm_config, tools)
     headers = {"Authorization": "Bearer {}".format(key), "Accept": "application/json"}
     url = "{}/chat/completions".format(base.rstrip("/"))
+    # No timeout: reasoning is always on and max_tokens is unset, so a single completion can run
+    # well past the monitor session's 20s API cap — inheriting that cap silently dropped valid
+    # slow answers. total=None disables it; real failures (connect error / 401 / 5xx) still raise
+    # or return non-200 and ARE surfaced below, so "no timeout" doesn't hide errors.
+    # ponytail: this runs inside autoanswer_tick, which the monitor awaits inline — a slow
+    # completion delays the next rollcall poll (same as today's multi-turn tool calls). Decoupling
+    # auto-answer from the poll loop is a separate change; widen the window first.
     try:
-        async with session.post(url, headers=headers, json=payload) as resp:
+        async with session.post(url, headers=headers, json=payload,
+                                timeout=aiohttp.ClientTimeout(total=None)) as resp:
             if resp.status != 200:
+                body = ""
+                try:
+                    body = (await resp.text())[:300]
+                except Exception:
+                    body = ""
+                hint = _http_status_hint(resp.status)
                 ctx.log(event="autoanswer_llm", status="http_{}".format(resp.status),
-                        message="LLM 回應非 200。")
+                        message="LLM 回應非 200{}。".format("：" + hint if hint else ""),
+                        extra={"http_status": resp.status, "body_excerpt": body})
                 return {}
             data = await resp.json()
     except Exception as exc:  # network/parse — degrade, never crash the loop

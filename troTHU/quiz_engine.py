@@ -26,13 +26,6 @@ def _mk(question: Question, **kw: Any) -> Answer:
                   answer_type=question.qtype.value, **kw)
 
 
-def _default_answer(question: Question, pick: str) -> Answer:
-    if not question.options:
-        return _mk(question)
-    option = question.options[-1] if pick == "last" else question.options[0]
-    return _mk(question, answer_option_ids=(option.id,))
-
-
 def _replay_answer(question: Question) -> Answer:
     """Build an Answer from the server-leaked correct answer, or None if nothing leaked.
 
@@ -47,41 +40,27 @@ def _replay_answer(question: Question) -> Answer:
     return None  # type: ignore[return-value]
 
 
-def decide_paper(
-    questions: Iterable[Question],
-    *,
-    scored: bool = True,
-    default_pick: str = "first",
-) -> AnswerPlan:
-    """Pure decision: split a paper into already-decided answers vs LLM-pending questions.
+def decide_paper(questions: Iterable[Question]) -> AnswerPlan:
+    """Pure decision: split a paper into already-decided REPLAY answers vs LLM-pending questions.
 
-    - leaked correct answer  -> REPLAY (use it)
-    - unscored (vote/questionnaire) -> DEFAULT (pick an option, correctness irrelevant)
-    - scored selection w/o answer  -> pending LLM
+    - leaked correct answer -> REPLAY (use it)
+    - everything else -> pending LLM. EVERY question (scored or not) gets a real answer; we no
+      longer blind-pick an option for unscored questionnaires/votes — the LLM answers them too.
     """
     answers: List[Answer] = []
     pending: List[Question] = []
-    saw_replay = saw_default = False
+    saw_replay = False
 
     for question in questions:
         replay = _replay_answer(question)
         if replay is not None:
             answers.append(replay)
             saw_replay = True
-        elif not scored and (question.is_selection or question.options):
-            # Unscored choice (questionnaire/vote) — any valid option completes it.
-            answers.append(_default_answer(question, default_pick))
-            saw_default = True
         else:
-            # Scored without a leaked answer, or unscored free-text -> needs the LLM.
             pending.append(question)
 
     if pending:
         source = AnswerSource.LLM
-    elif saw_replay and not saw_default:
-        source = AnswerSource.REPLAY
-    elif saw_default and not saw_replay:
-        source = AnswerSource.DEFAULT
     elif saw_replay:
         source = AnswerSource.REPLAY
     else:

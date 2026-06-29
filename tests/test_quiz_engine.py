@@ -28,18 +28,10 @@ class DecidePaperTest(unittest.TestCase):
         self.assertEqual(plan.answers[0].answer_option_ids, (102,))
         self.assertEqual(plan.pending, ())
 
-    def test_unscored_picks_default_without_llm(self):
-        plan = decide_paper([_single(1)], scored=False)
-        self.assertEqual(plan.source, AnswerSource.DEFAULT)
-        self.assertEqual(plan.answers[0].answer_option_ids, (100,))
-        self.assertEqual(plan.pending, ())
-
-    def test_unscored_default_pick_last(self):
-        plan = decide_paper([_single(1)], scored=False, default_pick="last")
-        self.assertEqual(plan.answers[0].answer_option_ids, (102,))
-
-    def test_scored_without_answer_goes_to_llm(self):
-        plan = decide_paper([_single(1)], scored=True)
+    def test_no_leak_goes_to_llm(self):
+        # default-pick removed (v1.7-beta.1): every non-leaked question — scored OR unscored
+        # (questionnaire/vote) — goes to the LLM; we no longer blind-pick the first option.
+        plan = decide_paper([_single(1)])
         self.assertEqual(plan.source, AnswerSource.LLM)
         self.assertEqual(plan.answers, ())
         self.assertEqual(len(plan.pending), 1)

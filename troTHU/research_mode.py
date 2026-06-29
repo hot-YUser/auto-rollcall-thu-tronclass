@@ -59,7 +59,3 @@ def normalize_research_mode_config(value: Any) -> Dict[str, Any]:
         redact_sensitive=_coerce_bool(raw.get("redact_sensitive"), True),
         notes=str(raw.get("notes") or "").strip(),
     ).to_dict()
-
-
-def is_research_mode_enabled(config: Mapping[str, Any]) -> bool:
-    return bool(normalize_research_mode_config(config.get("research", {})).get("enabled"))

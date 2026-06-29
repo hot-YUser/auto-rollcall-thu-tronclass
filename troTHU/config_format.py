@@ -747,7 +747,6 @@ _ADVANCED_COMMENTS = {
     "autoanswer": "自動答題（v1.7，預設開）：偵測進行中的測驗/作業/問卷/投票並自動作答",
     "autoanswer.enabled": "true = 啟用自動答題；false = 完全關閉",
     "autoanswer.delay_seconds": "偵測到題目後等幾秒才送出（這段期間先備好答案；按任意鍵可立即送）",
-    "autoanswer.allow_keypress_immediate": "true = 等待期間按任意鍵立即送出已備好的答案",
     "autoanswer.resubmit_for_correct": "true = 允許「先交→讀正解→再交」（需該活動允許多次作答；取最高分）",
     "autoanswer.types": "要自動作答的題型清單",
     "autoanswer.llm": "答題 LLM 的「行為」設定；連線設定（provider/base_url/model/api_key_env）改在 config.conf 的 [llm]",

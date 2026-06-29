@@ -685,9 +685,7 @@ DEFAULT_CONFIG = {
     "autoanswer": {
         "enabled": True,
         "delay_seconds": 15,
-        "allow_keypress_immediate": True,
         "resubmit_for_correct": True,
-        "default_pick": "first",
         "types": ["exam", "classroom_exam", "courseware_quiz", "questionnaire", "vote", "homework"],
         "llm": {
             "provider": "nvidia",
@@ -695,9 +693,10 @@ DEFAULT_CONFIG = {
             "model": "minimaxai/minimax-m3",
             "api_key_env": "NVIDIA_API_KEY",
             # Reasoning ALWAYS on (chat_template_kwargs.thinking_mode on NIM/vLLM) — strict
-            # answer formatting needs it. Sampling = MiniMax's recommended M3 values (1.0/0.95/40);
-            # reasoning provides determinism, very low temp degrades reasoning models. max_tokens
-            # is large because reasoning spends tokens before the answer (too small truncates it).
+            # answer formatting needs it. temperature 0.6 (not MiniMax's recommended 1.0) is far
+            # more consistent for a strict-format answerer + multi-turn tool use; top_p/top_k stay
+            # at MiniMax's recommended 0.95/40. max_tokens unset → defer to the model's own limit
+            # (reasoning spends tokens before the answer; a small cap would truncate it).
             "thinking_mode": "enabled",
             "max_tokens": 0,   # 0 = 不填 → 不送 max_tokens，完全交給模型自身上限
             "temperature": 0.6,

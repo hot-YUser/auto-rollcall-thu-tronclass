@@ -173,11 +173,6 @@ def sanitize_config_values(config: Dict[str, Any]) -> List[str]:
     return warnings
 
 
-def contains_sensitive_text(value: Any) -> bool:
-    text = str(value or "").lower()
-    return any(part in text for part in ("password", "passwd", "token", "secret", "cookie", "session", "payload"))
-
-
 def _fallback_password_input(prompt: str) -> str:
     try:
         return input(prompt).strip()

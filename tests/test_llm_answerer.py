@@ -49,7 +49,7 @@ class FakeSession:
         self.responses = list(responses)
         self.posts = []
 
-    def post(self, url, headers=None, json=None):
+    def post(self, url, headers=None, json=None, **kwargs):
         self.posts.append(json)
         data = self.responses.pop(0) if self.responses else {"choices": [{"message": {"content": ""}}]}
         return _Resp(data)

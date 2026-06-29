@@ -136,10 +136,6 @@ def list_research_api_targets() -> tuple[str, ...]:
     return SAFE_API_TARGETS
 
 
-def list_research_probe_targets() -> tuple[str, ...]:
-    return RISKY_PROBE_TARGETS
-
-
 def validate_research_target(target: Any) -> str:
     text = str(target or "").strip().lower().replace("-", "_")
     if not text:

@@ -30,15 +30,6 @@ class NotificationEventType(str, Enum):
     STATUS = "status"
 
 
-class AdapterCommandAction(str, Enum):
-    STATUS = "status"
-    START = "start"
-    STOP = "stop"
-    FORCE = "force"
-    REAUTH = "reauth"
-    QR_SUBMIT = "qr-submit"
-
-
 @dataclass(frozen=True)
 class RollcallDecision:
     status: str
@@ -92,14 +83,6 @@ class AdapterTarget:
     def key(self) -> str:
         parts = [self.adapter, self.target_id, self.profile, self.channel_id]
         return ":".join(str(part or "").strip() for part in parts)
-
-
-@dataclass(frozen=True)
-class AdapterCommand:
-    action: AdapterCommandAction
-    target: AdapterTarget
-    payload: Dict[str, Any] = field(default_factory=dict)
-    raw_text: str = ""
 
 
 @dataclass(frozen=True)

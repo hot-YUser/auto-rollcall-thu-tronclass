@@ -1,12 +1,14 @@
 """Auto-answer flow — ONE entry, dynamic branch by activity type (mirrors login_flow).
 
-prepare_answer(): fetch the question(s), decide answers (replay leaked correct answer,
-else LLM, else default pick) and CACHE them WITHOUT submitting. submit_prepared():
+prepare_answer(): fetch the question(s), decide answers (replay the leaked correct answer
+when present, else ask the LLM — every question gets a real answer) and CACHE them WITHOUT
+submitting. submit_prepared():
 submit the cached answers, and — when the activity allows retake and the post-submit
 review reveals the correct answer — resubmit the correct answer for a guaranteed pass
 (controlled by autoanswer.resubmit_for_correct; validated live on exam, P0).
 """
 from __future__ import annotations
+import functools
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -47,9 +49,6 @@ _QTYPE_MAP = {
     "analysis": QuestionType.ANALYSIS,
     "paragraph_desc": QuestionType.SECTION,
 }
-
-# Activity types where there is no right/wrong answer (just pick something valid).
-_UNSCORED = (ActivityType.QUESTIONNAIRE, ActivityType.VOTE)
 
 
 def _as_int(value: Any, default: int = 0) -> int:
@@ -156,16 +155,19 @@ def parse_questions(raw_subjects: Any) -> List[Question]:
 
 # ----------------------------------------------------------------------------- fetch (branch)
 
-async def _fetch_exam(client: Any, activity: Activity) -> Tuple[Activity, List[Question]]:
+async def _fetch_distribute(client: Any, activity: Activity, segment: str) -> Tuple[Activity, List[Question]]:
+    """Fetch a paper via {segment}/{id}/distribute (exam / questionnaire / classroom — same shape).
+    distribute returns the paper instance id (needed at submit) + subjects, and for scored
+    exam/classroom it leaks correct_answers/is_answer so those replay without the LLM. Anything not
+    leaked goes to the LLM regardless of scoring (see decide_paper)."""
     paper = await client.request_json(
-        "GET", client.api_url("/api/exams/{}/distribute".format(activity.activity_id)))
+        "GET", client.api_url("/api/{}/{}/distribute".format(segment, activity.activity_id)))
     paper = paper if isinstance(paper, dict) else {}
     questions = parse_questions(paper.get("subjects"))
     activity = Activity(
         activity_id=activity.activity_id, activity_type=activity.activity_type,
         course_id=activity.course_id, title=activity.title,
-        paper_instance_id=paper.get("exam_paper_instance_id"),
-        scored=True, raw=activity.raw,
+        paper_instance_id=paper.get("exam_paper_instance_id"), raw=activity.raw,
     )
     return activity, questions
 
@@ -175,20 +177,6 @@ async def _fetch_courseware(client: Any, activity: Activity) -> Tuple[Activity, 
         "GET", client.api_url("/api/courseware-quiz/quiz/{}/subjects".format(activity.activity_id)))
     subjects = body.get("subjects") if isinstance(body, dict) else body
     questions = parse_questions(subjects)
-    return activity, questions
-
-
-async def _fetch_questionnaire(client: Any, activity: Activity) -> Tuple[Activity, List[Question]]:
-    # Mirrors exam: distribute returns the paper (instance id + subjects). Unscored.
-    paper = await client.request_json(
-        "GET", client.api_url("/api/questionnaire/{}/distribute".format(activity.activity_id)))
-    paper = paper if isinstance(paper, dict) else {}
-    questions = parse_questions(paper.get("subjects"))
-    activity = Activity(
-        activity_id=activity.activity_id, activity_type=activity.activity_type,
-        course_id=activity.course_id, title=activity.title,
-        paper_instance_id=paper.get("exam_paper_instance_id"), scored=False, raw=activity.raw,
-    )
     return activity, questions
 
 
@@ -216,21 +204,6 @@ async def _fetch_homework(client: Any, activity: Activity) -> Tuple[Activity, Li
     return activity, [question]
 
 
-async def _fetch_classroom(client: Any, activity: Activity) -> Tuple[Activity, List[Question]]:
-    # distribute (not /subject) returns the paper instance id needed at submit, and
-    # leaks correct_answers/is_answer so scored classroom replays without the LLM.
-    paper = await client.request_json(
-        "GET", client.api_url("/api/classroom/{}/distribute".format(activity.activity_id)))
-    paper = paper if isinstance(paper, dict) else {}
-    questions = parse_questions(paper.get("subjects"))
-    activity = Activity(
-        activity_id=activity.activity_id, activity_type=activity.activity_type,
-        course_id=activity.course_id, title=activity.title,
-        paper_instance_id=paper.get("exam_paper_instance_id"), scored=True, raw=activity.raw,
-    )
-    return activity, questions
-
-
 def _vote_labels(data: Dict[str, Any]) -> List[str]:
     """Option display texts ordered by letter. The cast sends the LETTER (A/B/C), so the
     display text is only for the LLM/log; letters are derived from option position.
@@ -246,8 +219,8 @@ def _vote_labels(data: Dict[str, Any]) -> List[str]:
 
 
 async def _fetch_vote(client: Any, activity: Activity) -> Tuple[Activity, List[Question]]:
-    # A vote is a one-question poll. We expose options so default-pick picks one; the
-    # picked option's POSITION maps to the cast letter (A/B/C) in _submit_vote.
+    # A vote is a one-question poll. We expose the options so the LLM picks one; the picked
+    # option's POSITION maps back to the cast letter (A/B/C) in _submit_vote.
     body = await client.request_json(
         "GET", client.api_url("/api/votes/{}".format(activity.activity_id)))
     data = ((body or {}).get("interaction") or {}).get("data") or {} if isinstance(body, dict) else {}
@@ -262,18 +235,18 @@ async def _fetch_vote(client: Any, activity: Activity) -> Tuple[Activity, List[Q
                         qtype=qtype, stem=normalize_text(data.get("topic")), options=options)
     activity = Activity(
         activity_id=activity.activity_id, activity_type=activity.activity_type,
-        course_id=activity.course_id, title=activity.title, scored=False, raw=activity.raw,
+        course_id=activity.course_id, title=activity.title, raw=activity.raw,
     )
     return activity, [question]
 
 
 # type -> async fetch(client, activity) -> (activity, questions)
 _FETCHERS = {
-    ActivityType.EXAM: _fetch_exam,
+    ActivityType.EXAM: functools.partial(_fetch_distribute, segment="exams"),
     ActivityType.COURSEWARE_QUIZ: _fetch_courseware,
-    ActivityType.QUESTIONNAIRE: _fetch_questionnaire,
+    ActivityType.QUESTIONNAIRE: functools.partial(_fetch_distribute, segment="questionnaire"),
     ActivityType.HOMEWORK: _fetch_homework,
-    ActivityType.CLASSROOM_EXAM: _fetch_classroom,
+    ActivityType.CLASSROOM_EXAM: functools.partial(_fetch_distribute, segment="classroom"),
     ActivityType.VOTE: _fetch_vote,
 }
 
@@ -288,10 +261,10 @@ async def fetch_questions(client: Any, activity: Activity) -> Tuple[Activity, Li
 # ----------------------------------------------------------------------------- decide
 
 async def decide_answers(
-    session: Any, questions: List[Question], *, scored: bool, llm_config: Dict[str, Any],
+    session: Any, questions: List[Question], *, llm_config: Dict[str, Any],
     client: Any = None, activity: Optional[Activity] = None,
 ) -> Tuple[Tuple[Answer, ...], AnswerSource]:
-    plan = decide_paper(questions, scored=scored)
+    plan = decide_paper(questions)
     answers: List[Answer] = list(plan.answers)
     # Give the LLM the TronClass client so it can (a) base64-embed login-gated images and
     # (b) call material-lookup tools when a question lacks context. Needs a real client.
@@ -416,9 +389,8 @@ async def prepare_answer(
         return None
     if not questions:
         return None
-    scored = activity.scored and activity.activity_type not in _UNSCORED
     answers, source = await decide_answers(
-        session, questions, scored=scored, llm_config=llm_config, client=client, activity=activity)
+        session, questions, llm_config=llm_config, client=client, activity=activity)
     return {
         "activity": activity,
         "questions": questions,
@@ -509,6 +481,6 @@ async def _resubmit_exam_with_correct(
             answer_type=base.answer_type if base else "",
         )
     corrected_answers = tuple(by_id.values())
-    fresh_activity, _questions = await _fetch_exam(client, activity)
+    fresh_activity, _questions = await _fetch_distribute(client, activity, "exams")
     resp = await _submit_exam(client, fresh_activity, corrected_answers)
     return resp, corrected_answers

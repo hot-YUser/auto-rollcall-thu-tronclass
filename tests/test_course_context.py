@@ -1,5 +1,4 @@
 from __future__ import annotations
-import asyncio
 import unittest
 
 from troTHU import course_context
@@ -52,10 +51,6 @@ class FakeClient:
             if key in url:
                 return val
         return {}
-
-
-def _run(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
 
 
 class ToolSpecTest(unittest.TestCase):

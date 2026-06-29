@@ -32,11 +32,10 @@ class QuestionType(str, Enum):
 
 
 class AnswerSource(str, Enum):
-    """How an answer was decided. REPLAY = correct answer was leaked to us."""
+    """How an answer was decided. REPLAY = correct answer was leaked to us; LLM = the model answered."""
     NONE = "none"
     REPLAY = "replay"
     LLM = "llm"
-    DEFAULT = "default"
 
 
 SELECTION_TYPES = (QuestionType.SINGLE, QuestionType.MULTIPLE, QuestionType.TRUE_FALSE)
@@ -54,7 +53,6 @@ class Option:
     content: str = ""
     is_answer: Optional[bool] = None
     sort: int = 0
-    image_urls: Tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -64,7 +62,6 @@ class Question:
     stem: str = ""
     options: Tuple[Option, ...] = field(default_factory=tuple)
     point: str = ""
-    image_urls: Tuple[str, ...] = field(default_factory=tuple)
     blank_count: int = 0
     # Correct text(s) the server leaked (fill/cloze/short): per-blank, sorted.
     correct_texts: Tuple[str, ...] = field(default_factory=tuple)
@@ -97,8 +94,6 @@ class Activity:
     course_id: str = ""
     title: str = ""
     paper_instance_id: Any = None
-    allow_retake: bool = False
-    scored: bool = True
     raw: Dict[str, Any] = field(default_factory=dict)
 
 

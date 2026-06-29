@@ -849,7 +849,7 @@ async def global_radar(
             return False
 
         async def submit_stage(
-            points: ctx.Sequence[ctx.GeoPoint],
+            points: list[ctx.GeoPoint],
             prefix: str,
             *,
             adaptive_estimate_label_prefix: str = "",

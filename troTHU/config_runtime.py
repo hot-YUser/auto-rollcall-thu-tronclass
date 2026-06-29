@@ -402,13 +402,8 @@ def _normalize_autoanswer(config: ctx.Dict[str, ctx.Any]) -> None:
     section['enabled'] = ctx.coerce_bool(section.get('enabled', default['enabled']), default['enabled'])
     section['delay_seconds'] = min(300, ctx.coerce_positive_int(
         section.get('delay_seconds', default['delay_seconds']), default['delay_seconds'], minimum=0))
-    section['allow_keypress_immediate'] = ctx.coerce_bool(
-        section.get('allow_keypress_immediate', default['allow_keypress_immediate']),
-        default['allow_keypress_immediate'])
     section['resubmit_for_correct'] = ctx.coerce_bool(
         section.get('resubmit_for_correct', default['resubmit_for_correct']), default['resubmit_for_correct'])
-    pick = ctx.normalize_text(section.get('default_pick', default['default_pick'])).lower()
-    section['default_pick'] = pick if pick in ('first', 'last') else default['default_pick']
     valid_types = set(default['types'])
     raw_types = section.get('types', default['types'])
     if not isinstance(raw_types, list):

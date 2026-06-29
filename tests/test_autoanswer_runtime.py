@@ -188,6 +188,71 @@ class SubmitDueTest(unittest.IsolatedAsyncioTestCase):
         self.assertLessEqual(ctx.QUESTION_ANSWER_ATTEMPTS.get("EX3", 0.0), 100.0)  # no push-out
         self.assertNotIn("EX3", ctx.ACTIVE_QUESTION_ANSWERS)  # popped from active
 
+    async def test_not_due_is_not_submitted(self):
+        # delay gate: before delay_seconds elapses (and no keypress), the prepared answer waits.
+        called = []
+        orig = answer_flow.submit_prepared
+
+        async def fake_submit(client, prepared, *, resubmit_for_correct=True):
+            called.append(1)
+            return AnswerResult(ok=True, status="submitted", activity_id="EX4")
+
+        answer_flow.submit_prepared = fake_submit
+        ctx.ACTIVE_QUESTION_ANSWERS["EX4"] = {
+            "activity": Activity(activity_id="EX4", activity_type=ActivityType.EXAM),
+            "questions": [], "answers": (), "submitted": False,
+            "detected_at": 100.0, "delay_seconds": 15, "label": "Z"}
+        try:
+            await autoanswer_runtime._submit_due(object(), {}, 105.0)  # elapsed 5s < 15s
+        finally:
+            answer_flow.submit_prepared = orig
+        self.assertEqual(called, [])                      # not yet due -> not submitted
+        self.assertIn("EX4", ctx.ACTIVE_QUESTION_ANSWERS)  # still pending
+
+    async def test_keypress_forces_immediate_submit(self):
+        # any-key sets AUTOANSWER_SUBMIT_NOW -> submit BEFORE the delay elapses, then reset the flag.
+        ctx.AUTOANSWER_SUBMIT_NOW = True
+        submitted = []
+        orig_submit, orig_mark = answer_flow.submit_prepared, autoanswer_store.mark_completed
+
+        async def fake_submit(client, prepared, *, resubmit_for_correct=True):
+            submitted.append(prepared["activity"].activity_id)
+            return AnswerResult(ok=True, status="submitted", activity_id="EX5",
+                                source=AnswerSource.LLM, final_answers=())
+
+        answer_flow.submit_prepared = fake_submit
+        autoanswer_store.mark_completed = lambda base, profile, aid: None
+        ctx.ACTIVE_QUESTION_ANSWERS["EX5"] = {
+            "activity": Activity(activity_id="EX5", activity_type=ActivityType.EXAM),
+            "questions": [], "answers": (), "source": AnswerSource.LLM,
+            "submitted": False, "detected_at": 100.0, "delay_seconds": 15, "label": "K"}
+        try:
+            await autoanswer_runtime._submit_due(object(), {}, 101.0)  # elapsed 1s < 15s but key pressed
+        finally:
+            answer_flow.submit_prepared, autoanswer_store.mark_completed = orig_submit, orig_mark
+        self.assertEqual(submitted, ["EX5"])         # forced despite not being due
+        self.assertFalse(ctx.AUTOANSWER_SUBMIT_NOW)  # flag reset after consuming it
+
+
+class TickNeverRaisesTest(unittest.IsolatedAsyncioTestCase):
+    """The monitor loop depends on autoanswer_tick NEVER raising (CLAUDE.md contract). Force an
+    inner call to blow up and assert the tick still returns cleanly."""
+
+    async def test_tick_swallows_inner_errors(self):
+        orig_cfg = autoanswer_runtime.get_autoanswer_config
+        orig_client = ctx.create_tron_http_client
+        autoanswer_runtime.get_autoanswer_config = lambda *a, **k: {"enabled": True, "types": ["exam"], "llm": {}}
+
+        def boom(*a, **k):
+            raise RuntimeError("boom")
+
+        ctx.create_tron_http_client = boom
+        try:
+            await autoanswer_runtime.autoanswer_tick(object())  # must NOT raise
+        finally:
+            autoanswer_runtime.get_autoanswer_config = orig_cfg
+            ctx.create_tron_http_client = orig_client
+
 
 if __name__ == "__main__":
     unittest.main()

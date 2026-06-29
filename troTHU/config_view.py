@@ -13,30 +13,12 @@ except ImportError:  # pragma: no cover - direct script fallback
     import runtime_context as ctx  # type: ignore
 
 
-COMMON_TOP_LEVEL_KEYS = {"account", "accounts", "provider", "operating", "_simple"}
-
-
 def _without_placeholders(value: Any) -> Any:
     if isinstance(value, dict):
         return {key: _without_placeholders(item) for key, item in value.items()}
     if isinstance(value, list):
         return [_without_placeholders(item) for item in value]
     return value
-
-
-def _is_default_value(key: str, value: Any) -> bool:
-    default = ctx.DEFAULT_CONFIG.get(key)
-    return value == default
-
-
-def _advanced_overrides(config: Mapping[str, Any]) -> Dict[str, Any]:
-    advanced: Dict[str, Any] = {}
-    for key, value in config.items():
-        if key in COMMON_TOP_LEVEL_KEYS or key.startswith("_"):
-            continue
-        if key not in ctx.DEFAULT_CONFIG or not _is_default_value(key, value):
-            advanced[key] = copy.deepcopy(value)
-    return advanced
 
 
 def build_user_config(config: Mapping[str, Any] | None = None) -> Dict[str, Any]:

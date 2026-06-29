@@ -112,15 +112,15 @@ class ParseTest(unittest.TestCase):
 class FetchTest(unittest.IsolatedAsyncioTestCase):
     async def test_fetch_exam_sets_paper_instance(self):
         client = FakeClient({"/distribute": _PAPER})
-        activity, questions = await answer_flow._fetch_exam(client, _act(ActivityType.EXAM))
+        activity, questions = await answer_flow._fetch_distribute(client, _act(ActivityType.EXAM), "exams")
         self.assertEqual(activity.paper_instance_id, 777)
         self.assertEqual(len(questions), 1)
         self.assertEqual(questions[0].subject_id, 1001)
 
-    async def test_fetch_questionnaire_is_unscored(self):
+    async def test_fetch_questionnaire_distribute_instance(self):
         client = FakeClient({"/questionnaire/9/distribute": _PAPER})
-        activity, questions = await answer_flow._fetch_questionnaire(client, _act(ActivityType.QUESTIONNAIRE))
-        self.assertFalse(activity.scored)
+        activity, questions = await answer_flow._fetch_distribute(
+            client, _act(ActivityType.QUESTIONNAIRE), "questionnaire")
         self.assertEqual(activity.paper_instance_id, 777)
 
     async def test_fetch_homework_uses_raw_prompt_no_http(self):
@@ -133,7 +133,8 @@ class FetchTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_fetch_classroom_uses_distribute_for_instance(self):
         client = FakeClient({"/classroom/9/distribute": _PAPER})
-        activity, questions = await answer_flow._fetch_classroom(client, _act(ActivityType.CLASSROOM_EXAM))
+        activity, questions = await answer_flow._fetch_distribute(
+            client, _act(ActivityType.CLASSROOM_EXAM), "classroom")
         self.assertEqual(activity.paper_instance_id, 777)  # from distribute, needed at submit
         self.assertEqual(questions[0].subject_id, 1001)
 
@@ -142,7 +143,6 @@ class FetchTest(unittest.IsolatedAsyncioTestCase):
         client = FakeClient({"/votes/9": {"interaction": {"data": {
             "vote_option_items": {"A": "Alpha", "B": "Beta"}, "vote_type": "single", "topic": "pick"}}}})
         activity, questions = await answer_flow._fetch_vote(client, _act(ActivityType.VOTE))
-        self.assertFalse(activity.scored)
         self.assertEqual(questions[0].qtype, QuestionType.SINGLE)
         self.assertEqual([o.content for o in questions[0].options], ["Alpha", "Beta"])
 
@@ -266,7 +266,7 @@ class DecideAnswersWiringTest(unittest.IsolatedAsyncioTestCase):
     TronClass client (and activity) is available and tools are enabled."""
 
     def _pending_question(self):
-        # scored selection with no leaked answer -> goes to the LLM (plan.pending)
+        # selection with no leaked answer -> goes to the LLM (plan.pending)
         return Question(subject_id=1, qtype=QuestionType.SINGLE, stem="?",
                         options=(Option(id=10, content="x"), Option(id=11, content="y")))
 
@@ -280,7 +280,7 @@ class DecideAnswersWiringTest(unittest.IsolatedAsyncioTestCase):
         orig = llm_answerer.answer_question
         llm_answerer.answer_question = fake_answer
         try:
-            await answer_flow.decide_answers(None, [self._pending_question()], scored=True,
+            await answer_flow.decide_answers(None, [self._pending_question()],
                                              llm_config=llm_config, client=client, activity=activity)
         finally:
             llm_answerer.answer_question = orig
