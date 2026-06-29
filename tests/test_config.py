@@ -115,6 +115,15 @@ class ConfigFormatTest(unittest.TestCase):
         # The example group keeps its class label but drops the example members.
         self.assertTrue(all(group["users"] == [] for group in parsed["groups"]))
 
+    def test_default_template_includes_llm_connection_block(self) -> None:
+        # Regression: alpha.4 added the [llm] connection block to render_basic_config but NOT to
+        # this first-run template, so fresh users had nowhere to see the LLM settings / api_key_env.
+        # The template must carry the same [llm] block the renderer emits (fixed in v1.7-beta.1).
+        self.assertIn("[llm]", tron.DEFAULT_BASIC_CONFIG_TEMPLATE)
+        parsed = tron.parse_basic_config_text(tron.DEFAULT_BASIC_CONFIG_TEMPLATE)
+        self.assertEqual(parsed["llm"]["provider"], "nvidia")
+        self.assertEqual(parsed["llm"]["api_key_env"], "NVIDIA_API_KEY")
+
     def test_save_account_header_parses(self) -> None:
         parsed = tron.parse_basic_config_text("now = S1\n[save account]\nuser = S1\npasswd = P1\nschool = THU\n")
         self.assertEqual(len(parsed["accounts"]), 1)

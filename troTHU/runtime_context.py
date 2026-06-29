@@ -456,6 +456,16 @@ passwd = OO**XX
 school = TRONCLASS
 course =
 
+[llm]
+# （選用）自動答題用的 LLM 連線設定；留空＝用預設（NVIDIA NIM / minimax-m3）。
+#   api_key_env 是「存放金鑰的環境變數名稱」，不是金鑰本身——
+#   金鑰請設成「該名稱的環境變數」（預設 NVIDIA_API_KEY），切勿直接寫在這裡。
+#   進階行為（reasoning／溫度／工具…）在 config.advanced.toml 的 [autoanswer.llm]。
+provider = nvidia
+base_url = https://integrate.api.nvidia.com/v1
+model = minimaxai/minimax-m3
+api_key_env = NVIDIA_API_KEY
+
 [group]
 # （選用）第一人偵測、全員簽到。members 用逗號列出同組 user，再把上面 now 填成「class A」
 class = A
