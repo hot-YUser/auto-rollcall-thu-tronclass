@@ -29,11 +29,15 @@ except ImportError:  # pragma: no cover - script execution fallback
 
 
 ATTEMPT_COOLDOWN_SECONDS = 30.0
-# A submit that fails (e.g. a classroom_exam with no live teacher session) is retried far less
-# often than the normal cooldown, so it can't re-detect/re-announce every 30s and spam the screen.
-FAILED_RETRY_COOLDOWN_SECONDS = 300.0
 POLL_INTERVAL_SECONDS = 10.0
 COURSE_REFRESH_SECONDS = 300.0
+
+
+def _as_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return default
 
 _TYPE_BY_NAME = {
     "exam": ActivityType.EXAM,
@@ -179,7 +183,12 @@ async def _poll_course(client: Any, course_id: str, wanted: Set[ActivityType]) -
         body = await _get(client, "/api/courses/{}/classroom-list".format(course_id))
         items = body.get("classrooms") if isinstance(body, dict) else (body if isinstance(body, list) else None)
         for c in items or []:
-            if isinstance(c, dict) and normalize_text(c.get("status")) in ("start", "1"):
+            # status is only none/start/finish; "start" is necessary but NOT sufficient — it stays
+            # "start" through 開始/停止收答. The real "answering is open / submittable" gate is
+            # started_subjects_count >= 1 (drops to 0 when collection closes, yet status stays
+            # "start" → submit then 400「考試未開始」). Verified live on 55379 — this is the root fix.
+            if isinstance(c, dict) and normalize_text(c.get("status")) == "start" \
+                    and _as_int(c.get("started_subjects_count")) >= 1:
                 out.append(_activity(course_id, ActivityType.CLASSROOM_EXAM, c))
 
     if ActivityType.COURSEWARE_QUIZ in wanted:
@@ -277,10 +286,9 @@ async def _submit_due(client: Any, aa: Dict[str, Any], now: float) -> None:
             ctx.log(event="autoanswer", status="submitted", message="已自動作答完成。",
                     extra={"activity_id": key, "submission_id": str(result.submission_id), "source": str(source)})
         else:
-            # Failure backoff: push the next attempt out so an un-submittable activity stops
-            # re-detecting/re-announcing every 30s and spamming the screen.
-            ctx.QUESTION_ANSWER_ATTEMPTS[key] = now + max(
-                0.0, FAILED_RETRY_COOLDOWN_SECONDS - ATTEMPT_COOLDOWN_SECONDS)
+            # No band-aid backoff: the root fix (detection now requires an open answering window)
+            # means an un-submittable activity is never detected, so there is nothing to churn on.
+            # A genuine transient failure just retries at the normal cooldown.
             ctx.log(event="autoanswer", status=result.status, message="自動作答失敗。",
                     extra={"activity_id": key})
 

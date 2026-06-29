@@ -63,6 +63,29 @@ class AlreadySubmittedGuardTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(out, [])
 
 
+class ClassroomDetectionTest(unittest.IsolatedAsyncioTestCase):
+    """Root fix (verified live on 55379): classroom_exam status is only none/start/finish, and
+    "start" persists through 開始/停止收答 — so detection must ALSO require an open answering window
+    (started_subjects_count >= 1), else it churns on submits the server rejects ("考試未開始")."""
+
+    async def test_only_detected_when_answering_open(self):
+        client = FakeClient({"courses/55379/classroom-list": {"classrooms": [
+            {"id": "C_open", "status": "start", "started_subjects_count": 1},     # 收答中 -> submittable
+            {"id": "C_closed", "status": "start", "started_subjects_count": 0},   # status start but closed
+            {"id": "C_created", "status": "none", "started_subjects_count": 0},   # 建立
+            {"id": "C_finished", "status": "finish", "started_subjects_count": 0},  # 結束
+        ]}})
+        out = await autoanswer_runtime._poll_course(client, "55379", {ActivityType.CLASSROOM_EXAM})
+        self.assertEqual([a.activity_id for a in out], ["C_open"])  # only the open-answering one
+
+    async def test_legacy_status_1_no_longer_matched(self):
+        # The old guess status=="1" never occurs live; ensure it isn't matched anymore.
+        client = FakeClient({"courses/55379/classroom-list": {"classrooms": [
+            {"id": "C", "status": "1", "started_subjects_count": 1}]}})
+        out = await autoanswer_runtime._poll_course(client, "55379", {ActivityType.CLASSROOM_EXAM})
+        self.assertEqual(out, [])
+
+
 class CoursewareDetectionTest(unittest.IsolatedAsyncioTestCase):
     async def test_material_activity_resolves_to_quiz_activity(self):
         client = FakeClient({
@@ -144,7 +167,9 @@ class SubmitDueTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(ctx.COMPLETED_QUESTION_SUBMISSIONS.get("EX2"))
         self.assertEqual(marks, ["EX2"])  # persisted permanently
 
-    async def test_failure_backs_off(self):
+    async def test_failure_is_graceful_without_backoff(self):
+        # The 5-min failure backoff was removed (root fix handles classroom churn). A failed submit
+        # must NOT mark completed, NOT push the attempt clock into the future, and NOT raise.
         orig = answer_flow.submit_prepared
 
         async def fake_submit(client, prepared, *, resubmit_for_correct=True):
@@ -160,7 +185,8 @@ class SubmitDueTest(unittest.IsolatedAsyncioTestCase):
         finally:
             answer_flow.submit_prepared = orig
         self.assertFalse(ctx.COMPLETED_QUESTION_SUBMISSIONS.get("EX3"))
-        self.assertGreater(ctx.QUESTION_ANSWER_ATTEMPTS.get("EX3", 0.0), 100.0)  # next retry pushed out
+        self.assertLessEqual(ctx.QUESTION_ANSWER_ATTEMPTS.get("EX3", 0.0), 100.0)  # no push-out
+        self.assertNotIn("EX3", ctx.ACTIVE_QUESTION_ANSWERS)  # popped from active
 
 
 if __name__ == "__main__":
