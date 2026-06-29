@@ -72,8 +72,11 @@ PLAN.md
 其他專案參考/
 
 # Local reverse-engineering reference (decompiled app + web frontend dumps).
-# Kept locally for analysis only; never publish or commit.
+# Kept locally for analysis only; never publish or commit. The " - 新" variant is the
+# current local copy — without this line `git add -A` tries to stage it (and chokes on
+# Windows MAX_PATH for deep smali paths), so exclude it explicitly too.
 APP和網頁前端/
+APP和網頁前端 - 新/
 
 # Local/private live school verification helpers.
 # These call real-school flows through TRON_USER / TRON_PASS and are not
