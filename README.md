@@ -363,7 +363,7 @@ types = ["exam", "classroom_exam", "courseware_quiz", "questionnaire", "vote", "
 
 [autoanswer.llm]                 # 「行為」設定（連線設定在 config.conf 的 [llm]）
 thinking_mode = "enabled"        # 推理強度：常開（預設，作答最穩）/ adaptive / disabled
-max_tokens = 0                   # 0 = 不填 → 交給模型自身上限（預設）
+max_tokens = 0                   # 0 = 用安全預設 16384（m3 推理省略此值會回空，故一定會送）
 enable_tools = true              # 題目資訊不足時，允許模型自行讀取課程教材/附件（含 PDF）來作答
 max_tool_iterations = 3          # 單題最多讓模型呼叫工具幾輪
 ```
@@ -381,7 +381,8 @@ api_key_env = NVIDIA_API_KEY     # 進階：把 api_key 留空，改設「這個
 
 > **模型互動加強（v1.7）**：作答用的 LLM **預設常開 reasoning**（`thinking_mode = "enabled"`，
 > NVIDIA NIM / MiniMax-M3 的 `chat_template_kwargs.thinking_mode`，這已是 M3 最高推理檔），嚴格作答對格更穩；
-> 推理文字會與最終答案分離，只取乾淨答案送出。`max_tokens` 預設不填＝交給模型自身上限。
+> 推理文字會與最終答案分離，只取乾淨答案送出。`max_tokens` 預設 0＝送出安全預設 16384
+> （m3 推理若**省略** max_tokens 會回空 `choices`，所以一律會送一個明確上限）。
 > **工具呼叫**：題幹資訊不足時，模型可自行呼叫 `search_course_materials` 到課程裡找教材／講義
 > （**PDF 會抽成文字**，pypdf）並據此作答（皆為唯讀；輪數由 `max_tool_iterations` 控）。
 > **多模態**：需登入的題目／教材圖片會由本工具下載後以 base64 內嵌，NVIDIA 才看得到（公開圖維持直接帶 URL）。

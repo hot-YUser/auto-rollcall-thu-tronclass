@@ -761,7 +761,7 @@ _ADVANCED_COMMENTS = {
     "autoanswer.types": "要自動作答的題型清單",
     "autoanswer.llm": "答題 LLM 的「行為」設定；連線設定（provider/base_url/model/api_key/api_key_env）改在 config.conf 的 [llm]",
     "autoanswer.llm.thinking_mode": "推理強度：enabled=常開（預設，作答最穩）/ adaptive=模型自決 / disabled=關閉",
-    "autoanswer.llm.max_tokens": "回覆 token 上限；0 = 不填（交給模型自身上限，預設）",
+    "autoanswer.llm.max_tokens": "回覆 token 上限；0 = 用安全預設 16384（m3 推理若省略此值會回空，故一定會送）",
     "autoanswer.llm.enable_tools": "true = 題目資訊不足時，允許模型自行讀取課程教材/附件（含 PDF 文字）來作答",
     "autoanswer.llm.max_tool_iterations": "單題最多允許模型呼叫工具幾輪（控制成本/延遲）",
 }

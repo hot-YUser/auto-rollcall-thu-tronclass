@@ -419,8 +419,9 @@ def _normalize_autoanswer(config: ctx.Dict[str, ctx.Any]) -> None:
     llm['api_key'] = ctx.normalize_text(llm.get('api_key', default_llm.get('api_key', '')))
     thinking = ctx.normalize_text(llm.get('thinking_mode', default_llm['thinking_mode'])).lower()
     llm['thinking_mode'] = thinking if thinking in ('enabled', 'adaptive', 'disabled') else default_llm['thinking_mode']
-    # max_tokens: 0 (or blank/None) means UNSET -> not sent (defer to the model);
-    # any other value is coerced to a sane int (>=16).
+    # max_tokens: 0 (or blank/None) is kept as 0, which the LLM client substitutes with a large
+    # wire default (llm_answerer.DEFAULT_MAX_TOKENS) — m3-with-reasoning returns empty if it is
+    # omitted, so it is always sent. Any other value is coerced to a sane int (>=16).
     raw_max_tokens = llm.get('max_tokens', default_llm['max_tokens'])
     if raw_max_tokens in (None, '', 0, '0'):
         llm['max_tokens'] = 0

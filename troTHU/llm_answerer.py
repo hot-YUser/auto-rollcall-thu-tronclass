@@ -59,7 +59,7 @@ DEFAULT_LLM: Dict[str, Any] = {
     "api_key": "",
     "api_key_env": "NVIDIA_API_KEY",
     "thinking_mode": "enabled",   # always reason — strict answer formatting needs it
-    "max_tokens": 0,              # 0 = unset -> not sent -> defer to the model's own limit
+    "max_tokens": 0,              # 0 = use DEFAULT_MAX_TOKENS at send time (m3 returns EMPTY if omitted)
     # MiniMax recommends 1.0 for M3, but for a strict-format answerer + reliable multi-turn tool
     # use, 0.6 is far more consistent (1.0 caused the model to stall mid-tool-loop). top_p/top_k
     # stay at MiniMax's recommended values.
@@ -69,6 +69,11 @@ DEFAULT_LLM: Dict[str, Any] = {
     "enable_tools": True,
     "max_tool_iterations": 3,
 }
+
+# Wire default for max_tokens when the config value is 0/unset. m3-with-reasoning needs an explicit
+# cap or it generates nothing (200 + empty choices); this is large enough to never truncate a real
+# answer + its reasoning, matching the budget the prompts were tuned for.
+DEFAULT_MAX_TOKENS = 16384
 
 # NIM caps images per request (NIM_MAX_IMAGES_PER_PROMPT, default 5).
 MAX_IMAGES_PER_REQUEST = 5
@@ -208,13 +213,15 @@ def _build_payload(messages: List[Dict[str, Any]], llm_config: Dict[str, Any],
         "chat_template_kwargs": {"thinking_mode": thinking},
         "stream": False,
     }
-    # max_tokens is only sent when explicitly configured (>0); unset -> defer to the model's own limit.
+    # max_tokens MUST be sent: minimaxai/minimax-m3 with reasoning ON returns HTTP 200 + empty
+    # `choices: []` when it is OMITTED (verified live — this, not NVIDIA, was the "m3 returns nothing"
+    # cause; chat_template_kwargs/top_k are innocent). So 0/unset -> a large default that the reasoning
+    # budget was tuned for: never truncates a real answer, but always sends an explicit cap.
     try:
         max_tokens = int(llm_config.get("max_tokens") or 0)
     except (TypeError, ValueError):
         max_tokens = 0
-    if max_tokens > 0:
-        payload["max_tokens"] = max_tokens
+    payload["max_tokens"] = max_tokens if max_tokens > 0 else DEFAULT_MAX_TOKENS
     top_k = int(llm_config.get("top_k", DEFAULT_LLM["top_k"]) or 0)
     if top_k > 0:
         payload["top_k"] = top_k

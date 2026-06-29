@@ -711,10 +711,10 @@ DEFAULT_CONFIG = {
             # Reasoning ALWAYS on (chat_template_kwargs.thinking_mode on NIM/vLLM) — strict
             # answer formatting needs it. temperature 0.6 (not MiniMax's recommended 1.0) is far
             # more consistent for a strict-format answerer + multi-turn tool use; top_p/top_k stay
-            # at MiniMax's recommended 0.95/40. max_tokens unset → defer to the model's own limit
-            # (reasoning spends tokens before the answer; a small cap would truncate it).
+            # at MiniMax's recommended 0.95/40. max_tokens: 0 → send a large default (16384) at wire
+            # time; it must NOT be omitted (m3-with-reasoning returns empty choices if absent).
             "thinking_mode": "enabled",
-            "max_tokens": 0,   # 0 = 不填 → 不送 max_tokens，完全交給模型自身上限
+            "max_tokens": 0,   # 0 = 用安全預設 16384（m3 推理省略 max_tokens 會回空，故一定送）
             "temperature": 0.6,
             "top_p": 0.95,
             "top_k": 40,

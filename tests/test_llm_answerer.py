@@ -160,6 +160,17 @@ class DefaultLlmParityTest(unittest.TestCase):
         self.assertEqual(DEFAULT_LLM, ctx.DEFAULT_CONFIG["autoanswer"]["llm"])
 
 
+class BuildPayloadTest(unittest.TestCase):
+    def test_max_tokens_always_sent_defaulting_when_zero(self):
+        # m3-with-reasoning returns empty choices if max_tokens is OMITTED, so it must ALWAYS be in
+        # the payload: 0/unset -> DEFAULT_MAX_TOKENS, an explicit value is honored.
+        from troTHU.llm_answerer import DEFAULT_MAX_TOKENS, _build_payload
+        msgs = [{"role": "user", "content": "x"}]
+        self.assertEqual(_build_payload(msgs, {"max_tokens": 0}, None)["max_tokens"], DEFAULT_MAX_TOKENS)
+        self.assertEqual(_build_payload(msgs, {}, None)["max_tokens"], DEFAULT_MAX_TOKENS)
+        self.assertEqual(_build_payload(msgs, {"max_tokens": 4096}, None)["max_tokens"], 4096)
+
+
 class CompleteTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         os.environ["T_NV_KEY"] = "k"
@@ -176,9 +187,10 @@ class CompleteTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(body["chat_template_kwargs"]["thinking_mode"], "enabled")  # always-on default
         self.assertEqual(body["top_k"], 40)
         self.assertEqual(body["temperature"], 0.6)
-        self.assertNotIn("max_tokens", body)  # unset by default -> deferred to the model
+        from troTHU.llm_answerer import DEFAULT_MAX_TOKENS
+        self.assertEqual(body["max_tokens"], DEFAULT_MAX_TOKENS)  # always sent (m3 returns empty if omitted)
 
-    async def test_max_tokens_sent_only_when_configured(self):
+    async def test_explicit_max_tokens_is_honored(self):
         session = FakeSession([{"choices": [{"message": {"content": "A"}}]}])
         await complete(session, [{"role": "user", "content": "x"}], dict(self.cfg, max_tokens=2048))
         self.assertEqual(session.posts[0]["max_tokens"], 2048)
