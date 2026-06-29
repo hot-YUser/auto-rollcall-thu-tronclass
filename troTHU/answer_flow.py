@@ -145,7 +145,11 @@ def parse_questions(raw_subjects: Any) -> List[Question]:
                 out.append(parse_question(dict(sub, options=block, type="single_selection"),
                                           parent_id=parent_id))
             continue
-        if qtype in GROUP_TYPES or qtype == QuestionType.CLOZE or subs:
+        # 題組 (media/analysis) and any subject that carries sub_subjects (incl. a cloze whose
+        # blanks are modelled as subs) flatten to their children. A cloze with NO subs (blanks are
+        # __markers__ in the description) must fall through to parse_question — the old explicit
+        # `qtype == CLOZE` disjunct here wrongly took the empty-subs branch and dropped it.
+        if qtype in GROUP_TYPES or subs:
             for sub in subs:
                 out.append(parse_question(sub))
             continue
@@ -377,10 +381,24 @@ _SUBMITTERS = {
 
 # ----------------------------------------------------------------------------- public: prepare + submit
 
+def _is_answered(answer: Answer) -> bool:
+    """True only if the answer carries real content (option ids / text / a non-empty blank). An
+    all-empty Answer means the LLM produced nothing for that question (e.g. key/model unreachable,
+    a stall, or a non-200) — submitting it would waste the attempt, so we treat it as not-ready."""
+    if answer.answer_option_ids:
+        return True
+    if normalize_text(answer.answer_text):
+        return True
+    return any(normalize_text(content) for _sort, content in answer.blanks)
+
+
 async def prepare_answer(
     client: Any, session: Any, activity: Activity, *, llm_config: Dict[str, Any],
 ) -> Optional[Dict[str, Any]]:
-    """Fetch + decide, returning a cache-able prepared dict. Does NOT submit."""
+    """Fetch + decide, returning a cache-able prepared dict. Does NOT submit. Returns None when
+    there is nothing answerable OR the LLM did not produce a usable answer for every question — so
+    a transient LLM outage (notably the default model returning empty) never submits a blank paper
+    and never permanently dedups the activity; the next poll just retries."""
     try:
         activity, questions = await fetch_questions(client, activity)
     except ctx.TronHttpError as exc:
@@ -391,6 +409,11 @@ async def prepare_answer(
         return None
     answers, source = await decide_answers(
         session, questions, llm_config=llm_config, client=client, activity=activity)
+    if not answers or not all(_is_answered(a) for a in answers):
+        ctx.log(event="autoanswer", status="incomplete_answer",
+                message="尚未取得完整答案（LLM 可能暫時無回應或未設定金鑰），不送出空白、稍後重試。",
+                extra={"activity_id": activity.activity_id})
+        return None
     return {
         "activity": activity,
         "questions": questions,

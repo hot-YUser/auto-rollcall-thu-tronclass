@@ -308,5 +308,55 @@ class DecideAnswersWiringTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(cap["fetcher"])   # but images still get embedded
 
 
+class ClozeParseTest(unittest.TestCase):
+    def test_top_level_marker_cloze_is_parsed_not_dropped(self):
+        # A cloze that arrives top-level with marker blanks and NO sub_subjects must be parsed
+        # (the old `qtype == CLOZE` dispatch disjunct wrongly took the empty-subs branch and dropped it).
+        qs = answer_flow.parse_questions(
+            [{"id": 5, "type": "cloze", "description": "我__blank__你__blank__他", "answer_number": 0}])
+        self.assertEqual([q.subject_id for q in qs], [5])
+        self.assertEqual(qs[0].blank_count, 2)  # 2 markers -> 2 blanks
+
+    def test_cloze_with_subs_still_flattens_to_children(self):
+        qs = answer_flow.parse_questions([{
+            "id": 9, "type": "cloze",
+            "sub_subjects": [{"id": 91, "type": "fill_in_blank"}, {"id": 92, "type": "fill_in_blank"}],
+        }])
+        self.assertEqual([q.subject_id for q in qs], [91, 92])  # unchanged: subs win
+
+
+class PrepareGuardTest(unittest.IsolatedAsyncioTestCase):
+    async def test_empty_llm_answer_is_not_prepared(self):
+        # F1: an empty LLM reply (missing key / dead model / stall) must NOT cache a blank paper —
+        # prepare_answer returns None so the activity is retried, never submitted empty or deduped.
+        client = FakeClient({"/distribute": _PAPER})
+        orig = llm_answerer.answer_question
+
+        async def empty(*a, **k):
+            return ""  # LLM produced nothing
+
+        llm_answerer.answer_question = empty
+        try:
+            prepared = await answer_flow.prepare_answer(client, None, _act(ActivityType.EXAM), llm_config={})
+        finally:
+            llm_answerer.answer_question = orig
+        self.assertIsNone(prepared)
+
+    async def test_real_llm_answer_is_prepared(self):
+        client = FakeClient({"/distribute": _PAPER})
+        orig = llm_answerer.answer_question
+
+        async def good(*a, **k):
+            return "A"  # picks option A
+
+        llm_answerer.answer_question = good
+        try:
+            prepared = await answer_flow.prepare_answer(client, None, _act(ActivityType.EXAM), llm_config={})
+        finally:
+            llm_answerer.answer_question = orig
+        self.assertIsNotNone(prepared)
+        self.assertEqual(prepared["answers"][0].answer_option_ids, (11,))  # A -> first option id
+
+
 if __name__ == "__main__":
     unittest.main()

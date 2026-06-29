@@ -38,7 +38,7 @@ def config_view_summary(config: Mapping[str, Any] | None = None) -> Dict[str, An
         "active_profile": normalized.get("accounts", {}).get("current", "default"),
         "provider": normalized.get("provider", {}).get("current", "thu"),
         "now": simple.get("now", ""),
-        "compact_keys": ["now", "account", "teacher", "group", "operating"],
+        "compact_keys": ["now", "account", "teacher", "llm", "group", "operating"],
         "advanced_keys": sorted(advanced.keys()) if isinstance(advanced, Mapping) else [],
         "warnings": list(getattr(ctx, "CONFIG_WARNINGS", [])),
     }

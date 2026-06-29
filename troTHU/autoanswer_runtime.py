@@ -237,12 +237,14 @@ async def _prepare(client: Any, session: Any, activity: Activity, aa: Dict[str, 
     ctx.QUESTION_ANSWER_ATTEMPTS[key] = now
     delay = int(aa.get("delay_seconds", 15) or 0)
     label = activity.title or activity.activity_type.value
-    # Announce on DETECTION and start the countdown NOW — before preparing (which may call the LLM
-    # and take a while), so the user sees the timer immediately, not only once the answer is ready.
-    ctx.log_print("偵測到「{}」，{} 秒後自動送出（按任意鍵立即送）。".format(label, delay))
+    # Prepare FIRST (this may call the LLM). We announce only once we actually HAVE a usable answer,
+    # so a transient LLM/key/model failure (e.g. the model returning empty) stays quiet on the
+    # console (file-log only) and is retried next poll — never announced-then-stalled, never an
+    # empty submit. prepare_answer returns None for both "no questions" and "no usable answer yet".
     prepared = await answer_flow.prepare_answer(client, session, activity, llm_config=aa.get("llm", {}))
     if not prepared:
-        ctx.log_print("「{}」沒有可作答的題目，略過。".format(label))
+        ctx.log(event="autoanswer", status="not_prepared",
+                message="「{}」尚無可送出的答案，稍後重試。".format(label), extra={"activity_id": key})
         return
     prepared["detected_at"] = now
     prepared["delay_seconds"] = delay
@@ -250,8 +252,9 @@ async def _prepare(client: Any, session: Any, activity: Activity, aa: Dict[str, 
     ctx.ACTIVE_QUESTION_ANSWERS[key] = prepared
     source = getattr(prepared.get("source"), "value", prepared.get("source"))
     answer_text = format_paper_canonical(prepared.get("questions") or [], prepared.get("answers") or [])
-    # Echo the prepared answer once, in the canonical LLM format (so it's always shown the same way).
-    ctx.log_print("「{}」已備妥答案（{}）：\n{}".format(label, source, answer_text))
+    # Announce detection + the prepared answer together (canonical LLM format), then start the countdown.
+    ctx.log_print("偵測到「{}」並已備妥答案（{}），{} 秒後自動送出（按任意鍵立即送）：\n{}".format(
+        label, source, delay, answer_text))
     ctx.log(event="autoanswer", status="prepared", message="已備妥答案，等待送出。",
             extra={"activity_id": key, "source": str(prepared.get("source"))})
 
