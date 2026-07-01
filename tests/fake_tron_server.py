@@ -25,6 +25,7 @@ class FakeTronServer:
         self.scripts: Dict[str, List[Dict[str, Any]]] = {}
         self.number_attempts: List[Dict[str, Any]] = []
         self.radar_answers: List[Dict[str, Any]] = []
+        self.self_registration_answers: List[Dict[str, Any]] = []
         self.qr_answers: List[Dict[str, Any]] = []
         self.teacher_qr_code_requests: List[Dict[str, Any]] = []
         self.teacher_qr_data = "fake-teacher-qr-data"
@@ -333,6 +334,27 @@ class FakeTronServer:
             status=400,
         )
 
+    async def answer_self_registration(self, request):
+        unauthorized = self._unauthorized_if_needed(request)
+        if unauthorized is not None:
+            return unauthorized
+        body = await request.json()
+        self.self_registration_answers.append(
+            {
+                "rollcall_id": request.match_info["rollcall_id"],
+                "body": body,
+            }
+        )
+        scripted = self._script_response("self_registration")
+        if scripted is not None:
+            return scripted
+        # Contract: the student self-registers with a bare empty {} (no code/coord/QR).
+        if body != {}:
+            return web.json_response({"success": False, "message": "unexpected body"}, status=400)
+        self._mark_student_rollcalls_present()
+        self._mark_rollcall_present(request.match_info["rollcall_id"])
+        return web.json_response({"success": True})
+
     async def answer_qr(self, request):
         unauthorized = self._unauthorized_if_needed(request)
         if unauthorized is not None:
@@ -508,6 +530,7 @@ class FakeTronServer:
         app.router.add_get("/api/rollcall/{rollcall_id}/lite", self.radar_lite)
         app.router.add_put("/api/rollcall/{rollcall_id}/answer", self.answer_radar)
         app.router.add_put("/api/rollcall/{rollcall_id}/answer_qr_rollcall", self.answer_qr)
+        app.router.add_put("/api/rollcall/{rollcall_id}/answer_self_registration_rollcall", self.answer_self_registration)
         app.router.add_post("/api/rollcall/{rollcall_id}/start-rollcall", self.start_rollcall_api)
         app.router.add_put("/api/rollcall/{rollcall_id}/{stop_endpoint}", self.stop_rollcall_api)
         app.router.add_get("/api/rollcall/{rollcall_id}/student_rollcalls", self.student_rollcalls_api)

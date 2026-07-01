@@ -315,6 +315,20 @@ async def submit_group_radar(rollcall: ctx.Dict[str, ctx.Any], *, session: ctx.A
     return {"ok": ok, "status": "submitted" if ok else "partial_failed", "count": len(results), "results": results, "plan": plan}
 
 
+async def submit_group_self_registration(rollcall: ctx.Dict[str, ctx.Any], *, session: ctx.Any = None, config: ctx.Mapping[str, ctx.Any] | None = None) -> ctx.Dict[str, ctx.Any]:
+    plan = build_group_execution_plan(config or ctx.CONFIG)
+    if not plan.get("ok"):
+        return {"ok": False, "status": "no_group_target", "plan": plan}
+
+    async def submit_one(member_session, user):
+        ok = await ctx.self_registration(member_session, rollcall)
+        return ok, "submitted" if ok else "failed"
+
+    results = await _fanout(plan, submit_one)
+    ok = all(item["ok"] for item in results) if results else True
+    return {"ok": ok, "status": "submitted" if ok else "partial_failed", "count": len(results), "results": results, "plan": plan}
+
+
 async def submit_group_qr(payload_or_rollcall: str | ctx.Dict[str, ctx.Any], *, session: ctx.Any = None, config: ctx.Mapping[str, ctx.Any] | None = None) -> ctx.Dict[str, ctx.Any]:
     plan = build_group_execution_plan(config or ctx.CONFIG)
     if not plan.get("ok"):

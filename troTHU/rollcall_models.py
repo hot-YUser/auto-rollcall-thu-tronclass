@@ -9,6 +9,7 @@ class AttendanceType(str, Enum):
     NUMBER = "number"
     RADAR = "radar"
     QRCODE = "qrcode"
+    SELF_REGISTRATION = "self_registration"
     UNKNOWN = "unknown"
 
 
@@ -16,6 +17,7 @@ class RollcallAction(str, Enum):
     NONE = "none"
     ANSWER_NUMBER = "answer_number"
     ANSWER_RADAR = "answer_radar"
+    ANSWER_SELF_REGISTRATION = "answer_self_registration"
     REQUEST_QR_PAYLOAD = "request_qr_payload"
     SKIP_COMPLETED = "skip_completed"
     REPORT_UNSUPPORTED = "report_unsupported"

@@ -265,6 +265,38 @@ async def handle_rollcall_decision(
                 ctx.log_print('群組 radar fan-out 失敗：{}'.format(exc))
             return 'is_radar'
         return 'radar_failed'
+    if selected_status == 'is_self_registration' and selected_rollcall is not None:
+        ctx.reset_unsupported_rollcall_state()
+        rollcall_id = selected_rollcall.get('rollcall_id')
+        sr_key = ctx.normalize_text(rollcall_id)
+        if sr_key in ctx.COMPLETED_SELF_REGISTRATION_ROLLCALLS:
+            ctx.log(event='self_registration_rollcall_skipped', counter=cnt, status='already_completed', url=result_url, http_status=http_status, rollcall_id=rollcall_id, rollcall_type='self_registration', message='自主報到已處理，略過重複嘗試。', payload_excerpt=selected_rollcall)
+            return '自主報到已處理'
+        await ctx.announce_rollcall_start(
+            ctx.AttendanceType.SELF_REGISTRATION,
+            rollcall_id,
+            detail=_combine_start_detail(gate_detail, '正在送出自主報到，請稍候...'),
+            event='self_registration_rollcall_started',
+            counter=cnt,
+            url=result_url,
+            http_status=http_status,
+            payload_excerpt=selected_rollcall,
+        )
+        sr_success = await ctx.self_registration(session, selected_rollcall)
+        if sr_success:
+            ctx.COMPLETED_SELF_REGISTRATION_ROLLCALLS[sr_key] = True
+            try:
+                group_result = await ctx.submit_group_self_registration(selected_rollcall, session=session, config=ctx.CONFIG)
+                if group_result.get('ok'):
+                    ctx.log(event='group_self_registration_fanout_planned', status=group_result.get('status', 'submitted'), rollcall_id=rollcall_id, rollcall_type='self_registration', message='群組 自主報到 fan-out 簽到完成。', extra=group_result)
+                summary = ctx.format_group_fanout_summary(group_result, rollcall_type='self_registration')
+                if summary:
+                    ctx.log_print(summary)
+            except Exception as exc:
+                ctx.log(event='group_self_registration_fanout_planned', status='failed', rollcall_id=rollcall_id, rollcall_type='self_registration', message='群組 自主報到 fan-out 失敗。', error=exc)
+                ctx.log_print('群組 自主報到 fan-out 失敗：{}'.format(exc))
+            return 'is_self_registration'
+        return 'self_registration_failed'
     if selected_rollcall is not None:
         answered_automatically = False
         if selected_status == 'unsupported_qrcode':
