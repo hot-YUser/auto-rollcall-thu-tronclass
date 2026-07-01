@@ -37,13 +37,15 @@ def _poll_attendance_type(poll: ctx.Mapping[str, ctx.Any]) -> str:
         return 'number'
     if status == 'is_radar':
         return 'radar'
+    if status == 'is_self_registration':
+        return 'self_registration'
     if status == 'unsupported_qrcode':
         return 'qrcode'
     return ''
 
 
 def _is_active_rollcall_status(status: str) -> bool:
-    return status in {'is_number', 'is_radar', 'unsupported_qrcode'}
+    return status in {'is_number', 'is_radar', 'is_self_registration', 'unsupported_qrcode'}
 
 
 def _attendance_rate_gate_passed(progress: ctx.Mapping[str, ctx.Any], *, ignore_gate: bool=False) -> bool:
@@ -85,6 +87,7 @@ def _rollcall_flow_label(rollcall_type: ctx.Any) -> str:
     return {
         'number': '數字點名流程',
         'radar': '雷達點名流程',
+        'self_registration': '自主報到流程',
         'qrcode': 'QR 點名流程',
     }.get(rollcall_type_text, '點名流程')
 
@@ -526,7 +529,7 @@ async def monitor_loop(
                     if status_msg == 'radar_failed':
                         detail = '雷達點名處理失敗，下一輪會再檢查'
                         rollcall_status = ''
-                    elif status_msg in {'is_qrcode', 'is_number', 'is_radar'} and not progress.get('ok'):
+                    elif status_msg in {'is_qrcode', 'is_number', 'is_radar', 'is_self_registration'} and not progress.get('ok'):
                         progress_after = ctx.LAST_ROLLCALL_PROGRESS if isinstance(ctx.LAST_ROLLCALL_PROGRESS, dict) else {}
                         if progress_after.get('detail'):
                             detail = progress_after.get('detail')
@@ -536,6 +539,7 @@ async def monitor_loop(
                                 'is_qrcode': 'QR 點名已透過教師帳號完成',
                                 'is_number': '數字點名已觸發',
                                 'is_radar': '雷達點名已觸發',
+                                'is_self_registration': '自主報到已完成',
                             }.get(status_msg, detail)
                 legacy_detail = _format_monitor_legacy_detail(detail, rollcall_status)
                 legacy_message = '第 {} 次檢查: {}'.format(ctx.cnt, legacy_detail)

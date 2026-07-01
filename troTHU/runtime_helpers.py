@@ -541,6 +541,7 @@ def format_rollcall_success_banner(
         "number": "數字點名成功！",
         "radar": "雷達點名成功！",
         "qrcode": "QR Code 點名成功！",
+        "self_registration": "自主報到成功！",
     }
     method_by_type = {
         "number": "number",

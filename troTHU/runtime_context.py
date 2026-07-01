@@ -753,6 +753,8 @@ COMPLETED_NUMBER_ROLLCALLS: Dict[str, str] = {}
 
 COMPLETED_RADAR_ROLLCALLS: Dict[str, bool] = {}
 
+COMPLETED_SELF_REGISTRATION_ROLLCALLS: Dict[str, bool] = {}
+
 COMPLETED_QR_ROLLCALLS: Dict[str, bool] = {}
 
 QR_ASSIST_ATTEMPTS: Dict[str, float] = {}
@@ -1020,6 +1022,7 @@ _LEGACY_EXPORTS = {
     'qr_paste_command': ('troTHU.qr_runtime', 'qr_paste_command'),
     'qr_scanner_submit': ('troTHU.qr_runtime', 'qr_scanner_submit'),
     'radar': ('troTHU.radar_runtime', 'radar'),
+    'self_registration': ('troTHU.self_registration_runtime', 'self_registration'),
     'random_id': ('troTHU.auth_runtime', 'random_id'),
     'random_ua': ('troTHU.auth_runtime', 'random_ua'),
     'record_check_runtime': ('troTHU.rollcall_runtime', 'record_check_runtime'),
@@ -1075,6 +1078,7 @@ _LEGACY_EXPORTS = {
     'submit_group_qr': ('troTHU.group_runtime', 'submit_group_qr'),
     'submit_group_number': ('troTHU.group_runtime', 'submit_group_number'),
     'submit_group_radar': ('troTHU.group_runtime', 'submit_group_radar'),
+    'submit_group_self_registration': ('troTHU.group_runtime', 'submit_group_self_registration'),
     'run_monitor_forever': ('troTHU.monitor_runtime', 'run_monitor_forever'),
     'run_teacher_assisted_qr': ('troTHU.qr_teacher_runtime', 'run_teacher_assisted_qr'),
     'save_account_for_next_launch': ('troTHU.config_runtime', 'save_account_for_next_launch'),

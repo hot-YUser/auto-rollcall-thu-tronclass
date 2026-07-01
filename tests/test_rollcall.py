@@ -43,6 +43,15 @@ class RollcallEngineTest(unittest.TestCase):
         self.assertEqual(radar_decision.status, "is_radar")
         self.assertEqual(radar_decision.action, RollcallAction.ANSWER_RADAR)
 
+    def test_decide_rollcall_detects_self_registration_over_qr(self) -> None:
+        sr = {"type": "self_registration", "rollcall_id": 77}
+        decision = decide_rollcall([{"is_qrcode": True, "rollcall_id": 9}, sr])
+
+        self.assertEqual(decision.status, "is_self_registration")
+        self.assertEqual(decision.action, RollcallAction.ANSWER_SELF_REGISTRATION)
+        self.assertEqual(decision.attendance_type, AttendanceType.SELF_REGISTRATION)
+        self.assertIs(decision.rollcall, sr)
+
     def test_decide_rollcall_handles_qr_unknown_fine_and_empty(self) -> None:
         qr_decision = decide_rollcall([{"type": "qrcode", "rollcall_id": 88}])
         unknown_decision = decide_rollcall([{"foo": "bar"}])
@@ -362,6 +371,40 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         mes_mock.assert_awaited_once()
         self.assertIn("rollcall_poll", events)
         self.assertIn("number_rollcall_started", events)
+
+    async def test_check_rollcall_self_registration_submits_empty_and_confirms(self) -> None:
+        # Real end-to-end (self_registration NOT mocked): detect -> empty PUT -> verify on_call_fine.
+        self.fake_server.rollcalls = [{"type": "self_registration", "rollcall_id": 77}]
+
+        temp_dir = make_workspace_temp_dir()
+        try:
+            tron.PATH = temp_dir
+            mes_mock = AsyncMock()
+
+            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                await self.login_session(session)
+                with (
+                    patch.object(tron, "mes", mes_mock),
+                    patch.object(tron, "log_print"),
+                ):
+                    result = await tron.check_rollcall(session, 7)
+
+            log_path = self.current_daily_log_path(temp_dir)
+            events = [
+                json.loads(line)["event"]
+                for line in log_path.read_text(encoding="utf-8").splitlines()
+            ]
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+        self.assertEqual(result, "is_self_registration")
+        # exactly one empty-body PUT reached the answer_self_registration_rollcall endpoint
+        self.assertEqual(len(self.fake_server.self_registration_answers), 1)
+        self.assertEqual(self.fake_server.self_registration_answers[0]["body"], {})
+        self.assertEqual(self.fake_server.self_registration_answers[0]["rollcall_id"], "77")
+        self.assertIn("self_registration_rollcall_started", events)
+        self.assertIn("self_registration_rollcall", events)
+        mes_mock.assert_awaited()
 
     async def test_check_rollcall_unsupported_qrcode_notifies_once_and_writes_jsonl(self) -> None:
         self.fake_server.rollcalls = [{"is_qrcode": True, "rollcall_id": 88, "type": "qrcode"}]

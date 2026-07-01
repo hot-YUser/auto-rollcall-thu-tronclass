@@ -19,6 +19,7 @@
 - ✅ **數字點名** — 完整支援。已經過無數次實際課堂驗收與打磨，是成熟、穩定的全自動完成版：偵測到點名 → 自動拿到點名碼 → 自動簽到，全程零操作。
 - ✅ **雷達點名** — 完整支援。同樣經過大量實戰驗收，偵測到雷達點名後會自動完成定位簽到，不需要你開地圖、不需要對座標。就算哪天伺服器補掉了現在的捷徑，背後還有一套我自己寫的**「全球定位演算法」（WGS84 多點定位）**能反推教室座標頂上，不會因此失效。
 - ⚠️ **QR Code 點名** — 三種點名裡最硬的一塊，我們也**已竭盡全力**。QR 的 `data` token 是伺服器端用一把金鑰對「時間」簽出來的，經過整輪逆向，證實**學生端無法偽造、也無法憑空取得**（完整研究與踩過的坑見下方〈QR 資料 Token 逆向研究紀錄〉）。目前唯一能自動化的方式，是利用實測發現的「**`data` 跨課可攜**」特性，搭配一個你自備、能發起 QR 點名的教師帳號即時取得當下 `data` 再送出（「教師輔助」）——這是**暫時的妥協**，離真正「免教師自助簽到」的目標還有距離，我們仍在找路。
+- ⚠️ **自主報到（self_registration）** — 已支援。這是四種點名裡最單純的一種：老師開啟後，學生自己按「我到了」即可，沒有點名碼／座標／QR。偵測到就自動送出一個空的 `{}` 完成簽到（送法直接取自官方網頁前端原始碼），再回查確認 `on_call_fine`。**誠實交代**：我們的測試租戶 `www.tronclass.com.tw`**沒開通這項服務**（實測老師建立時伺服器回 `400 {"errors":{"type":["未開啟這項服務"]}}`），因此此功能**契約正確、已離線單元測試，但尚未能實機驗證**——與下方〈自動答題〉的 `courseware_quiz` 同一等級；在有開通此服務的租戶上應可直接運作。
 
 順帶一提，它不會「搶當第一個簽到的人」：偵測到點名後，會先確認這是一場真的、全班性的點名（已經有一定比例的同學陸續簽到）才出手，避免老師只是手滑誤開、又馬上關掉的「假點名」也把你簽進去。這是一道貼心的容錯保險，預設就開著、你什麼都不用設。
 
@@ -553,7 +554,16 @@ QR 真正「生成」的地方在**伺服器 / 舊版的網頁教師端**。如�
 
 ### 其他可能的面（與 QR 金鑰無關，但記著）
 
-深掘時發現 rollcall 的**來源比想像多**：除了 `number` / `radar` / `qr`，伺服器端還認得 `roomis`、`new_capec`（**第三方整合**，走 `external_api_key_id`，由外部系統回報出席）、`middle_db`、`merged_rollcall`、`import_rollcall`（中介 DB／合併點名／匯入點名）。這些**跟 QR 金鑰無關**，但若未來要找「別條路自動化出席」，這些第三方／機器對機器授權的面值得看。
+深掘時發現 rollcall 的**來源比想像多**：除了 `number` / `radar` / `qr`，伺服器端還認得 `self_registration`（自主報到）、`roomis`、`new_capec`（**第三方整合**，走 `external_api_key_id`，由外部系統回報出席）、`middle_db`、`merged_rollcall`、`import_rollcall`（中介 DB／合併點名／匯入點名）。
+
+我們把這些逐一查了一遍（對照廠商網頁前端的 `checkRollcallType` 列舉與角色×方法權限矩陣）：
+
+- **`roomis`／`middle_db`** — 後端 DB／Kafka 同步（Oracle／MySQL → TronClass），**沒有任何學生可打的 HTTP 端點**。
+- **`new_capec`** — 第三方廠商整合，靠機構層級發放的 `external_api_key_id`；學生**拿不到、也列不出**這把金鑰（`/api/auth_code/get_auth_code` 對學生回 403）。
+- **`merged_rollcall`／`import_rollcall`** — 教師／管理者的合併與檔案匯入（`/api/data-import/...`），**非學生動作**。
+- **`self_registration`** — 這一個**才是**學生端能自己送的類型（唯一新增的可自動化缺口），已補上支援（見上方能力清單的〈自主報到〉）。
+
+換句話說，學生端能碰的 `/api/rollcall/{id}/answer*` 端點就**恰好四個**（`answer`＝radar、`answer_number_rollcall`、`answer_qr_rollcall`、`answer_self_registration_rollcall`），現在四個都接了；其餘五種來源都是**機器對機器／教師管理者**授權，學生無路可走，只留紀錄、不追。
 
 ### 重建用的工具
 
@@ -573,7 +583,7 @@ TronClass 是不少學校共用的底層校園系統（各校上架時自行命�
 GET {base}/api/radar/rollcalls?api_version=1.1.0
 ```
 
-回傳目前進行中的點名清單與類型（number / radar / qr），程式據此分流處理。
+回傳目前進行中的點名清單與類型（number / radar / qr / self_registration），程式據此分流處理。
 
 ### 數字點名（越權讀碼 + 後備暴力）
 
@@ -604,6 +614,17 @@ GET {base}/api/rollcall/{rollcall_id}/lite   # 取得 beacon / 訊號等附帶�
 ```
 
 備援解法把「距離」當觀測量，用穩健最小平方法在 WGS84 上做多點定位反推教室座標，再不行則以無限棋盤格逐格覆蓋。雷達策略鏈為 **`empty_answer → global_wgs84`**（由 `config.advanced.toml` 的 `radar.strategy` 選擇，預設 `empty_answer`）；全球定位求解器在 `troTHU/global_radar_solver.py`，是零數學套件依賴的純 Python 實作。
+
+### 自主報到（空 PUT 即簽到）
+
+```http
+# 學生自己按「我到了」= 一個空 body 的 PUT
+PUT {base}/api/rollcall/{rollcall_id}/answer_self_registration_rollcall
+    body: {}
+# 送出後回查 student_rollcalls 確認為 on_call_fine 才採信。
+```
+
+沒有點名碼／座標／QR，是四種裡最單純的類型；送法直接對照官方網頁前端（`{self_registration:"answer_self_registration_rollcall",…}`，body 為 `{}`）。⚠️ 測試租戶 `www.tronclass.com.tw` 未開通此服務（老師建立時回 `400 未開啟這項服務`），故此路徑為**契約正確 + 離線測試、尚未實機驗證**。
 
 ### QR 點名（教師輔助取得 data）
 

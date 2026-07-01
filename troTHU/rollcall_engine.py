@@ -36,6 +36,7 @@ def decide_rollcall(rollcalls: Any) -> RollcallDecision:
 
     first_supported_number = None
     first_supported_radar = None
+    first_supported_self_registration = None
     first_qrcode: Optional[Tuple[str, Dict[str, Any], str, str]] = None
     first_unsupported: Optional[Tuple[str, Dict[str, Any], str, str]] = None
     first_on_call_fine = None
@@ -50,6 +51,11 @@ def decide_rollcall(rollcalls: Any) -> RollcallDecision:
             rollcall.get("type") or rollcall.get("rollcall_type") or rollcall.get("name")
         ).lower():
             first_supported_radar = rollcall
+            break
+        if "self_registration" in normalize_text(
+            rollcall.get("type") or rollcall.get("rollcall_type") or rollcall.get("name")
+        ).lower():
+            first_supported_self_registration = rollcall
             break
         if rollcall.get("status") == "on_call_fine":
             if first_on_call_fine is None:
@@ -74,6 +80,13 @@ def decide_rollcall(rollcalls: Any) -> RollcallDecision:
             action=RollcallAction.ANSWER_RADAR,
             attendance_type=AttendanceType.RADAR,
             rollcall=first_supported_radar,
+        )
+    if first_supported_self_registration is not None:
+        return RollcallDecision(
+            status="is_self_registration",
+            action=RollcallAction.ANSWER_SELF_REGISTRATION,
+            attendance_type=AttendanceType.SELF_REGISTRATION,
+            rollcall=first_supported_self_registration,
         )
     if first_qrcode is not None:
         status, rollcall, _rollcall_type, message = first_qrcode
