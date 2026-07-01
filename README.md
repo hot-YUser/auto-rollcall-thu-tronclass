@@ -4,6 +4,8 @@
 
 登入學校帳號後，它會在你設定的上課時段自動盯著課程，一偵測到點名就替你完成簽到——你不用一直盯著手機，也不用手忙腳亂找點名碼。
 
+> 🆕 **最新版本 v1.8-alpha.1**：新增第四種學生端點名「**自主報到（self_registration）**」自動化——number／radar／qr／self_registration 四種學生點名自此全數支援（自主報到因測試租戶未開通，屬契約正確＋離線測試、尚未實機驗證，詳見 [RELEASE_NOTES-v1.8-alpha.1.md](RELEASE_NOTES-v1.8-alpha.1.md)）。
+
 > ⚠️ 請只在你自己有權限、且符合學校與課程規範的情況下使用。**不要把填好帳密的 `config.conf`、cookie、`state/`、`log/` 傳給任何人。**
 
 ## 致謝與來源
