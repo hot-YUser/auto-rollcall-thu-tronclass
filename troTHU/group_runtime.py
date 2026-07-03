@@ -344,36 +344,15 @@ async def submit_group_qr(payload_or_rollcall: str | ctx.Dict[str, ctx.Any], *, 
         results = await _fanout(plan, submit_one)
     else:
         rollcall = payload_or_rollcall
-        rollcall_id = _rollcall_id(rollcall)
-        
         if ctx.teacher_assist_configured(config or ctx.CONFIG):
             async def submit_one(member_session, user):
                 ok = await ctx.submit_prepared_teacher_qr(member_session, rollcall)
                 return ok, "submitted" if ok else "failed"
             results = await _fanout(plan, submit_one)
         else:
-            payload = ""
-            try:
-                if ctx.clipboard_autosubmit_enabled(config or ctx.CONFIG):
-                    read = ctx.read_clipboard_qr_payload()
-                    if read.get("ok"):
-                        clip_payload = str(read.get("payload") or "")
-                        try:
-                            clip_rcid = ctx.normalize_text(ctx.parse_qr_payload(clip_payload).rollcall_id)
-                        except Exception:
-                            clip_rcid = ""
-                        if clip_rcid == rollcall_id:
-                            payload = clip_payload
-            except Exception:
-                pass
-
-            if payload:
-                async def submit_one(member_session, user):
-                    ok = await ctx.submit_qr_payload(member_session, payload, progress_log_output=False)
-                    return ok, "submitted" if ok else "failed"
-                results = await _fanout(plan, submit_one)
-            else:
-                return {"ok": True, "status": "skipped", "count": 0, "results": [], "plan": plan}
+            # 沒有教師輔助帳號時,群組 QR 代簽沒有任何「自動」的 data 來源可用。
+            # (原本會背景偷讀剪貼簿並自稱自動——那根本不算自動,已移除;見 qr_teacher_runtime docstring。)
+            return {"ok": True, "status": "skipped_no_teacher_assist", "count": 0, "results": [], "plan": plan}
 
     ok = all(item["ok"] for item in results) if results else True
     

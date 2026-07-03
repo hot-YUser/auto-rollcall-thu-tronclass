@@ -10,7 +10,7 @@ from pathlib import Path
 from troTHU.account_runtime_store import AccountRuntimeSnapshot, load_runtime_state, mark_bot_state, mark_check_result, mark_login_result, mark_monitor_state, mark_profile_error, runtime_profile_summary, runtime_state_path, save_runtime_state, update_profile_runtime_state
 from troTHU.account_store import save_session_cookies, load_session_cookies, cookie_cache_status, cookie_path
 from http.cookies import SimpleCookie
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 from troTHU import tron, tron_http, runtime_context
 from tests.fake_tron_server import FakeTronServer
 from troTHU.input_safety import masked_password_input, sanitize_config_values, sanitize_input_field
@@ -496,30 +496,21 @@ class GroupRuntimeIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["results"][0]["user"], "user2")
         self.assertEqual(result["results"][0]["ok"], True)
 
-        # 4. Test submit_group_qr (Clipboard fallback mode)
+        # 4. submit_group_qr with NO teacher-assist: there is no automatic data source, so the
+        #    group fan-out is skipped. (The old background clipboard-reading path was removed — it
+        #    masqueraded as automatic; teacher-assist is the only real QR automation.)
         self.fake_server.rollcalls = [{"is_qrcode": True, "rollcall_id": 45, "type": "qrcode"}]
-        self.fake_server.student_rollcalls = [
-            {"student_id": 1, "user_no": "user2", "status": "pending", "rollcall_status": "on_call"}
-        ]
-
-        # Mock clipboard helpers
-        mock_qr_data = MagicMock()
-        mock_qr_data.rollcall_id = "45"
 
         async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
             tron.switch_profile(tron.CONFIG, "user1")
             with patch.object(tron, "submit_qr_payload", AsyncMock(return_value=True)) as submit_qr_mock, \
-                 patch.object(tron, "clipboard_autosubmit_enabled", return_value=True), \
-                 patch.object(tron, "read_clipboard_qr_payload", return_value={"ok": True, "payload": "payload-data"}), \
-                 patch.object(tron, "parse_qr_payload", return_value=mock_qr_data):
+                 patch.object(tron, "teacher_assist_configured", return_value=False):
                 result = await tron.submit_group_qr({"rollcall_id": 45}, session=session, config=tron.CONFIG)
-                submit_qr_mock.assert_awaited_once()
+                submit_qr_mock.assert_not_awaited()
 
         self.assertTrue(result["ok"])
-        self.assertEqual(result["status"], "submitted")
-        self.assertEqual(result["count"], 1)
-        self.assertEqual(result["results"][0]["user"], "user2")
-        self.assertEqual(result["results"][0]["ok"], True)
+        self.assertEqual(result["status"], "skipped_no_teacher_assist")
+        self.assertEqual(result["count"], 0)
 
     async def test_group_number_fanout_covers_multiple_members(self) -> None:
         # Regression: a group with TWO valid fan-out members must sign BOTH in.
