@@ -57,49 +57,6 @@ async def maybe_notify_unsupported_rollcall(status: str, rollcall: ctx.Dict[str,
     ctx.log(event='unsupported_rollcall_detected', status=status, rollcall_id=rollcall_id, rollcall_type=rollcall_type, message=message, payload_excerpt=rollcall)
 
 
-_LAST_CLIPBOARD_QR_HASH: str = ''
-
-
-async def try_clipboard_qr_autosubmit(session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str, ctx.Any]) -> bool:
-    """If the clipboard holds a QR for THIS rollcall, decode and submit it.
-
-    Clipboard-only assist for QR rollcalls (the `data` token is never in any
-    student API, so it must come from the displayed QR). Each distinct clipboard
-    content is attempted once; a payload whose rollcallId does not match the
-    active rollcall is skipped for safety. Best-effort; never raises."""
-    global _LAST_CLIPBOARD_QR_HASH
-    try:
-        if not ctx.clipboard_autosubmit_enabled(ctx.CONFIG):
-            return False
-        read = ctx.read_clipboard_qr_payload()
-        if not read.get('ok'):
-            return False
-        content_hash = ctx.normalize_text(read.get('content_hash'))
-        if content_hash and content_hash == _LAST_CLIPBOARD_QR_HASH:
-            return False
-        _LAST_CLIPBOARD_QR_HASH = content_hash
-        payload = str(read.get('payload') or '')
-        try:
-            clip_rollcall_id = ctx.normalize_text(ctx.parse_qr_payload(payload).rollcall_id)
-        except Exception:
-            clip_rollcall_id = ''
-        current_rollcall_id = ctx.normalize_text(rollcall.get('rollcall_id') if isinstance(rollcall, dict) else '')
-        if clip_rollcall_id and current_rollcall_id and clip_rollcall_id != current_rollcall_id:
-            ctx.log_print('剪貼簿 QR 對應點名 {} 與目前 {} 不符，略過。'.format(clip_rollcall_id, current_rollcall_id))
-            ctx.log(event='clipboard_qr_autosubmit', status='rollcall_mismatch', rollcall_id=current_rollcall_id, rollcall_type='qrcode', message='剪貼簿 QR 與目前點名不符。', extra={'clipboard_rollcall_id': clip_rollcall_id, 'source': read.get('source')})
-            return False
-        ok = await ctx.submit_qr_payload(session, payload, progress_log_output=False)
-        if not ok:
-            ctx.log(event='clipboard_qr_autosubmit', status='submitted_unconfirmed', rollcall_id=current_rollcall_id or clip_rollcall_id, rollcall_type='qrcode', message='已從剪貼簿自動送出 QR 點名，但尚未確認 on_call_fine。', extra={'source': read.get('source')})
-            return False
-        ctx.log_print('已從剪貼簿（{}）自動送出並確認 QR 點名 #{}。'.format(read.get('source'), current_rollcall_id or clip_rollcall_id))
-        ctx.log(event='clipboard_qr_autosubmit', status='success', rollcall_id=current_rollcall_id or clip_rollcall_id, rollcall_type='qrcode', message='已從剪貼簿自動送出並確認 QR 點名。', extra={'source': read.get('source')})
-        return True
-    except Exception as exc:
-        ctx.log(event='clipboard_qr_autosubmit', status='error', rollcall_type='qrcode', message='剪貼簿自動送出失敗。', error=exc)
-        return False
-
-
 def record_check_runtime(status: str, *, rollcall_id: ctx.Any='', rollcall_type: str='') -> None:
     try:
         ctx.mark_check_result(ctx.BASE_DIR, ctx.get_active_profile(ctx.CONFIG).name, status, rollcall_id=rollcall_id, rollcall_type=rollcall_type)
@@ -310,7 +267,7 @@ async def handle_rollcall_decision(
                     qr_key or selected_rollcall.get('rollcall_id') or selected_rollcall.get('id'),
                     detail=_combine_start_detail(
                         gate_detail,
-                        '正在送出 QR 點名；優先使用教師輔助或剪貼簿內容。',
+                        '正在透過教師輔助送出 QR 點名。',
                     ),
                     event='qrcode_rollcall_submit_started',
                     counter=cnt,
@@ -323,21 +280,6 @@ async def handle_rollcall_decision(
                     answered_automatically = await ctx.submit_prepared_teacher_qr(session, selected_rollcall)
                 else:
                     answered_automatically = await ctx.run_teacher_assisted_qr(session, selected_rollcall)
-                if answered_automatically and qr_key:
-                    ctx.COMPLETED_QR_ROLLCALLS[qr_key] = True
-                    try:
-                        group_result = await ctx.submit_group_qr(selected_rollcall, session=session, config=ctx.CONFIG)
-                        if group_result.get('ok'):
-                            ctx.log(event='group_qr_fanout_planned', status=group_result.get('status', 'submitted'), rollcall_id=qr_key, rollcall_type='qrcode', message='群組 qr fan-out 簽到完成。', extra=group_result)
-                        summary = ctx.format_group_fanout_summary(group_result, rollcall_type='qr')
-                        if summary:
-                            ctx.log_print(summary)
-                    except Exception as exc:
-                        ctx.log(event='group_qr_fanout_planned', status='failed', rollcall_id=qr_key, rollcall_type='qrcode', message='群組 qr fan-out 失敗。', error=exc)
-                        ctx.log_print('群組 qr fan-out 失敗：{}'.format(exc))
-                    return 'is_qrcode'
-            if not answered_automatically:
-                answered_automatically = await ctx.try_clipboard_qr_autosubmit(session, selected_rollcall)
                 if answered_automatically and qr_key:
                     ctx.COMPLETED_QR_ROLLCALLS[qr_key] = True
                     try:

@@ -55,7 +55,6 @@ HIDDEN_IMPORTS = sorted(
             "troTHU.cli_research",
             "troTHU.cli_system",
             "troTHU.cli_teacher",
-            "troTHU.clipboard_qr",
             "troTHU.config_runtime",
             "troTHU.config_editor",
             "troTHU.config_view",

@@ -657,7 +657,8 @@ def render_basic_config(simple_dict: ctx.Mapping[str, ctx.Any] | None = None) ->
 
     teacher = simple.get("teacher") if isinstance(simple.get("teacher"), dict) else {}
     lines.extend([
-        "# [teacher]（選用）QR 教師輔助帳號。school 填任一支援代號（見上）；course 留空會自動抓第一門課",
+        "# [teacher] QR 教師輔助帳號——目前唯一能讓 QR「全自動」的路徑（沒填就只能 tron qr paste 手動貼上）。",
+        "# school 填任一支援代號（見上；可與學生不同校，data 跨校可攜）；course 留空會自動抓第一門課",
         "[teacher]",
         "user = {}".format(teacher.get("user") or ""),
         "passwd = {}".format(teacher.get("passwd") or ""),

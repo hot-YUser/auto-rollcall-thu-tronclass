@@ -471,14 +471,14 @@ async def monitor_loop(
                             await ctx.maybe_notify_unsupported_rollcall(
                                 status_msg,
                                 poll.get('rollcall') or {},
-                                poll.get('message') or '偵測到 QR Code 點名，請貼上 QR 內容後手動送出。',
+                                poll.get('message') or '偵測到 QR 點名；請用 tron qr paste 手動貼上當下 QR 內容（教師輔助是目前唯一能自動的路徑）。',
                                 rollcall_type,
                             )
                     else:
                         await ctx.maybe_notify_unsupported_rollcall(
                             status_msg,
                             poll.get('rollcall') or {},
-                            poll.get('message') or '偵測到 QR Code 點名，請貼上 QR 內容後手動送出。',
+                            poll.get('message') or '偵測到 QR 點名；請用 tron qr paste 手動貼上當下 QR 內容（教師輔助是目前唯一能自動的路徑）。',
                             rollcall_type,
                         )
 

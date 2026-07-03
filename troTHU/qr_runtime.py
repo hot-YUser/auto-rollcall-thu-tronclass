@@ -1,3 +1,10 @@
+"""QR 簽到的送出與收尾(送 `data`、驗 `on_call_fine`、通知)。
+
+QR `data` 由伺服器端產生、學生端 API 不回傳;目前唯一能自動完成 QR 簽到的是**教師輔助**
+(靠已實證的 `data` 跨課/跨校可攜——詳見 qr_teacher_runtime)。`tron qr paste`/`scan` 是使用者
+主動提供 QR 內容的**手動**最後手段,不算自動。純學生端免教師取得 data 的方法**目前尚未發現**
+(已知有人做到、原理未明,故非不可能,僅為目前未解)。
+"""
 from __future__ import annotations
 
 try:  # pragma: no cover - package import path
