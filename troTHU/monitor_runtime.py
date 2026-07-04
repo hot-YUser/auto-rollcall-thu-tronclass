@@ -723,9 +723,9 @@ async def app_main(
                 ctx.TEACHER_SESSION = None
 
 
-def run_monitor_forever(*, no_input: bool=False, ignore_attendance_rate_gate: ctx.Optional[bool]=None) -> int:
+def run_monitor_forever(*, no_input: bool=False, ignore_attendance_rate_gate: ctx.Optional[bool]=None, mode_override: ctx.Optional[str]=None) -> int:
     ctx.bootstrap_config()
-    ctx.configure_logging(ctx.CONFIG.get('logging', {}).get('mode', 'normal'))
+    ctx.configure_logging(mode_override or ctx.CONFIG.get('logging', {}).get('mode', 'normal'))
     if not ctx.provider_is_daily_allowed():
         print(ctx.provider_block_message('monitor run'))
         return 1

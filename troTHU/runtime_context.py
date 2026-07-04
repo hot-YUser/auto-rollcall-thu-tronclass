@@ -295,10 +295,13 @@ _EAGER_REEXPORTS = {
     ),
     "troTHU.ux_tools": (
         "check_item",
+        "export_debug_bundle",
         "file_age_seconds",
         "human_age",
         "json_text",
         "render_check_items",
+        "summarize_logs",
+        "tail_log_records",
     ),
 }
 
@@ -924,6 +927,7 @@ _LEGACY_EXPORTS = {
     'get_logger': ('troTHU.log_core', 'get_logger'),
     'log_event': ('troTHU.log_core', 'log_event'),
     'log_api_call': ('troTHU.log_core', 'log_api_call'),
+    'logs_command': ('troTHU.cli_system', 'logs_command'),
     'decide_rollcall': ('troTHU.rollcall_runtime', 'decide_rollcall'),
     'decode_qr_image_file': ('troTHU.qr_runtime', 'decode_qr_image_file'),
     'doctor': ('troTHU.status_reports', 'doctor'),

@@ -6,8 +6,16 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from troTHU import tron
+
+
+def _write_record(log_dir: Path, record: dict) -> None:
+    path = log_dir / "2026-07-04.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
 def _read_records(log_dir: Path):
@@ -61,7 +69,7 @@ class LogCoreTest(unittest.TestCase):
         self.assertEqual(rec["status"], "ok")
         self.assertEqual(rec["message"], "done")
         self.assertEqual(rec["user"], "u1")
-        self.assertIn("ts", rec)
+        self.assertIn("timestamp", rec)
 
     def test_redaction_on_in_normal_off_in_research(self) -> None:
         tron.configure_logging("normal")
@@ -106,6 +114,58 @@ class LogCoreTest(unittest.TestCase):
         tron.CONFIG.setdefault("config", {})["enable_log"] = False
         tron.log_event("t", message="x")
         self.assertEqual(_read_records(self.temp_dir), [])
+
+
+class LogsCliTest(unittest.TestCase):
+    """The rebuilt `tron logs` consumers, reading the new {timestamp, level, mode, ...} schema."""
+
+    def test_logs_summarize_counts_events_and_levels(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_dir = Path(temp_dir) / "log"
+            _write_record(log_dir, {"timestamp": "2026-07-04T01:00:00", "level": "WARNING",
+                                    "mode": "normal", "event": "api_call", "status": "error"})
+            _write_record(log_dir, {"timestamp": "2026-07-04T01:00:01", "level": "INFO",
+                                    "mode": "normal", "event": "login_success", "status": "ok"})
+            outputs = []
+            with (patch.object(tron, "PATH", log_dir), patch.object(tron, "bootstrap_config"),
+                  patch("builtins.print", side_effect=outputs.append)):
+                result = tron.main(["logs", "summarize", "--json"])
+        self.assertEqual(result, 0)
+        payload = json.loads(outputs[0])
+        self.assertEqual(payload["record_count"], 2)
+        self.assertEqual(payload["events"]["api_call"], 1)
+        self.assertEqual(payload["levels"]["WARNING"], 1)
+
+    def test_logs_tail_redacts_raw_secret_on_read(self) -> None:
+        # A research-mode record is written raw; `logs tail` must still redact on read.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_dir = Path(temp_dir) / "log"
+            _write_record(log_dir, {"timestamp": "2026-07-04T01:00:00", "level": "INFO",
+                                    "mode": "research", "event": "api_call", "api_key": "nvapi-raw-secret"})
+            outputs = []
+            with (patch.object(tron, "PATH", log_dir), patch.object(tron, "bootstrap_config"),
+                  patch("builtins.print", side_effect=outputs.append)):
+                result = tron.main(["logs", "tail", "--json"])
+        self.assertEqual(result, 0)
+        self.assertNotIn("nvapi-raw-secret", "\n".join(str(o) for o in outputs))
+
+    def test_logs_export_writes_bundle(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base_dir = Path(temp_dir)
+            log_dir = base_dir / "log"
+            _write_record(log_dir, {"timestamp": "2026-07-04T01:00:00", "event": "ok", "level": "INFO"})
+            with (patch.object(tron, "BASE_DIR", base_dir), patch.object(tron, "PATH", log_dir),
+                  patch.object(tron, "bootstrap_config"), patch("builtins.print")):
+                result = tron.main(["logs", "export"])
+            self.assertEqual(result, 0)
+            self.assertTrue((base_dir / "state" / "debug-bundle").exists())
+
+    def test_run_mode_flags_parse(self) -> None:
+        parser = tron.build_arg_parser()
+        self.assertTrue(parser.parse_args(["run", "--research"]).research)
+        self.assertTrue(parser.parse_args(["run", "--debug"]).debug)
+        with self.assertRaises(SystemExit):
+            parser.parse_args(["run", "--debug", "--research"])  # mutually exclusive
 
 
 if __name__ == "__main__":

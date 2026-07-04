@@ -54,6 +54,39 @@ def release_build_command(args: ctx.argparse.Namespace) -> int:
     return 0 if report.get('status') in {'ok', 'dry_run', 'warn'} else 1
 
 
+def logs_command(args: ctx.argparse.Namespace) -> int:
+    command = args.logs_command or 'tail'
+    json_mode = bool(getattr(args, 'json', False))
+    if command == 'tail':
+        records = ctx.tail_log_records(ctx.PATH, getattr(args, 'limit', 20))
+        if json_mode:
+            print(ctx.json_text({'records': records}))
+        else:
+            for record in records:
+                print(ctx.json.dumps(record, ensure_ascii=False, default=str))
+        return 0
+    if command in {'summarize', 'summary'}:
+        limit = max(1, int(getattr(args, 'limit', 20) or 20))
+        summary = ctx.summarize_logs(ctx.PATH)
+        recent_logs = ctx.tail_log_records(ctx.PATH, limit)
+        if json_mode:
+            payload = dict(summary)
+            payload['recent_events'] = ctx.classify_recent_events(recent_logs, limit=limit)
+            print(ctx.json_text(payload))
+        else:
+            print('\n'.join(ctx.format_log_summary(summary, recent_logs)))
+        return 0
+    if command == 'export':
+        timestamp = ctx.datetime.now().strftime('%Y%m%d-%H%M%S')
+        output_arg = getattr(args, 'output', '')
+        output = ctx.Path(output_arg) if output_arg else ctx.BASE_DIR / 'state' / 'debug-bundle' / f'tron-debug-{timestamp}.zip'
+        limit = getattr(args, 'limit', 0) or ctx.CONFIG.get('ux', {}).get('debug_bundle_log_limit', 50)
+        path = ctx.export_debug_bundle(output, config_summary=ctx.config_summary(), doctor_report=ctx.doctor_report(), log_summary=ctx.summarize_logs(ctx.PATH), recent_logs=ctx.tail_log_records(ctx.PATH, limit), debug_capture_path=ctx.BASE_DIR / 'state' / 'debug-capture' / 'rollcalls.jsonl')
+        print('Debug bundle written: {}'.format(path))
+        return 0
+    return 1
+
+
 def init_command(args: ctx.argparse.Namespace) -> int:
     raw_profile = args.profile or ('' if args.yes else input('Profile name [default] > '))
     profile_result = ctx.sanitize_input_field(raw_profile or 'default', field_type='profile', field_name='profile')
@@ -181,7 +214,7 @@ def config_doctor_command(json_output: bool=False) -> int:
 def dashboard_command(args: ctx.argparse.Namespace) -> int:
     interval = max(1.0, float(args.interval or 2.0))
     while True:
-        snapshot = ctx.build_observability_snapshot(ctx.status_report(), log_summary={}, recent_logs=[])
+        snapshot = ctx.build_observability_snapshot(ctx.status_report(), log_summary=ctx.summarize_logs(ctx.PATH), recent_logs=ctx.tail_log_records(ctx.PATH, 20))
         if getattr(args, 'json', False):
             print(ctx.json_text(snapshot))
             return 0

@@ -24,15 +24,19 @@ def main(argv: ctx.Optional[ctx.List[str]]=None) -> int:
             parser.error('unrecognized arguments: {}'.format(' '.join(unknown_args)))
     if args.command in (None, 'run'):
         ignore_gate = True if bool(getattr(args, 'ignore_attendance_rate_gate', False)) else None
+        mode_override = 'research' if getattr(args, 'research', False) else ('debug' if getattr(args, 'debug', False) else None)
         return ctx.run_monitor_forever(
             no_input=bool(getattr(args, 'no_input', False)),
             ignore_attendance_rate_gate=ignore_gate,
+            mode_override=mode_override,
         )
     ctx.bootstrap_config()
     if args.command == 'init':
         return ctx.init_command(args)
     if args.command == 'account':
         return ctx.handle_account_command(args)
+    if args.command == 'logs':
+        return ctx.logs_command(args)
     if args.command == 'bot':
         if getattr(args, 'bot_command', None) == 'serve':
             try:

@@ -46,7 +46,7 @@ def _file_logging_enabled() -> bool:
 
 def _record_to_dict(record: logging.LogRecord, now: Any) -> Dict[str, Any]:
     data: Dict[str, Any] = {
-        "ts": now.isoformat(timespec="seconds"),
+        "timestamp": now.isoformat(timespec="seconds"),
         "level": record.levelname,
         "mode": getattr(ctx, "LOGGING_MODE", DEFAULT_MODE),
         "event": getattr(record, "event", "") or record.name,
