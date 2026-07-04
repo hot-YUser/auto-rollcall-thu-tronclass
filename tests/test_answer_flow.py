@@ -222,10 +222,12 @@ class SubmitTest(unittest.IsolatedAsyncioTestCase):
         # correct TEXT for the blank/short. Resubmit must keep the first-pass blanks/short and
         # matching parent_id (review carries no parent_id), only overlaying what leaked — never
         # rebuild the paper from the review alone (that wiped non-choice subjects to 0).
+        # MATCHING subs (parent_id set) are KEPT AS-IS: TronClass leaks a "correct" option id from a
+        # DIFFERENT sub's block, so overlaying it scores 0 + renders as (空) (live: exam 32835).
         review = {"correct_answers_data": {"correct_answers": [
             {"subject_id": 1, "answer_option_ids": [12]},                       # choice: leaked id
             {"subject_id": 2, "correct_answers": [{"sort": 0, "content": "天"}]},  # fill: leaked text
-            {"subject_id": 3, "answer_option_ids": [99]},                        # matching sub: leaked id
+            {"subject_id": 3, "answer_option_ids": [99]},                        # matching sub: cross-wired id
             {"subject_id": 4},                                                   # short: nothing leaked
         ]}}
         client = FakeClient({"/submissions/555": review, "/distribute": _PAPER})
@@ -242,7 +244,7 @@ class SubmitTest(unittest.IsolatedAsyncioTestCase):
         by_id = {s["subject_id"]: s for s in body["subjects"]}
         self.assertEqual(by_id[1]["answer_option_ids"], [12])               # overlaid choice
         self.assertEqual(by_id[2]["answers"], [{"sort": 0, "content": "天"}])  # overlaid blank, not wiped
-        self.assertEqual(by_id[3]["answer_option_ids"], [99])               # overlaid matching id
+        self.assertEqual(by_id[3]["answer_option_ids"], [50])               # matching KEPT first-pass id, not [99]
         self.assertEqual(by_id[3]["parent_id"], 7)                          # parent_id preserved
         self.assertEqual(by_id[4]["answer"], "my essay")                    # short kept (nothing leaked)
 

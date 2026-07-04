@@ -481,6 +481,13 @@ async def _resubmit_exam_with_correct(
             continue
         sid = _as_int(c.get("subject_id"))
         base = by_id.get(sid)
+        # Matching subs (parent_id set — the ONLY type parse tags, answer_flow.py parse_questions)
+        # KEEP their first-pass answer. TronClass stores each (left,right) pair as an independent
+        # per-sub option id, but the review leaks a "correct" id from a DIFFERENT sub's block, so
+        # overlaying it scores 0 AND renders as (空) — live-confirmed on exam 32835. The first pass
+        # already carries the correct in-block id + parent_id and scores full, so leave it alone.
+        if base is not None and base.parent_id:
+            continue
         option_ids = tuple(_as_int(o) for o in (c.get("answer_option_ids") or []))
         blanks = tuple((_as_int(b.get("sort")), normalize_text(b.get("content")))
                        for b in (c.get("correct_answers") or []) if isinstance(b, dict))
