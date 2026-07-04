@@ -165,6 +165,14 @@ class CanonicalRenderTest(unittest.TestCase):
         q = Question(subject_id=4, qtype=QuestionType.SHORT_ANSWER)
         self.assertEqual(format_answer_canonical(q, Answer(4, answer_text="巴黎")), "巴黎")
 
+    def test_display_strips_html_markup_but_submit_keeps_it(self):
+        # TronClass stores/compares fill/short answers WITH markup, so the submitted Answer keeps
+        # '<p>..</p>' verbatim (scores) — only the console display strips it for readability.
+        qf = Question(subject_id=3, qtype=QuestionType.FILL_BLANK, blank_count=1)
+        self.assertEqual(format_answer_canonical(qf, Answer(3, blanks=((0, "<p>巴黎</p>"),))), "巴黎")
+        qs = Question(subject_id=4, qtype=QuestionType.SHORT_ANSWER)
+        self.assertEqual(format_answer_canonical(qs, Answer(4, answer_text="<p>答案&amp;</p>")), "答案&")
+
     def test_paper_groups_by_question_type(self):
         # Different types -> one line each, labelled + numbered by paper position.
         q1 = Question(subject_id=1, qtype=QuestionType.SINGLE, options=self._opts("a", "b"))

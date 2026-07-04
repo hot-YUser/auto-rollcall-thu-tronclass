@@ -1,4 +1,5 @@
 from __future__ import annotations
+import html
 import re
 from typing import Any, Dict, Iterable, List, Tuple
 
@@ -10,6 +11,16 @@ except ImportError:  # pragma: no cover - script execution fallback
 
 def normalize_text(value: Any) -> str:
     return str(value or "").strip()
+
+
+_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _display_text(value: Any) -> str:
+    """Strip rich-text markup for HUMAN display only (announce line / success banner). The SUBMITTED
+    value stays verbatim — TronClass stores & literally compares fill/short answers WITH their markup
+    (e.g. '<p>巴黎</p>'), so stripping before submit scores 0 (live-confirmed); only the console is cleaned."""
+    return normalize_text(html.unescape(_TAG_RE.sub("", str(value or ""))))
 
 
 def option_label(index: int) -> str:
@@ -147,8 +158,8 @@ def format_answer_canonical(question: Question, answer: Answer) -> str:
         letters = [option_label(index_by_id[oid]) for oid in answer.answer_option_ids if oid in index_by_id]
         return ",".join(letters)
     if question.is_blank or answer.blanks:
-        return " ||| ".join(content for _sort, content in answer.blanks)
-    return normalize_text(answer.answer_text)
+        return " ||| ".join(_display_text(content) for _sort, content in answer.blanks)
+    return _display_text(answer.answer_text)
 
 
 # 題型 → 中文標籤（取自 README〈支援的題型〉），供 format_paper_canonical 分組顯示用。
