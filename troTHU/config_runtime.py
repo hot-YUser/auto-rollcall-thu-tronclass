@@ -396,6 +396,16 @@ def _normalize_research(config: ctx.Dict[str, ctx.Any]) -> None:
     config['research'] = ctx.normalize_research_mode_config(config.get('research', ctx.DEFAULT_CONFIG['research']))
 
 
+def _normalize_logging(config: ctx.Dict[str, ctx.Any]) -> None:
+    section = config.get('logging')
+    if not isinstance(section, dict):
+        section = {}
+    mode = str(section.get('mode', 'normal')).strip().lower()
+    if mode not in ('normal', 'debug', 'research'):
+        mode = 'normal'
+    config['logging'] = {'mode': mode}
+
+
 def _normalize_autoanswer(config: ctx.Dict[str, ctx.Any]) -> None:
     section = _dict_section(config, 'autoanswer')
     default = ctx.DEFAULT_CONFIG['autoanswer']
@@ -500,6 +510,7 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
     _normalize_number(config)
     _normalize_radar(config)
     _normalize_research(config)
+    _normalize_logging(config)
     _normalize_autoanswer(config)
     _normalize_operating(config)
     return config

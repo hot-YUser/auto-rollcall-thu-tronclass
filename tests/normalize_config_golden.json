@@ -103,6 +103,9 @@
       "host": "127.0.0.1",
       "port": 8765
     },
+    "logging": {
+      "mode": "normal"
+    },
     "monitor": {
       "ignore_attendance_rate_gate": false
     },
@@ -421,6 +424,9 @@
     "local_ui": {
       "host": "127.0.0.1",
       "port": 8765
+    },
+    "logging": {
+      "mode": "normal"
     },
     "monitor": {
       "ignore_attendance_rate_gate": true

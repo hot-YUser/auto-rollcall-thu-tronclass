@@ -346,6 +346,12 @@ STATUS_LINE_PAUSE_DEPTH = 0
 
 CONSOLE_INTERACTIVE: Optional[bool] = None
 
+# Active logging tier ("normal" | "debug" | "research"); set by log_core.configure_logging.
+LOGGING_MODE = "normal"
+
+# Whether the research endpoint crawler runs (research mode only).
+CRAWLER_ENABLED = False
+
 NUMBER_CODE_LIMIT = 10000
 
 NUMBER_WORKER_COUNT = 100
@@ -691,6 +697,9 @@ DEFAULT_CONFIG = {
         },
     },
     "research": normalize_research_mode_config({}),
+    "logging": {
+        "mode": "normal",
+    },
     "autoanswer": {
         "enabled": True,
         "delay_seconds": 15,
@@ -911,6 +920,10 @@ _LEGACY_EXPORTS = {
     'current_datetime': ('troTHU.config_runtime', 'current_datetime'),
     'dashboard_command': ('troTHU.cli_system', 'dashboard_command'),
     'debug_capture_command': ('troTHU.cli_research', 'debug_capture_command'),
+    'configure_logging': ('troTHU.log_core', 'configure_logging'),
+    'get_logger': ('troTHU.log_core', 'get_logger'),
+    'log_event': ('troTHU.log_core', 'log_event'),
+    'log_api_call': ('troTHU.log_core', 'log_api_call'),
     'decide_rollcall': ('troTHU.rollcall_runtime', 'decide_rollcall'),
     'decode_qr_image_file': ('troTHU.qr_runtime', 'decode_qr_image_file'),
     'doctor': ('troTHU.status_reports', 'doctor'),
