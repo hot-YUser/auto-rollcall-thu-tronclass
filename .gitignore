@@ -65,6 +65,14 @@ AGENTS.md
 CLAUDE.md
 PLAN.md
 *-promotion-plan.md
+
+# Claude Code / GitNexus local tooling (regenerable skills etc.) — not product code.
+# If you ever want to share a specific file, negate it, e.g. !.claude/settings.json
+.claude/
+# Local vendor-repo recon clone (per wisdomgarden-repos-recon) — never publish.
+WisdomGardenInc/
+# Stray Windows null-device file accidentally materialised by a `> nul` redirect.
+nul
 新文件*.txt
 競品分析與上位替代規劃.md
 
