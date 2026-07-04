@@ -1,5 +1,6 @@
 from __future__ import annotations
 import unittest
+from unittest.mock import patch
 
 from troTHU import answer_flow, llm_answerer
 from troTHU.quiz_models import Activity, ActivityType, Answer, Option, Question, QuestionType
@@ -328,6 +329,78 @@ class DecideAnswersWiringTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(cap["tools"])        # tools disabled
         self.assertIsNone(cap["executor"])
         self.assertIsNotNone(cap["fetcher"])   # but images still get embedded
+
+
+class ChoiceReaskTest(unittest.IsolatedAsyncioTestCase):
+    """A selection question whose LLM reply won't map to an option is RE-ASKED (up to K times) until
+    the model commits — the answer stays the model's OWN choice, never fabricated. A total outage
+    (empty reply) is left blank so the paper is withheld rather than guessed."""
+
+    def _q(self):
+        return Question(subject_id=1, qtype=QuestionType.SINGLE,
+                        options=(Option(id=1, content="cat"), Option(id=2, content="dog")))
+
+    async def test_reask_until_committed(self):
+        corrections = []
+
+        async def fake(session, question, cfg, *, tools=None, tool_executor=None,
+                       image_fetcher=None, correction=None):
+            corrections.append(correction)
+            return "let me think..." if correction is None else "A"  # unparseable, then a letter
+
+        with patch.object(llm_answerer, "answer_question", fake):
+            answers, _src = await answer_flow.decide_answers(object(), [self._q()], llm_config={})
+        self.assertEqual(answers[0].answer_option_ids, (1,))     # committed to A after re-ask
+        self.assertGreaterEqual(len(corrections), 2)             # re-asked at least once
+        self.assertEqual(corrections[1], "let me think...")      # correction carried the prior reply
+
+    async def test_total_outage_stays_blank_never_fabricates(self):
+        async def fake(session, question, cfg, *, tools=None, tool_executor=None,
+                       image_fetcher=None, correction=None):
+            return ""  # LLM down -> empty every time
+
+        with patch.object(llm_answerer, "answer_question", fake):
+            answers, _src = await answer_flow.decide_answers(object(), [self._q()], llm_config={})
+        self.assertEqual(answers[0].answer_option_ids, ())       # blank (protection), NOT a guess
+
+    async def test_content_reply_needs_no_reask(self):
+        calls = []
+
+        async def fake(session, question, cfg, *, tools=None, tool_executor=None,
+                       image_fetcher=None, correction=None):
+            calls.append(correction)
+            return "dog"  # not a letter, but IS an option content -> mapped, no re-ask needed
+
+        with patch.object(llm_answerer, "answer_question", fake):
+            answers, _src = await answer_flow.decide_answers(object(), [self._q()], llm_config={})
+        self.assertEqual(answers[0].answer_option_ids, (2,))     # content 'dog' -> B
+        self.assertEqual(calls, [None])                          # exactly one call, no re-ask
+
+    async def test_empty_reply_stall_is_reasked_not_left_blank(self):
+        # An empty reply (transient stall) on ONE question is re-asked, not immediately abandoned —
+        # so a stall no longer manufactures a zero.
+        replies = ["", "", "A"]
+
+        async def fake(session, question, cfg, *, tools=None, tool_executor=None,
+                       image_fetcher=None, correction=None):
+            return replies.pop(0) if replies else "A"
+
+        with patch.object(llm_answerer, "answer_question", fake):
+            answers, _src = await answer_flow.decide_answers(object(), [self._q()], llm_config={})
+        self.assertEqual(answers[0].answer_option_ids, (1,))     # recovered via re-ask
+
+    async def test_fill_blank_also_reasked(self):
+        # The re-ask covers ALL types, not just choice: a blank fill answer is re-asked too.
+        q = Question(subject_id=2, qtype=QuestionType.FILL_BLANK, blank_count=1)
+        replies = ["", "巴黎"]
+
+        async def fake(session, question, cfg, *, tools=None, tool_executor=None,
+                       image_fetcher=None, correction=None):
+            return replies.pop(0) if replies else "巴黎"
+
+        with patch.object(llm_answerer, "answer_question", fake):
+            answers, _src = await answer_flow.decide_answers(object(), [q], llm_config={})
+        self.assertEqual(answers[0].blanks, ((0, "巴黎"),))       # fill recovered too
 
 
 class ClozeParseTest(unittest.TestCase):

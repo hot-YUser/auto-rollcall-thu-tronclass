@@ -145,6 +145,41 @@ class MatchingParentIdTest(unittest.TestCase):
         self.assertNotIn("parent_id", ans.to_payload())
 
 
+class LlmReplyContentFallbackTest(unittest.TestCase):
+    """A selection reply that isn't a letter but IS the option content/value still maps to that
+    option — the LLM's own choice honoured, never a fabricated pick; empty stays empty."""
+    def _opts(self, *contents):
+        return tuple(Option(id=10 + i, content=c) for i, c in enumerate(contents))
+
+    def test_letter_reply_still_parses(self):
+        q = Question(subject_id=1, qtype=QuestionType.SINGLE, options=self._opts("cat", "dog", "bird"))
+        self.assertEqual(answer_from_llm_reply(q, "B").answer_option_ids, (11,))
+
+    def test_content_reply_maps_to_option(self):
+        q = Question(subject_id=1, qtype=QuestionType.SINGLE, options=self._opts("cat", "dog", "bird"))
+        self.assertEqual(answer_from_llm_reply(q, "cat").answer_option_ids, (10,))        # exact content
+        self.assertEqual(answer_from_llm_reply(q, "答案是 dog").answer_option_ids, (11,))  # content in reply
+
+    def test_value_reply_maps_to_option(self):
+        q = Question(subject_id=2, qtype=QuestionType.SINGLE, options=self._opts("4", "5", "6"))
+        self.assertEqual(answer_from_llm_reply(q, "5").answer_option_ids, (11,))          # numeric value
+
+    def test_content_reply_multiple_select(self):
+        q = Question(subject_id=3, qtype=QuestionType.MULTIPLE, options=self._opts("蘋果", "香蕉", "西瓜"))
+        self.assertEqual(answer_from_llm_reply(q, "蘋果、西瓜").answer_option_ids, (10, 12))
+
+    def test_empty_reply_stays_empty_no_fabrication(self):
+        q = Question(subject_id=1, qtype=QuestionType.SINGLE, options=self._opts("cat", "dog"))
+        self.assertEqual(answer_from_llm_reply(q, "").answer_option_ids, ())              # outage -> blank
+        self.assertEqual(answer_from_llm_reply(q, "   ").answer_option_ids, ())
+
+    def test_unmatchable_reply_stays_empty(self):
+        # non-empty but neither a letter nor any option content -> blank here; the re-ask loop
+        # (answer_flow.decide_answers) is what makes the LLM commit, still without fabricating.
+        q = Question(subject_id=1, qtype=QuestionType.SINGLE, options=self._opts("cat", "dog"))
+        self.assertEqual(answer_from_llm_reply(q, "hmm not sure").answer_option_ids, ())
+
+
 class CanonicalRenderTest(unittest.TestCase):
     def _opts(self, *contents):
         return tuple(Option(id=10 + i, content=c) for i, c in enumerate(contents))

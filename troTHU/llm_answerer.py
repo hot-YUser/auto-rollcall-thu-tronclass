@@ -29,9 +29,10 @@ except ImportError:  # pragma: no cover - script execution fallback
 SYSTEM_PROMPT = (
     "You are an exam-answering assistant. You are given ONE question. Reply with ONLY the answer "
     "itself — no explanation, no labels, no extra punctuation, no preamble like 'The answer is'.\n"
-    "- Multiple choice (lettered options): the correct letter(s). One letter for a single answer "
-    "(e.g. B); comma-separated for multiple (e.g. A,C). For multiple-answer questions, select ALL "
-    "correct options.\n"
+    "- Multiple choice (lettered options): reply with ONLY the option LETTER(S) — never the option's "
+    "text and never a number. One letter for a single answer (e.g. B); comma-separated for multiple "
+    "(e.g. A,C). For multiple-answer questions, select ALL correct options. A left-item like '貓 →' is "
+    "a single-choice: reply the letter of the option it matches.\n"
     "- Fill-in-the-blank or cloze: the blank answers in order, separated by ' ||| ' (three "
     "vertical bars) when there is more than one blank, and nothing else.\n"
     "- Short answer / open question: a short, direct answer.\n"
@@ -306,14 +307,25 @@ async def complete_with_tools(session: Any, messages: List[Dict[str, Any]], llm_
 async def answer_question(session: Any, question: Question, llm_config: Dict[str, Any], *,
                           tool_executor: Optional[ToolExecutor] = None,
                           tools: Optional[List[Dict[str, Any]]] = None,
-                          image_fetcher: Optional[ImageFetcher] = None) -> str:
+                          image_fetcher: Optional[ImageFetcher] = None,
+                          correction: Optional[str] = None) -> str:
     """Return the raw LLM reply (letter(s) for selection, short text for open-ended).
-    When tools are supplied AND enabled, the model may look up course materials first."""
+    When tools are supplied AND enabled, the model may look up course materials first.
+    `correction` (the previous unparseable reply) re-asks the model to commit to a valid option
+    letter — so the answer stays the model's OWN choice, never a fabricated pick."""
     content = await build_user_content(question, image_fetcher)
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": content},
     ]
+    if correction is not None:
+        messages.append({"role": "assistant", "content": str(correction)})
+        messages.append({"role": "user", "content":
+                         "Your previous reply could not be used as an answer. Answer this question NOW in "
+                         "the exact required format: for multiple choice reply ONLY the option LETTER(S) "
+                         "(e.g. B or A,C) — never the option text; for fill-in give the blank text (multiple "
+                         "blanks separated by ' ||| '); for open questions a short direct answer. Do NOT "
+                         "explain, and NEVER leave it blank."})
     use_tools = bool(llm_config.get("enable_tools", True)) and tools and tool_executor
 
     async def once() -> str:

@@ -104,6 +104,21 @@ def parse_choice_labels(text: str, option_count: int) -> List[str]:
     return found
 
 
+def match_choice_by_content(question: Question, reply_text: str) -> List[str]:
+    """LLM answered with option CONTENT/value instead of a letter (e.g. 'cat', '5', '正確') — map it
+    back to option letters. This is the LLM's OWN choice honoured, not a fabricated guess. Prefer an
+    exact (normalized, tag-stripped) match; else options whose content appears verbatim in the reply.
+    Returns letters in option order (single/tf are capped to the first by answer_from_labels)."""
+    reply = _display_text(reply_text).lower()
+    if not reply:
+        return []
+    contents = [(i, _display_text(o.content).lower()) for i, o in enumerate(question.options)]
+    exact = [option_label(i) for i, c in contents if c and c == reply]
+    if exact:
+        return exact
+    return [option_label(i) for i, c in contents if c and c in reply]
+
+
 def answer_from_labels(question: Question, labels: Iterable[str]) -> Answer:
     """Map LLM option letters back to a concrete Answer (single keeps only the first)."""
     indices: List[int] = []
@@ -141,6 +156,8 @@ def answer_from_llm_reply(question: Question, reply_text: str) -> Answer:
     selection/matching -> option ids; fill/cloze -> per-blank texts; else -> reply verbatim."""
     if (question.is_selection or question.qtype == QuestionType.MATCHING) and question.options:
         labels = parse_choice_labels(reply_text, len(question.options))
+        if not labels:  # LLM replied but not as a letter — honour its content answer ('cat' -> A)
+            labels = match_choice_by_content(question, reply_text)
         return answer_from_labels(question, labels)
     if question.is_blank:
         return answer_from_blanks(question, reply_text)

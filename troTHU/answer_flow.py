@@ -13,6 +13,7 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 
 _BLANK_MARKER_RE = re.compile(r"__blank__|_{2,}|＿{2,}")
+MAX_ANSWER_REASK = 4  # re-ask a still-blank question this many times before giving up (then no submit)
 
 try:  # pragma: no cover - package import path
     import troTHU.runtime_context as ctx
@@ -282,7 +283,19 @@ async def decide_answers(
         reply = await llm_answerer.answer_question(
             session, question, llm_config,
             tools=tools, tool_executor=executor, image_fetcher=image_fetcher)
-        answers.append(answer_from_llm_reply(question, reply))
+        answer = answer_from_llm_reply(question, reply)
+        # EVERY question type must end up answered — the "no blank submit" rule is meant to RAISE the
+        # score, not manufacture zeros. If a question is still blank (the reply didn't map to an option,
+        # or came back empty on a stall), re-ask the LLM with a corrective nudge up to MAX_ANSWER_REASK.
+        # The answer always stays the model's OWN reply (never fabricated); only a persistently
+        # non-answering LLM (real outage) leaves a blank, which then withholds the whole paper.
+        attempts = 0
+        while not _is_answered(answer) and attempts < MAX_ANSWER_REASK:
+            attempts += 1
+            reply = await llm_answerer.answer_question(
+                session, question, llm_config, image_fetcher=image_fetcher, correction=reply or "(blank)")
+            answer = answer_from_llm_reply(question, reply)
+        answers.append(answer)
     return tuple(answers), plan.source
 
 
