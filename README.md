@@ -431,6 +431,27 @@ api_key_env = NVIDIA_API_KEY     # 進階：把 api_key 留空，改設「這個
 
 ---
 
+## 日誌與 Debug／Research 模式（v1.8-alpha.2）
+
+工具的日誌分**三層**，平常用不到，出問題或想做研究時才開：
+
+| 模式 | 記什麼 | 怎麼開 |
+|---|---|---|
+| **normal**（預設） | 每次 API 呼叫記精簡一行 + 重要事件（登入／點名／錯誤）；秘密自動遮蔽 | 預設 |
+| **debug** | 連**完整的請求與回應內容**都記下來（帳密／token 等秘密仍遮蔽） | `tron run --debug`，或 `config.advanced.toml [logging] mode = "debug"` |
+| **research** | 完整內容**原文不遮蔽**，並在跑的過程中**主動把搆得到的端點／網頁／JS／隱藏 API 全打一次**、偵測到 QR 點名時對相關端點高頻連打 | `tron run --research` |
+
+- 底層改用 Python 標準 `logging`（有分級、日期分檔），日誌落在 `log/YYYY-MM-DD.jsonl`；用
+  `tron logs tail｜summarize｜export` 檢視／彙整／打包（**打包一律遮蔽，可安心分享**）。
+- **research 模式的原文**只落在本機 `state/research-crawl/`（已 gitignore、絕不進可分享的匯出包、
+  絕不上傳），而且**只在 WisdomGarden／TronClass 家族網域內探測**（靠已知租戶清單 + `GET /d/version`
+  指紋放行），不會爬到外面的網站。
+- research 模式是把〈QR 資料 Token 逆向研究紀錄〉裡做過的探測**系統化**成內建能力，方便日後一旦冒出
+  新線索能立刻重測；它**不代表 QR 已被解出**——純學生端取得／產生當下 `data` 的方法我方**目前仍尚未
+  發現**（見該節）。
+
+---
+
 ## 原理：它到底是怎麼自動簽到的？
 
 這段用白話講「為什麼做得到」。本質上，TronClass 這套系統把一些**本來不該讓學生拿到的東西，透過學生自己就能呼叫的 API 漏掉了**，這個工具就是把這些漏洞自動化而已。
