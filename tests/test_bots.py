@@ -1132,28 +1132,6 @@ class BotHandlersTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.data["visible_count"], 2)
         self.assertTrue(result.data["admin"])
 
-    async def test_audit_handler_writes_sanitized_log_record(self) -> None:
-        runtime = self.runtime()
-
-        result = await runtime.handle_text(
-            "qr all secret-payload",
-            adapter="discord",
-            source_user_id="discord-user",
-            channel_id="chan-1",
-        )
-
-        self.assertFalse(result.ok)
-        records = []
-        for path in (self.temp_dir / "log").rglob("*.jsonl"):
-            for line in path.read_text(encoding="utf-8").splitlines():
-                records.append(json.loads(line))
-        audit_records = [record for record in records if record.get("event") == "bot_command_audit"]
-
-        self.assertTrue(audit_records)
-        self.assertNotIn("secret-payload", json.dumps(audit_records, ensure_ascii=False))
-        payload_excerpt = json.loads(audit_records[-1]["payload_excerpt"])
-        self.assertEqual(payload_excerpt["action"], "qr-submit")
-
     async def test_force_check_uses_fake_server_once(self) -> None:
         self.server.rollcalls = [{"status": "on_call_fine", "rollcall_id": 11}]
         runtime = self.runtime()

@@ -360,12 +360,9 @@ class BotHandlerBridge:
         }
 
     async def audit(self, *, event: BotAuditEvent) -> None:
-        self.tron.log(
-            event="bot_command_audit",
-            status="allowed" if event.allowed else "rejected",
-            message="Bot command {}: {}".format(event.action, event.reason),
-            payload_excerpt=event.to_dict(),
-        )
+        # ponytail: audit logging removed in the C1 teardown; the new leveled
+        # log_core event is re-wired in C5 (see logging-overhaul plan).
+        return None
 
 
 def create_bot_runtime(

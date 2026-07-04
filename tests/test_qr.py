@@ -470,7 +470,6 @@ class QrRuntimeFinalizeTest(unittest.IsolatedAsyncioTestCase):
         with (
             patch.object(tron, "format_rollcall_success_banner", return_value="BANNER") as banner,
             patch.object(tron, "log_print") as log_print,
-            patch.object(tron, "log", return_value=True),
             patch.object(tron, "get_active_profile", return_value=SimpleNamespace(name="user1")),
             patch.object(tron, "get_active_provider_key", return_value="thu"),
             patch.object(tron, "remove_pending_qr", return_value=True),
@@ -497,7 +496,6 @@ class QrRuntimeFinalizeTest(unittest.IsolatedAsyncioTestCase):
         with (
             patch.object(tron, "format_rollcall_success_banner") as banner,
             patch.object(tron, "log_print") as log_print,
-            patch.object(tron, "log", return_value=True),
             patch.object(tron, "get_active_profile", return_value=SimpleNamespace(name="user1")),
             patch.object(tron, "get_active_provider_key", return_value="thu"),
             patch.object(tron, "remove_pending_qr", return_value=True),

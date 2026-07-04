@@ -288,7 +288,6 @@ async def finalize_qr_submission(
     verification: ctx.Mapping[str, ctx.Any] | None = None,
 ) -> bool:
     rollcall_id = qr_data.rollcall_id
-    text = 'QR Code 點名 #{} 已送出。'.format(rollcall_id)
     active = ctx.get_active_profile(ctx.CONFIG)
     ctx.remove_pending_qr(ctx.BASE_DIR, profile=active.name, rollcall_id=rollcall_id, provider=ctx.get_active_provider_key())
     verification_result: ctx.Dict[str, ctx.Any] = dict(verification or {}) if isinstance(verification, dict) else {}
@@ -309,7 +308,6 @@ async def finalize_qr_submission(
         if progress_text:
             ctx.log_print(progress_text)
     if confirmation_status != 'confirmed':
-        ctx.log(event='qrcode_rollcall_answered', status='submitted_unconfirmed', rollcall_id=rollcall_id, rollcall_type='qrcode', message=text, payload_excerpt={'field_names': sorted(qr_data.fields.keys()), 'extra_field_names': sorted(qr_data.extras.keys()), 'result': result}, extra={'confirmation_status': confirmation_status, 'verification': verification_result or None})
         await ctx.notify_event(
             ctx.NotificationEvent(
                 event='qrcode_rollcall_answered',
@@ -331,7 +329,6 @@ async def finalize_qr_submission(
     )
     ctx.log_print(banner)
     ctx.remember_rollcall_progress(verification_result)
-    ctx.log(event='qrcode_rollcall_answered', status='success', rollcall_id=rollcall_id, rollcall_type='qrcode', message=text, payload_excerpt={'field_names': sorted(qr_data.fields.keys()), 'extra_field_names': sorted(qr_data.extras.keys()), 'result': result}, extra={'confirmation_status': confirmation_status, 'verification': verification_result or None})
     await ctx.notify_event(
         ctx.NotificationEvent(
             event='qrcode_rollcall_answered',

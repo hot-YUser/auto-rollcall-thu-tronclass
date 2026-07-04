@@ -18,11 +18,6 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
 import aiohttp
 
-try:  # pragma: no cover - package import path
-    import troTHU.runtime_context as ctx
-except ImportError:  # pragma: no cover - direct script fallback
-    import runtime_context as ctx  # type: ignore
-
 try:
     from troTHU.quiz_engine import normalize_text, option_label
     from troTHU.quiz_models import Question, QuestionType
@@ -252,19 +247,9 @@ async def _request_message(session: Any, messages: List[Dict[str, Any]], llm_con
         async with session.post(url, headers=headers, json=payload,
                                 timeout=aiohttp.ClientTimeout(total=None)) as resp:
             if resp.status != 200:
-                body = ""
-                try:
-                    body = (await resp.text())[:300]
-                except Exception:
-                    body = ""
-                hint = _http_status_hint(resp.status)
-                ctx.log(event="autoanswer_llm", status="http_{}".format(resp.status),
-                        message="LLM 回應非 200{}。".format("：" + hint if hint else ""),
-                        extra={"http_status": resp.status, "body_excerpt": body})
                 return {}
             data = await resp.json()
-    except Exception as exc:  # network/parse — degrade, never crash the loop
-        ctx.log(event="autoanswer_llm", status="error", message="LLM 呼叫失敗。", error=exc)
+    except Exception:  # network/parse — degrade, never crash the loop
         return {}
     try:
         msg = data["choices"][0]["message"]

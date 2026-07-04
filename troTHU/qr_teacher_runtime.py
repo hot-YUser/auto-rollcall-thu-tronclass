@@ -139,19 +139,12 @@ async def ensure_teacher_ready() -> bool:
         ctx.TEACHER_READY = result.ok
         ctx.update_monitor_status(teacher_state="ready" if result.ok else "failed")
         if not result.ok:
-            ctx.log(
-                event="qr_teacher_login",
-                status=result.status,
-                message="QR 教師帳號登入失敗。",
-                error=result.error,
-                extra={"credential_source": result.credential_source, "user": result.user},
-            )
+            pass
         return result.ok
     except Exception as exc:
         ctx.TEACHER_READY = False
         ctx.TEACHER_LOGIN_RESULT = _teacher_login_result("error", "runtime", error=exc)
         ctx.update_monitor_status(teacher_state="failed")
-        ctx.log(event="qr_teacher_login", status="error", message="QR 教師帳號檢查失敗。", error=exc)
         return False
 
 
@@ -199,12 +192,6 @@ async def resolve_teacher_course_id(client, config) -> str:
         if course_id:
             ctx.TEACHER_COURSE_ID = course_id
             return course_id
-    ctx.log(
-        event="qr_teacher_course",
-        status="missing",
-        message="QR 教師帳號找不到可用課程；請在 config.conf teacher.course 手動填課程 ID。",
-        payload_excerpt=payload,
-    )
     return ""
 
 
@@ -258,12 +245,11 @@ async def prepare_teacher_assisted_qr(rollcall) -> ctx.Dict[str, ctx.Any]:
         created = await client.create_teacher_rollcall(course_id, ctx.build_teacher_rollcall_payload(kind="qr"))
         teacher_rollcall_id = ctx.extract_rollcall_id(created)
         if not teacher_rollcall_id:
-            ctx.log(event="qr_teacher_assist", status="missing_rollcall_id", rollcall_id=student_rollcall_id, rollcall_type="qrcode", message="教師 QR 點名建立成功但回應缺少 rollcall id。", payload_excerpt=created)
             return {"ok": False, "status": "missing_teacher_rollcall_id", "student_rollcall_id": student_rollcall_id}
         try:
             await client.start_teacher_rollcall(teacher_rollcall_id)
-        except ctx.TronHttpError as exc:
-            ctx.log(event="qr_teacher_start", status="ignored_error", rollcall_id=teacher_rollcall_id, rollcall_type="qrcode", message="教師 QR 點名 start 失敗，可能 create 後已經 in_progress。", error=exc)
+        except ctx.TronHttpError:
+            pass
         prepared = {
             "student_rollcall_id": student_rollcall_id,
             "teacher_rollcall_id": teacher_rollcall_id,
@@ -272,19 +258,15 @@ async def prepare_teacher_assisted_qr(rollcall) -> ctx.Dict[str, ctx.Any]:
             "submitted": False,
         }
         ctx.ACTIVE_TEACHER_QR_ASSISTS[student_rollcall_id] = prepared
-        ctx.log(event="qr_teacher_assist", status="prepared", rollcall_id=student_rollcall_id, rollcall_type="qrcode", message="教師 QR 點名已發起，等待簽到率門檻後讀取 data。", extra={"teacher_rollcall_id": teacher_rollcall_id, "course_id": course_id})
         return {"ok": True, "status": "prepared", **prepared}
     except ctx.UnauthorizedError as exc:
         ctx.TEACHER_READY = False
         ctx.TEACHER_LOGIN_RESULT = _teacher_login_result("missing_session", "teacher_session", error=exc)
         ctx.update_monitor_status(teacher_state="failed")
-        ctx.log(event="qr_teacher_assist", status="unauthorized", rollcall_id=student_rollcall_id, rollcall_type="qrcode", message="教師帳號 session 已失效。", error=exc)
         return {"ok": False, "status": "unauthorized", "student_rollcall_id": student_rollcall_id}
-    except (ctx.TronHttpError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError) as exc:
-        ctx.log(event="qr_teacher_assist", status="error", rollcall_id=student_rollcall_id, rollcall_type="qrcode", message="教師 QR 輔助準備流程失敗。", error=exc)
+    except (ctx.TronHttpError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError):
         return {"ok": False, "status": "error", "student_rollcall_id": student_rollcall_id}
-    except Exception as exc:
-        ctx.log(event="qr_teacher_assist", status="error", rollcall_id=student_rollcall_id, rollcall_type="qrcode", message="教師 QR 輔助準備流程發生未預期錯誤。", error=exc)
+    except Exception:
         return {"ok": False, "status": "error", "student_rollcall_id": student_rollcall_id}
     finally:
         ctx.update_monitor_status(teacher_state="ready" if ctx.TEACHER_READY else "failed")
@@ -366,22 +348,17 @@ async def submit_prepared_teacher_qr(student_session, rollcall) -> bool:
                 progress_log_output=False,
                 verification=last_verification or {"ok": False, "status": "submitted_unconfirmed", "rollcall_id": student_rollcall_id},
             )
-            ctx.log(event="qr_teacher_assist", status="submitted_unconfirmed", rollcall_id=student_rollcall_id, rollcall_type="qrcode", message="教師 QR 輔助已送出但未即時確認簽到，下一輪會重新檢查。", extra={"teacher_rollcall_id": teacher_rollcall_id})
             prepared["submitted"] = True
             return False
-        ctx.log(event="qr_teacher_assist", status="not_confirmed", rollcall_id=student_rollcall_id, rollcall_type="qrcode", message="教師 QR 輔助送出後未確認簽到成功。", extra={"teacher_rollcall_id": teacher_rollcall_id})
         return False
     except ctx.UnauthorizedError as exc:
         ctx.TEACHER_READY = False
         ctx.TEACHER_LOGIN_RESULT = _teacher_login_result("missing_session", "teacher_session", error=exc)
         ctx.update_monitor_status(teacher_state="failed")
-        ctx.log(event="qr_teacher_assist", status="unauthorized", rollcall_id=student_rollcall_id, rollcall_type="qrcode", message="教師帳號 session 已失效。", error=exc)
         return False
-    except (ctx.TronHttpError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError) as exc:
-        ctx.log(event="qr_teacher_assist", status="error", rollcall_id=student_rollcall_id, rollcall_type="qrcode", message="教師 QR 輔助流程失敗。", error=exc)
+    except (ctx.TronHttpError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError):
         return False
-    except Exception as exc:
-        ctx.log(event="qr_teacher_assist", status="error", rollcall_id=student_rollcall_id, rollcall_type="qrcode", message="教師 QR 輔助流程發生未預期錯誤。", error=exc)
+    except Exception:
         return False
     finally:
         ctx.update_monitor_status(teacher_state="ready" if ctx.TEACHER_READY else "failed")
@@ -414,10 +391,8 @@ async def stop_prepared_teacher_qr(rollcall_id=None) -> ctx.Dict[str, ctx.Any]:
                 stopped += 1
             except ctx.TronHttpError as exc:
                 errors.append(ctx.normalize_text(exc))
-                ctx.log(event="qr_teacher_stop", status="ignored_error", rollcall_id=teacher_rollcall_id, rollcall_type="qrcode", message="教師 QR 點名關閉失敗。", error=exc)
             except Exception as exc:
                 errors.append(ctx.normalize_text(exc))
-                ctx.log(event="qr_teacher_stop", status="error", rollcall_id=teacher_rollcall_id, rollcall_type="qrcode", message="教師 QR 點名關閉時發生錯誤。", error=exc)
         ctx.ACTIVE_TEACHER_QR_ASSISTS.pop(student_rollcall_id, None)
     ctx.update_monitor_status(teacher_state="ready" if ctx.TEACHER_READY else "failed")
     return {"ok": not errors, "status": "stopped" if stopped else "cleared", "stopped": stopped, "errors": errors}

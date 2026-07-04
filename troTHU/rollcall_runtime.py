@@ -54,7 +54,6 @@ async def maybe_notify_unsupported_rollcall(status: str, rollcall: ctx.Dict[str,
             pass
     ctx.log_print(message)
     await ctx.mes(message)
-    ctx.log(event='unsupported_rollcall_detected', status=status, rollcall_id=rollcall_id, rollcall_type=rollcall_type, message=message, payload_excerpt=rollcall)
 
 
 def record_check_runtime(status: str, *, rollcall_id: ctx.Any='', rollcall_type: str='') -> None:
@@ -82,7 +81,6 @@ def select_rollcall(rollcalls: ctx.Any) -> ctx.Tuple[str, ctx.Optional[ctx.Dict[
 async def poll_rollcall_decision(session: ctx.aiohttp.ClientSession, cnt: int=-1) -> ctx.Dict[str, ctx.Any]:
     if not ctx.provider_is_daily_allowed():
         message = ctx.provider_block_message('rollcall polling')
-        ctx.log(event='provider_guard', counter=cnt, status='blocked', message=message, extra={'provider': ctx.get_active_provider_key(), 'action': 'check_rollcall'})
         ctx.record_runtime_error('provider_experimental', message)
         raise ctx.UnexpectedResponseError(message)
     client = ctx.create_tron_http_client(session, request_ssl=ctx.get_ssl_request_setting())
@@ -93,7 +91,6 @@ async def poll_rollcall_decision(session: ctx.aiohttp.ClientSession, cnt: int=-1
     selected_rollcall = decision.rollcall
     selected_rollcall_type = '' if decision.attendance_type == ctx.AttendanceType.NONE else decision.attendance_type.value
     selected_message = decision.message
-    ctx.log(event='rollcall_poll', counter=cnt, status='ok', url=result.url, http_status=result.status_code, rollcall_id=selected_rollcall.get('rollcall_id') if selected_rollcall else None, rollcall_type=selected_rollcall_type, message='完成一次點名輪詢。', payload_excerpt=result.payload, extra={'rollcall_count': len(rollcalls), 'selected_status': selected_status})
     ctx.record_check_runtime(selected_status, rollcall_id=selected_rollcall.get('rollcall_id') if selected_rollcall else '', rollcall_type=selected_rollcall_type)
     return {
         'status': selected_status,
@@ -120,8 +117,6 @@ async def announce_rollcall_start(
     payload_excerpt: ctx.Any=None,
 ) -> str:
     text = ctx.format_rollcall_start_message(attendance_type, rollcall_id, detail=detail, method=method)
-    rollcall_type = attendance_type.value if hasattr(attendance_type, 'value') else ctx.normalize_text(attendance_type)
-    ctx.log(event=event, counter=counter, status='started', url=url, http_status=http_status, rollcall_id=rollcall_id, rollcall_type=rollcall_type, message=text, payload_excerpt=payload_excerpt)
     ctx.log_print(text)
     await ctx.mes(text)
     return text
@@ -161,7 +156,6 @@ async def handle_rollcall_decision(
         rollcall_id = selected_rollcall.get('rollcall_id')
         if ctx.is_completed_number_rollcall(rollcall_id):
             found_code = ctx.COMPLETED_NUMBER_ROLLCALLS[ctx.number_rollcall_key(rollcall_id)]
-            ctx.log(event='number_rollcall_skipped', counter=cnt, status='already_completed', url=result_url, http_status=http_status, rollcall_id=rollcall_id, rollcall_type='number', message='數字點名已處理，略過重複嘗試。', payload_excerpt=selected_rollcall, extra={'found_code': found_code})
             return '數字點名已處理'
         await ctx.announce_rollcall_start(
             ctx.AttendanceType.NUMBER,
@@ -182,12 +176,11 @@ async def handle_rollcall_decision(
             try:
                 group_result = await ctx.submit_group_number(found_code, rcid=rollcall_id, session=session, config=ctx.CONFIG)
                 if group_result.get('ok'):
-                    ctx.log(event='group_number_fanout_planned', status=group_result.get('status', 'submitted'), rollcall_id=rollcall_id, rollcall_type='number', message='群組 number fan-out 簽到完成。', extra=group_result)
+                    pass
                 summary = ctx.format_group_fanout_summary(group_result, rollcall_type='number')
                 if summary:
                     ctx.log_print(summary)
             except Exception as exc:
-                ctx.log(event='group_number_fanout_planned', status='failed', rollcall_id=rollcall_id, rollcall_type='number', message='群組 number fan-out 失敗。', error=exc)
                 ctx.log_print('群組 number fan-out 失敗：{}'.format(exc))
         return 'is_number'
     if selected_status == 'is_radar' and selected_rollcall is not None:
@@ -195,7 +188,6 @@ async def handle_rollcall_decision(
         rollcall_id = selected_rollcall.get('rollcall_id')
         radar_key = ctx.normalize_text(rollcall_id)
         if radar_key in ctx.COMPLETED_RADAR_ROLLCALLS:
-            ctx.log(event='radar_rollcall_skipped', counter=cnt, status='already_completed', url=result_url, http_status=http_status, rollcall_id=rollcall_id, rollcall_type='radar', message='雷達點名已處理，略過重複嘗試。', payload_excerpt=selected_rollcall)
             return '雷達點名已處理'
         await ctx.announce_rollcall_start(
             ctx.AttendanceType.RADAR,
@@ -213,12 +205,11 @@ async def handle_rollcall_decision(
             try:
                 group_result = await ctx.submit_group_radar(selected_rollcall, session=session, config=ctx.CONFIG)
                 if group_result.get('ok'):
-                    ctx.log(event='group_radar_fanout_planned', status=group_result.get('status', 'submitted'), rollcall_id=rollcall_id, rollcall_type='radar', message='群組 radar fan-out 簽到完成。', extra=group_result)
+                    pass
                 summary = ctx.format_group_fanout_summary(group_result, rollcall_type='radar')
                 if summary:
                     ctx.log_print(summary)
             except Exception as exc:
-                ctx.log(event='group_radar_fanout_planned', status='failed', rollcall_id=rollcall_id, rollcall_type='radar', message='群組 radar fan-out 失敗。', error=exc)
                 ctx.log_print('群組 radar fan-out 失敗：{}'.format(exc))
             return 'is_radar'
         return 'radar_failed'
@@ -227,7 +218,6 @@ async def handle_rollcall_decision(
         rollcall_id = selected_rollcall.get('rollcall_id')
         sr_key = ctx.normalize_text(rollcall_id)
         if sr_key in ctx.COMPLETED_SELF_REGISTRATION_ROLLCALLS:
-            ctx.log(event='self_registration_rollcall_skipped', counter=cnt, status='already_completed', url=result_url, http_status=http_status, rollcall_id=rollcall_id, rollcall_type='self_registration', message='自主報到已處理，略過重複嘗試。', payload_excerpt=selected_rollcall)
             return '自主報到已處理'
         await ctx.announce_rollcall_start(
             ctx.AttendanceType.SELF_REGISTRATION,
@@ -245,12 +235,11 @@ async def handle_rollcall_decision(
             try:
                 group_result = await ctx.submit_group_self_registration(selected_rollcall, session=session, config=ctx.CONFIG)
                 if group_result.get('ok'):
-                    ctx.log(event='group_self_registration_fanout_planned', status=group_result.get('status', 'submitted'), rollcall_id=rollcall_id, rollcall_type='self_registration', message='群組 自主報到 fan-out 簽到完成。', extra=group_result)
+                    pass
                 summary = ctx.format_group_fanout_summary(group_result, rollcall_type='self_registration')
                 if summary:
                     ctx.log_print(summary)
             except Exception as exc:
-                ctx.log(event='group_self_registration_fanout_planned', status='failed', rollcall_id=rollcall_id, rollcall_type='self_registration', message='群組 自主報到 fan-out 失敗。', error=exc)
                 ctx.log_print('群組 自主報到 fan-out 失敗：{}'.format(exc))
             return 'is_self_registration'
         return 'self_registration_failed'
@@ -259,7 +248,6 @@ async def handle_rollcall_decision(
         if selected_status == 'unsupported_qrcode':
             qr_key = ctx.normalize_text(selected_rollcall.get('rollcall_id') or selected_rollcall.get('id'))
             if qr_key in ctx.COMPLETED_QR_ROLLCALLS:
-                ctx.log(event='qrcode_rollcall_skipped', counter=cnt, status='already_completed', url=result_url, http_status=http_status, rollcall_id=qr_key, rollcall_type='qrcode', message='QR 點名已處理，略過重複嘗試。', payload_excerpt=selected_rollcall)
                 return 'qr 點名已處理'
             if ctx.normalize_text(gate_detail):
                 await ctx.announce_rollcall_start(
@@ -285,12 +273,11 @@ async def handle_rollcall_decision(
                     try:
                         group_result = await ctx.submit_group_qr(selected_rollcall, session=session, config=ctx.CONFIG)
                         if group_result.get('ok'):
-                            ctx.log(event='group_qr_fanout_planned', status=group_result.get('status', 'submitted'), rollcall_id=qr_key, rollcall_type='qrcode', message='群組 qr fan-out 簽到完成。', extra=group_result)
+                            pass
                         summary = ctx.format_group_fanout_summary(group_result, rollcall_type='qr')
                         if summary:
                             ctx.log_print(summary)
                     except Exception as exc:
-                        ctx.log(event='group_qr_fanout_planned', status='failed', rollcall_id=qr_key, rollcall_type='qrcode', message='群組 qr fan-out 失敗。', error=exc)
                         ctx.log_print('群組 qr fan-out 失敗：{}'.format(exc))
                     return 'is_qrcode'
         if not answered_automatically:

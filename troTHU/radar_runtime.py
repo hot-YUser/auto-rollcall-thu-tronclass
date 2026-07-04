@@ -125,14 +125,6 @@ async def _announce_radar_success(
             rollcall_type="radar",
         )
     if not (verification_result.get("ok") and verification_result.get("status") == "on_call_fine"):
-        ctx.log(
-            event="radar_rollcall_submitted_unconfirmed",
-            status="submitted_unconfirmed",
-            rollcall_id=rollcall_id,
-            rollcall_type="radar",
-            message="雷達點名答案已送出，但尚未確認 on_call_fine。",
-            extra={"method": method, "detail": detail, "verification": verification_result},
-        )
         await ctx.mes("雷達點名 #{} 已送出，但尚未確認 on_call_fine；下一輪會繼續檢查。".format(rollcall_id))
         return False
     banner = ctx.format_rollcall_success_banner(
@@ -213,50 +205,15 @@ async def _run_unbounded_grid_retry(
             still_open = await _rollcall_still_open(client, rollcall_id)
         except ctx.UnauthorizedError:
             raise
-        except (ctx.UnexpectedResponseError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError) as exc:
-            ctx.log(
-                event="radar_final_grid_poll_retry",
-                status="cooldown",
-                rollcall_id=rollcall_id,
-                rollcall_type="radar",
-                message="雷達最終棋盤格確認點名狀態時遇到暫時性錯誤，暫停後繼續。",
-                extra={
-                    "attempts": attempts,
-                    "ring": current_ring,
-                    "reason": reason,
-                    "error": str(exc)[:200],
-                    "cooldown_seconds": cooldown_seconds,
-                },
-            )
+        except (ctx.UnexpectedResponseError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError):
             ctx.status_print("雷達最終棋盤格暫時無法確認點名狀態，休息 {:.1f}s 後繼續".format(cooldown_seconds))
             await ctx.asyncio.sleep(cooldown_seconds)
             return True
         if still_open:
             return True
-        ctx.log(
-            event="radar_final_grid_stopped",
-            status="rollcall_closed",
-            rollcall_id=rollcall_id,
-            rollcall_type="radar",
-            message="雷達最終棋盤格重試停止：點名已關閉。",
-            extra={"attempts": attempts, "ring": current_ring, "reason": reason},
-        )
         ctx.log_print("雷達點名 #{} 已關閉，停止最終棋盤格重試。".format(rollcall_id))
         return False
 
-    ctx.log(
-        event="radar_final_grid_started",
-        status="started",
-        rollcall_id=rollcall_id,
-        rollcall_type="radar",
-        message="啟動雷達最終無限棋盤格重試。",
-        extra={
-            "center_lat": round(float(center.lat), 10),
-            "center_lon": round(float(center.lon), 10),
-            "grid_step_meters": step_meters,
-            "poll_every_attempts": poll_interval,
-        },
-    )
     ctx.log_print(
         "啟動最終棋盤格重試：以 {:.8f}, {:.8f} 為中心，每格 {:.0f}m，直到命中或點名關閉。".format(
             center.lat,
@@ -301,32 +258,9 @@ async def _run_unbounded_grid_retry(
             continue
         if kind == "transient":
             cooldowns_used += 1
-            ctx.log(
-                event="radar_final_grid_cooldown",
-                status="cooldown",
-                rollcall_id=rollcall_id,
-                rollcall_type="radar",
-                message="雷達最終棋盤格遇到暫時性錯誤，暫停後繼續。",
-                extra={
-                    "attempts": attempts,
-                    "ring": candidate.ring,
-                    "cooldowns_used": cooldowns_used,
-                    "cooldown_seconds": cooldown_seconds,
-                    "max_cooldowns": cooldown_policy.max_cooldowns,
-                    "max_cooldowns_enforced": False,
-                },
-            )
             ctx.status_print("雷達最終棋盤格遇到限流或伺服器錯誤，休息 {:.1f}s 後繼續".format(cooldown_seconds))
             await ctx.asyncio.sleep(cooldown_seconds)
             continue
-        ctx.log(
-            event="radar_final_grid_stopped",
-            status=kind or "failed",
-            rollcall_id=rollcall_id,
-            rollcall_type="radar",
-            message="雷達最終棋盤格重試停止：座標送出遇到不可恢復錯誤。",
-            extra={"attempts": attempts, "ring": candidate.ring},
-        )
         return False
     return False
 
@@ -354,14 +288,6 @@ async def radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str,
         True,
     ):
         return False
-    rollcall_id = rollcall.get("rollcall_id")
-    ctx.log(
-        event="empty_answer_radar_fallback_started",
-        status="fallback",
-        rollcall_id=rollcall_id,
-        rollcall_type="radar",
-        message="空答案雷達簽到未確認，改用 global_wgs84 全球定位作為 fallback。",
-    )
     ctx.log_print("空答案雷達簽到未確認，改用 global_wgs84 全球定位作為 fallback...")
     return await _run_global_radar(main_session, rollcall, radar_config)
 
@@ -412,16 +338,7 @@ async def empty_answer_radar(main_session: ctx.aiohttp.ClientSession, rollcall: 
                 if status in (401, 403) or "login" in str(resp.url).lower():
                     raise ctx.UnauthorizedError("雷達空答案送出未授權，Cookie 可能已過期。")
                 result = ctx.parse_radar_answer_result(status, body_text)
-        except (ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError) as exc:
-            ctx.log(
-                event="radar_empty_answer_attempt",
-                status="transient",
-                rollcall_id=rollcall_id,
-                rollcall_type="radar",
-                message="雷達空答案送出遇到網路錯誤，改用 fallback。",
-                error=exc,
-                extra={"strategy": "empty_answer"},
-            )
+        except (ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError):
             return False
 
         diagnostic: ctx.Dict[str, ctx.Any] = {
@@ -451,14 +368,6 @@ async def empty_answer_radar(main_session: ctx.aiohttp.ClientSession, rollcall: 
             marked_present = bool(verification.get("ok") and verification.get("status") == "on_call_fine")
             diagnostic["verified_present"] = marked_present
             if marked_present:
-                ctx.log(
-                    event="radar_empty_answer_attempt",
-                    status="success",
-                    rollcall_id=rollcall_id,
-                    rollcall_type="radar",
-                    message="雷達空答案簽到成功並已確認。",
-                    extra=diagnostic,
-                )
                 if await _announce_radar_success(
                     client,
                     rollcall_id,
@@ -476,36 +385,12 @@ async def empty_answer_radar(main_session: ctx.aiohttp.ClientSession, rollcall: 
                     verification=verification,
                 )
                 raise _RadarSubmittedUnconfirmed("雷達空答案已送出但尚未確認 on_call_fine。")
-            ctx.log(
-                event="radar_empty_answer_attempt",
-                status="api_accepted_no_attendance",
-                rollcall_id=rollcall_id,
-                rollcall_type="radar",
-                message="雷達空答案回 2xx 但未確認簽到，改用 fallback。",
-                extra=diagnostic,
-            )
             ctx.log_print("雷達空答案回 2xx 但未確認已簽到，改用 fallback...")
             return False
 
         if _is_transient_radar_result(result):
-            ctx.log(
-                event="radar_empty_answer_attempt",
-                status="transient",
-                rollcall_id=rollcall_id,
-                rollcall_type="radar",
-                message="雷達空答案送出暫時失敗，改用 fallback。",
-                extra=diagnostic,
-            )
             return False
 
-        ctx.log(
-            event="radar_empty_answer_attempt",
-            status="failed",
-            rollcall_id=rollcall_id,
-            rollcall_type="radar",
-            message="雷達空答案送出被拒絕，改用 fallback。",
-            extra=diagnostic,
-        )
         return False
 
 
@@ -578,21 +463,6 @@ async def global_radar(
             fatal_error = last_transient_error or ctx.UnexpectedResponseError("雷達點名暫時性錯誤過多，已停止嘗試。")
             stop_event.set()
             return
-        ctx.log(
-            event="radar_rollcall_cooldown",
-            status="cooldown",
-            rollcall_id=rollcall_id,
-            rollcall_type="radar",
-            message="雷達點名暫時性錯誤過多，暫停後重試。",
-            extra={
-                "transient_count": cooldown_decision.transient_count,
-                "window_size": cooldown_decision.sample_size,
-                "transient_ratio": round(cooldown_decision.transient_ratio, 3),
-                "cooldowns_used": cooldown_decision.cooldowns_used,
-                "cooldown_seconds": cooldown_seconds,
-                "max_queries": max_queries,
-            },
-        )
         ctx.status_print("雷達點名遇到限流或伺服器錯誤，休息 {:.1f}s 後繼續".format(cooldown_seconds))
         await ctx.asyncio.sleep(cooldown_seconds)
 
@@ -614,27 +484,7 @@ async def global_radar(
                     lite_data = await resp.json()
                 except (ctx.aiohttp.ContentTypeError, ValueError):
                     lite_data = rollcall
-                    ctx.log(
-                        event="radar_lite_fetch",
-                        status="invalid_json",
-                        url=lite_response_url,
-                        http_status=lite_status,
-                        rollcall_id=rollcall_id,
-                        rollcall_type="radar",
-                        message="雷達 lite 回應無法解析，改用 rollcall 摘要。",
-                    )
             else:
-                body_text = await resp.text()
-                ctx.log(
-                    event="radar_lite_fetch",
-                    status="failed",
-                    url=lite_response_url,
-                    http_status=lite_status,
-                    rollcall_id=rollcall_id,
-                    rollcall_type="radar",
-                    message="雷達 lite 資訊請求失敗。",
-                    error=body_text[:120],
-                )
                 if lite_status == 429 or 500 <= lite_status <= 599:
                     text = f"雷達點名 #{rollcall_id} 失敗：lite 資訊請求暫時不可用 (HTTP {lite_status})。"
                     ctx.log_print(text)
@@ -686,14 +536,6 @@ async def global_radar(
                     if result.success:
                         found = True
                         stop_event.set()
-                        ctx.log(
-                            event="radar_coordinate_attempt",
-                            status="success",
-                            rollcall_id=rollcall_id,
-                            rollcall_type="radar",
-                            message="雷達點名座標送出成功。",
-                            extra=diagnostic,
-                        )
                         return ("success", result)
                     if result.present_hint and present_hint_verify_enabled:
                         try:
@@ -707,70 +549,18 @@ async def global_radar(
                         if marked_present:
                             found = True
                             stop_event.set()
-                            ctx.log(
-                                event="radar_coordinate_attempt",
-                                status="verified_present",
-                                rollcall_id=rollcall_id,
-                                rollcall_type="radar",
-                                message="雷達點名回應顯示已簽到，重新查驗 on_call_fine 後停止。",
-                                extra=diagnostic,
-                            )
                             return ("success", result)
                     if result.is_scope_distance:
-                        ctx.log(
-                            event="radar_coordinate_attempt",
-                            status="scope_distance",
-                            rollcall_id=rollcall_id,
-                            rollcall_type="radar",
-                            message="雷達點名座標未命中，已取得距離。",
-                            extra=diagnostic,
-                        )
                         return ("scope_distance", result)
                     if _is_transient_radar_result(result):
                         last_transient_error = ctx.UnexpectedResponseError(
                             "HTTP radar transient response: {}".format(result.message or result.error_code)
                         )
-                        ctx.log(
-                            event="network_error",
-                            status="radar_transient_response",
-                            url=request_url,
-                            http_status=resp.status,
-                            rollcall_id=rollcall_id,
-                            rollcall_type="radar",
-                            message="雷達點名遇到暫時性 HTTP 錯誤。",
-                            payload_excerpt=body_text[:300],
-                        )
-                        ctx.log(
-                            event="radar_coordinate_attempt",
-                            status="transient",
-                            rollcall_id=rollcall_id,
-                            rollcall_type="radar",
-                            message="雷達點名座標送出暫時失敗。",
-                            extra=diagnostic,
-                        )
                         return ("transient", result)
-                    ctx.log(
-                        event="radar_coordinate_attempt",
-                        status="failed",
-                        rollcall_id=rollcall_id,
-                        rollcall_type="radar",
-                        message="雷達點名座標送出被拒絕。",
-                        extra=diagnostic,
-                    )
                     return ("fatal", result)
                 except (ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError) as exc:
                     if attempt == request_retries - 1:
                         last_transient_error = exc
-                        ctx.log(
-                            event="network_error",
-                            status="radar_request_error",
-                            url=request_url,
-                            rollcall_id=rollcall_id,
-                            rollcall_type="radar",
-                            message="雷達點名請求失敗。",
-                            error=exc,
-                            extra={"label": label, "strategy": "global_wgs84"},
-                        )
                         return ("transient", None)
                     await ctx.asyncio.sleep(1)
             return ("transient", None)
@@ -812,27 +602,10 @@ async def global_radar(
                     config=solver_config,
                     initial=final_estimate.point if final_estimate else None,
                 )
-            except ctx.RadarGeometryError as exc:
-                ctx.log(
-                    event="global_radar_estimate",
-                    status="estimate_failed",
-                    rollcall_id=rollcall_id,
-                    rollcall_type="radar",
-                    message="全球雷達中途估計暫時無法求解，繼續採樣。",
-                    error=exc,
-                    extra={"estimate_label": label, "request_count": request_count},
-                )
+            except ctx.RadarGeometryError:
                 return False
             extra = _estimate_log_extra(final_estimate)
             extra.update({"estimate_label": label, "request_count": request_count})
-            ctx.log(
-                event="global_radar_estimate",
-                status=status,
-                rollcall_id=rollcall_id,
-                rollcall_type="radar",
-                message=message,
-                extra=extra,
-            )
             ctx.log_print(
                 "{}：{:.8f}, {:.8f}；RMSE {:.2f}m。".format(
                     label,
@@ -892,14 +665,6 @@ async def global_radar(
                 stop_event.set()
             if fatal_error is None and len(observations) >= 3:
                 final_estimate = ctx.solve_global_radar(observations, config=solver_config)
-                ctx.log(
-                    event="global_radar_estimate",
-                    status="anchor_estimate",
-                    rollcall_id=rollcall_id,
-                    rollcall_type="radar",
-                    message="全球錨點粗定位完成。",
-                    extra=_estimate_log_extra(final_estimate),
-                )
                 ctx.log_print(
                     "全球錨點粗定位：{:.8f}, {:.8f}；開始 60 點局部採樣...".format(
                         final_estimate.point.lat,
@@ -917,14 +682,6 @@ async def global_radar(
                     return True
             if fatal_error is None and len(observations) >= 3 and not stop_event.is_set():
                 final_estimate = ctx.solve_global_radar(observations, config=solver_config, initial=final_estimate.point if final_estimate else None)
-                ctx.log(
-                    event="global_radar_estimate",
-                    status="standard_estimate",
-                    rollcall_id=rollcall_id,
-                    rollcall_type="radar",
-                    message="全球雷達標準 72 點定位完成。",
-                    extra=_estimate_log_extra(final_estimate),
-                )
                 ctx.log_print(
                     "全球 72 點估計：{:.8f}, {:.8f}；RMSE {:.2f}m，95% 不確定度 {}m。".format(
                         final_estimate.point.lat,
@@ -962,14 +719,6 @@ async def global_radar(
                     return True
                 if fatal_error is None and len(observations) >= 3 and not stop_event.is_set():
                     final_estimate = ctx.solve_global_radar(observations, config=solver_config, initial=final_estimate.point)
-                    ctx.log(
-                        event="global_radar_estimate",
-                        status="supplement_estimate",
-                        rollcall_id=rollcall_id,
-                        rollcall_type="radar",
-                        message="全球雷達 108 點補充定位完成。",
-                        extra=_estimate_log_extra(final_estimate),
-                    )
                     if request_count < max_queries:
                         kind = await submit_point(final_estimate.point, "estimate-supplement")
                         if kind == "success":
@@ -1031,11 +780,3 @@ async def global_radar(
                 "supplement_query_count": global_config.get("supplement_query_count"),
             }
             summary_extra.update(_estimate_log_extra(final_estimate))
-            ctx.log(
-                event="global_radar_summary",
-                status=final_status if found else "failed",
-                rollcall_id=rollcall_id,
-                rollcall_type="radar",
-                message="全球雷達定位流程結束。",
-                extra=summary_extra,
-            )

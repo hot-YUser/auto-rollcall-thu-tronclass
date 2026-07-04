@@ -23,23 +23,19 @@ async def self_registration(main_session: ctx.aiohttp.ClientSession, rollcall: c
     ctx.status_print('正在送出自主報到 #{} ...'.format(rollcall_id))
     try:
         async with main_session.put(request_url, json={}) as resp:
-            body = await resp.text()
             if resp.status not in (200, 201, 204):
                 if resp.status == 401 or 'login' in str(resp.url).lower():
                     raise ctx.UnauthorizedError('自主報到期間登入狀態失效。')
-                ctx.log(event='self_registration_rollcall', status='http_error', url=str(resp.url), http_status=resp.status, rollcall_id=rollcall_id, rollcall_type='self_registration', message='自主報到回傳非 2xx。', payload_excerpt=body[:300])
                 ctx.log_print('自主報到送出失敗（HTTP {}）。'.format(resp.status))
                 return False
     except ctx.UnauthorizedError:
         raise
     except (ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError) as exc:
-        ctx.log(event='network_error', url=request_url, rollcall_id=rollcall_id, rollcall_type='self_registration', message='自主報到請求失敗。', error=exc)
         ctx.log_print('自主報到請求失敗：{}'.format(exc))
         return False
 
     verification = await ctx.verify_rollcall_on_call_fine(main_session, rollcall_id, rollcall_type='self_registration')
     if not (verification.get('ok') and verification.get('status') == 'on_call_fine'):
-        ctx.log(event='self_registration_rollcall', status='submitted_unconfirmed', rollcall_id=rollcall_id, rollcall_type='self_registration', message='自主報到已送出，但尚未確認 on_call_fine。', extra={'verification': verification})
         await ctx.mes('自主報到 #{} 已送出，但尚未確認 on_call_fine；下一輪會再檢查。'.format(rollcall_id))
         return False
 
@@ -52,6 +48,5 @@ async def self_registration(main_session: ctx.aiohttp.ClientSession, rollcall: c
     )
     ctx.log_print(banner)
     ctx.remember_rollcall_progress(verification)
-    ctx.log(event='self_registration_rollcall', status='on_call_fine', rollcall_id=rollcall_id, rollcall_type='self_registration', message='自主報到成功。', extra={'verification': verification})
     await ctx.mes('自主報到成功！', highlight_block=banner)
     return True

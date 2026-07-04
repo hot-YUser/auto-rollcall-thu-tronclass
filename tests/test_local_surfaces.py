@@ -14,7 +14,6 @@ from troTHU.webview_sync import WebViewSyncError, build_webview_cookie_preview, 
 from troTHU.adapter_bridge import map_adapter_command
 from troTHU.local_scanner import create_scanner_app
 from troTHU.pending_qr import add_pending_qr, list_pending_qr, match_pending_qr, remove_pending_qr
-from troTHU.ux_tools import export_debug_bundle, tail_log_records
 
 
 # Live local-surface tests: observability/dashboard snapshot, webview cookie
@@ -593,34 +592,6 @@ class UxPhaseUtilityTest(unittest.TestCase):
             self.assertEqual(len(matches), 1)
             self.assertEqual(matches[0].provider, "thu")
 
-    def test_debug_bundle_redacts_public_payload(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            output = export_debug_bundle(
-                Path(temp_dir) / "bundle.zip",
-                config_summary={"password": "secret", "cookie": {"path": "ok"}},
-                doctor_report={},
-                log_summary={},
-                recent_logs=[],
-            )
-
-            self.assertTrue(output.exists())
-            self.assertEqual(output.suffix, ".zip")
-
-    def test_tail_log_records_reads_recent_jsonl(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            log_dir = Path(temp_dir)
-            path = log_dir / "2026" / "5" / "20.jsonl"
-            path.parent.mkdir(parents=True)
-            path.write_text(
-                json.dumps({"event": "one"}, ensure_ascii=False) + "\n"
-                + json.dumps({"event": "two"}, ensure_ascii=False) + "\n",
-                encoding="utf-8",
-            )
-
-            records = tail_log_records(log_dir, 1)
-
-            self.assertEqual(records[0]["event"], "two")
-
     def test_adapter_text_maps_to_control_command(self) -> None:
         command = map_adapter_command("qr payload-data", adapter="discord", source_user_id="u1")
 
@@ -747,87 +718,6 @@ class UxPhaseCliTest(unittest.TestCase):
 
         self.assertEqual(result, 0)
         async_server.assert_awaited_once()
-
-    def test_logs_export_writes_debug_bundle(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            base_dir = Path(temp_dir)
-            log_dir = base_dir / "log"
-            log_file = log_dir / "2026" / "5" / "20.jsonl"
-            log_file.parent.mkdir(parents=True)
-            log_file.write_text(json.dumps({"event": "ok"}) + "\n", encoding="utf-8")
-            with (
-                patch.object(tron, "BASE_DIR", base_dir),
-                patch.object(tron, "PATH", log_dir),
-                patch.object(tron, "bootstrap_config"),
-                patch("builtins.print"),
-            ):
-                result = tron.main(["logs", "export"])
-
-            self.assertEqual(result, 0)
-            self.assertTrue((base_dir / "state" / "debug-bundle").exists())
-
-    def test_logs_summarize_includes_notable_events(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            log_dir = Path(temp_dir) / "log"
-            log_file = log_dir / "2026" / "5" / "20.jsonl"
-            log_file.parent.mkdir(parents=True)
-            log_file.write_text(
-                json.dumps(
-                    {
-                        "timestamp": "2026-05-20T01:00:00",
-                        "event": "number_rollcall",
-                        "status": "failed",
-                        "message": "token=super-secret",
-                    }
-                )
-                + "\n",
-                encoding="utf-8",
-            )
-            outputs = []
-            with (
-                patch.object(tron, "PATH", log_dir),
-                patch.object(tron, "bootstrap_config"),
-                patch("builtins.print", side_effect=outputs.append),
-            ):
-                result = tron.main(["logs", "summarize", "--limit", "5"])
-
-        self.assertEqual(result, 0)
-        text = "\n".join(outputs)
-        self.assertIn("Top events: number_rollcall=1", text)
-        self.assertIn("Recent notable events:", text)
-        self.assertNotIn("super-secret", text)
-
-    def test_logs_summarize_json_includes_recent_events(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            log_dir = Path(temp_dir) / "log"
-            log_file = log_dir / "2026" / "5" / "20.jsonl"
-            log_file.parent.mkdir(parents=True)
-            log_file.write_text(
-                json.dumps(
-                    {
-                        "timestamp": "2026-05-20T01:00:00",
-                        "event": "qr_submit",
-                        "status": "failed",
-                        "payload_excerpt": "raw-secret-payload",
-                    }
-                )
-                + "\n",
-                encoding="utf-8",
-            )
-            outputs = []
-            with (
-                patch.object(tron, "PATH", log_dir),
-                patch.object(tron, "bootstrap_config"),
-                patch("builtins.print", side_effect=outputs.append),
-            ):
-                result = tron.main(["logs", "summary", "--json", "--limit", "5"])
-
-        self.assertEqual(result, 0)
-        payload = json.loads(outputs[0])
-        encoded = json.dumps(payload, ensure_ascii=False)
-        self.assertIn("recent_events", payload)
-        self.assertEqual(payload["recent_events"]["events"]["qr_submit"], 1)
-        self.assertNotIn("raw-secret-payload", encoded)
 
     def test_dashboard_once_smoke(self) -> None:
         outputs = []

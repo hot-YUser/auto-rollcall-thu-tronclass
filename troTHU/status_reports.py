@@ -51,9 +51,7 @@ def provider_block_message(action: str='daily automation') -> str:
 def provider_guard_result(action: str) -> ctx.Optional[ctx.LoginResult]:
     if ctx.provider_is_daily_allowed():
         return None
-    report = ctx.provider_report()
     message = ctx.provider_block_message(action)
-    ctx.log(event='provider_guard', status='blocked', message=message, extra={'provider': report.get('key'), 'support_level': report.get('support_level'), 'action': action})
     ctx.log_print(message)
     return ctx.LoginResult(status='provider_experimental', credential_source='provider_guard', error=message)
 

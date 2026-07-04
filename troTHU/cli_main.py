@@ -33,8 +33,6 @@ def main(argv: ctx.Optional[ctx.List[str]]=None) -> int:
         return ctx.init_command(args)
     if args.command == 'account':
         return ctx.handle_account_command(args)
-    if args.command == 'logs':
-        return ctx.logs_command(args)
     if args.command == 'bot':
         if getattr(args, 'bot_command', None) == 'serve':
             try:

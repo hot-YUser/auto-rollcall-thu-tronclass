@@ -83,18 +83,6 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
                             return 'fatal'
                         if not (verification.get('ok') and verification.get('status') == 'on_call_fine'):
                             submitted_unconfirmed_code = payload['numberCode']
-                            ctx.log(
-                                event='number_rollcall_submitted_unconfirmed',
-                                path=ctx.number_log_path(rcid),
-                                counter=try_code,
-                                status='submitted_unconfirmed',
-                                url=str(resp.url),
-                                http_status=resp.status,
-                                rollcall_id=rcid,
-                                rollcall_type='number',
-                                message='數字點名碼已送出，但尚未確認 on_call_fine。',
-                                extra={'code': submitted_unconfirmed_code, 'verification': verification},
-                            )
                             await ctx.mes('數字點名碼 {} 已送出，但尚未確認 on_call_fine；下一輪會繼續檢查。'.format(submitted_unconfirmed_code))
                             return 'submitted_unconfirmed'
                         found_code = payload['numberCode']
@@ -113,24 +101,20 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
                     elif classification.status == ctx.NumberAttemptStatus.WRONG_CODE:
                         return 'wrong'
                     elif classification.status == ctx.NumberAttemptStatus.UNAUTHORIZED:
-                        ctx.log(event='tron_http_error', path=ctx.number_log_path(rcid), counter=try_code, status='number_unauthorized', url=str(resp.url), http_status=resp.status, rollcall_id=rcid, rollcall_type='number', message='數字點名期間登入狀態失效。', payload_excerpt=body[:300])
                         if fatal_error is None and found_code == 'NA':
                             fatal_error = ctx.UnauthorizedError(classification.message or '數字點名期間登入狀態失效。')
                             stop_event.set()
                         return 'fatal'
                     elif classification.status == ctx.NumberAttemptStatus.TRANSIENT_FAILURE:
                         last_transient_error = ctx.UnexpectedResponseError('HTTP {}: {}'.format(resp.status, classification.message or body[:200]))
-                        ctx.log(event='network_error', path=ctx.number_log_path(rcid), counter=try_code, status='number_transient_response', url=str(resp.url), http_status=resp.status, rollcall_id=rcid, rollcall_type='number', message='數字點名遇到暫時性 HTTP 錯誤。', payload_excerpt=body[:300])
                         return 'transient'
                     else:
-                        ctx.log(event='tron_http_error', path=ctx.number_log_path(rcid), counter=try_code, status='unexpected_number_response', url=str(resp.url), http_status=resp.status, rollcall_id=rcid, rollcall_type='number', message='數字點名回傳了未預期的 HTTP 狀態。', payload_excerpt=body[:300])
                         if fatal_error is None and found_code == 'NA':
                             fatal_error = ctx.UnexpectedResponseError('HTTP {}: {}'.format(resp.status, classification.message or body[:200]))
                             stop_event.set()
                         return 'fatal'
             except (ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError) as exc:
                 if attempt == request_retries - 1:
-                    ctx.log(event='network_error', path=ctx.number_log_path(rcid), counter=try_code, status='number_request_error', url=request_url, rollcall_id=rcid, rollcall_type='number', message='數字點名請求失敗。', error=exc)
                     last_transient_error = exc
                     return 'transient'
                 else:
@@ -151,16 +135,13 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
         try:
             client = ctx.create_tron_http_client(session, request_ssl=ctx.get_ssl_request_setting())
             payload = await client.fetch_student_rollcalls(rcid)
-        except (ctx.TronHttpError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError, ctx.ssl.SSLError) as exc:
+        except (ctx.TronHttpError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError, ctx.ssl.SSLError):
             direct_read_status = 'lookup_failed'
-            ctx.log(event='number_direct_lookup', path=ctx.number_log_path(rcid), status='lookup_failed', url=request_url, rollcall_id=rcid, rollcall_type='number', message='直接讀碼讀取失敗，改用暴力猜碼。', error=exc)
             return False
         lookup = ctx.parse_number_code_payload(payload)
         if not lookup.has_code:
             direct_read_status = 'no_code'
-            ctx.log(event='number_direct_lookup', path=ctx.number_log_path(rcid), status='no_code', rollcall_id=rcid, rollcall_type='number', message='student_rollcalls 未提供可用 number_code，改用暴力猜碼。', extra={'source': lookup.source, 'rollcall_status': lookup.status})
             return False
-        ctx.log(event='number_direct_lookup', path=ctx.number_log_path(rcid), status='code_found', rollcall_id=rcid, rollcall_type='number', message='直接讀碼成功，單發提交點名碼。', extra={'source': lookup.source, 'rollcall_status': lookup.status})
         submit_result = await try_number_code(session, int(lookup.code), method='direct_read')
         direct_read_status = 'success' if found_code != 'NA' else 'submit_{}'.format(submit_result)
         return found_code != 'NA'
@@ -197,7 +178,6 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
                     stop_event.set()
                     break
                 current_concurrency = max(min_concurrency, current_concurrency // 2)
-                ctx.log(event='number_rollcall_cooldown', path=ctx.number_log_path(rcid), status='cooldown', rollcall_id=rcid, rollcall_type='number', message='暫時性錯誤過多，降低併發並暫停後重試。', extra={'transient_count': cooldown_decision.transient_count, 'batch_size': cooldown_decision.sample_size, 'transient_ratio': round(cooldown_decision.transient_ratio, 3), 'cooldowns_used': cooldown_decision.cooldowns_used, 'next_concurrency': current_concurrency, 'cooldown_seconds': cooldown_seconds})
                 ctx.status_print('數字點名遇到限流或伺服器錯誤，休息 {:.1f}s 後以 {} 併發重試'.format(cooldown_seconds, current_concurrency))
                 await ctx.asyncio.sleep(cooldown_seconds)
         finally:
@@ -206,17 +186,6 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
     elapsed = ctx.time.perf_counter() - started_at
     if fatal_error is None and found_code == 'NA' and submitted_unconfirmed_code == '' and (last_transient_error is not None):
         fatal_error = last_transient_error
-    if fatal_error is not None:
-        summary_status = 'failed'
-        summary_message = '數字點名流程提早中止。'
-    elif submitted_unconfirmed_code and found_code == 'NA':
-        summary_status = 'submitted_unconfirmed'
-        summary_message = '數字點名流程已送出但尚未確認。'
-    else:
-        summary_status = 'completed'
-        summary_message = '數字點名流程結束。'
-    resolution_method = 'direct_read' if direct_read_status == 'success' else ('brute_force' if found_code != 'NA' else 'none')
-    ctx.log(event='number_rollcall_summary', path=ctx.number_log_path(rcid), status=summary_status, rollcall_id=rcid, rollcall_type='number', message=summary_message, extra={'spend_time_seconds': round(elapsed, 2), 'request_count': request_count, 'found_code': found_code, 'submitted_unconfirmed_code': submitted_unconfirmed_code or None, 'stopped_early': found_code != 'NA' or bool(submitted_unconfirmed_code), 'fatal_error': ctx.normalize_text(fatal_error) or None, 'cooldowns_used': cooldown_tracker.cooldowns_used, 'final_concurrency': current_concurrency, 'method': resolution_method, 'direct_read_attempted': direct_read_attempted, 'direct_read_status': direct_read_status})
     if fatal_error is not None:
         raise fatal_error
     text = 'Total time: {:.2f}s\nTotal request: {}/{}{}\nCode: {}\n'.format(elapsed, request_count, ctx.NUMBER_CODE_LIMIT, ' (Stopped early)' if found_code != 'NA' else '', found_code)

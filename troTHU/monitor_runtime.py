@@ -69,8 +69,7 @@ async def _fetch_monitor_rollcall_progress(session: ctx.Any, rollcall_id: ctx.An
             request_ssl=ctx.get_ssl_request_setting(),
             my_user_no=my_user_no,
         )
-    except Exception as exc:
-        ctx.log(event='rollcall_progress', status='error', rollcall_id=str(rollcall_id or ''), message='監控簽到率讀取失敗。', error=exc)
+    except Exception:
         return {'ok': False, 'status': 'error', 'rollcall_id': str(rollcall_id or '')}
 
 
@@ -155,14 +154,6 @@ async def _log_final_attendance_rate_on_close(
         return
     final_message = '最後點名率：{}'.format(final_rate_text)
     ctx.log_print(final_message)
-    ctx.log(
-        event='rollcall_final_attendance_rate',
-        counter=counter,
-        status='closed',
-        rollcall_id=rollcall_key,
-        rollcall_type=rollcall_type,
-        message=final_message,
-    )
     logged_keys.add(rollcall_key)
 
 
@@ -593,7 +584,6 @@ async def monitor_loop(
                 )
         except ctx.UnauthorizedError:
             ctx.record_runtime_error('unauthorized', 'Cookie expired; reauth required.')
-            ctx.log(event='tron_http_error', counter=ctx.cnt, status='unauthorized', message='Cookie 已過期，準備重新登入。')
             ctx.log_print('Cookie 已過期，正在重新自動登入...')
             session.cookie_jar.clear()
             try:
@@ -616,12 +606,10 @@ async def monitor_loop(
             ctx.record_runtime_error('tron_http_error', exc)
             if error_cnt < ctx.get_retry_limit():
                 text = '檢查點名時發生錯誤（第 {} 次，已重試 {} 次）：{}'.format(ctx.cnt, error_cnt, exc)
-                ctx.log(event='tron_http_error', counter=ctx.cnt, status='retrying', message=text, error=exc)
                 ctx.log_print(text)
                 await ctx.mes(text)
                 error_cnt += 1
             else:
-                ctx.log(event='tron_http_error', counter=ctx.cnt, status='stopped', message='連續錯誤次數過多，停止監控。', error=exc)
                 ctx.log_print('連續錯誤次數過多，停止監控。')
                 shutdown_event.set()
                 break
@@ -633,12 +621,10 @@ async def monitor_loop(
                 continue
             if error_cnt < ctx.get_retry_limit():
                 text = '網路連線發生錯誤（第 {} 次，已重試 {} 次）：{}'.format(ctx.cnt, error_cnt, exc)
-                ctx.log(event='network_error', counter=ctx.cnt, status='retrying', message=text, error=exc)
                 ctx.log_print(text)
                 await ctx.mes(text)
                 error_cnt += 1
             else:
-                ctx.log(event='network_error', counter=ctx.cnt, status='stopped', message='連續網路錯誤次數過多，停止監控。', error=exc)
                 ctx.log_print('連續網路錯誤次數過多，停止監控。')
                 shutdown_event.set()
                 break
@@ -672,8 +658,8 @@ async def app_main(
                     c_status = ctx.cookie_cache_status(ctx.BASE_DIR, active_profile.name)
                     if c_status.get("near_expiry"):
                         ctx.log_print('【提示】Cookie 快取即將過期，可能需要重新登入。')
-            except Exception as exc:
-                ctx.log(event='session_cookie_cache', status='failed', message='cookie 快取載入失敗。', error=exc)
+            except Exception:
+                pass
             try:
                 if ctx.teacher_assist_configured(ctx.CONFIG):
                     teacher_config = ctx.get_teacher_config(ctx.CONFIG)
@@ -702,7 +688,6 @@ async def app_main(
                 ctx.TEACHER_READY = False
                 ctx.TEACHER_LOGIN_RESULT = ctx.LoginResult(status='error', credential_source='runtime', error=ctx.normalize_text(exc))
                 ctx.update_monitor_status(teacher_state='failed', redraw=False)
-                ctx.log(event='qr_teacher_login', status='error', message='QR 教師帳號啟動檢查失敗。', error=exc)
                 ctx.log_print('QR 點名功能未啟用：教師帳號啟動檢查失敗，數字/雷達仍會照常監控。')
             try:
                 if input_enabled:

@@ -243,8 +243,6 @@ async def _prepare(client: Any, session: Any, activity: Activity, aa: Dict[str, 
     # empty submit. prepare_answer returns None for both "no questions" and "no usable answer yet".
     prepared = await answer_flow.prepare_answer(client, session, activity, llm_config=aa.get("llm", {}))
     if not prepared:
-        ctx.log(event="autoanswer", status="not_prepared",
-                message="「{}」尚無可送出的答案，稍後重試。".format(label), extra={"activity_id": key})
         return
     prepared["detected_at"] = now
     prepared["delay_seconds"] = delay
@@ -255,8 +253,6 @@ async def _prepare(client: Any, session: Any, activity: Activity, aa: Dict[str, 
     # Announce detection + the prepared answer together (canonical LLM format), then start the countdown.
     ctx.log_print("偵測到「{}」並已備妥答案（{}），{} 秒後自動送出（按任意鍵立即送）：\n{}".format(
         label, source, delay, answer_text))
-    ctx.log(event="autoanswer", status="prepared", message="已備妥答案，等待送出。",
-            extra={"activity_id": key, "source": str(prepared.get("source"))})
 
 
 async def _submit_due(client: Any, aa: Dict[str, Any], now: float) -> None:
@@ -286,14 +282,11 @@ async def _submit_due(client: Any, aa: Dict[str, Any], now: float) -> None:
             atype_text = getattr(atype, "value", atype)
             # Same banner style as 點名成功, showing the FINAL submitted answer in canonical format.
             ctx.log_print(ctx.format_autoanswer_success_banner(label, key, atype_text, source, answer_text))
-            ctx.log(event="autoanswer", status="submitted", message="已自動作答完成。",
-                    extra={"activity_id": key, "submission_id": str(result.submission_id), "source": str(source)})
         else:
             # No band-aid backoff: the root fix (detection now requires an open answering window)
             # means an un-submittable activity is never detected, so there is nothing to churn on.
             # A genuine transient failure just retries at the normal cooldown.
-            ctx.log(event="autoanswer", status=result.status, message="自動作答失敗。",
-                    extra={"activity_id": key})
+            pass
 
 
 async def autoanswer_tick(session: Any) -> None:
@@ -317,5 +310,5 @@ async def autoanswer_tick(session: Any) -> None:
         for course_id in await _refresh_courses(client, now):
             for activity in await _poll_course(client, course_id, wanted):
                 await _prepare(client, session, activity, aa, now)
-    except Exception as exc:  # autoanswer must never break the monitor loop
-        ctx.log(event="autoanswer", status="tick_error", message="自動答題輪詢發生未預期錯誤。", error=exc)
+    except Exception:  # autoanswer must never break the monitor loop
+        pass

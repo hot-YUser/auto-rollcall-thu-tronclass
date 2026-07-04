@@ -401,18 +401,13 @@ async def prepare_answer(
     and never permanently dedups the activity; the next poll just retries."""
     try:
         activity, questions = await fetch_questions(client, activity)
-    except ctx.TronHttpError as exc:
-        ctx.log(event="autoanswer", status="fetch_failed",
-                message="取題失敗。", error=exc, extra={"activity_id": activity.activity_id})
+    except ctx.TronHttpError:
         return None
     if not questions:
         return None
     answers, source = await decide_answers(
         session, questions, llm_config=llm_config, client=client, activity=activity)
     if not answers or not all(_is_answered(a) for a in answers):
-        ctx.log(event="autoanswer", status="incomplete_answer",
-                message="尚未取得完整答案（LLM 可能暫時無回應或未設定金鑰），不送出空白、稍後重試。",
-                extra={"activity_id": activity.activity_id})
         return None
     return {
         "activity": activity,
@@ -434,8 +429,6 @@ async def submit_prepared(
     try:
         resp = await submitter(client, activity, answers)
     except ctx.TronHttpError as exc:
-        ctx.log(event="autoanswer", status="submit_failed",
-                message="作答提交失敗。", error=exc, extra={"activity_id": activity.activity_id})
         return AnswerResult(ok=False, status="submit_failed", activity_id=activity.activity_id,
                             message=normalize_text(exc))
     resp = resp if isinstance(resp, dict) else {}
@@ -452,11 +445,8 @@ async def submit_prepared(
             and resp.get("allow_retake_exam") and submission_id):
         try:
             corrected = await _resubmit_exam_with_correct(client, activity, submission_id, answers)
-        except ctx.TronHttpError as exc:
+        except ctx.TronHttpError:
             corrected = None
-            ctx.log(event="autoanswer", status="resubmit_skipped",
-                    message="重交正解未完成，保留首次作答。", error=exc,
-                    extra={"activity_id": activity.activity_id})
         if corrected is not None:
             resp, final_answers = corrected
             submission_id = resp.get("submission_id") or submission_id

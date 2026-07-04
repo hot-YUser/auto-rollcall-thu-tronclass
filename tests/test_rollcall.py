@@ -3,7 +3,6 @@ from __future__ import annotations
 import unittest
 import aiohttp
 import copy
-import json
 import shutil
 import uuid
 from troTHU import tron, tron_http
@@ -325,10 +324,6 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
             outcome = await login_flow.submit_credentials(client, resolved, "user1", "pass1")
         return resolved.form, outcome
 
-    def current_daily_log_path(self, root: Path) -> Path:
-        today = tron.current_datetime()
-        return root / str(today.year) / str(today.month) / "{}.jsonl".format(today.day)
-
     async def test_http_client_can_login_and_fetch_rollcalls_against_local_server(self) -> None:
         self.fake_server.rollcalls = [{"status": "on_call_fine", "rollcall_id": 11}]
 
@@ -357,20 +352,12 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
                     patch.object(tron, "log_print"),
                 ):
                     result = await tron.check_rollcall(session, 5)
-
-            log_path = self.current_daily_log_path(temp_dir)
-            events = [
-                json.loads(line)["event"]
-                for line in log_path.read_text(encoding="utf-8").splitlines()
-            ]
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
         self.assertEqual(result, "is_number")
         number_mock.assert_awaited_once()
         mes_mock.assert_awaited_once()
-        self.assertIn("rollcall_poll", events)
-        self.assertIn("number_rollcall_started", events)
 
     async def test_check_rollcall_self_registration_submits_empty_and_confirms(self) -> None:
         # Real end-to-end (self_registration NOT mocked): detect -> empty PUT -> verify on_call_fine.
@@ -388,12 +375,6 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
                     patch.object(tron, "log_print"),
                 ):
                     result = await tron.check_rollcall(session, 7)
-
-            log_path = self.current_daily_log_path(temp_dir)
-            events = [
-                json.loads(line)["event"]
-                for line in log_path.read_text(encoding="utf-8").splitlines()
-            ]
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -402,11 +383,9 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.fake_server.self_registration_answers), 1)
         self.assertEqual(self.fake_server.self_registration_answers[0]["body"], {})
         self.assertEqual(self.fake_server.self_registration_answers[0]["rollcall_id"], "77")
-        self.assertIn("self_registration_rollcall_started", events)
-        self.assertIn("self_registration_rollcall", events)
         mes_mock.assert_awaited()
 
-    async def test_check_rollcall_unsupported_qrcode_notifies_once_and_writes_jsonl(self) -> None:
+    async def test_check_rollcall_unsupported_qrcode_notifies_once(self) -> None:
         self.fake_server.rollcalls = [{"is_qrcode": True, "rollcall_id": 88, "type": "qrcode"}]
 
         temp_dir = make_workspace_temp_dir()
@@ -422,26 +401,12 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
                 ):
                     first = await tron.check_rollcall(session, 1)
                     second = await tron.check_rollcall(session, 2)
-
-            log_path = self.current_daily_log_path(temp_dir)
-            entries = [
-                json.loads(line)
-                for line in log_path.read_text(encoding="utf-8").splitlines()
-            ]
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
         self.assertEqual(first, "unsupported_qrcode")
         self.assertEqual(second, "unsupported_qrcode")
         self.assertEqual(mes_mock.await_count, 1)
-        self.assertEqual(
-            [entry["event"] for entry in entries].count("unsupported_rollcall_detected"),
-            1,
-        )
-        self.assertEqual(
-            [entry["event"] for entry in entries].count("rollcall_poll"),
-            2,
-        )
 
     async def test_check_rollcall_qrcode_teacher_assist_completes_and_marks_done(self) -> None:
         self.fake_server.rollcalls = [{"is_qrcode": True, "rollcall_id": 88, "type": "qrcode"}]

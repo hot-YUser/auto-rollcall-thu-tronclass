@@ -1283,50 +1283,6 @@ class TronHelpersTest(unittest.TestCase):
             tron.COOKIE_CACHE_RESTORED = original_cookie_restored
             shutil.rmtree(temp_dir, ignore_errors=True)
 
-    def test_log_writes_json_lines(self) -> None:
-        temp_dir = make_workspace_temp_dir()
-        try:
-            path = temp_dir / "events.jsonl"
-            success = tron.log(
-                event="rollcall_poll",
-                path=path,
-                counter=7,
-                status="ok",
-                url="https://example.com/api",
-                http_status=200,
-                rollcall_id=12,
-                rollcall_type="number",
-                message="done",
-                payload_excerpt={"hello": "world"},
-            )
-
-            self.assertTrue(success)
-            lines = path.read_text(encoding="utf-8").splitlines()
-        finally:
-            shutil.rmtree(temp_dir, ignore_errors=True)
-
-        self.assertEqual(len(lines), 1)
-        payload = json.loads(lines[0])
-        self.assertEqual(payload["event"], "rollcall_poll")
-        self.assertEqual(payload["counter"], 7)
-        self.assertEqual(payload["http_status"], 200)
-        self.assertEqual(payload["rollcall_id"], 12)
-        self.assertEqual(payload["rollcall_type"], "number")
-        self.assertIn("timestamp", payload)
-        self.assertIn("payload_excerpt", payload)
-
-    def test_log_does_not_write_when_disabled(self) -> None:
-        tron.CONFIG["config"]["enable_log"] = False
-        temp_dir = make_workspace_temp_dir()
-        try:
-            path = temp_dir / "events.jsonl"
-            success = tron.log(event="network_error", path=path, message="skip")
-
-            self.assertFalse(success)
-            self.assertFalse(path.exists())
-        finally:
-            shutil.rmtree(temp_dir, ignore_errors=True)
-
     def test_bootstrap_config_recovers_from_broken_yaml_and_rewrites_default(self) -> None:
         temp_dir = make_workspace_temp_dir()
         try:
@@ -1386,7 +1342,6 @@ class TronHelpersTest(unittest.TestCase):
 
         with (
             patch.object(tron, "log_print") as log_print,
-            patch.object(tron, "log", return_value=True) as log_mock,
             patch("asyncio.run", side_effect=fake_asyncio_run) as asyncio_run,
             patch.object(tron.time, "monotonic", side_effect=[1000.0, 1001.0]),
         ):
@@ -1403,7 +1358,6 @@ class TronHelpersTest(unittest.TestCase):
                 tron.report_fatal_exception(exc, 2)
 
         self.assertEqual(asyncio_run.call_count, 1)
-        self.assertEqual(log_mock.call_count, 2)
         self.assertEqual(log_print.call_count, 2)
 
 

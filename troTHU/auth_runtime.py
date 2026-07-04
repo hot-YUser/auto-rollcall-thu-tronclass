@@ -73,7 +73,6 @@ def is_ssl_certificate_verification_error(exc: BaseException) -> bool:
 def enable_insecure_ssl_fallback(exc: BaseException) -> bool:
     ctx.CONFIG.setdefault('config', {})['verify_ssl'] = False
     saved = ctx.save_config()
-    ctx.log(event='tls_verification_fallback', status='enabled', message='偵測到 TLS 憑證鏈驗證失敗，已停用 config.verify_ssl 並準備重試。', error=exc, extra={'config_saved': saved})
     if saved:
         ctx.log_print('偵測到 TLS 憑證鏈驗證失敗，已自動將 config.verify_ssl 改成 false，正在重試登入。')
     else:
@@ -282,8 +281,8 @@ def _finalize_browser_cookies(
         active_profile = ctx.get_active_profile(ctx.CONFIG)
         if ctx.cookie_cache_enabled(ctx.CONFIG):
             ctx.save_session_cookies(session, ctx.BASE_DIR, active_profile.name)
-    except Exception as exc:
-        ctx.log(event='session_cookie_cache', status='failed', message='Browser-assisted login succeeded, but cookie cache save failed.', error=exc)
+    except Exception:
+        pass
     return ctx.LoginResult(status='success', credential_source='{}:{}'.format(label_prefix, credential_source), user=user, final_url=final_url)
 
 
@@ -421,7 +420,6 @@ async def interactive_browser_login(
             # Cookie arrived via the cache (manual import / external login). It's already
             # in the jar and the cache file; just confirm success.
             ctx.CONFIG['account']['user'] = user
-            ctx.log(event='login_success', status='success', url=final_url, message='偵測到外部匯入的 Cookie，登入成功。', extra={'credential_source': credential_source, 'user': user})
             ctx.log_print('偵測到可用的 Cookie，登入成功！綁定帳號：{}'.format(user))
             return ctx.LoginResult(status='success', credential_source='manual_cookie:{}'.format(credential_source), user=user, final_url=final_url)
 
@@ -531,7 +529,6 @@ async def _browser_or_passive(
         if not result.ok:
             ctx.log_print(ctx.login_failure_message(result))
         return ctx.record_login_runtime(result)
-    ctx.log(event='login_failure', status=status, message='自動登入未成功；無人值守模式改為持續偵測 Cookie 並退避重試。', error=error, extra={'credential_source': credential_source, 'user': user})
     ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status=status, credential_source=credential_source, user=user, error=ctx.normalize_text(error) if error else '')
     ctx.log_print(ctx.login_failure_message(ctx.LAST_LOGIN_RESULT))
     return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
@@ -554,18 +551,11 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
                 result = ctx.LoginResult(status='success', credential_source='interactive_browser', user=active_profile.user)
                 ctx.LAST_LOGIN_RESULT = result
                 return ctx.record_login_runtime(result)
-            except (ctx.TronHttpError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError, ctx.ssl.SSLError) as exc:
+            except (ctx.TronHttpError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError, ctx.ssl.SSLError):
                 try:
                     session.cookie_jar.clear()
                 except Exception:
                     pass
-                ctx.log(
-                    event='login_failure',
-                    status='missing_session',
-                    message='Interactive browser cached cookie API session validation failed.',
-                    error=exc,
-                    extra={'provider': ctx.get_active_provider_key(), 'user': active_profile.user},
-                )
                 ctx.log_print('互動瀏覽器快取 Cookie API 驗證失敗，需要重新登入。')
         result = await ctx.interactive_browser_login(session, user=active_profile.user, credential_source='config')
         ctx.LAST_LOGIN_RESULT = result
@@ -574,13 +564,11 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
         return ctx.record_login_runtime(result)
     user, passwd, credential_source = ctx.resolve_credentials()
     if not ctx.has_real_credential(user) or not ctx.has_real_credential(passwd):
-        ctx.log(event='login_failure', status='missing_credentials', message='尚未設定可用帳號密碼。', extra={'credential_source': credential_source})
         ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='missing_credentials', credential_source=credential_source)
         ctx.log_print(ctx.login_failure_message(ctx.LAST_LOGIN_RESULT))
         return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
     ctx.IS_LOGGING_IN = True
     ctx.log_print('嘗試使用帳密自動登入...')
-    ctx.log(event='login_attempt', status='started', message='嘗試登入 TronClass。', extra={'credential_source': credential_source, 'user': user})
     ssl_fallback_attempted = False
     # Feature-detected SSO discovery (no per-school gate): GET the homepage and, if its
     # orgSettings.loginSettings carries a campus-SSO (kc_idp_hint) URL, prefer it over
@@ -605,7 +593,6 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
                 # federated SSO). Last resort: interactive browser when there's a user,
                 # else passive cookie polling. login_settings_url, when set, is the
                 # campus-SSO URL the browser should open.
-                ctx.log(event='login_failure', status='login_page_changed', message='登入頁結構與預期不符；改用最後備案（手動瀏覽器登入／持續偵測 Cookie）。', error=exc, extra={'credential_source': credential_source, 'user': user})
                 return await _browser_or_passive(
                     session, user=user, credential_source=credential_source,
                     status='login_page_changed', error=exc, login_url_override=login_settings_url,
@@ -614,7 +601,6 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
                 # Wrong account / password / captcha — a browser login would only repeat the
                 # same rejection, so never auto-open one. Cookie detection stays on, so a
                 # manually-imported cookie can still take over.
-                ctx.log(event='login_failure', status='rejected', message='登入失敗，帳號密碼被拒絕。', error=exc, extra={'credential_source': credential_source, 'user': user})
                 ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='rejected', credential_source=credential_source, user=user, error=ctx.normalize_text(exc))
                 ctx.log_print(ctx.login_failure_message(ctx.LAST_LOGIN_RESULT))
                 return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
@@ -625,12 +611,10 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
                     continue
                 # Network/HTTP/timeout — transient, resolves by waiting; auto-retry with
                 # backoff (a browser can't fix a network problem). Cookie polling continues.
-                ctx.log(event='login_failure', status='transient_error', message='登入過程發生錯誤。', error=exc, extra={'credential_source': credential_source, 'user': user})
                 ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='transient_error', credential_source=credential_source, user=user, error=ctx.normalize_text(exc))
                 ctx.log_print(ctx.login_failure_message(ctx.LAST_LOGIN_RESULT))
                 return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
             if not outcome.has_session or not ctx.has_session_cookie(session):
-                ctx.log(event='login_failure', status='missing_session', url=outcome.final_url, message='登入流程完成，但未取得有效 session；改用最後備案。', extra={'credential_source': credential_source, 'user': user})
                 return await _browser_or_passive(
                     session, user=user, credential_source=credential_source,
                     status='missing_session', login_url_override=login_settings_url,
@@ -645,34 +629,24 @@ async def login(session: ctx.aiohttp.ClientSession, *, research_context: bool=Fa
                         pass
                     # Logged in but the session failed validation (flow changed). Structural
                     # → last resort: interactive browser, or passive cookie polling.
-                    ctx.log(
-                        event='login_failure',
-                        status='missing_session',
-                        url=outcome.final_url,
-                        message='登入流程完成，但 API session 驗證失敗；改用最後備案。',
-                        error=exc,
-                        extra={'credential_source': credential_source, 'user': user},
-                    )
                     return await _browser_or_passive(
                         session, user=user, credential_source=credential_source,
                         status='missing_session', error=exc, login_url_override=login_settings_url,
                     )
             ctx.CONFIG['account']['user'] = user
-            ctx.log(event='login_success', status='success', url=outcome.final_url, message='登入成功。', extra={'credential_source': credential_source, 'user': user})
             ctx.log_print('登入成功！綁定帳號：{}'.format(user))
             try:
                 active_profile = ctx.get_active_profile(ctx.CONFIG)
                 if ctx.cookie_cache_enabled(ctx.CONFIG):
                     ctx.save_session_cookies(session, ctx.BASE_DIR, active_profile.name)
-            except Exception as exc:
-                ctx.log(event='session_cookie_cache', status='failed', message='登入成功，但 cookie 快取保存失敗。', error=exc)
+            except Exception:
+                pass
             ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='success', credential_source=credential_source, user=user, final_url=outcome.final_url)
             return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
     except Exception as exc:
         # Catch-all so an unexpected error still yields a clear, classified result
         # (auto-retry with backoff) instead of escaping to the fatal-restart path
         # with no user-facing explanation. ponytail: one net, not per-exception.
-        ctx.log(event='login_failure', status='error', message='登入時發生未預期的錯誤。', error=exc, extra={'credential_source': credential_source, 'user': user})
         ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status='error', credential_source=credential_source, user=user, error=ctx.normalize_text(exc))
         ctx.log_print(ctx.login_failure_message(ctx.LAST_LOGIN_RESULT))
         return ctx.record_login_runtime(ctx.LAST_LOGIN_RESULT)
