@@ -261,6 +261,125 @@ def _maybe_research_crawl(session: ctx.Any, poll: ctx.Dict[str, ctx.Any]) -> Non
         return
 
 
+# rollcall_id -> the background Task handling that rollcall's whole lifecycle (dispatch dedup).
+_INFLIGHT_ROLLCALLS: ctx.Dict[str, ctx.Any] = {}
+
+
+def reset_rollcall_dispatch() -> None:
+    """Forget stale in-flight rollcall handlers (per run: a crash+restart makes a new event loop)."""
+    _INFLIGHT_ROLLCALLS.clear()
+
+
+def _cancel_inflight_rollcalls() -> None:
+    """Cancel every live rollcall handler (going to standby / shutdown). Each handler's finally stops
+    its teacher QR + logs the final rate; the cancellation is scheduled and runs on the next tick."""
+    for task in list(_INFLIGHT_ROLLCALLS.values()):
+        if not task.done():
+            task.cancel()
+
+
+async def handle_rollcall(
+    session: ctx.Any,
+    poll: ctx.Dict[str, ctx.Any],
+    rollcall_id: str,
+    rollcall_type: str,
+    *,
+    ignore_attendance_rate_gate: ctx.Optional[bool],
+    shutdown_event: ctx.asyncio.Event,
+) -> None:
+    """Own ONE rollcall's full lifecycle as a background task so the poll loop never blocks:
+    QR one-shots (announce + teacher-assist pre-create) -> wait the 15% attendance gate (re-polling
+    on its own) -> submit via handle_rollcall_decision (which verifies on_call_fine) -> keep polling
+    until the rollcall closes -> log its final rate + stop any teacher QR. Deduped by rollcall_id;
+    the handler owns the rollcall status-line segment. Never raises into the loop.
+    """
+    detected_at = ctx.time.monotonic()
+    start_announced = False
+    qr_prepare_attempted = False
+    submitted = False
+    logged_keys: set[str] = set()
+    unsupported_msg = ctx.normalize_text(poll.get('message')) or \
+        '偵測到 QR 點名；請用 tron qr paste 手動貼上當下 QR 內容（教師輔助是目前唯一能自動的路徑）。'
+    try:
+        while not shutdown_event.is_set():
+            status_msg = ctx.normalize_text(poll.get('status'))
+            fresh_id = _poll_rollcall_id(poll)
+            if status_msg == 'not_call' or (fresh_id and fresh_id != rollcall_id):
+                break  # this rollcall closed / a different one appeared -> done
+            if status_msg != 'on_call_fine' and rollcall_type == 'qrcode' and not start_announced:
+                start_announced = True
+                await ctx.announce_rollcall_start(
+                    ctx.AttendanceType.QRCODE, rollcall_id,
+                    detail='教師輔助準備中；送出前等待簽到率 >= {:.1f}%。'.format(ATTENDANCE_RATE_GATE_PERCENT),
+                    event='qrcode_rollcall_started', counter=ctx.cnt,
+                    url=ctx.normalize_text(poll.get('url')), http_status=poll.get('http_status'),
+                    payload_excerpt=poll.get('rollcall'))
+            if status_msg != 'on_call_fine' and rollcall_type == 'qrcode' and not qr_prepare_attempted:
+                qr_prepare_attempted = True
+                if ctx.teacher_assist_configured(ctx.CONFIG):
+                    prepare_result = await ctx.prepare_teacher_assisted_qr(poll.get('rollcall'))
+                    if not prepare_result.get('ok'):
+                        await ctx.maybe_notify_unsupported_rollcall(status_msg, poll.get('rollcall') or {}, unsupported_msg, rollcall_type)
+                else:
+                    await ctx.maybe_notify_unsupported_rollcall(status_msg, poll.get('rollcall') or {}, unsupported_msg, rollcall_type)
+            progress = await _fetch_monitor_rollcall_progress(session, rollcall_id)
+            ignore_gate = ctx.get_ignore_attendance_rate_gate(ignore_attendance_rate_gate)
+            gate_passed = _attendance_rate_gate_passed(progress, ignore_gate=ignore_gate)
+            if progress.get('ok'):
+                detail = progress.get('attendance_rate_text') or ctx.format_attendance_rate_text(rollcall_id, progress)
+                if status_msg == 'on_call_fine':
+                    pass
+                elif ignore_gate:
+                    detail = '{}；已忽略 15% 門檻'.format(detail)
+                elif not gate_passed:
+                    detail = '{}；等待 >= {:.1f}%'.format(detail, ATTENDANCE_RATE_GATE_PERCENT)
+                rollcall_status = progress.get('monitor_status') or ('on_call_fine' if status_msg == 'on_call_fine' else '')
+            else:
+                detail = '點名 #{} 簽到率未知'.format(rollcall_id)
+                if ignore_gate:
+                    detail += '；已忽略 15% 門檻'
+                rollcall_status = 'on_call_fine' if status_msg == 'on_call_fine' else ''
+            legacy_detail = _format_monitor_legacy_detail(detail, rollcall_status)
+            _update_monitor_status(detail=detail, rollcall_status=rollcall_status, redraw=False,
+                                   legacy_message='第 {} 次檢查: {}'.format(ctx.cnt, legacy_detail))
+            if gate_passed and status_msg != 'on_call_fine' and not submitted:
+                submitted = True
+                gate_detail = _format_gate_start_detail(rollcall_id, rollcall_type, progress, ignore_gate=ignore_gate)
+                await ctx.handle_rollcall_decision(session, poll, cnt=ctx.cnt, use_prepared_qr=True, gate_detail=gate_detail)
+            elapsed = max(0.0, ctx.time.monotonic() - detected_at)
+            delay = ROLLCALL_FAST_POLL_SECONDS if elapsed < ROLLCALL_FAST_WINDOW_SECONDS else ROLLCALL_ACTIVE_POLL_SECONDS
+            await sleep_or_shutdown(shutdown_event, delay)
+            poll = await ctx.poll_rollcall_decision(session, ctx.cnt)
+    except ctx.UnauthorizedError:
+        return  # the loop owns re-auth; release and let the next detection re-dispatch
+    except Exception:
+        return
+    finally:
+        try:
+            await _log_final_attendance_rate_on_close(session, rollcall_id, rollcall_type, counter=ctx.cnt, logged_keys=logged_keys)
+            if rollcall_type == 'qrcode':
+                await ctx.stop_prepared_teacher_qr(rollcall_id)
+        except Exception:
+            pass
+        ctx.clear_rollcall_progress()
+        ctx.update_monitor_status(rollcall_status='', redraw=False)
+        _INFLIGHT_ROLLCALLS.pop(rollcall_id, None)
+
+
+def _dispatch_rollcall(session: ctx.Any, poll: ctx.Dict[str, ctx.Any], rollcall_id: str,
+                       rollcall_type: str, ignore_attendance_rate_gate: ctx.Optional[bool],
+                       shutdown_event: ctx.asyncio.Event) -> None:
+    """Spawn handle_rollcall unless this rollcall is already being handled. Synchronous
+    check->create_task->register (no await between) so a second poll cannot double-dispatch it."""
+    if not rollcall_id or rollcall_id in _INFLIGHT_ROLLCALLS:
+        return
+    task = ctx.asyncio.create_task(handle_rollcall(
+        session, poll, rollcall_id, rollcall_type,
+        ignore_attendance_rate_gate=ignore_attendance_rate_gate, shutdown_event=shutdown_event))
+    _INFLIGHT_ROLLCALLS[rollcall_id] = task
+    task.add_done_callback(lambda _t: _INFLIGHT_ROLLCALLS.pop(rollcall_id, None))
+
+
 async def monitor_loop(
     session: ctx.aiohttp.ClientSession,
     shutdown_event: ctx.asyncio.Event,
@@ -272,14 +391,9 @@ async def monitor_loop(
     next_login_retry_at = 0.0
     next_runtime_heartbeat = 0.0
     unauth_notice_state = ''
-    active_rollcall_id = ''
-    active_rollcall_type = ''
-    active_detected_at = 0.0
-    active_start_announced: set[str] = set()
-    active_qr_prepare_attempted: set[str] = set()
-    final_attendance_rate_logged: set[str] = set()
     monitoring_started_at = 0.0
     startup_rollcall_flow_completed = False
+    reset_rollcall_dispatch()
     ctx.record_monitor_runtime('running')
     ctx.reset_monitor_status()
     ctx.update_monitor_status(target_label=ctx.group_status_label(ctx.CONFIG), redraw=False)
@@ -374,13 +488,7 @@ async def monitor_loop(
         schedule_ranges = schedule.get('ranges', schedule.get('range'))
         current_time = configured_now.time()
         if not schedule.get('enable', False):
-            if active_rollcall_type == 'qrcode' and active_rollcall_id:
-                await ctx.stop_prepared_teacher_qr(active_rollcall_id)
-            active_rollcall_id = ''
-            active_rollcall_type = ''
-            active_detected_at = 0.0
-            active_start_announced.clear()
-            active_qr_prepare_attempted.clear()
+            _cancel_inflight_rollcalls()
             ctx.clear_rollcall_progress()
             _update_monitor_status(
                 phase='standby',
@@ -403,13 +511,7 @@ async def monitor_loop(
                 text = '今日課程結束，進入休眠...\n'
                 ctx.log_print(text)
                 await ctx.mes(text)
-            if active_rollcall_type == 'qrcode' and active_rollcall_id:
-                await ctx.stop_prepared_teacher_qr(active_rollcall_id)
-            active_rollcall_id = ''
-            active_rollcall_type = ''
-            active_detected_at = 0.0
-            active_start_announced.clear()
-            active_qr_prepare_attempted.clear()
+            _cancel_inflight_rollcalls()
             ctx.clear_rollcall_progress()
             _update_monitor_status(
                 phase='standby',
@@ -425,190 +527,60 @@ async def monitor_loop(
         next_poll_delay = ctx.get_poll_interval()
         try:
             poll = await ctx.poll_rollcall_decision(session, ctx.cnt)
-            await ctx.autoanswer_tick(session)  # v1.7 auto-answer; self-contained, never raises
+            await ctx.autoanswer_tick(session)  # v1.7 auto-answer; dispatches, never blocks the loop
             if ctx.CRAWLER_ENABLED:
                 _maybe_research_crawl(session, poll)  # research mode; self-contained, never raises
             error_cnt = 0
             status_msg = ctx.normalize_text(poll.get('status'))
             rollcall_id = _poll_rollcall_id(poll)
             rollcall_type = _poll_attendance_type(poll)
-            now_monotonic = ctx.time.monotonic()
 
-            if active_rollcall_id and (status_msg == 'not_call' or (rollcall_id and rollcall_id != active_rollcall_id)):
-                await _log_final_attendance_rate_on_close(
-                    session,
-                    active_rollcall_id,
-                    active_rollcall_type,
-                    counter=ctx.cnt,
-                    logged_keys=final_attendance_rate_logged,
-                )
+            if (_is_active_rollcall_status(status_msg) or status_msg == 'on_call_fine') and rollcall_id:
+                # DISPATCH the whole rollcall lifecycle to a background handler (deduped by id). The
+                # handler owns the 15% gate wait / QR pre-create / submit / verify / close-detection /
+                # final-rate log / rollcall status segment — so this poll loop keeps polling and is
+                # NEVER blocked by rollcall handling (mirrors the auto-answer dispatch).
                 startup_rollcall_flow_completed = True
-                if active_rollcall_type == 'qrcode':
-                    await ctx.stop_prepared_teacher_qr(active_rollcall_id)
-                active_rollcall_id = ''
-                active_rollcall_type = ''
-                active_detected_at = 0.0
-                active_start_announced.clear()
-                active_qr_prepare_attempted.clear()
-
-            monitor_rollcall_id = rollcall_id
-            monitor_rollcall_type = rollcall_type
-            if status_msg == 'on_call_fine':
-                monitor_rollcall_id = monitor_rollcall_id or active_rollcall_id
-                monitor_rollcall_type = monitor_rollcall_type or active_rollcall_type
-
-            if (_is_active_rollcall_status(status_msg) or status_msg == 'on_call_fine') and monitor_rollcall_id:
-                if monitor_rollcall_id != active_rollcall_id:
-                    active_rollcall_id = monitor_rollcall_id
-                    active_rollcall_type = monitor_rollcall_type
-                    active_detected_at = now_monotonic
-                    ctx.clear_rollcall_progress()
-                elif monitor_rollcall_type and not active_rollcall_type:
-                    active_rollcall_type = monitor_rollcall_type
-                active_elapsed = max(0.0, now_monotonic - active_detected_at)
-                next_poll_delay = ROLLCALL_FAST_POLL_SECONDS if active_elapsed < ROLLCALL_FAST_WINDOW_SECONDS else ROLLCALL_ACTIVE_POLL_SECONDS
-
-                if status_msg != 'on_call_fine' and monitor_rollcall_type == 'qrcode' and monitor_rollcall_id not in active_start_announced:
-                    await ctx.announce_rollcall_start(
-                        ctx.AttendanceType.QRCODE,
-                        monitor_rollcall_id,
-                        detail='教師輔助準備中；送出前等待簽到率 >= {:.1f}%。'.format(ATTENDANCE_RATE_GATE_PERCENT),
-                        event='qrcode_rollcall_started',
-                        counter=ctx.cnt,
-                        url=ctx.normalize_text(poll.get('url')),
-                        http_status=poll.get('http_status'),
-                        payload_excerpt=poll.get('rollcall'),
-                    )
-                    active_start_announced.add(monitor_rollcall_id)
-
-                if status_msg != 'on_call_fine' and monitor_rollcall_type == 'qrcode' and monitor_rollcall_id not in active_qr_prepare_attempted:
-                    active_qr_prepare_attempted.add(monitor_rollcall_id)
-                    if ctx.teacher_assist_configured(ctx.CONFIG):
-                        prepare_result = await ctx.prepare_teacher_assisted_qr(poll.get('rollcall'))
-                        if not prepare_result.get('ok'):
-                            await ctx.maybe_notify_unsupported_rollcall(
-                                status_msg,
-                                poll.get('rollcall') or {},
-                                poll.get('message') or '偵測到 QR 點名；請用 tron qr paste 手動貼上當下 QR 內容（教師輔助是目前唯一能自動的路徑）。',
-                                rollcall_type,
-                            )
-                    else:
-                        await ctx.maybe_notify_unsupported_rollcall(
-                            status_msg,
-                            poll.get('rollcall') or {},
-                            poll.get('message') or '偵測到 QR 點名；請用 tron qr paste 手動貼上當下 QR 內容（教師輔助是目前唯一能自動的路徑）。',
-                            rollcall_type,
-                        )
-
-                progress = await _fetch_monitor_rollcall_progress(session, monitor_rollcall_id)
-                ignore_gate = ctx.get_ignore_attendance_rate_gate(ignore_attendance_rate_gate)
-                gate_passed = _attendance_rate_gate_passed(progress, ignore_gate=ignore_gate)
-                pre_flow_status_updated = False
-                pre_flow_legacy_detail = ''
-                if progress.get('ok'):
-                    detail = progress.get('attendance_rate_text') or ctx.format_attendance_rate_text(monitor_rollcall_id, progress)
-                    if status_msg == 'on_call_fine':
-                        pass
-                    elif ignore_gate:
-                        detail = '{}；已忽略 15% 門檻'.format(detail)
-                    elif not gate_passed:
-                        detail = '{}；等待 >= {:.1f}%'.format(detail, ATTENDANCE_RATE_GATE_PERCENT)
-                    rollcall_status = progress.get('monitor_status') or ('on_call_fine' if status_msg == 'on_call_fine' else '')
+                _dispatch_rollcall(session, poll, rollcall_id, rollcall_type,
+                                   ignore_attendance_rate_gate, shutdown_event)
+                next_poll_delay = ROLLCALL_ACTIVE_POLL_SECONDS
+                _update_monitor_status(phase='monitoring', check_count=ctx.cnt,
+                                       next_switch_at=next_switch, redraw=False)
+            else:
+                if status_msg == 'not_call':
+                    ctx.reset_unsupported_rollcall_state()
+                    detail = '目前無點名'
+                    rollcall_status = ''
+                    next_poll_delay = _idle_poll_delay(monitoring_started_at, startup_rollcall_flow_completed)
+                elif status_msg in {'unsupported_radar', 'unsupported_qrcode', 'unsupported_rollcall'}:
+                    detail = {
+                        'unsupported_radar': '發現未支援的 radar 點名',
+                        'unsupported_qrcode': '發現 QR Code 點名，等待手動 QR 內容',
+                        'unsupported_rollcall': '發現未支援的點名類型',
+                    }[status_msg]
+                    rollcall_status = ''
+                    next_poll_delay = _idle_poll_delay(monitoring_started_at, startup_rollcall_flow_completed)
+                    await ctx.handle_rollcall_decision(session, poll, cnt=ctx.cnt)  # cheap notify (no LLM)
                 else:
-                    detail = '點名 #{} 簽到率未知'.format(monitor_rollcall_id)
-                    if ignore_gate:
-                        detail += '；已忽略 15% 門檻'
-                    rollcall_status = 'on_call_fine' if status_msg == 'on_call_fine' else ''
-
-                if gate_passed and status_msg != 'on_call_fine':
-                    pre_flow_legacy_detail = _format_monitor_legacy_detail(detail, rollcall_status)
+                    detail = status_msg
+                    rollcall_status = ''
+                    next_poll_delay = _idle_poll_delay(monitoring_started_at, startup_rollcall_flow_completed)
+                if _INFLIGHT_ROLLCALLS:
+                    # A rollcall handler is live and owns the status segment — don't clobber it.
+                    _update_monitor_status(phase='monitoring', check_count=ctx.cnt,
+                                           next_switch_at=next_switch, redraw=False)
+                else:
+                    if status_msg == 'not_call':
+                        ctx.clear_rollcall_progress()
+                    legacy_detail = _format_monitor_legacy_detail(detail, rollcall_status)
                     _update_monitor_status(
                         phase='monitoring',
                         check_count=ctx.cnt,
                         detail=detail,
                         rollcall_status=rollcall_status,
                         next_switch_at=next_switch,
-                        legacy_message='第 {} 次檢查: {}'.format(ctx.cnt, pre_flow_legacy_detail),
+                        legacy_message='第 {} 次檢查: {}'.format(ctx.cnt, legacy_detail),
                     )
-                    pre_flow_status_updated = True
-                    gate_detail = _format_gate_start_detail(
-                        monitor_rollcall_id,
-                        monitor_rollcall_type,
-                        progress,
-                        ignore_gate=ignore_gate,
-                    )
-                    status_msg = await ctx.handle_rollcall_decision(
-                        session,
-                        poll,
-                        cnt=ctx.cnt,
-                        use_prepared_qr=True,
-                        gate_detail=gate_detail,
-                    )
-                    if status_msg == 'radar_failed':
-                        detail = '雷達點名處理失敗，下一輪會再檢查'
-                        rollcall_status = ''
-                    elif status_msg in {'is_qrcode', 'is_number', 'is_radar', 'is_self_registration'} and not progress.get('ok'):
-                        progress_after = ctx.LAST_ROLLCALL_PROGRESS if isinstance(ctx.LAST_ROLLCALL_PROGRESS, dict) else {}
-                        if progress_after.get('detail'):
-                            detail = progress_after.get('detail')
-                            rollcall_status = progress_after.get('status') or rollcall_status
-                        else:
-                            detail = {
-                                'is_qrcode': 'QR 點名已透過教師帳號完成',
-                                'is_number': '數字點名已觸發',
-                                'is_radar': '雷達點名已觸發',
-                                'is_self_registration': '自主報到已完成',
-                            }.get(status_msg, detail)
-                legacy_detail = _format_monitor_legacy_detail(detail, rollcall_status)
-                legacy_message = '第 {} 次檢查: {}'.format(ctx.cnt, legacy_detail)
-                if pre_flow_status_updated and legacy_detail == pre_flow_legacy_detail:
-                    legacy_message = None
-                _update_monitor_status(
-                    phase='monitoring',
-                    check_count=ctx.cnt,
-                    detail=detail,
-                    rollcall_status=rollcall_status,
-                    next_switch_at=next_switch,
-                    legacy_message=legacy_message,
-                )
-            else:
-                if status_msg == 'not_call':
-                    ctx.reset_unsupported_rollcall_state()
-                    ctx.clear_rollcall_progress()
-                    detail = '目前無點名'
-                    rollcall_status = ''
-                    next_poll_delay = _idle_poll_delay(monitoring_started_at, startup_rollcall_flow_completed)
-                elif status_msg == 'unsupported_radar':
-                    ctx.clear_rollcall_progress()
-                    detail = '發現未支援的 radar 點名'
-                    rollcall_status = ''
-                    await ctx.handle_rollcall_decision(session, poll, cnt=ctx.cnt)
-                elif status_msg == 'unsupported_qrcode':
-                    ctx.clear_rollcall_progress()
-                    detail = '發現 QR Code 點名，等待手動 QR 內容'
-                    rollcall_status = ''
-                    await ctx.handle_rollcall_decision(session, poll, cnt=ctx.cnt)
-                elif status_msg == 'unsupported_rollcall':
-                    ctx.clear_rollcall_progress()
-                    detail = '發現未支援的點名類型'
-                    rollcall_status = ''
-                    await ctx.handle_rollcall_decision(session, poll, cnt=ctx.cnt)
-                elif status_msg == 'on_call_fine':
-                    detail = 'on_call_fine'
-                    rollcall_status = 'on_call_fine'
-                    next_poll_delay = ROLLCALL_ACTIVE_POLL_SECONDS
-                else:
-                    detail = status_msg
-                    rollcall_status = ''
-                legacy_detail = _format_monitor_legacy_detail(detail, rollcall_status)
-                _update_monitor_status(
-                    phase='monitoring',
-                    check_count=ctx.cnt,
-                    detail=detail,
-                    rollcall_status=rollcall_status,
-                    next_switch_at=next_switch,
-                    legacy_message='第 {} 次檢查: {}'.format(ctx.cnt, legacy_detail),
-                )
         except ctx.UnauthorizedError:
             ctx.record_runtime_error('unauthorized', 'Cookie expired; reauth required.')
             ctx.log_print('Cookie 已過期，正在重新自動登入...')
