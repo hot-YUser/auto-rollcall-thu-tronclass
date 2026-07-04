@@ -468,27 +468,34 @@ async def _resubmit_exam_with_correct(
     (fill/cloze blanks) and `answer` (short-answer text) — but NOT parent_id, and nothing at
     all for un-leaked types. So we OVERLAY the leak onto the first-pass answers (which already
     carry parent_id/blanks for matching/fill) instead of rebuilding the paper from the review
-    alone — otherwise non-choice subjects would be wiped to empty and score 0 on resubmit."""
+    alone — otherwise non-choice subjects would be wiped to empty and score 0 on resubmit.
+
+    A leaked `answer_option_ids` is applied ONLY when every id is a real option of that subject
+    (validated against the freshly re-fetched paper). Normal exams always leak in-block ids, so a
+    genuinely-correct pick — including one that fixes a wrong first pass — is overlaid; but a
+    scrambled/edited matching exam can leak a "correct" id from a DIFFERENT sub's block, which
+    scores 0 and renders as (空) (live-confirmed on exam 32835), so that cross-block id is rejected
+    and the first pass kept."""
     review = await client.request_json(
         "GET", client.api_url("/api/exams/{}/submissions/{}".format(activity.activity_id, submission_id)),
         expected_status=(200,))
     correct = (review or {}).get("correct_answers_data", {}).get("correct_answers") or []
     if not correct:
         return None
+    # Re-fetch the paper up front: its per-subject option sets validate the leaked ids below, and we
+    # need fresh_activity for the resubmit POST regardless.
+    fresh_activity, questions = await _fetch_distribute(client, activity, "exams")
+    options_by_sid: Dict[int, set] = {q.subject_id: {o.id for o in q.options} for q in questions if q.options}
     by_id: Dict[int, Answer] = {a.subject_id: a for a in prior_answers}
     for c in correct:
         if not isinstance(c, dict):
             continue
         sid = _as_int(c.get("subject_id"))
         base = by_id.get(sid)
-        # Matching subs (parent_id set — the ONLY type parse tags, answer_flow.py parse_questions)
-        # KEEP their first-pass answer. TronClass stores each (left,right) pair as an independent
-        # per-sub option id, but the review leaks a "correct" id from a DIFFERENT sub's block, so
-        # overlaying it scores 0 AND renders as (空) — live-confirmed on exam 32835. The first pass
-        # already carries the correct in-block id + parent_id and scores full, so leave it alone.
-        if base is not None and base.parent_id:
-            continue
         option_ids = tuple(_as_int(o) for o in (c.get("answer_option_ids") or []))
+        valid = options_by_sid.get(sid)
+        if option_ids and valid and not set(option_ids).issubset(valid):
+            option_ids = ()  # cross-block leak (scrambled matching): ignore, fall back to first-pass
         blanks = tuple((_as_int(b.get("sort")), normalize_text(b.get("content")))
                        for b in (c.get("correct_answers") or []) if isinstance(b, dict))
         answer_text = normalize_text(c.get("answer"))
@@ -501,6 +508,5 @@ async def _resubmit_exam_with_correct(
             answer_type=base.answer_type if base else "",
         )
     corrected_answers = tuple(by_id.values())
-    fresh_activity, _questions = await _fetch_distribute(client, activity, "exams")
     resp = await _submit_exam(client, fresh_activity, corrected_answers)
     return resp, corrected_answers

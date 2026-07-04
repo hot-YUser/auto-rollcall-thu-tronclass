@@ -219,18 +219,23 @@ class SubmitTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_resubmit_overlays_correct_without_wiping_blanks(self):
         # Retake exam, answers announced. Review leaks the correct OPTION for the choice and the
-        # correct TEXT for the blank/short. Resubmit must keep the first-pass blanks/short and
-        # matching parent_id (review carries no parent_id), only overlaying what leaked — never
-        # rebuild the paper from the review alone (that wiped non-choice subjects to 0).
-        # MATCHING subs (parent_id set) are KEPT AS-IS: TronClass leaks a "correct" option id from a
-        # DIFFERENT sub's block, so overlaying it scores 0 + renders as (空) (live: exam 32835).
+        # correct TEXT for the blank/short. Resubmit keeps the first-pass blanks/short and matching
+        # parent_id (review carries no parent_id), only overlaying what leaked — never rebuild the
+        # paper from the review alone (that wiped non-choice subjects to 0). A leaked option id is
+        # applied ONLY if it's a real option of that subject: subject 3 (matching) leaks id 99 from a
+        # DIFFERENT sub's block (not in its own {50,51}) — rejected, first pass kept (else scores 0 +
+        # renders (空), live: exam 32835).
         review = {"correct_answers_data": {"correct_answers": [
-            {"subject_id": 1, "answer_option_ids": [12]},                       # choice: leaked id
+            {"subject_id": 1, "answer_option_ids": [12]},                       # choice: leaked in-block id
             {"subject_id": 2, "correct_answers": [{"sort": 0, "content": "天"}]},  # fill: leaked text
-            {"subject_id": 3, "answer_option_ids": [99]},                        # matching sub: cross-wired id
+            {"subject_id": 3, "answer_option_ids": [99]},                        # matching sub: cross-block id
             {"subject_id": 4},                                                   # short: nothing leaked
         ]}}
-        client = FakeClient({"/submissions/555": review, "/distribute": _PAPER})
+        paper = {"exam_paper_instance_id": 777, "subjects": [
+            {"id": 1, "type": "single_selection", "options": [{"id": 11, "content": "a"}, {"id": 12, "content": "b"}]},
+            {"id": 3, "type": "single_selection", "options": [{"id": 50, "content": "x"}, {"id": 51, "content": "y"}]},
+        ]}
+        client = FakeClient({"/submissions/555": review, "/distribute": paper})
         prior = (
             Answer(1, (11,), answer_type="single_selection"),
             Answer(2, blanks=((0, "X"),), answer_type="fill_in_blank"),
@@ -242,11 +247,26 @@ class SubmitTest(unittest.IsolatedAsyncioTestCase):
         # last call is the resubmit POST
         body = client.calls[-1][2]
         by_id = {s["subject_id"]: s for s in body["subjects"]}
-        self.assertEqual(by_id[1]["answer_option_ids"], [12])               # overlaid choice
+        self.assertEqual(by_id[1]["answer_option_ids"], [12])               # overlaid choice (in-block)
         self.assertEqual(by_id[2]["answers"], [{"sort": 0, "content": "天"}])  # overlaid blank, not wiped
-        self.assertEqual(by_id[3]["answer_option_ids"], [50])               # matching KEPT first-pass id, not [99]
+        self.assertEqual(by_id[3]["answer_option_ids"], [50])               # cross-block id rejected, first-pass kept
         self.assertEqual(by_id[3]["parent_id"], 7)                          # parent_id preserved
         self.assertEqual(by_id[4]["answer"], "my essay")                    # short kept (nothing leaked)
+
+    async def test_resubmit_corrects_matching_when_leaked_id_is_in_block(self):
+        # Normal matching whose LLM first pass was WRONG (picked 50): the review leaks the correct
+        # IN-BLOCK id (51) — a real option of the sub — so it IS overlaid and the pair is corrected.
+        review = {"correct_answers_data": {"correct_answers": [{"subject_id": 3, "answer_option_ids": [51]}]}}
+        paper = {"exam_paper_instance_id": 777, "subjects": [
+            {"id": 3, "type": "single_selection", "options": [{"id": 50, "content": "x"}, {"id": 51, "content": "y"}]}]}
+        client = FakeClient({"/submissions/555": review, "/distribute": paper})
+        prior = (Answer(3, (50,), parent_id=7, answer_type="matching"),)
+        await answer_flow._resubmit_exam_with_correct(
+            client, _act(ActivityType.EXAM, paper_instance_id=777), 555, prior)
+        body = client.calls[-1][2]
+        by_id = {s["subject_id"]: s for s in body["subjects"]}
+        self.assertEqual(by_id[3]["answer_option_ids"], [51])   # in-block correction applied
+        self.assertEqual(by_id[3]["parent_id"], 7)              # parent_id preserved
 
     async def test_submit_once_exam_does_not_resubmit(self):
         # 作答次數=1 exam: submit response has no allow_retake_exam -> the resubmit-for-correct
