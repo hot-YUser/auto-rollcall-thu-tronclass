@@ -165,11 +165,19 @@ class CanonicalRenderTest(unittest.TestCase):
         q = Question(subject_id=4, qtype=QuestionType.SHORT_ANSWER)
         self.assertEqual(format_answer_canonical(q, Answer(4, answer_text="巴黎")), "巴黎")
 
-    def test_paper_numbers_each_question(self):
+    def test_paper_groups_by_question_type(self):
+        # Different types -> one line each, labelled + numbered by paper position.
         q1 = Question(subject_id=1, qtype=QuestionType.SINGLE, options=self._opts("a", "b"))
         q2 = Question(subject_id=2, qtype=QuestionType.SHORT_ANSWER)
         out = format_paper_canonical([q1, q2], [Answer(1, (11,)), Answer(2, answer_text="x")])
-        self.assertEqual(out, "1. B\n2. x")
+        self.assertEqual(out, "單選：1. B\n簡答：2. x")
+
+    def test_paper_collapses_same_type_onto_one_line(self):
+        # Many questions of the SAME type collapse to a single line (anti-wall-of-text).
+        q1 = Question(subject_id=1, qtype=QuestionType.SINGLE, options=self._opts("a", "b"))
+        q2 = Question(subject_id=2, qtype=QuestionType.SINGLE, options=self._opts("a", "b"))
+        out = format_paper_canonical([q1, q2], [Answer(1, (11,)), Answer(2, (10,))])
+        self.assertEqual(out, "單選：1. B  2. A")
 
 
 if __name__ == "__main__":

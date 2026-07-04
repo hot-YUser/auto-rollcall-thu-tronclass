@@ -1,6 +1,6 @@
 from __future__ import annotations
 import re
-from typing import Any, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List, Tuple
 
 try:
     from troTHU.quiz_models import Answer, AnswerPlan, AnswerSource, Question, QuestionType
@@ -151,12 +151,32 @@ def format_answer_canonical(question: Question, answer: Answer) -> str:
     return normalize_text(answer.answer_text)
 
 
+# 題型 → 中文標籤（取自 README〈支援的題型〉），供 format_paper_canonical 分組顯示用。
+_QTYPE_LABEL_ZH = {
+    QuestionType.SINGLE: "單選",
+    QuestionType.MULTIPLE: "多選",
+    QuestionType.TRUE_FALSE: "是非",
+    QuestionType.FILL_BLANK: "填空",
+    QuestionType.SHORT_ANSWER: "簡答",
+    QuestionType.CLOZE: "克漏字",
+    QuestionType.MATCHING: "配對",
+    QuestionType.MEDIA: "題組",
+    QuestionType.ANALYSIS: "綜合",
+}
+
+
+def _qtype_label(qtype: QuestionType) -> str:
+    return _QTYPE_LABEL_ZH.get(qtype) or normalize_text(getattr(qtype, "value", qtype)) or "其他"
+
+
 def format_paper_canonical(questions: Iterable[Question], answers: Iterable[Answer]) -> str:
-    """One numbered line per question in canonical format, e.g. '1. B\\n2. A,C\\n3. 巴黎'."""
+    """One line PER QUESTION TYPE (題型) so many questions don't wall the console: same-type answers
+    across the whole paper collapse onto a single '題型：1. A  2. C' line (types in first-seen order,
+    each cell keeps its 1-based question number). e.g. '單選：1. B  2. A,C\\n簡答：3. 巴黎'."""
     by_id = {a.subject_id: a for a in answers}
-    lines: List[str] = []
+    groups: Dict[str, List[str]] = {}  # label -> ["1. B", "2. A,C"] in paper order
     for index, question in enumerate(questions, 1):
         answer = by_id.get(question.subject_id)
         rendered = format_answer_canonical(question, answer) if answer is not None else ""
-        lines.append("{}. {}".format(index, rendered or "(空)"))
-    return "\n".join(lines)
+        groups.setdefault(_qtype_label(question.qtype), []).append("{}. {}".format(index, rendered or "(空)"))
+    return "\n".join("{}：{}".format(label, "  ".join(cells)) for label, cells in groups.items())
