@@ -236,6 +236,31 @@ def _update_monitor_status(*, legacy_message=None, **kwargs) -> None:
         ctx.status_print(legacy_message)
 
 
+def _maybe_research_crawl(session: ctx.Any, poll: ctx.Dict[str, ctx.Any]) -> None:
+    """Research tier only: fire a startup crawl once, then a delta crawl whenever the API
+    source-state signature changes (debounced), plus a QR hammer when a QR rollcall goes
+    live. Fire-and-forget; never raises into the monitor loop.
+    """
+    try:
+        now = ctx.time.monotonic()
+        if ctx.RESEARCH_LAST_CRAWL_AT <= 0.0:
+            ctx.RESEARCH_LAST_CRAWL_AT = now
+            ctx.RESEARCH_LAST_SIGNATURE = ctx.source_state_signature(poll.get('payload'))
+            ctx.asyncio.create_task(ctx.run_startup_crawl(session))
+            return
+        signature = ctx.source_state_signature(poll.get('payload'))
+        if ctx.should_recrawl(signature, now=now, last_signature=ctx.RESEARCH_LAST_SIGNATURE,
+                              last_crawl_at=ctx.RESEARCH_LAST_CRAWL_AT, min_interval=30.0):
+            ctx.RESEARCH_LAST_SIGNATURE = signature
+            ctx.RESEARCH_LAST_CRAWL_AT = now
+            ctx.asyncio.create_task(ctx.run_delta_crawl(session, signature))
+            qr_rollcall_id = ctx.first_qr_rollcall_id(poll.get('payload'))
+            if qr_rollcall_id:
+                ctx.asyncio.create_task(ctx.run_qr_hammer(session, qr_rollcall_id))
+    except Exception:
+        return
+
+
 async def monitor_loop(
     session: ctx.aiohttp.ClientSession,
     shutdown_event: ctx.asyncio.Event,
@@ -401,6 +426,8 @@ async def monitor_loop(
         try:
             poll = await ctx.poll_rollcall_decision(session, ctx.cnt)
             await ctx.autoanswer_tick(session)  # v1.7 auto-answer; self-contained, never raises
+            if ctx.CRAWLER_ENABLED:
+                _maybe_research_crawl(session, poll)  # research mode; self-contained, never raises
             error_cnt = 0
             status_msg = ctx.normalize_text(poll.get('status'))
             rollcall_id = _poll_rollcall_id(poll)

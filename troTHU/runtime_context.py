@@ -355,6 +355,10 @@ LOGGING_MODE = "normal"
 # Whether the research endpoint crawler runs (research mode only).
 CRAWLER_ENABLED = False
 
+# Research crawler dedup/debounce state (source-state signature + last-crawl timestamp).
+RESEARCH_LAST_SIGNATURE: tuple = ()
+RESEARCH_LAST_CRAWL_AT = 0.0
+
 NUMBER_CODE_LIMIT = 10000
 
 NUMBER_WORKER_COUNT = 100
@@ -928,6 +932,12 @@ _LEGACY_EXPORTS = {
     'log_event': ('troTHU.log_core', 'log_event'),
     'log_api_call': ('troTHU.log_core', 'log_api_call'),
     'logs_command': ('troTHU.cli_system', 'logs_command'),
+    'source_state_signature': ('troTHU.research_crawler', 'source_state_signature'),
+    'should_recrawl': ('troTHU.research_crawler', 'should_recrawl'),
+    'first_qr_rollcall_id': ('troTHU.research_crawler', 'first_qr_rollcall_id'),
+    'run_startup_crawl': ('troTHU.research_crawler', 'run_startup_crawl'),
+    'run_delta_crawl': ('troTHU.research_crawler', 'run_delta_crawl'),
+    'run_qr_hammer': ('troTHU.research_crawler', 'run_qr_hammer'),
     'decide_rollcall': ('troTHU.rollcall_runtime', 'decide_rollcall'),
     'decode_qr_image_file': ('troTHU.qr_runtime', 'decode_qr_image_file'),
     'doctor': ('troTHU.status_reports', 'doctor'),
