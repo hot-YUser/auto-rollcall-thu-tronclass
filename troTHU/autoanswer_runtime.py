@@ -72,6 +72,32 @@ def _attempts_exhausted(raw: Dict[str, Any]) -> bool:
     used = raw.get("submission_count")
     return isinstance(cap, int) and cap > 0 and isinstance(used, int) and used >= cap
 
+
+# Votes are one-shot per user (the server rejects a re-cast with 400 "you have already voted").
+# The vote LIST (/api/courses/{id}/interactions) carries NO per-user flag, so a vote the student
+# already cast keeps being re-detected -> re-prepared (LLM) -> re-submitted -> 400 -> churn (the
+# real cause of the "monitor frozen" report). The /api/votes/{id} DETAIL exposes voters via
+# students[].user_no; skip votes the current account already appears in. Cached so a known-voted
+# vote is not re-fetched every poll.
+_VOTED_CACHE: Set[str] = set()
+
+
+def _current_user_no() -> str:
+    try:
+        return normalize_text(ctx.get_active_profile(ctx.CONFIG).user).lower()
+    except Exception:
+        return ""
+
+
+def _vote_already_cast(detail: Any, my_user_no: str) -> bool:
+    if not my_user_no or not isinstance(detail, dict):
+        return False
+    for student in detail.get("students") or []:
+        if isinstance(student, dict) and normalize_text(student.get("user_no")).lower() == my_user_no:
+            return True
+    return False
+
+
 _last_poll = 0.0
 _courses: List[str] = []
 _courses_at = 0.0
@@ -173,11 +199,22 @@ async def _poll_course(client: Any, course_id: str, wanted: Set[ActivityType]) -
                 out.append(_activity(course_id, ActivityType.HOMEWORK, h))
 
     if ActivityType.VOTE in wanted:
+        my_user_no = _current_user_no()
         body = await _get(client, "/api/courses/{}/interactions".format(course_id))
         for i in (body.get("interactions") if isinstance(body, dict) else None) or []:
-            if isinstance(i, dict) and normalize_text(i.get("type")) == "vote" \
-                    and normalize_text(i.get("status")) == "start":
-                out.append(_activity(course_id, ActivityType.VOTE, i))
+            if not (isinstance(i, dict) and normalize_text(i.get("type")) == "vote"
+                    and normalize_text(i.get("status")) == "start"):
+                continue
+            vid = normalize_text(i.get("id"))
+            if vid and vid in _VOTED_CACHE:
+                continue
+            # The LIST has no per-user voted flag; the detail exposes who voted -> skip if it's us.
+            detail = await _get(client, "/api/votes/{}".format(vid)) if vid else None
+            if _vote_already_cast(detail, my_user_no):
+                if vid:
+                    _VOTED_CACHE.add(vid)
+                continue
+            out.append(_activity(course_id, ActivityType.VOTE, i))
 
     if ActivityType.CLASSROOM_EXAM in wanted:
         body = await _get(client, "/api/courses/{}/classroom-list".format(course_id))

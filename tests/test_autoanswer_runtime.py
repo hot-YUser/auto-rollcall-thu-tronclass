@@ -1,5 +1,6 @@
 from __future__ import annotations
 import unittest
+from unittest.mock import patch
 
 import troTHU.runtime_context as ctx
 from troTHU import answer_flow, autoanswer_runtime, autoanswer_store
@@ -110,6 +111,38 @@ class CoursewareDetectionTest(unittest.IsolatedAsyncioTestCase):
             "quiz/QZ1/my-submission": {"id": 9001},  # already submitted
         })
         out = await autoanswer_runtime._poll_course(client, "55379", {ActivityType.COURSEWARE_QUIZ})
+        self.assertEqual(out, [])
+
+
+class VoteDetectionTest(unittest.IsolatedAsyncioTestCase):
+    """Votes are one-shot; the server rejects a re-cast (400 "you have already voted"). The vote
+    LIST has no per-user flag, so an already-cast vote would churn (re-prepare LLM every poll).
+    We check the /api/votes/{id} detail (students[].user_no) and skip votes the account already
+    appears in — the real fix for the 'monitor frozen' report."""
+
+    def setUp(self):
+        autoanswer_runtime._VOTED_CACHE.clear()
+
+    async def test_already_voted_vote_is_skipped_and_cached(self):
+        client = FakeClient({
+            "courses/55379/interactions": {"interactions": [
+                {"id": "V_done", "type": "vote", "status": "start", "title": "已投"},
+                {"id": "V_open", "type": "vote", "status": "start", "title": "未投"},
+            ]},
+            "votes/V_done": {"students": [{"id": 1, "user_no": "me@x.com"}]},      # I already voted
+            "votes/V_open": {"students": [{"id": 2, "user_no": "other@x.com"}]},   # someone else, not me
+        })
+        with patch.object(autoanswer_runtime, "_current_user_no", return_value="me@x.com"):
+            out = await autoanswer_runtime._poll_course(client, "55379", {ActivityType.VOTE})
+        self.assertEqual([a.activity_id for a in out], ["V_open"])   # already-voted one skipped
+        self.assertIn("V_done", autoanswer_runtime._VOTED_CACHE)     # cached so it isn't re-fetched
+
+    async def test_non_started_vote_ignored(self):
+        client = FakeClient({"courses/55379/interactions": {"interactions": [
+            {"id": "V_end", "type": "vote", "status": "finish"},
+        ]}})
+        with patch.object(autoanswer_runtime, "_current_user_no", return_value="me@x.com"):
+            out = await autoanswer_runtime._poll_course(client, "55379", {ActivityType.VOTE})
         self.assertEqual(out, [])
 
 
