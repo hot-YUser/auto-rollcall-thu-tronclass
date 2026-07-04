@@ -1,3 +1,16 @@
+"""Console output model — the in-place monitor status line + permanent event lines.
+
+Split out of the old ``logging_runtime`` in the C5 refactor. This is UI, NOT logging:
+two channels share stdout —
+
+  * Event lines  -> scroll upward, permanent (login, rollcall hits, errors).
+  * Status line  -> a single line redrawn in place once per second, showing the live
+                    clock plus monitor/standby context.
+
+Interactive (TTY) consoles get the in-place status line and timestamped event lines.
+Non-interactive runs (CI, redirected output, ``--no-input`` schedulers) fall back to
+plain, append-only lines so logs stay clean and byte-stable.
+"""
 from __future__ import annotations
 
 import contextlib
@@ -11,19 +24,6 @@ except ImportError:  # pragma: no cover - direct script fallback
 
 def __getattr__(name: str):
     return getattr(ctx, name)
-
-
-# ---------------------------------------------------------------------------
-# Console output model
-# ---------------------------------------------------------------------------
-# Two output channels share stdout:
-#   * Event lines  -> scroll upward, permanent (login, rollcall hits, errors).
-#   * Status line  -> a single line redrawn in place once per second, showing
-#                     the live clock plus monitor/standby context.
-# Interactive (TTY) consoles get the in-place status line and timestamped event
-# lines. Non-interactive runs (CI, output redirected to a file, --no-input
-# schedulers) fall back to the original plain, append-only line behaviour so
-# logs stay clean and byte-stable.
 
 
 def console_is_interactive() -> bool:
@@ -193,73 +193,3 @@ def status_print(msg: ctx.Any) -> None:
         return
     ctx.MONITOR_STATUS['detail'] = ctx.LAST_STATUS
     render_status_line()
-
-
-async def _send_notification(request: ctx.NotificationRequest) -> int:
-    return await ctx.send_notification_request(request, request_ssl=ctx.get_ssl_request_setting(), timeout=ctx.create_notification_timeout(), request_func=ctx.aiohttp.request)
-
-
-def build_notification_requests(text: str, highlight_block: str='') -> ctx.List[ctx.NotificationRequest]:
-
-    def log_skip(channel: str, message: str) -> None:
-        pass
-    return ctx.build_notification_requests_from_config(ctx.CONFIG, text, highlight_block=highlight_block, skip_logger=log_skip)
-
-
-async def mes(text: str='test message', highlight_block: str='') -> None:
-    requests = ctx.build_notification_requests(text, highlight_block)
-    if not requests:
-        return
-    results = await ctx.asyncio.gather(*[ctx._send_notification(request) for request in requests], return_exceptions=True)
-    for request, result in zip(requests, results):
-        if isinstance(result, BaseException):
-            ctx.log_print('{} 通知送出失敗: {}'.format(request.label, result))
-        else:
-            pass
-
-
-async def notify_event(event: ctx.NotificationEvent, highlight_block: str='') -> None:
-    profile = ''
-    if isinstance(event.data, dict):
-        profile = ctx.normalize_text(event.data.get('profile'))
-    if not profile:
-        try:
-            profile = ctx.get_active_profile(ctx.CONFIG).name
-        except Exception:
-            profile = ''
-    summary = await ctx.dispatch_notification_event(event, config=ctx.CONFIG, sinks=ctx.NOTIFICATION_SINKS, profile=profile)
-    if summary.failures:
-        pass
-    await ctx.mes(event.render(), highlight_block=highlight_block)
-
-
-def set_notification_sinks(sinks: ctx.List[ctx.Any]) -> None:
-    ctx.NOTIFICATION_SINKS.clear()
-    ctx.NOTIFICATION_SINKS.extend(sinks or [])
-
-
-def build_fatal_error_report(exc: BaseException, restart_count: int) -> ctx.Tuple[str, str, str]:
-    formatted_traceback = ctx.traceback.format_exc()
-    frames = ctx.traceback.extract_tb(exc.__traceback__)
-    location = ''
-    if frames:
-        last_frame = frames[-1]
-        location = '{}:{}:{}'.format(ctx.Path(last_frame.filename).name, last_frame.lineno, last_frame.name)
-    fingerprint_source = '{}|{}|{}'.format(exc.__class__.__name__, ctx.normalize_text(exc), location)
-    fingerprint = ctx.hashlib.sha1(fingerprint_source.encode('utf-8')).hexdigest()[:12]
-    summary = 'fatal error on {}, restart #{}, fingerprint={}'.format(ctx.cnt, restart_count, fingerprint)
-    return (summary, formatted_traceback, fingerprint)
-
-
-def report_fatal_exception(exc: BaseException, restart_count: int) -> None:
-    summary, formatted_traceback, fingerprint = ctx.build_fatal_error_report(exc, restart_count)
-    text = '{}\n{}\n{}'.format(summary, ctx.normalize_text(exc), formatted_traceback.rstrip())
-    ctx.log_print(text)
-    now = ctx.time.monotonic()
-    if now - ctx.LAST_FATAL_NOTIFICATION_AT < ctx.FATAL_NOTIFICATION_INTERVAL:
-        return
-    ctx.LAST_FATAL_NOTIFICATION_AT = now
-    try:
-        ctx.asyncio.run(ctx.mes('{}\n{}'.format(summary, ctx.normalize_text(exc))))
-    except Exception:
-        return

@@ -1132,6 +1132,21 @@ class BotHandlersTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.data["visible_count"], 2)
         self.assertTrue(result.data["admin"])
 
+    async def test_audit_handler_logs_bot_command_audit(self) -> None:
+        events = []
+        with patch.object(tron, "log_event", side_effect=lambda *a, **k: events.append((a, k))):
+            runtime = self.runtime()
+            result = await runtime.handle_text(
+                "qr all secret-payload",
+                adapter="discord",
+                source_user_id="discord-user",
+                channel_id="chan-1",
+            )
+        self.assertFalse(result.ok)
+        audit_calls = [(a, k) for (a, k) in events if a and a[0] == "bot_command_audit"]
+        self.assertTrue(audit_calls)
+        self.assertIn("action", audit_calls[-1][1].get("audit", {}))
+
     async def test_force_check_uses_fake_server_once(self) -> None:
         self.server.rollcalls = [{"status": "on_call_fine", "rollcall_id": 11}]
         runtime = self.runtime()
