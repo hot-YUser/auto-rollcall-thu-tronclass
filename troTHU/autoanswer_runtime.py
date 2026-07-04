@@ -31,6 +31,11 @@ except ImportError:  # pragma: no cover - script execution fallback
 ATTEMPT_COOLDOWN_SECONDS = 30.0
 POLL_INTERVAL_SECONDS = 10.0
 COURSE_REFRESH_SECONDS = 300.0
+PREPARE_TIMEOUT_SECONDS = 180.0        # generous cap so a stuck (no-timeout) LLM eventually releases the task
+_MAX_INFLIGHT_ACTIVITIES = 5           # bound concurrent answer handlers (LLM calls)
+
+# activity_id -> the fire-and-forget handler Task currently answering it (dispatch dedup).
+_INFLIGHT_ACTIVITIES: Dict[str, Any] = {}
 
 
 def _as_int(value: Any, default: int = 0) -> int:
@@ -265,87 +270,117 @@ async def _poll_courseware(client: Any, course_id: str, out: List[Activity]) -> 
                                 title=normalize_text(quiz.get("title") or act.get("title")), raw=quiz))
 
 
-async def _prepare(client: Any, session: Any, activity: Activity, aa: Dict[str, Any], now: float) -> None:
+def reset_autoanswer_dispatch() -> None:
+    """Forget stale in-flight handlers. Called by app_main per run: a crash+restart makes a NEW
+    event loop, so Tasks from the previous loop are dead and their ids must not block re-dispatch."""
+    _INFLIGHT_ACTIVITIES.clear()
+
+
+async def handle_activity(session: Any, activity: Activity, aa: Dict[str, Any]) -> None:
+    """One activity's full lifecycle, run as an independent background task so it NEVER blocks the
+    monitor poll loop and many activities proceed in parallel:
+      announce-DETECT immediately -> prepare the answer (LLM; timed out) -> announce-READY ->
+      count down `delay_seconds` (any-key cuts it short for all pending) -> submit -> banner.
+    Effective submit time = max(prepare_time, delay). Never raises.
+    """
     key = activity.activity_id
-    if not key or ctx.COMPLETED_QUESTION_SUBMISSIONS.get(key) or key in ctx.ACTIVE_QUESTION_ANSWERS:
-        return
-    if now - float(ctx.QUESTION_ANSWER_ATTEMPTS.get(key, 0.0) or 0.0) < ATTEMPT_COOLDOWN_SECONDS:
-        return
-    ctx.QUESTION_ANSWER_ATTEMPTS[key] = now
-    delay = int(aa.get("delay_seconds", 15) or 0)
-    label = activity.title or activity.activity_type.value
-    # Prepare FIRST (this may call the LLM). We announce only once we actually HAVE a usable answer,
-    # so a transient LLM/key/model failure (e.g. the model returning empty) stays quiet on the
-    # console (file-log only) and is retried next poll — never announced-then-stalled, never an
-    # empty submit. prepare_answer returns None for both "no questions" and "no usable answer yet".
-    prepared = await answer_flow.prepare_answer(client, session, activity, llm_config=aa.get("llm", {}))
-    if not prepared:
-        return
-    prepared["detected_at"] = now
-    prepared["delay_seconds"] = delay
-    prepared["label"] = label
-    ctx.ACTIVE_QUESTION_ANSWERS[key] = prepared
-    source = getattr(prepared.get("source"), "value", prepared.get("source"))
-    answer_text = format_paper_canonical(prepared.get("questions") or [], prepared.get("answers") or [])
-    # Announce detection + the prepared answer together (canonical LLM format), then start the countdown.
-    ctx.log_print("偵測到「{}」並已備妥答案（{}），{} 秒後自動送出（按任意鍵立即送）：\n{}".format(
-        label, source, delay, answer_text))
-
-
-async def _submit_due(client: Any, aa: Dict[str, Any], now: float) -> None:
-    submit_now = bool(ctx.AUTOANSWER_SUBMIT_NOW)
-    if submit_now:
-        ctx.AUTOANSWER_SUBMIT_NOW = False
-    resubmit = bool(aa.get("resubmit_for_correct", True))
-    for key, prepared in list(ctx.ACTIVE_QUESTION_ANSWERS.items()):
-        if not isinstance(prepared, dict) or prepared.get("submitted"):
-            continue
-        elapsed = now - float(prepared.get("detected_at", now) or now)
-        if not submit_now and elapsed < float(prepared.get("delay_seconds", 15) or 0):
-            continue
-        result = await answer_flow.submit_prepared(client, prepared, resubmit_for_correct=resubmit)
-        ctx.ACTIVE_QUESTION_ANSWERS.pop(key, None)
-        label = prepared.get("label") or key
+    try:
+        delay = int(aa.get("delay_seconds", 15) or 0)
+        label = activity.title or activity.activity_type.value
+        ctx.log_print("偵測到「{}」，準備答案中…".format(label))  # announce on DETECT (before prepare)
+        started = ctx.time.monotonic()
+        client = ctx.create_tron_http_client(session, request_ssl=ctx.get_ssl_request_setting())
+        try:
+            prepared = await ctx.asyncio.wait_for(
+                answer_flow.prepare_answer(client, session, activity, llm_config=aa.get("llm", {})),
+                timeout=PREPARE_TIMEOUT_SECONDS)
+        except Exception:
+            return  # LLM stuck/failed / no usable answer -> release (retried at the 30s cooldown)
+        if not prepared:
+            return
+        prepared["detected_at"] = started
+        prepared["delay_seconds"] = delay
+        prepared["label"] = label
+        ctx.ACTIVE_QUESTION_ANSWERS[key] = prepared  # keeps autoanswer_has_pending() + restart dedup working
+        source = getattr(prepared.get("source"), "value", prepared.get("source"))
+        answer_text = format_paper_canonical(prepared.get("questions") or [], prepared.get("answers") or [])
+        ctx.log_print("「{}」已備妥答案（{}），{} 秒後自動送出（按任意鍵立即送）：\n{}".format(
+            label, source, delay, answer_text))  # announce READY once the answer exists
+        # Count the REMAINING delay (prepare already ran concurrently with the clock) -> submit at
+        # max(prepare, delay); an any-key press sets the shared Event and cuts every countdown short.
+        remaining = max(0.0, float(delay) - (ctx.time.monotonic() - started))
+        event = ctx.AUTOANSWER_SUBMIT_NOW
+        if remaining > 0:
+            if event is not None:
+                try:
+                    await ctx.asyncio.wait_for(event.wait(), timeout=remaining)
+                except Exception:
+                    pass
+            else:
+                await ctx.asyncio.sleep(remaining)
+        result = await answer_flow.submit_prepared(client, prepared, resubmit_for_correct=bool(aa.get("resubmit_for_correct", True)))
+        prepared["submitted"] = True
         if result.ok:
             ctx.COMPLETED_QUESTION_SUBMISSIONS[key] = True
             try:  # persist permanently so a restart never re-answers it
                 autoanswer_store.mark_completed(ctx.BASE_DIR, _active_profile_name(), key)
             except Exception:
                 pass
-            source = getattr(result.source, "value", result.source)
+            rsource = getattr(result.source, "value", result.source)
             final = result.final_answers or prepared.get("answers") or []
-            answer_text = format_paper_canonical(prepared.get("questions") or [], final)
+            final_text = format_paper_canonical(prepared.get("questions") or [], final)
             atype = getattr(prepared.get("activity"), "activity_type", "")
             atype_text = getattr(atype, "value", atype)
-            # Same banner style as 點名成功, showing the FINAL submitted answer in canonical format.
-            ctx.log_print(ctx.format_autoanswer_success_banner(label, key, atype_text, source, answer_text))
-        else:
-            # No band-aid backoff: the root fix (detection now requires an open answering window)
-            # means an un-submittable activity is never detected, so there is nothing to churn on.
-            # A genuine transient failure just retries at the normal cooldown.
-            pass
+            ctx.log_print(ctx.format_autoanswer_success_banner(label, key, atype_text, rsource, final_text))
+        # else: failed -> file-log only; retried at the 30s cooldown (per-user: no submit-side backoff)
+    except Exception:
+        return
+    finally:
+        ctx.ACTIVE_QUESTION_ANSWERS.pop(key, None)
+        _INFLIGHT_ACTIVITIES.pop(key, None)
+
+
+def _dispatch_activity(session: Any, activity: Activity, aa: Dict[str, Any]) -> None:
+    """Spawn handle_activity as a background task unless this activity is already being handled /
+    completed / on cooldown / at the concurrency cap. Synchronous check->create_task->register
+    (no await between) so a second poll cannot double-dispatch the same id."""
+    key = activity.activity_id
+    if not key or key in _INFLIGHT_ACTIVITIES or ctx.COMPLETED_QUESTION_SUBMISSIONS.get(key) \
+            or key in ctx.ACTIVE_QUESTION_ANSWERS or len(_INFLIGHT_ACTIVITIES) >= _MAX_INFLIGHT_ACTIVITIES:
+        return
+    now = ctx.time.monotonic()
+    if now - float(ctx.QUESTION_ANSWER_ATTEMPTS.get(key, 0.0) or 0.0) < ATTEMPT_COOLDOWN_SECONDS:
+        return
+    ctx.QUESTION_ANSWER_ATTEMPTS[key] = now
+    task = ctx.asyncio.create_task(handle_activity(session, activity, aa))
+    _INFLIGHT_ACTIVITIES[key] = task
+    task.add_done_callback(lambda _t: _INFLIGHT_ACTIVITIES.pop(key, None))
 
 
 async def autoanswer_tick(session: Any) -> None:
-    """Called once per monitor poll. Never raises into the rollcall loop."""
+    """Called once per monitor poll. Polls for open activities and DISPATCHES each to a background
+    handler task — it does NOT prepare/submit inline, so it returns fast and NEVER blocks the
+    rollcall poll loop (the v1.8-alpha.2 starvation cause). Never raises."""
     try:
         aa = get_autoanswer_config(ctx.CONFIG)
         if not aa.get("enabled"):
             return
         _ensure_persisted_loaded()
-        client = ctx.create_tron_http_client(session, request_ssl=ctx.get_ssl_request_setting())
-        now = ctx.time.monotonic() if hasattr(ctx, "time") else time.monotonic()
-        await _submit_due(client, aa, now)
-
+        # Edge-triggered clear: once every pending answer has been submitted, reset the any-key signal.
+        event = ctx.AUTOANSWER_SUBMIT_NOW
+        if event is not None and event.is_set() and not ctx.autoanswer_has_pending():
+            event.clear()
         global _last_poll
+        now = ctx.time.monotonic() if hasattr(ctx, "time") else time.monotonic()
         if now - _last_poll < POLL_INTERVAL_SECONDS:
             return
         _last_poll = now
         wanted = _wanted_types(aa)
         if not wanted:
             return
+        client = ctx.create_tron_http_client(session, request_ssl=ctx.get_ssl_request_setting())
         for course_id in await _refresh_courses(client, now):
             for activity in await _poll_course(client, course_id, wanted):
-                await _prepare(client, session, activity, aa, now)
+                _dispatch_activity(session, activity, aa)
     except Exception:  # autoanswer must never break the monitor loop
         pass

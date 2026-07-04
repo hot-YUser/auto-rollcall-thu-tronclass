@@ -781,8 +781,10 @@ COMPLETED_QUESTION_SUBMISSIONS: Dict[str, bool] = {}
 
 QUESTION_ANSWER_ATTEMPTS: Dict[str, float] = {}
 
-# Set by the any-key watcher to submit a prepared answer immediately (skip the delay gate).
-AUTOANSWER_SUBMIT_NOW = False
+# Shared any-key "submit now" signal. An asyncio.Event, but created per-run in app_main (a
+# crash+restart makes a NEW event loop, so a module-level Event would bind to a dead loop). None
+# until app_main sets it; every reader is None-safe.
+AUTOANSWER_SUBMIT_NOW = None
 
 
 def autoanswer_has_pending() -> bool:
@@ -794,8 +796,8 @@ def autoanswer_has_pending() -> bool:
 
 
 def request_immediate_autoanswer() -> None:
-    global AUTOANSWER_SUBMIT_NOW
-    AUTOANSWER_SUBMIT_NOW = True
+    if AUTOANSWER_SUBMIT_NOW is not None:
+        AUTOANSWER_SUBMIT_NOW.set()
 
 
 TEACHER_SESSION = None
@@ -923,6 +925,7 @@ _LEGACY_EXPORTS = {
     'create_tron_http_client': ('troTHU.auth_runtime', 'create_tron_http_client'),
     'autoanswer_tick': ('troTHU.autoanswer_runtime', 'autoanswer_tick'),
     'autoanswer_enabled': ('troTHU.autoanswer_runtime', 'autoanswer_enabled'),
+    'reset_autoanswer_dispatch': ('troTHU.autoanswer_runtime', 'reset_autoanswer_dispatch'),
     'credential_report': ('troTHU.status_reports', 'credential_report'),
     'current_datetime': ('troTHU.config_runtime', 'current_datetime'),
     'dashboard_command': ('troTHU.cli_system', 'dashboard_command'),

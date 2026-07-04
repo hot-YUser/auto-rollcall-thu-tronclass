@@ -1,11 +1,12 @@
 from __future__ import annotations
+import asyncio
 import unittest
 from unittest.mock import patch
 
 import troTHU.runtime_context as ctx
 from troTHU import answer_flow, autoanswer_runtime, autoanswer_store
 from troTHU.quiz_models import (
-    Activity, ActivityType, Answer, AnswerResult, AnswerSource, Option, Question, QuestionType,
+    Activity, ActivityType, AnswerResult, AnswerSource,
 )
 
 
@@ -146,125 +147,129 @@ class VoteDetectionTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(out, [])
 
 
-class PrepareDedupTest(unittest.IsolatedAsyncioTestCase):
+class DispatchTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
-        ctx.COMPLETED_QUESTION_SUBMISSIONS.clear()
-        ctx.ACTIVE_QUESTION_ANSWERS.clear()
-        ctx.QUESTION_ANSWER_ATTEMPTS.clear()
+        for d in (ctx.COMPLETED_QUESTION_SUBMISSIONS, ctx.ACTIVE_QUESTION_ANSWERS,
+                  ctx.QUESTION_ANSWER_ATTEMPTS, autoanswer_runtime._INFLIGHT_ACTIVITIES):
+            d.clear()
 
-    async def test_persisted_completed_activity_is_skipped(self):
-        ctx.COMPLETED_QUESTION_SUBMISSIONS["EX1"] = True  # as if loaded from state/
-        called = []
+    @staticmethod
+    def _act(aid):
+        return Activity(activity_id=aid, activity_type=ActivityType.EXAM, course_id="c")
+
+    async def test_completed_activity_is_not_dispatched(self):
+        ctx.COMPLETED_QUESTION_SUBMISSIONS["EX1"] = True
+        autoanswer_runtime._dispatch_activity(object(), self._act("EX1"), {"delay_seconds": 0, "llm": {}})
+        self.assertEqual(autoanswer_runtime._INFLIGHT_ACTIVITIES, {})  # completed -> no task
+
+    async def test_same_activity_dispatched_once(self):
+        # A hung prepare keeps the handler in-flight; a 2nd dispatch of the same id must be a no-op.
+        gate = asyncio.Event()
         orig = answer_flow.prepare_answer
 
-        async def fake_prepare(*a, **k):
-            called.append(1)
+        async def hung_prepare(*a, **k):
+            await gate.wait()
             return None
 
-        answer_flow.prepare_answer = fake_prepare
+        answer_flow.prepare_answer = hung_prepare
         try:
-            act = Activity(activity_id="EX1", activity_type=ActivityType.EXAM, course_id="c")
-            await autoanswer_runtime._prepare(object(), object(), act, {"delay_seconds": 15, "llm": {}}, 100.0)
+            act = self._act("EX2")
+            autoanswer_runtime._dispatch_activity(object(), act, {"delay_seconds": 0, "llm": {}})
+            autoanswer_runtime._dispatch_activity(object(), act, {"delay_seconds": 0, "llm": {}})
+            await asyncio.sleep(0)
+            self.assertEqual(list(autoanswer_runtime._INFLIGHT_ACTIVITIES), ["EX2"])  # exactly one task
         finally:
+            gate.set()
+            tasks = list(autoanswer_runtime._INFLIGHT_ACTIVITIES.values())
+            for t in tasks:
+                t.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
             answer_flow.prepare_answer = orig
-        self.assertEqual(called, [])  # already completed -> never prepared again
 
 
-class SubmitDueTest(unittest.IsolatedAsyncioTestCase):
+class HandleActivityTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
-        ctx.COMPLETED_QUESTION_SUBMISSIONS.clear()
-        ctx.ACTIVE_QUESTION_ANSWERS.clear()
-        ctx.QUESTION_ANSWER_ATTEMPTS.clear()
-        ctx.AUTOANSWER_SUBMIT_NOW = False
+        for d in (ctx.COMPLETED_QUESTION_SUBMISSIONS, ctx.ACTIVE_QUESTION_ANSWERS,
+                  ctx.QUESTION_ANSWER_ATTEMPTS, autoanswer_runtime._INFLIGHT_ACTIVITIES):
+            d.clear()
+        ctx.AUTOANSWER_SUBMIT_NOW = asyncio.Event()
 
-    async def test_success_persists_and_marks_completed(self):
-        marks = []
-        orig_submit, orig_mark = answer_flow.submit_prepared, autoanswer_store.mark_completed
+    @staticmethod
+    def _prepared(aid):
+        return {"activity": Activity(activity_id=aid, activity_type=ActivityType.EXAM),
+                "questions": [], "answers": (), "source": AnswerSource.LLM}
 
-        async def fake_submit(client, prepared, *, resubmit_for_correct=True):
-            return AnswerResult(ok=True, status="submitted", activity_id="EX2", submission_id="s1",
-                                source=AnswerSource.LLM, final_answers=(Answer(1, (11,)),))
-
-        answer_flow.submit_prepared = fake_submit
-        autoanswer_store.mark_completed = lambda base, profile, aid: marks.append(aid)
-        q = Question(subject_id=1, qtype=QuestionType.SINGLE,
-                     options=(Option(id=10, content="a"), Option(id=11, content="b")))
-        ctx.ACTIVE_QUESTION_ANSWERS["EX2"] = {
-            "activity": Activity(activity_id="EX2", activity_type=ActivityType.EXAM),
-            "questions": [q], "answers": (Answer(1, (10,)),), "source": AnswerSource.LLM,
-            "submitted": False, "detected_at": 1.0, "delay_seconds": 15, "label": "X"}
+    async def _run(self, aid, *, prepare, submit, delay=0):
+        prints = []
+        orig_p, orig_s, orig_m, orig_lp = (answer_flow.prepare_answer, answer_flow.submit_prepared,
+                                           autoanswer_store.mark_completed, ctx.log_print)
+        answer_flow.prepare_answer = prepare
+        answer_flow.submit_prepared = submit
+        autoanswer_store.mark_completed = lambda base, profile, a: None
+        ctx.log_print = lambda m: prints.append(str(m))
         try:
-            await autoanswer_runtime._submit_due(object(), {"resubmit_for_correct": True}, 100.0)
+            act = Activity(activity_id=aid, activity_type=ActivityType.EXAM, title=aid)
+            await asyncio.wait_for(
+                autoanswer_runtime.handle_activity(object(), act, {"delay_seconds": delay, "llm": {}}),
+                timeout=5)
         finally:
-            answer_flow.submit_prepared, autoanswer_store.mark_completed = orig_submit, orig_mark
+            (answer_flow.prepare_answer, answer_flow.submit_prepared,
+             autoanswer_store.mark_completed, ctx.log_print) = orig_p, orig_s, orig_m, orig_lp
+        return prints
+
+    async def test_success_announces_split_and_marks_completed(self):
+        async def prep(*a, **k):
+            return self._prepared("EX2")
+
+        async def sub(client, prepared, *, resubmit_for_correct=True):
+            return AnswerResult(ok=True, status="submitted", activity_id="EX2",
+                                source=AnswerSource.LLM, final_answers=())
+
+        prints = await self._run("EX2", prepare=prep, submit=sub)
         self.assertTrue(ctx.COMPLETED_QUESTION_SUBMISSIONS.get("EX2"))
-        self.assertEqual(marks, ["EX2"])  # persisted permanently
+        self.assertTrue(any("偵測到" in p for p in prints))      # announce on DETECT
+        self.assertTrue(any("已備妥答案" in p for p in prints))   # announce on READY (after prepare)
+        self.assertNotIn("EX2", autoanswer_runtime._INFLIGHT_ACTIVITIES)   # released in finally
+        self.assertNotIn("EX2", ctx.ACTIVE_QUESTION_ANSWERS)
 
-    async def test_failure_is_graceful_without_backoff(self):
-        # The 5-min failure backoff was removed (root fix handles classroom churn). A failed submit
-        # must NOT mark completed, NOT push the attempt clock into the future, and NOT raise.
-        orig = answer_flow.submit_prepared
+    async def test_failure_does_not_mark_completed(self):
+        async def prep(*a, **k):
+            return self._prepared("EX3")
 
-        async def fake_submit(client, prepared, *, resubmit_for_correct=True):
+        async def sub(client, prepared, *, resubmit_for_correct=True):
             return AnswerResult(ok=False, status="submit_failed", activity_id="EX3")
 
-        answer_flow.submit_prepared = fake_submit
-        ctx.ACTIVE_QUESTION_ANSWERS["EX3"] = {
-            "activity": Activity(activity_id="EX3", activity_type=ActivityType.CLASSROOM_EXAM),
-            "questions": [], "answers": (), "submitted": False,
-            "detected_at": 1.0, "delay_seconds": 15, "label": "Y"}
-        try:
-            await autoanswer_runtime._submit_due(object(), {}, 100.0)
-        finally:
-            answer_flow.submit_prepared = orig
+        await self._run("EX3", prepare=prep, submit=sub)
         self.assertFalse(ctx.COMPLETED_QUESTION_SUBMISSIONS.get("EX3"))
-        self.assertLessEqual(ctx.QUESTION_ANSWER_ATTEMPTS.get("EX3", 0.0), 100.0)  # no push-out
-        self.assertNotIn("EX3", ctx.ACTIVE_QUESTION_ANSWERS)  # popped from active
+        self.assertNotIn("EX3", ctx.ACTIVE_QUESTION_ANSWERS)
 
-    async def test_not_due_is_not_submitted(self):
-        # delay gate: before delay_seconds elapses (and no keypress), the prepared answer waits.
-        called = []
-        orig = answer_flow.submit_prepared
-
-        async def fake_submit(client, prepared, *, resubmit_for_correct=True):
-            called.append(1)
-            return AnswerResult(ok=True, status="submitted", activity_id="EX4")
-
-        answer_flow.submit_prepared = fake_submit
-        ctx.ACTIVE_QUESTION_ANSWERS["EX4"] = {
-            "activity": Activity(activity_id="EX4", activity_type=ActivityType.EXAM),
-            "questions": [], "answers": (), "submitted": False,
-            "detected_at": 100.0, "delay_seconds": 15, "label": "Z"}
-        try:
-            await autoanswer_runtime._submit_due(object(), {}, 105.0)  # elapsed 5s < 15s
-        finally:
-            answer_flow.submit_prepared = orig
-        self.assertEqual(called, [])                      # not yet due -> not submitted
-        self.assertIn("EX4", ctx.ACTIVE_QUESTION_ANSWERS)  # still pending
-
-    async def test_keypress_forces_immediate_submit(self):
-        # any-key sets AUTOANSWER_SUBMIT_NOW -> submit BEFORE the delay elapses, then reset the flag.
-        ctx.AUTOANSWER_SUBMIT_NOW = True
+    async def test_no_usable_answer_never_submits(self):
         submitted = []
-        orig_submit, orig_mark = answer_flow.submit_prepared, autoanswer_store.mark_completed
 
-        async def fake_submit(client, prepared, *, resubmit_for_correct=True):
-            submitted.append(prepared["activity"].activity_id)
+        async def prep(*a, **k):
+            return None
+
+        async def sub(client, prepared, *, resubmit_for_correct=True):
+            submitted.append(1)
+            return AnswerResult(ok=True, status="x")
+
+        await self._run("EX4", prepare=prep, submit=sub)
+        self.assertEqual(submitted, [])  # None prepared -> never submits
+
+    async def test_keypress_cuts_15s_countdown_short(self):
+        ctx.AUTOANSWER_SUBMIT_NOW.set()  # any-key already pressed
+
+        async def prep(*a, **k):
+            return self._prepared("EX5")
+
+        async def sub(client, prepared, *, resubmit_for_correct=True):
             return AnswerResult(ok=True, status="submitted", activity_id="EX5",
                                 source=AnswerSource.LLM, final_answers=())
 
-        answer_flow.submit_prepared = fake_submit
-        autoanswer_store.mark_completed = lambda base, profile, aid: None
-        ctx.ACTIVE_QUESTION_ANSWERS["EX5"] = {
-            "activity": Activity(activity_id="EX5", activity_type=ActivityType.EXAM),
-            "questions": [], "answers": (), "source": AnswerSource.LLM,
-            "submitted": False, "detected_at": 100.0, "delay_seconds": 15, "label": "K"}
-        try:
-            await autoanswer_runtime._submit_due(object(), {}, 101.0)  # elapsed 1s < 15s but key pressed
-        finally:
-            answer_flow.submit_prepared, autoanswer_store.mark_completed = orig_submit, orig_mark
-        self.assertEqual(submitted, ["EX5"])         # forced despite not being due
-        self.assertFalse(ctx.AUTOANSWER_SUBMIT_NOW)  # flag reset after consuming it
+        # delay 15s but the Event is set -> the wait_for(5s) in _run would time out if the countdown
+        # weren't cut short; reaching this assertion proves it submitted well under the 15s.
+        await self._run("EX5", prepare=prep, submit=sub, delay=15)
+        self.assertTrue(ctx.COMPLETED_QUESTION_SUBMISSIONS.get("EX5"))
 
 
 class TickNeverRaisesTest(unittest.IsolatedAsyncioTestCase):

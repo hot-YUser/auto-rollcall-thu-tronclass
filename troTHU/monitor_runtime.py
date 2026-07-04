@@ -668,6 +668,10 @@ async def app_main(
     ctx.INPUT_ENABLED = input_enabled
     ctx.bootstrap_config()
     shutdown_event = external_shutdown_event or ctx.asyncio.Event()
+    # Auto-answer's any-key "submit now" signal + in-flight registry are (re)initialised per run:
+    # each restart makes a fresh event loop, so a loop-bound Event / stale Tasks must not carry over.
+    ctx.AUTOANSWER_SUBMIT_NOW = ctx.asyncio.Event()
+    ctx.reset_autoanswer_dispatch()
     for warning in ctx.consume_bootstrap_warnings():
         ctx.log_print(warning)
     headers = {'User-Agent': ctx.random_ua()}
