@@ -7,6 +7,7 @@ Activity polling is throttled; the cheap "is any prepared answer due?" check run
 so the delay gate / keypress stays responsive.
 """
 from __future__ import annotations
+import datetime
 import time
 from typing import Any, Dict, List, Set
 
@@ -79,6 +80,33 @@ def _attempts_exhausted(raw: Dict[str, Any]) -> bool:
     cap = raw.get("submit_times")
     used = raw.get("submission_count")
     return isinstance(cap, int) and cap > 0 and isinstance(used, int) and used >= cap
+
+
+def _iso_before_now(value: str) -> bool:
+    """True if an ISO-8601 UTC timestamp ('…Z') is strictly in the past. Blank/unparseable -> False
+    (never skip on a field we can't read)."""
+    text = normalize_text(value)
+    if not text:
+        return False
+    try:
+        dt = datetime.datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=datetime.timezone.utc)
+    return dt < datetime.datetime.now(datetime.timezone.utc)
+
+
+def _exam_open(e: Dict[str, Any]) -> bool:
+    """An exam that is answerable RIGHT NOW. Prefer the server's computed `is_in_progress`; also reject
+    a passed `end_time` — a time-expired exam still reports `is_closed=False` yet 400s ('測驗已關閉') on
+    /distribute, which used to be detected and churn forever. Filtering it here stops the churn at the
+    source (從一開始就不偵測). Tenants without `is_in_progress` fall back to the raw flags + end_time."""
+    if not e.get("is_started") or e.get("is_closed"):
+        return False
+    if e.get("is_in_progress") is False:
+        return False
+    return not _iso_before_now(e.get("end_time"))
 
 
 # Votes are one-shot per user (the server rejects a re-cast with 400 "you have already voted").
@@ -189,7 +217,7 @@ async def _poll_course(client: Any, course_id: str, wanted: Set[ActivityType]) -
     if ActivityType.EXAM in wanted:
         body = await _get(client, "/api/courses/{}/exam-list?conditions=&page=1&page_size=50".format(course_id))
         for e in (body.get("exams") if isinstance(body, dict) else None) or []:
-            if isinstance(e, dict) and e.get("is_started") and not e.get("is_closed") \
+            if isinstance(e, dict) and _exam_open(e) \
                     and not _already_submitted(e) and not _attempts_exhausted(e):
                 out.append(_activity(course_id, ActivityType.EXAM, e))
 

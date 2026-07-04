@@ -48,6 +48,21 @@ class AlreadySubmittedGuardTest(unittest.IsolatedAsyncioTestCase):
         out = await autoanswer_runtime._poll_course(client, "55379", {ActivityType.EXAM})
         self.assertEqual([a.activity_id for a in out], ["E9"])  # submit_times<=0 = unlimited
 
+    async def test_closed_or_time_expired_exam_not_detected(self):
+        # A time-expired exam reports is_closed=False but is_in_progress=False and a past end_time;
+        # it 400s ('測驗已關閉') on /distribute, so it must NOT be detected (從源頭不偵測, no churn).
+        client = FakeClient({"courses/55379/exam-list": {"exams": [
+            {"id": "OPEN", "is_started": True, "is_closed": False, "is_in_progress": True,
+             "end_time": "2099-01-01T00:00:00Z"},
+            {"id": "NOTPROG", "is_started": True, "is_closed": False, "is_in_progress": False,
+             "end_time": "2099-01-01T00:00:00Z"},                       # server says not-in-progress
+            {"id": "EXPIRED", "is_started": True, "is_closed": False, "is_in_progress": True,
+             "end_time": "2000-01-01T00:00:00Z"},                       # end_time already passed
+            {"id": "LEGACY", "is_started": True, "is_closed": False},   # tenant w/o is_in_progress -> still open
+        ]}})
+        out = await autoanswer_runtime._poll_course(client, "55379", {ActivityType.EXAM})
+        self.assertEqual([a.activity_id for a in out], ["OPEN", "LEGACY"])
+
     async def test_homework_already_submitted_is_skipped(self):
         # Homework re-POST overwrites the prior submission -> must skip server-submitted ones.
         client = FakeClient({"courses/55379/homework-activities": {"homework_activities": [
