@@ -1,7 +1,9 @@
 from __future__ import annotations
+import contextlib
 import html
 import json
 import re
+import time
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 from urllib.parse import parse_qs, urlencode, unquote, urljoin, urlparse
@@ -329,6 +331,46 @@ def has_session_cookie(
     return False
 
 
+def _runtime_ctx() -> Any:
+    try:  # pragma: no cover - package import path
+        import troTHU.runtime_context as ctx
+    except ImportError:  # pragma: no cover - direct script fallback
+        import runtime_context as ctx  # type: ignore
+    return ctx
+
+
+def _emit_api_log(method: str, url: str, **fields: Any) -> None:
+    """Best-effort: forward one API call to the structured logger. Never raises.
+
+    Kept as a lazy ``ctx`` lookup so this low-level client stays free of a top-level
+    runtime_context dependency.
+    """
+    try:
+        _runtime_ctx().log_api_call(method, url, **fields)
+    except Exception:
+        pass
+
+
+def _debug_logging_active() -> bool:
+    """True in the debug/research tiers, where full request/response bodies are captured."""
+    try:
+        return str(getattr(_runtime_ctx(), "LOGGING_MODE", "normal")) != "normal"
+    except Exception:
+        return False
+
+
+async def _read_body_snapshot(resp: Any) -> Any:
+    """Read the (already-cached) response body for debug/research logging. Never raises."""
+    try:
+        ctype = str(resp.headers.get("Content-Type") or "").lower()
+        if "json" in ctype:
+            return await resp.json(encoding="utf-8")
+        text = await resp.text()
+        return text[:20000]
+    except Exception:
+        return None
+
+
 class TronHttpClient:
     def __init__(
         self,
@@ -348,6 +390,59 @@ class TronHttpClient:
     def api_url(self, path: str) -> str:
         return "{}{}".format(self.endpoints.base_url.rstrip("/"), path)
 
+    @contextlib.asynccontextmanager
+    async def _logged_request(self, method: str, url: str, *, json_payload: Any = None,
+                              params: Optional[Dict[str, Any]] = None,
+                              guard_auth: bool = True, log_body: bool = True):
+        """The single seam every HTTP call funnels through.
+
+        Holds the 401/login guard (previously duplicated across every fetcher) and emits
+        exactly one structured ``api_call`` log — concise in normal, full request/response
+        in debug/research. Yields the live response for the caller to read as usual.
+        """
+        kwargs = self.request_kwargs()
+        if json_payload is not None:
+            kwargs["json"] = json_payload
+        if params is not None:
+            kwargs["params"] = params
+        started = time.monotonic()
+        status_code: Any = None
+        snapshot: Any = None
+        error: Any = None
+        try:
+            async with getattr(self.session, method.lower())(url, **kwargs) as resp:
+                status_code = resp.status
+                if guard_auth and (status_code == 401 or "login" in str(resp.url).lower()):
+                    raise UnauthorizedError("Cookie 已過期或導向登入頁。")
+                try:
+                    yield resp
+                finally:
+                    if log_body and _debug_logging_active():
+                        snapshot = await _read_body_snapshot(resp)
+        except UnauthorizedError:
+            raise
+        except Exception as exc:
+            error = exc
+            raise
+        finally:
+            request_snapshot = json_payload if params is None else {"json": json_payload, "params": params}
+            _emit_api_log(method, url, http_status=status_code,
+                          elapsed_ms=int(round((time.monotonic() - started) * 1000)),
+                          request=request_snapshot, response=snapshot, error=error)
+
+    async def _get_json(self, url: str) -> Any:
+        """Authenticated GET returning parsed JSON (status guard + json parse), logged."""
+        async with self._logged_request("GET", url) as resp:
+            status_code = resp.status
+            if status_code != 200:
+                body = await resp.text()
+                raise UnexpectedResponseError("HTTP {}: {}".format(status_code, body[:200]))
+            try:
+                return await resp.json(encoding="utf-8")
+            except (aiohttp.ContentTypeError, ValueError):
+                body = await resp.text()
+                raise UnexpectedResponseError("Unexpected response body: {}".format(body[:200]))
+
     async def request_json(
         self,
         method: str,
@@ -357,17 +452,8 @@ class TronHttpClient:
         params: Optional[Dict[str, Any]] = None,
         expected_status: tuple[int, ...] = (200,),
     ) -> Any:
-        kwargs = self.request_kwargs()
-        if json_payload is not None:
-            kwargs["json"] = json_payload
-        if params is not None:
-            kwargs["params"] = params
-        request = getattr(self.session, method.lower())
-        async with request(url, **kwargs) as resp:
-            response_url = str(resp.url)
+        async with self._logged_request(method, url, json_payload=json_payload, params=params) as resp:
             status_code = resp.status
-            if status_code == 401 or "login" in response_url.lower():
-                raise UnauthorizedError("Cookie 已過期或導向登入頁。")
             if status_code not in expected_status:
                 body = await resp.text()
                 raise UnexpectedResponseError("HTTP {}: {}".format(status_code, body[:200]))
@@ -408,7 +494,8 @@ class TronHttpClient:
         return data
 
     async def fetch_user_id(self) -> Optional[int]:
-        async with self.session.get(self.endpoints.base_url, **self.request_kwargs()) as resp:
+        async with self._logged_request("GET", self.endpoints.base_url,
+                                        guard_auth=False, log_body=False) as resp:
             html_text = await resp.text()
 
         match = re.search(r"window\.APPRuntime\s*=\s*(\{.*?\});", html_text, re.DOTALL)
@@ -470,24 +557,9 @@ class TronHttpClient:
         )
 
     async def fetch_rollcalls(self) -> RollcallsResult:
-        async with self.session.get(self.endpoints.rollcalls_url, **self.request_kwargs()) as resp:
-            url = str(resp.url)
-            status_code = resp.status
-            if status_code == 401 or "login" in url.lower():
-                raise UnauthorizedError("Cookie 已過期或導向登入頁。")
-            if status_code != 200:
-                body = await resp.text()
-                raise UnexpectedResponseError("HTTP {}: {}".format(status_code, body[:200]))
-
-            try:
-                payload = await resp.json(encoding="utf-8")
-            except (aiohttp.ContentTypeError, ValueError):
-                body = await resp.text()
-                raise UnexpectedResponseError(
-                    "Unexpected response body: {}".format(body[:200])
-                )
-
-        return RollcallsResult(url=url, status_code=status_code, payload=payload)
+        url = self.endpoints.rollcalls_url
+        payload = await self._get_json(url)
+        return RollcallsResult(url=url, status_code=200, payload=payload)
 
     async def fetch_student_rollcalls(self, rollcall_id: Any, action: str = "") -> Any:
         base = self.endpoints.base_url.rstrip("/")
@@ -495,52 +567,10 @@ class TronHttpClient:
         action_text = str(action or "").strip()
         if action_text:
             url = "{}?action={}".format(url, action_text)
-        async with self.session.get(url, **self.request_kwargs()) as resp:
-            response_url = str(resp.url)
-            status_code = resp.status
-            if status_code == 401 or "login" in response_url.lower():
-                raise UnauthorizedError("Cookie 已過期或導向登入頁。")
-            if status_code != 200:
-                body = await resp.text()
-                raise UnexpectedResponseError("HTTP {}: {}".format(status_code, body[:200]))
-            try:
-                return await resp.json(encoding="utf-8")
-            except (aiohttp.ContentTypeError, ValueError):
-                body = await resp.text()
-                raise UnexpectedResponseError(
-                    "Unexpected response body: {}".format(body[:200])
-                )
+        return await self._get_json(url)
 
     async def fetch_current_semester(self) -> Dict[str, Any]:
-        async with self.session.get(self.endpoints.current_semester_url, **self.request_kwargs()) as resp:
-            url = str(resp.url)
-            status_code = resp.status
-            if status_code == 401 or "login" in url.lower():
-                raise UnauthorizedError("Cookie 已過期或導向登入頁。")
-            if status_code != 200:
-                body = await resp.text()
-                raise UnexpectedResponseError("HTTP {}: {}".format(status_code, body[:200]))
-            try:
-                return await resp.json(encoding="utf-8")
-            except (aiohttp.ContentTypeError, ValueError):
-                body = await resp.text()
-                raise UnexpectedResponseError(
-                    "Unexpected response body: {}".format(body[:200])
-                )
+        return await self._get_json(self.endpoints.current_semester_url)
 
     async def fetch_my_courses(self) -> Dict[str, Any]:
-        async with self.session.get(self.endpoints.courses_url, **self.request_kwargs()) as resp:
-            url = str(resp.url)
-            status_code = resp.status
-            if status_code == 401 or "login" in url.lower():
-                raise UnauthorizedError("Cookie 已過期或導向登入頁。")
-            if status_code != 200:
-                body = await resp.text()
-                raise UnexpectedResponseError("HTTP {}: {}".format(status_code, body[:200]))
-            try:
-                return await resp.json(encoding="utf-8")
-            except (aiohttp.ContentTypeError, ValueError):
-                body = await resp.text()
-                raise UnexpectedResponseError(
-                    "Unexpected response body: {}".format(body[:200])
-                )
+        return await self._get_json(self.endpoints.courses_url)

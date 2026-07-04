@@ -12,6 +12,7 @@ answer_flow wires the executor (closure over the TronClass client) into the LLM 
 """
 from __future__ import annotations
 import io
+import time
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
 import aiohttp
@@ -91,15 +92,21 @@ async def _get_bytes(client: Any, url: str) -> Tuple[Optional[bytes], str]:
     full = url if url.startswith("http") else client.api_url(url)
     # No timeout (same rationale as the LLM call): a large PDF/image attachment can exceed the
     # monitor session's 20s API cap; total=None lets it finish. Failures still return (None, "").
+    started = time.monotonic()
     try:
         async with client.session.get(full, timeout=aiohttp.ClientTimeout(total=None),
                                       **client.request_kwargs()) as resp:
+            elapsed = int(round((time.monotonic() - started) * 1000))
             if resp.status != 200:
+                ctx.log_api_call("GET", full, http_status=resp.status, elapsed_ms=elapsed)
                 return None, ""
             data = await resp.read()
             mime = normalize_text(resp.headers.get("Content-Type")).split(";")[0]
+            ctx.log_api_call("GET", full, http_status=resp.status, elapsed_ms=elapsed,
+                             response={"bytes": len(data), "mime": mime})
             return data, mime
-    except Exception:
+    except Exception as exc:
+        ctx.log_api_call("GET", full, elapsed_ms=int(round((time.monotonic() - started) * 1000)), error=exc)
         return None, ""
 
 

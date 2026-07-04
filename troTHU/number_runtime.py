@@ -68,6 +68,9 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
                     if stop_event.is_set() and found_code != 'NA':
                         return
                     body = await resp.text()
+                    if resp.status != 200:
+                        # High-frequency brute PUT: log only failures to avoid flooding the sink.
+                        ctx.log_api_call("PUT", request_url, http_status=resp.status, response=body)
                     classification = ctx.classify_number_response(resp.status, body)
                     if classification.status == ctx.NumberAttemptStatus.SUCCESS:
                         stop_event.set()

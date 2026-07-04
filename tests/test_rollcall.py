@@ -335,6 +335,21 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(outcome.has_session)
         self.assertEqual(result.payload["rollcalls"][0]["rollcall_id"], 11)
 
+    async def test_http_hook_logs_every_api_call(self) -> None:
+        # fetch_rollcalls is a direct-session fetcher that used to bypass logging entirely;
+        # it now funnels through _logged_request, which emits exactly one api_call log.
+        self.fake_server.rollcalls = [{"status": "on_call_fine", "rollcall_id": 11}]
+
+        async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+            await self.login_session(session)
+            with patch.object(tron, "log_api_call") as log_mock:
+                await tron_http.TronHttpClient(session).fetch_rollcalls()
+
+        self.assertTrue(log_mock.called)
+        args, kwargs = log_mock.call_args
+        self.assertEqual(args[0], "GET")
+        self.assertEqual(kwargs.get("http_status"), 200)
+
     async def test_check_rollcall_number_flow_logs_and_invokes_handler(self) -> None:
         self.fake_server.rollcalls = [{"is_number": True, "rollcall_id": 42}]
 

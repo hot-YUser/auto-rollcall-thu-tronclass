@@ -12,6 +12,7 @@ Used to confirm a submission succeeded. Best-effort; never raises.
 from __future__ import annotations
 
 import json
+import time
 from typing import Any, Dict, Mapping
 from urllib.parse import quote
 
@@ -185,11 +186,15 @@ async def _get_json(session: Any, url: str, request_ssl: Any) -> Any:
     kwargs: Dict[str, Any] = {}
     if request_ssl is not None:
         kwargs["ssl"] = request_ssl
+    started = time.monotonic()
     try:
         async with session.get(url, **kwargs) as response:
             text = await response.text()
+            ctx.log_api_call("GET", url, http_status=response.status,
+                             elapsed_ms=int(round((time.monotonic() - started) * 1000)), response=text)
         return json.loads(text) if text else None
-    except Exception:
+    except Exception as exc:
+        ctx.log_api_call("GET", url, elapsed_ms=int(round((time.monotonic() - started) * 1000)), error=exc)
         return None
 
 
