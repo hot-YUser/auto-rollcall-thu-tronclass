@@ -29,6 +29,7 @@ except ImportError:  # pragma: no cover - script execution fallback
 
 
 ATTEMPT_COOLDOWN_SECONDS = 30.0
+MAX_ATTEMPT_COOLDOWN_SECONDS = 600.0   # failure backoff cap: an un-answerable activity retries at most ~10 min
 POLL_INTERVAL_SECONDS = 10.0
 COURSE_REFRESH_SECONDS = 300.0
 PREPARE_TIMEOUT_SECONDS = 180.0        # generous cap so a stuck (no-timeout) LLM eventually releases the task
@@ -36,6 +37,8 @@ _MAX_INFLIGHT_ACTIVITIES = 5           # bound concurrent answer handlers (LLM c
 
 # activity_id -> the fire-and-forget handler Task currently answering it (dispatch dedup).
 _INFLIGHT_ACTIVITIES: Dict[str, Any] = {}
+_DETECT_ANNOUNCED: Set[str] = set()    # activity ids already announced "偵測到…" — print ONCE, not each retry
+_FAILED_ATTEMPTS: Dict[str, int] = {}  # activity id -> consecutive prepare/submit failures (exponential backoff)
 
 
 def _as_int(value: Any, default: int = 0) -> int:
@@ -274,6 +277,8 @@ def reset_autoanswer_dispatch() -> None:
     """Forget stale in-flight handlers. Called by app_main per run: a crash+restart makes a NEW
     event loop, so Tasks from the previous loop are dead and their ids must not block re-dispatch."""
     _INFLIGHT_ACTIVITIES.clear()
+    _DETECT_ANNOUNCED.clear()
+    _FAILED_ATTEMPTS.clear()
 
 
 async def handle_activity(session: Any, activity: Activity, aa: Dict[str, Any]) -> None:
@@ -284,10 +289,13 @@ async def handle_activity(session: Any, activity: Activity, aa: Dict[str, Any]) 
     Effective submit time = max(prepare_time, delay). Never raises.
     """
     key = activity.activity_id
+    succeeded = False
     try:
         delay = int(aa.get("delay_seconds", 15) or 0)
         label = activity.title or activity.activity_type.value
-        ctx.log_print("偵測到「{}」，準備答案中…".format(label))  # announce on DETECT (before prepare)
+        if key not in _DETECT_ANNOUNCED:  # announce ONCE per activity — retries stay silent (no 刷屏)
+            _DETECT_ANNOUNCED.add(key)
+            ctx.log_print("偵測到「{}」，準備答案中…".format(label))
         started = ctx.time.monotonic()
         client = ctx.create_tron_http_client(session, request_ssl=ctx.get_ssl_request_setting())
         try:
@@ -321,6 +329,7 @@ async def handle_activity(session: Any, activity: Activity, aa: Dict[str, Any]) 
         result = await answer_flow.submit_prepared(client, prepared, resubmit_for_correct=bool(aa.get("resubmit_for_correct", True)))
         prepared["submitted"] = True
         if result.ok:
+            succeeded = True
             ctx.COMPLETED_QUESTION_SUBMISSIONS[key] = True
             try:  # persist permanently so a restart never re-answers it
                 autoanswer_store.mark_completed(ctx.BASE_DIR, _active_profile_name(), key)
@@ -338,6 +347,10 @@ async def handle_activity(session: Any, activity: Activity, aa: Dict[str, Any]) 
     finally:
         ctx.ACTIVE_QUESTION_ANSWERS.pop(key, None)
         _INFLIGHT_ACTIVITIES.pop(key, None)
+        if succeeded:
+            _FAILED_ATTEMPTS.pop(key, None)
+        else:  # prepare/submit failed -> back off so an un-answerable activity stops hammering the LLM
+            _FAILED_ATTEMPTS[key] = _FAILED_ATTEMPTS.get(key, 0) + 1
 
 
 def _dispatch_activity(session: Any, activity: Activity, aa: Dict[str, Any]) -> None:
@@ -349,7 +362,10 @@ def _dispatch_activity(session: Any, activity: Activity, aa: Dict[str, Any]) -> 
             or key in ctx.ACTIVE_QUESTION_ANSWERS or len(_INFLIGHT_ACTIVITIES) >= _MAX_INFLIGHT_ACTIVITIES:
         return
     now = ctx.time.monotonic()
-    if now - float(ctx.QUESTION_ANSWER_ATTEMPTS.get(key, 0.0) or 0.0) < ATTEMPT_COOLDOWN_SECONDS:
+    # Retry cooldown grows with consecutive failures (30s, 60, 120, … capped) so an activity the LLM
+    # can't answer backs off instead of re-attempting — and re-announcing — every 30s forever.
+    cooldown = min(ATTEMPT_COOLDOWN_SECONDS * (2 ** _FAILED_ATTEMPTS.get(key, 0)), MAX_ATTEMPT_COOLDOWN_SECONDS)
+    if now - float(ctx.QUESTION_ANSWER_ATTEMPTS.get(key, 0.0) or 0.0) < cooldown:
         return
     ctx.QUESTION_ANSWER_ATTEMPTS[key] = now
     task = ctx.asyncio.create_task(handle_activity(session, activity, aa))

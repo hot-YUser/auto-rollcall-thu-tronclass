@@ -152,6 +152,7 @@ class DispatchTest(unittest.IsolatedAsyncioTestCase):
         for d in (ctx.COMPLETED_QUESTION_SUBMISSIONS, ctx.ACTIVE_QUESTION_ANSWERS,
                   ctx.QUESTION_ANSWER_ATTEMPTS, autoanswer_runtime._INFLIGHT_ACTIVITIES):
             d.clear()
+        autoanswer_runtime.reset_autoanswer_dispatch()  # also clears _DETECT_ANNOUNCED / _FAILED_ATTEMPTS
 
     @staticmethod
     def _act(aid):
@@ -192,6 +193,7 @@ class HandleActivityTest(unittest.IsolatedAsyncioTestCase):
         for d in (ctx.COMPLETED_QUESTION_SUBMISSIONS, ctx.ACTIVE_QUESTION_ANSWERS,
                   ctx.QUESTION_ANSWER_ATTEMPTS, autoanswer_runtime._INFLIGHT_ACTIVITIES):
             d.clear()
+        autoanswer_runtime.reset_autoanswer_dispatch()  # also clears _DETECT_ANNOUNCED / _FAILED_ATTEMPTS
         ctx.AUTOANSWER_SUBMIT_NOW = asyncio.Event()
 
     @staticmethod
@@ -255,6 +257,21 @@ class HandleActivityTest(unittest.IsolatedAsyncioTestCase):
 
         await self._run("EX4", prepare=prep, submit=sub)
         self.assertEqual(submitted, [])  # None prepared -> never submits
+
+    async def test_detect_announced_once_and_failures_back_off(self):
+        # An un-answerable activity (prepare -> None) must announce "偵測到" ONCE, not每次重試 (刷屏),
+        # and each failure bumps the backoff counter so _dispatch_activity waits longer next time.
+        async def prep_none(*a, **k):
+            return None
+
+        async def sub(*a, **k):
+            return AnswerResult(ok=False, status="x")
+
+        first = await self._run("EX9", prepare=prep_none, submit=sub)
+        second = await self._run("EX9", prepare=prep_none, submit=sub)
+        self.assertTrue(any("偵測到" in p for p in first))    # announced on first detect
+        self.assertFalse(any("偵測到" in p for p in second))  # silent on retry
+        self.assertEqual(autoanswer_runtime._FAILED_ATTEMPTS.get("EX9"), 2)  # backoff grows per failure
 
     async def test_keypress_cuts_15s_countdown_short(self):
         ctx.AUTOANSWER_SUBMIT_NOW.set()  # any-key already pressed
