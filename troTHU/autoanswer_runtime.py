@@ -19,12 +19,14 @@ except ImportError:  # pragma: no cover
 try:
     from troTHU import answer_flow, autoanswer_store
     from troTHU.config_runtime import get_autoanswer_config
+    from troTHU.llm_answerer import resolve_api_key
     from troTHU.quiz_engine import format_paper_canonical, normalize_text
     from troTHU.quiz_models import Activity, ActivityType
 except ImportError:  # pragma: no cover - script execution fallback
     import answer_flow  # type: ignore
     import autoanswer_store  # type: ignore
     from config_runtime import get_autoanswer_config  # type: ignore
+    from llm_answerer import resolve_api_key  # type: ignore
     from quiz_engine import format_paper_canonical, normalize_text  # type: ignore
     from quiz_models import Activity, ActivityType  # type: ignore
 
@@ -40,6 +42,7 @@ _MAX_INFLIGHT_ACTIVITIES = 5           # bound concurrent answer handlers (LLM c
 _INFLIGHT_ACTIVITIES: Dict[str, Any] = {}
 _DETECT_ANNOUNCED: Set[str] = set()    # activity ids already announced "偵測到…" — print ONCE, not each retry
 _FAILED_ATTEMPTS: Dict[str, int] = {}  # activity id -> consecutive prepare/submit failures (exponential backoff)
+_PREPARE_UNREADY_ANNOUNCED: Set[str] = set()  # activity ids we've already told the user couldn't be prepared (no 刷屏)
 
 
 def _as_int(value: Any, default: int = 0) -> int:
@@ -307,6 +310,21 @@ def reset_autoanswer_dispatch() -> None:
     _INFLIGHT_ACTIVITIES.clear()
     _DETECT_ANNOUNCED.clear()
     _FAILED_ATTEMPTS.clear()
+    _PREPARE_UNREADY_ANNOUNCED.clear()
+
+
+def _announce_prepare_unready(key: str, label: str, aa: Dict[str, Any]) -> None:
+    """Tell the user ONCE why an already-announced ("準備答案中…") activity didn't submit — otherwise
+    the line just freezes at 準備答案中 with no feedback (every retry is silent). The common, fixable
+    case is a missing LLM key, so name it explicitly and point at the exact config knob."""
+    if key in _PREPARE_UNREADY_ANNOUNCED:
+        return
+    _PREPARE_UNREADY_ANNOUNCED.add(key)
+    if not resolve_api_key(aa.get("llm", {})):
+        ctx.log_print("「{}」需要 LLM 作答，但尚未設定金鑰——請在 config.conf 的 [llm] api_key 填入"
+                      "（或設環境變數 NVIDIA_API_KEY）；在那之前，需要作答的題目會被略過、不自動送出。".format(label))
+    else:
+        ctx.log_print("「{}」暫時無法備妥完整答案（LLM 無回應或題目無法解析），不送出、稍後自動重試。".format(label))
 
 
 async def handle_activity(session: Any, activity: Activity, aa: Dict[str, Any]) -> None:
@@ -331,8 +349,10 @@ async def handle_activity(session: Any, activity: Activity, aa: Dict[str, Any]) 
                 answer_flow.prepare_answer(client, session, activity, llm_config=aa.get("llm", {})),
                 timeout=PREPARE_TIMEOUT_SECONDS)
         except Exception:
-            return  # LLM stuck/failed / no usable answer -> release (retried at the 30s cooldown)
+            _announce_prepare_unready(key, label, aa)  # LLM stuck/timed out -> say so once, retry at cooldown
+            return
         if not prepared:
+            _announce_prepare_unready(key, label, aa)  # no usable answer (often: no LLM key) -> say so once
             return
         prepared["detected_at"] = started
         prepared["delay_seconds"] = delay

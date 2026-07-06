@@ -273,6 +273,20 @@ class HandleActivityTest(unittest.IsolatedAsyncioTestCase):
         await self._run("EX4", prepare=prep, submit=sub)
         self.assertEqual(submitted, [])  # None prepared -> never submits
 
+    async def test_no_usable_answer_explains_why_once(self):
+        # prepare -> None with NO llm key (aa llm={}): instead of freezing silently at 準備答案中…,
+        # tell the user ONCE and point at the exact config knob; stay silent on retry (no 刷屏).
+        async def prep(*a, **k):
+            return None
+
+        async def sub(*a, **k):
+            return AnswerResult(ok=True, status="x")
+
+        first = await self._run("EXK", prepare=prep, submit=sub)
+        self.assertTrue(any("api_key" in p for p in first))     # actionable missing-key hint
+        second = await self._run("EXK", prepare=prep, submit=sub)
+        self.assertFalse(any("api_key" in p for p in second))   # announced once, silent on retry
+
     async def test_detect_announced_once_and_failures_back_off(self):
         # An un-answerable activity (prepare -> None) must announce "偵測到" ONCE, not每次重試 (刷屏),
         # and each failure bumps the backoff counter so _dispatch_activity waits longer next time.
