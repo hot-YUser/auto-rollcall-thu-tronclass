@@ -61,7 +61,6 @@ class Question:
     qtype: QuestionType = QuestionType.UNKNOWN
     stem: str = ""
     options: Tuple[Option, ...] = field(default_factory=tuple)
-    point: str = ""
     blank_count: int = 0
     # Correct text(s) the server leaked (fill/cloze/short): per-blank, sorted.
     correct_texts: Tuple[str, ...] = field(default_factory=tuple)
@@ -72,11 +71,6 @@ class Question:
     def correct_option_ids(self) -> Tuple[int, ...]:
         """Option ids the server told us are correct (only present when answers leak)."""
         return tuple(opt.id for opt in self.options if opt.is_answer is True)
-
-    @property
-    def has_leaked_answer(self) -> bool:
-        return (any(opt.is_answer is not None for opt in self.options) and bool(self.correct_option_ids)) \
-            or bool(self.correct_texts)
 
     @property
     def is_selection(self) -> bool:

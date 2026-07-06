@@ -91,7 +91,6 @@ def parse_question(raw: Dict[str, Any], parent_id: int = 0) -> Question:
         qtype=qtype,
         stem=normalize_text(raw.get("description") or raw.get("content") or raw.get("stem")),
         options=tuple(options),
-        point=normalize_text(raw.get("point")),
         blank_count=blank_count,
         correct_texts=correct_texts,
         parent_id=parent_id,
