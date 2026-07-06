@@ -197,6 +197,35 @@ def _http_status_hint(status: int) -> str:
     return ""
 
 
+# ponytail: last-write-wins global — all auto-answer activities share ONE llm_config, so a
+# config-level failure (401 / 404 / DNS) is identical across concurrent calls; good enough to report.
+_LAST_LLM_ERROR: str = ""
+
+
+def last_llm_error() -> str:
+    """Most recent LLM request-failure reason ('' if the last call was fine). autoanswer_runtime reads
+    this to tell the user WHY an answer couldn't be prepared, instead of a silent 準備答案中… stall."""
+    return _LAST_LLM_ERROR
+
+
+def _note_llm_result(reason: str, *, http_status: Any = None) -> None:
+    """Record the outcome of an LLM call; reason='' = success (clears). On failure also log to JSONL via
+    a LAZY ctx import so this client stays standalone-importable (mirrors tron_http's lazy emit)."""
+    global _LAST_LLM_ERROR
+    _LAST_LLM_ERROR = reason
+    if not reason:
+        return
+    try:
+        try:
+            import troTHU.runtime_context as _ctx
+        except ImportError:  # pragma: no cover - script execution fallback
+            import runtime_context as _ctx  # type: ignore
+        _ctx.log_event("llm_call_failed", level="warning", status="error",
+                       message=reason, http_status=http_status)
+    except Exception:  # logging must never break answering
+        pass
+
+
 def _build_payload(messages: List[Dict[str, Any]], llm_config: Dict[str, Any],
                    tools: Optional[List[Dict[str, Any]]]) -> Dict[str, Any]:
     thinking = normalize_text(llm_config.get("thinking_mode")) or DEFAULT_LLM["thinking_mode"]
@@ -232,31 +261,38 @@ async def _request_message(session: Any, messages: List[Dict[str, Any]], llm_con
     """One chat call. Returns the assistant `message` dict (with content / tool_calls), or {}."""
     key = resolve_api_key(llm_config)
     if not key:
+        _note_llm_result("尚未設定 LLM 金鑰")
         return {}
     base = normalize_text(llm_config.get("base_url")) or DEFAULT_LLM["base_url"]
     payload = _build_payload(messages, llm_config, tools)
     headers = {"Authorization": "Bearer {}".format(key), "Accept": "application/json"}
     url = "{}/chat/completions".format(base.rstrip("/"))
-    # No timeout: reasoning is always on and max_tokens is unset, so a single completion can run
-    # well past the monitor session's 20s API cap — inheriting that cap silently dropped valid
-    # slow answers. total=None disables it; real failures (connect error / 401 / 5xx) still raise
-    # or return non-200 and ARE surfaced below, so "no timeout" doesn't hide errors.
-    # ponytail: this runs inside autoanswer_tick, which the monitor awaits inline — a slow
-    # completion delays the next rollcall poll (same as today's multi-turn tool calls). Decoupling
-    # auto-answer from the poll loop is a separate change; widen the window first.
+    # total=None on the READ phase: reasoning is always on + max_tokens large, so one completion can
+    # run past the monitor's 20s API cap — inheriting that cap silently dropped valid slow answers.
+    # But BOUND the connect phase (connect/sock_connect=15s) so an unreachable base_url fails fast and
+    # gets reported, instead of hanging to the 180s outer prepare cap. Every failure records a reason
+    # via _note_llm_result (read by autoanswer_runtime) so no misconfig is ever silent.
     try:
         async with session.post(url, headers=headers, json=payload,
-                                timeout=aiohttp.ClientTimeout(total=None)) as resp:
+                                timeout=aiohttp.ClientTimeout(total=None, connect=15, sock_connect=15)) as resp:
             if resp.status != 200:
+                _note_llm_result("LLM 回應 {}｜{}".format(resp.status, _http_status_hint(resp.status) or "請求失敗"),
+                                 http_status=resp.status)
                 return {}
             data = await resp.json()
-    except Exception:  # network/parse — degrade, never crash the loop
+    except Exception as exc:  # network/parse — degrade, never crash the loop
+        _note_llm_result("連線失敗（檢查 base_url／網路）：{}".format(type(exc).__name__))
         return {}
     try:
         msg = data["choices"][0]["message"]
-        return msg if isinstance(msg, dict) else {}
     except (KeyError, IndexError, TypeError):
+        _note_llm_result("回應格式異常（choices/message 缺失或空）")  # e.g. m3 200 + empty choices
         return {}
+    if isinstance(msg, dict):
+        _note_llm_result("")  # success — clear any prior error
+        return msg
+    _note_llm_result("回應格式異常（choices/message 缺失或空）")
+    return {}
 
 
 async def complete(session: Any, messages: List[Dict[str, Any]], llm_config: Dict[str, Any]) -> str:

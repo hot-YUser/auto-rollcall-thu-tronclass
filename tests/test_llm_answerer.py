@@ -8,6 +8,7 @@ from troTHU.llm_answerer import (
     complete,
     complete_with_tools,
     image_urls,
+    last_llm_error,
     resolve_api_key,
     strip_html,
     strip_think,
@@ -239,6 +240,71 @@ class ToolLoopTest(unittest.IsolatedAsyncioTestCase):
             tool_executor=lambda n, a: None, max_iters=3)
         self.assertEqual(out, "C")
         self.assertEqual(len(session.posts), 1)
+
+
+class _StatusResp:
+    def __init__(self, status, data):
+        self._status, self._data = status, data
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *a):
+        return False
+
+    async def json(self):
+        return self._data
+
+    @property
+    def status(self):
+        return self._status
+
+
+class _StatusSession:
+    """Returns a canned HTTP status (to exercise the non-200 error path)."""
+
+    def __init__(self, status):
+        self._status = status
+
+    def post(self, url, headers=None, json=None, **kwargs):
+        return _StatusResp(self._status, {"choices": [{"message": {"content": "A"}}]})
+
+
+class _RaisingSession:
+    def post(self, url, headers=None, json=None, **kwargs):
+        raise OSError("connection refused")  # e.g. unreachable base_url
+
+
+class LlmErrorSurfacingTest(unittest.IsolatedAsyncioTestCase):
+    """Every LLM misconfig must yield a NON-EMPTY, specific reason via last_llm_error() — never silent."""
+
+    def setUp(self):
+        self.cfg = {"api_key": "k", "base_url": "https://x/v1", "model": "m"}
+
+    async def test_bad_api_key_401_reason(self):
+        out = await complete(_StatusSession(401), [{"role": "user", "content": "x"}], self.cfg)
+        self.assertEqual(out, "")
+        self.assertIn("401", last_llm_error())
+
+    async def test_bad_model_404_reason(self):
+        await complete(_StatusSession(404), [{"role": "user", "content": "x"}], self.cfg)
+        self.assertIn("404", last_llm_error())
+
+    async def test_bad_base_url_connection_reason(self):
+        await complete(_RaisingSession(), [{"role": "user", "content": "x"}], self.cfg)
+        self.assertIn("連線失敗", last_llm_error())
+
+    async def test_missing_key_reason(self):
+        await complete(_StatusSession(200), [{"role": "user", "content": "x"}],
+                       {"api_key": "", "api_key_env": "DEFINITELY_UNSET_ENV_XYZ"})
+        self.assertIn("金鑰", last_llm_error())
+
+    async def test_success_clears_prior_error(self):
+        await complete(_StatusSession(401), [{"role": "user", "content": "x"}], self.cfg)
+        self.assertTrue(last_llm_error())
+        out = await complete(_StatusSession(200), [{"role": "user", "content": "x"}], self.cfg)
+        self.assertEqual(out, "A")
+        self.assertEqual(last_llm_error(), "")  # a good call clears the reason
 
 
 if __name__ == "__main__":
