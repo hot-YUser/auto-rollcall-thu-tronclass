@@ -1362,5 +1362,17 @@ class TronHelpersTest(unittest.TestCase):
         self.assertEqual(log_print.call_count, 2)
 
 
+class LoggingModeSwitchTest(unittest.TestCase):
+    """The [logging] mode switch (normal/debug/research) must be VISIBLE in the generated advanced
+    config — it was supported but never rendered (missing from ADVANCED_SECTION_KEYS)."""
+
+    def test_advanced_render_exposes_logging_mode(self):
+        adv_text = tron.render_advanced_config_toml({})
+        self.assertIn("[logging]", adv_text)
+        self.assertIn('mode = "normal"', adv_text)
+        self.assertIn("debug", adv_text)     # comment explains the tiers / --debug
+        self.assertIn("research", adv_text)
+
+
 if __name__ == "__main__":
     unittest.main()

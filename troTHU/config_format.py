@@ -571,7 +571,7 @@ def parse_legacy_basic_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
 # operating). Order here is the order they appear in the generated TOML file.
 ADVANCED_SECTION_KEYS = (
     "time", "session", "monitor", "auth", "ux", "local_ui", "webview",
-    "integrations", "notifications", "config", "number", "radar", "research",
+    "integrations", "notifications", "config", "logging", "number", "radar", "research",
     "autoanswer",
 )
 
