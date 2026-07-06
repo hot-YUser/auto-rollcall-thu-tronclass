@@ -202,6 +202,8 @@ def main(argv: ctx.Optional[ctx.List[str]]=None) -> int:
                 else:
                     print('Research probe failed: {}'.format(exc))
                 return 1
+        if research_command == 'crawl-summary':
+            return ctx.research_crawl_summary_command(json_output=getattr(args, 'json', False))
         if research_command == 'browser-check':
             return ctx.research_browser_check_command(json_output=getattr(args, 'json', False))
         if research_command == 'browser-capture':

@@ -47,6 +47,24 @@ def research_status_command(json_output: bool=False) -> int:
     return 0
 
 
+def research_crawl_summary_command(json_output: bool=False) -> int:
+    report = ctx.summarize_crawl()
+    if json_output:
+        print(ctx.json_text(report))
+    else:
+        print('Research crawl dir: {}'.format(report.get('crawl_dir', '')))
+        print('Records: {} across {} file(s)'.format(report.get('record_count', 0), report.get('file_count', 0)))
+        print('Kinds: {}'.format(report.get('kinds', {})))
+        print('Unique endpoints: {}'.format(report.get('unique_endpoints', 0)))
+        print('Unique QR tokens harvested: {} across {} time-bucket(s) ({:.2f}/bucket)'.format(
+            report.get('unique_tokens', 0), report.get('unique_time_buckets', 0), report.get('tokens_per_bucket', 0.0)))
+        leaks = report.get('leak_hits', [])
+        print('Leak-scanner hits (non-teacher endpoint echoing a token): {}'.format(len(leaks)))
+        for hit in leaks[:10]:
+            print('  LEAK {} [{}] tokens={}'.format(hit.get('url'), hit.get('kind'), hit.get('tokens')))
+    return 0
+
+
 def _research_gate_failure(exc: ctx.ResearchGateError, json_output: bool=False) -> int:
     payload = exc.to_dict()
     if json_output:

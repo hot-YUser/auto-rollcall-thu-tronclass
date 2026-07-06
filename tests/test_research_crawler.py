@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from troTHU import debug_capture as dc
 from troTHU import research_crawler as rc
 from troTHU import tron
+
+_T1 = "1782744663" + "a" * 32   # <10 unix sec><32 hex>
+_T2 = "1699999999" + "b" * 32
 
 
 class SourceStateSignatureTest(unittest.TestCase):
@@ -84,6 +89,159 @@ class CrawlerIOSafetyTest(unittest.IsolatedAsyncioTestCase):
                 rc._dump("endpoint", {"url": "x", "status": 200, "body": "raw"})
             files = list((Path(temp_dir) / "state" / "research-crawl").rglob("*.jsonl"))
             self.assertTrue(files)
+
+
+class LeakScannerTest(unittest.TestCase):
+    def test_scan_finds_token_in_str_and_dict(self) -> None:
+        self.assertEqual(rc.scan_body_for_tokens('{"data":"%s"}' % _T1), [_T1])
+        self.assertEqual(rc.scan_body_for_tokens({"data": _T1}), [_T1])
+
+    def test_scan_rejects_near_misses(self) -> None:
+        self.assertEqual(rc.scan_body_for_tokens("no token here"), [])
+        self.assertEqual(rc.scan_body_for_tokens("123456789" + "a" * 32), [])   # 9 digits
+        self.assertEqual(rc.scan_body_for_tokens("1234567890" + "a" * 31), [])  # 31 hex
+        self.assertEqual(rc.scan_body_for_tokens("1234567890" + "A" * 32), [])  # uppercase hex
+        self.assertEqual(rc.scan_body_for_tokens(None), [])
+
+    def test_non_teacher_source_is_leak(self) -> None:
+        finding = rc.leak_scan_record({"kind": "qr_hammer", "source": "student",
+                                       "url": "https://x/api/rollcall/5/lite", "body": "x %s y" % _T2})
+        self.assertTrue(finding["is_leak"])
+        self.assertEqual(finding["tokens"], [_T2])
+
+    def test_teacher_qr_harvest_is_not_leak(self) -> None:
+        finding = rc.leak_scan_record({"kind": "teacher_qr", "source": "teacher_qr", "body": _T1})
+        self.assertFalse(finding["is_leak"])
+
+    def test_no_token_returns_empty(self) -> None:
+        self.assertEqual(rc.leak_scan_record({"kind": "page", "body": "<html>hi</html>"}), {})
+
+
+class TokenIndexTest(unittest.TestCase):
+    def test_extracts_from_teacher_qr_record(self) -> None:
+        row = rc.token_index_row({"ts": "T", "source": "teacher_qr", "rollcall_id": "55",
+                                  "http_date_epoch": 123.0, "data": _T1})
+        self.assertEqual(row, {"ts": "T", "server_time": 123.0, "source": "teacher_qr",
+                               "rollcall_id": "55", "data": _T1})
+
+    def test_falls_back_to_body_scan(self) -> None:
+        row = rc.token_index_row({"ts": "T", "kind": "endpoint", "body": "zz %s zz" % _T2})
+        self.assertEqual(row["data"], _T2)
+
+    def test_tokenless_record_is_empty(self) -> None:
+        self.assertEqual(rc.token_index_row({"ts": "T", "body": "nothing"}), {})
+
+
+class HammerConfigTest(unittest.TestCase):
+    def test_defaults_when_absent(self) -> None:
+        cfg = rc._hammer_config({})
+        self.assertEqual(cfg["iterations"], rc._QR_HAMMER_ITERATIONS)
+        self.assertEqual(cfg["interval"], rc._QR_HAMMER_INTERVAL)
+        self.assertEqual(cfg["max_duration"], 60.0)
+        self.assertFalse(cfg["teacher_harvest"])
+
+    def test_overrides_and_coercion(self) -> None:
+        cfg = rc._hammer_config({"research": {"hammer_interval": "0.1", "hammer_iterations": 300,
+                                              "hammer_max_duration": 120, "teacher_harvest": True}})
+        self.assertEqual(cfg["interval"], 0.1)
+        self.assertEqual(cfg["iterations"], 300)
+        self.assertEqual(cfg["max_duration"], 120.0)
+        self.assertTrue(cfg["teacher_harvest"])
+
+    def test_clamps_bad_values(self) -> None:
+        cfg = rc._hammer_config({"research": {"hammer_interval": -5, "hammer_iterations": 0,
+                                              "hammer_max_duration": "junk"}})
+        self.assertEqual(cfg["interval"], 0.0)      # negative -> 0
+        self.assertEqual(cfg["iterations"], 1)      # 0 -> min 1
+        self.assertEqual(cfg["max_duration"], 60.0)  # junk -> default
+
+
+class ParseHttpDateTest(unittest.TestCase):
+    def test_valid_rfc7231(self) -> None:
+        self.assertGreater(rc._parse_http_date_epoch("Sun, 06 Jul 2025 12:00:00 GMT"), 0.0)
+
+    def test_garbage_is_zero(self) -> None:
+        self.assertEqual(rc._parse_http_date_epoch("garbage"), 0.0)
+        self.assertEqual(rc._parse_http_date_epoch(""), 0.0)
+        self.assertEqual(rc._parse_http_date_epoch(None), 0.0)
+
+
+class SummaryAggregationTest(unittest.TestCase):
+    def _write_corpus(self, root: Path) -> None:
+        root.mkdir(parents=True, exist_ok=True)
+        records = [
+            {"ts": "t1", "kind": "teacher_qr", "source": "teacher_qr", "rollcall_id": "55",
+             "http_date_epoch": 123.0, "data": _T1, "body": '{"data":"%s"}' % _T1},
+            {"ts": "t2", "kind": "qr_hammer", "source": "student", "status": 200,
+             "url": "https://x/api/rollcall/55/lite", "body": "leak " + _T2},
+            {"ts": "t3", "kind": "page", "status": 200, "url": "https://x/", "body": "<html>hi</html>"},
+        ]
+        with open(root / "2026-07-06.jsonl", "w", encoding="utf-8") as handle:
+            for record in records:
+                handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+    def test_aggregates_kinds_tokens_buckets_and_leaks(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / "state" / "research-crawl"
+            self._write_corpus(root)
+            report = rc.summarize_crawl(crawl_dir=root)
+        self.assertEqual(report["record_count"], 3)
+        self.assertEqual(report["kinds"], {"page": 1, "qr_hammer": 1, "teacher_qr": 1})
+        self.assertEqual(report["unique_endpoints"], 2)
+        self.assertEqual(report["unique_tokens"], 2)          # T1 (teacher data) + T2 (leaked body)
+        self.assertEqual(report["unique_time_buckets"], 2)
+        self.assertEqual(len(report["leak_hits"]), 1)          # only the student endpoint echo
+        self.assertEqual(report["leak_hits"][0]["tokens"], [_T2])
+
+    def test_skips_derived_token_index_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / "state" / "research-crawl"
+            self._write_corpus(root)
+            # a stray derived index must NOT be re-counted
+            with open(root / "qr-tokens.jsonl", "w", encoding="utf-8") as handle:
+                handle.write(json.dumps({"ts": "t", "source": "teacher_qr", "data": _T1}) + "\n")
+            report = rc.summarize_crawl(crawl_dir=root)
+        self.assertEqual(report["record_count"], 3)
+
+    def test_re_redacts_every_record_on_read(self) -> None:
+        # summarize_crawl MUST pass each raw record through sanitize_debug_payload (raw on disk).
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / "state" / "research-crawl"
+            self._write_corpus(root)
+            seen = []
+            original = dc.sanitize_debug_payload
+
+            def spy(record):
+                seen.append(record)
+                return original(record)
+
+            with patch.object(dc, "sanitize_debug_payload", spy):
+                report = rc.summarize_crawl(crawl_dir=root)
+        # sanitize recurses into nested values, so count only the top-level records it saw.
+        top_level = [s for s in seen if isinstance(s, dict) and "kind" in s]
+        self.assertEqual(len(top_level), report["record_count"])
+
+
+class TeacherHarvestSafetyTest(unittest.IsolatedAsyncioTestCase):
+    async def test_harvest_with_no_context_returns_and_never_raises(self) -> None:
+        result = await rc.harvest_teacher_qr_series(None, "", "", iterations=1, interval=0.0, max_duration=1.0)
+        self.assertFalse(result["ok"])
+
+    async def test_maybe_harvest_skips_when_opt_out(self) -> None:
+        # opt-in defaults false -> the teacher path never runs, no rollcall is created.
+        await rc._maybe_harvest_teacher({"teacher_harvest": False, "iterations": 1,
+                                         "interval": 0.0, "max_duration": 1.0})
+
+    async def test_maybe_harvest_skips_when_teacher_not_ready(self) -> None:
+        with patch.object(tron, "TEACHER_READY", False), patch.object(tron, "TEACHER_SESSION", None):
+            await rc._maybe_harvest_teacher({"teacher_harvest": True, "iterations": 1,
+                                            "interval": 0.0, "max_duration": 1.0})
+
+    async def test_hammer_never_touches_production_qr_assist_state(self) -> None:
+        before = dict(getattr(tron, "ACTIVE_TEACHER_QR_ASSISTS", {}))
+        with patch.object(tron, "get_active_http_endpoints", side_effect=Exception("boom")):
+            await rc.run_qr_hammer(object(), "77")
+        self.assertEqual(dict(getattr(tron, "ACTIVE_TEACHER_QR_ASSISTS", {})), before)
 
 
 if __name__ == "__main__":
