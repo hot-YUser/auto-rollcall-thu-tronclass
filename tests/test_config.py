@@ -900,7 +900,7 @@ class TronHelpersTest(unittest.TestCase):
         )
 
     def test_get_poll_interval_and_retry_limit_are_clamped(self) -> None:
-        tron.CONFIG["config"]["Senkaku"] = "0"
+        tron.CONFIG["config"]["check_interval"] = "0"
         tron.CONFIG["config"]["retries"] = "-2"
 
         self.assertEqual(tron.get_poll_interval(), 0.1)

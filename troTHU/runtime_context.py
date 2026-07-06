@@ -646,7 +646,7 @@ DEFAULT_CONFIG = {
     },
     "config": {
         "enable_log": True,
-        "Senkaku": 1,
+        "check_interval": 1,
         "retries": 20,
         "http_timeout": DEFAULT_HTTP_TIMEOUT_SECONDS,
         "notification_timeout": DEFAULT_NOTIFICATION_TIMEOUT_SECONDS,

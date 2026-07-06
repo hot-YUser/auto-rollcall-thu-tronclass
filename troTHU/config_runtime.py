@@ -291,7 +291,12 @@ def _normalize_notifications(config: ctx.Dict[str, ctx.Any]) -> None:
 def _normalize_runtime_config(config: ctx.Dict[str, ctx.Any]) -> None:
     runtime_config = _dict_section(config, 'config')
     runtime_config.setdefault('enable_log', ctx.DEFAULT_CONFIG['config']['enable_log'])
-    runtime_config.setdefault('Senkaku', ctx.DEFAULT_CONFIG['config']['Senkaku'])
+    # check_interval = 每次輪詢點名的間隔秒數。Back-compat：舊 config 可能帶著被打錯的舊鍵名 'Senkaku'——
+    # 有的話沿用其值遷移過來、並移除舊鍵（不再渲染那個怪名字）。
+    _legacy_interval = runtime_config.pop('Senkaku', None)
+    runtime_config.setdefault(
+        'check_interval',
+        _legacy_interval if _legacy_interval is not None else ctx.DEFAULT_CONFIG['config']['check_interval'])
     runtime_config.setdefault('retries', ctx.DEFAULT_CONFIG['config']['retries'])
     runtime_config['http_timeout'] = ctx.coerce_positive_float(runtime_config.get('http_timeout', ctx.DEFAULT_CONFIG['config']['http_timeout']), ctx.DEFAULT_CONFIG['config']['http_timeout'])
     runtime_config['notification_timeout'] = ctx.coerce_positive_float(runtime_config.get('notification_timeout', ctx.DEFAULT_CONFIG['config']['notification_timeout']), ctx.DEFAULT_CONFIG['config']['notification_timeout'])
@@ -702,7 +707,7 @@ def get_schedule_for_day(weekday: int) -> ctx.Dict[str, ctx.Any]:
 
 def get_poll_interval() -> float:
     try:
-        interval = float(ctx.CONFIG['config'].get('Senkaku', 1))
+        interval = float(ctx.CONFIG['config'].get('check_interval', ctx.CONFIG['config'].get('Senkaku', 1)))
     except (TypeError, ValueError):
         return 1.0
     return max(interval, 0.1)

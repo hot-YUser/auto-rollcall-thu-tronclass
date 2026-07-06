@@ -741,7 +741,7 @@ _ADVANCED_COMMENTS = {
     "integrations": "聊天機器人整合；token 一律從環境變數讀，不會寫在這裡",
     "notifications": "點名結果通知（Telegram / Discord）",
     "config": "核心執行參數",
-    "config.Senkaku": "每次輪詢點名的間隔秒數（越小越即時、越耗資源）",
+    "config.check_interval": "每次輪詢點名的間隔秒數（越小越即時、越耗資源）",
     "config.retries": "連續錯誤幾次後停止監控",
     "config.http_timeout": "HTTP 連線逾時秒數",
     "config.verify_ssl": "false = 不驗證 TLS 憑證（不建議）",
