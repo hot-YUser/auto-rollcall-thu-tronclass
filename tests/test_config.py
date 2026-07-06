@@ -1374,5 +1374,28 @@ class LoggingModeSwitchTest(unittest.TestCase):
         self.assertIn("research", adv_text)
 
 
+class AdvancedCommentCoverageTest(unittest.TestCase):
+    """User-facing advanced keys must be self-documenting (a '#' comment on the line above), and must
+    NOT leak into the config.conf (basic) template — the two files stay strictly separate."""
+
+    def test_user_facing_keys_are_commented_in_advanced(self):
+        adv = tron.render_advanced_config_toml({}).splitlines()
+
+        def commented(key):
+            for i, line in enumerate(adv):
+                if line.strip().startswith(key + " ="):
+                    return i > 0 and adv[i - 1].lstrip().startswith("#")
+            return False
+
+        for key in ("headless", "enable_log", "token_env", "min_concurrency", "api_key_env",
+                    "allow_browser_capture", "cooldown_seconds", "ephemeral_replies"):
+            self.assertTrue(commented(key), "advanced key not commented: " + key)
+
+    def test_advanced_only_keys_absent_from_basic_config(self):
+        basic = tron.DEFAULT_BASIC_CONFIG_TEMPLATE
+        for key in ("enable_log", "min_concurrency", "thinking_mode", "allow_browser_capture"):
+            self.assertNotIn(key, basic)  # advanced-only knobs never appear in config.conf
+
+
 if __name__ == "__main__":
     unittest.main()
