@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "auto-rollcall-thu-tronclass"
-version = "1.8b1"
+version = "1.8b2"
 description = "THU TronClass auto rollcall helper"
 readme = "README.md"
 requires-python = ">=3.10"
