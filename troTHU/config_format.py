@@ -233,8 +233,9 @@ def infer_single_account_now(simple: ctx.Mapping[str, ctx.Any]) -> str:
 # The config.conf [llm] connection keys, in render order. SINGLE source of truth: parse, render,
 # merge, split, and the advanced-strip all reference this so adding a key never drifts across sites
 # (the duplicated-literal pattern that produced the round-1 [llm]-template bug). api_key is the
-# secret; api_key_env is the env-var name. The behaviour keys (thinking_mode/...) are NOT here.
-LLM_CONNECTION_KEYS = ("provider", "base_url", "model", "api_key", "api_key_env")
+# secret. The dead `provider` field was removed and api_key_env moved to config.advanced.toml
+# [autoanswer.llm] (with the behaviour keys), so config.conf [llm] is just the 3 beginner essentials.
+LLM_CONNECTION_KEYS = ("base_url", "model", "api_key")
 
 
 def parse_basic_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
@@ -673,15 +674,12 @@ def render_basic_config(simple_dict: ctx.Mapping[str, ctx.Any] | None = None) ->
     lines.extend([
         "# [llm]（選用）自動答題用的 LLM 連線設定；留空＝用預設（NVIDIA NIM / minimax-m3）。",
         "#   api_key：直接把金鑰填在這裡最簡單（建議一般使用者用這個）。",
-        "#   進階：想用環境變數就把 api_key 留空、改設 api_key_env 指定的環境變數（預設 NVIDIA_API_KEY）。",
         "#   金鑰是機密；config.conf 預設不會被提交（.gitignore），但仍請勿自行外流或截圖分享。",
-        "#   進階行為（reasoning／溫度／工具…）仍在 config.advanced.toml 的 [autoanswer.llm]。",
+        "#   進階（reasoning／溫度／工具／改用環境變數 api_key_env…）在 config.advanced.toml 的 [autoanswer.llm]。",
         "[llm]",
-        "provider = {}".format(llm.get("provider") or llm_defaults.get("provider") or "nvidia"),
         "base_url = {}".format(llm.get("base_url") or llm_defaults.get("base_url") or ""),
         "model = {}".format(llm.get("model") or llm_defaults.get("model") or ""),
         "api_key = {}".format(llm.get("api_key") or ""),
-        "api_key_env = {}".format(llm.get("api_key_env") or llm_defaults.get("api_key_env") or "NVIDIA_API_KEY"),
         ""
     ])
 
@@ -762,7 +760,7 @@ _ADVANCED_COMMENTS = {
     "autoanswer.delay_seconds": "偵測到題目後等幾秒才送出（這段期間先備好答案；按任意鍵可立即送）",
     "autoanswer.resubmit_for_correct": "true = 允許「先交→讀正解→再交」（需該活動允許多次作答；取最高分）",
     "autoanswer.types": "要自動作答的題型清單",
-    "autoanswer.llm": "答題 LLM 的「行為」設定；連線設定（provider/base_url/model/api_key/api_key_env）改在 config.conf 的 [llm]",
+    "autoanswer.llm": "答題 LLM 的行為＋進階連線；base_url/model/api_key 在 config.conf 的 [llm]，這裡放 api_key_env（環境變數名）與 reasoning/溫度/工具等",
     "autoanswer.llm.thinking_mode": "推理強度：enabled=常開（預設，作答最穩）/ adaptive=模型自決 / disabled=關閉",
     "autoanswer.llm.max_tokens": "回覆 token 上限；0 = 用安全預設 16384（m3 推理若省略此值會回空，故一定會送）",
     "autoanswer.llm.enable_tools": "true = 題目資訊不足時，允許模型自行讀取課程教材/附件（含 PDF 文字）來作答",
@@ -821,9 +819,9 @@ def render_advanced_config_toml(config: ctx.Mapping[str, ctx.Any] | None = None)
     control at its default value, with any overrides from ``config`` applied on
     top. This is what makes the advanced file self-documenting for beginners."""
     full = _deep_merge_dict(default_advanced_config(), config or {})
-    # LLM connection keys (provider/base_url/model/api_key/api_key_env) live in config.conf [llm]
-    # now — don't duplicate them here (and never write the secret api_key into this file). The
-    # behaviour keys (thinking_mode/max_tokens/...) stay.
+    # The beginner connection keys (base_url/model/api_key) live in config.conf [llm] — don't
+    # duplicate them here (and never write the secret api_key into this file). The behaviour keys
+    # (thinking_mode/max_tokens/...) AND api_key_env stay in [autoanswer.llm].
     autoanswer_full = full.get("autoanswer")
     if isinstance(autoanswer_full, dict) and isinstance(autoanswer_full.get("llm"), dict):
         for moved_key in LLM_CONNECTION_KEYS:

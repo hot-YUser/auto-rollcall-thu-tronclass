@@ -422,7 +422,7 @@ def _normalize_autoanswer(config: ctx.Dict[str, ctx.Any]) -> None:
         or list(default['types'])
     llm = _dict_section(section, 'llm')
     default_llm = default['llm']
-    for key in ('provider', 'base_url', 'model', 'api_key_env'):
+    for key in ('base_url', 'model', 'api_key_env'):
         llm[key] = ctx.normalize_text(llm.get(key, default_llm[key])) or default_llm[key]
     # api_key (the actual secret, optional): keep the user's value verbatim when present, else
     # blank — no default. Blank means "fall back to the api_key_env environment variable".

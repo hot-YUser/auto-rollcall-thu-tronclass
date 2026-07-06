@@ -469,14 +469,11 @@ course =
 [llm]
 # （選用）自動答題用的 LLM 連線設定；留空＝用預設（NVIDIA NIM / minimax-m3）。
 #   api_key：直接把你的金鑰填在這裡最簡單（建議一般使用者用這個）。
-#   進階：想用環境變數就把 api_key 留空、改設 api_key_env 指定的環境變數（預設 NVIDIA_API_KEY）。
 #   金鑰是機密；config.conf 預設不會被提交（.gitignore），但仍請勿自行外流或截圖分享。
-#   進階行為（reasoning／溫度／工具…）在 config.advanced.toml 的 [autoanswer.llm]。
-provider = nvidia
+#   進階（reasoning／溫度／工具／改用環境變數 api_key_env…）在 config.advanced.toml 的 [autoanswer.llm]。
 base_url = https://integrate.api.nvidia.com/v1
 model = minimaxai/minimax-m3
 api_key =
-api_key_env = NVIDIA_API_KEY
 
 [group]
 # （選用）第一人偵測、全員簽到。members 用逗號列出同組 user，再把上面 now 填成「class A」
@@ -713,7 +710,6 @@ DEFAULT_CONFIG = {
         "resubmit_for_correct": True,
         "types": ["exam", "classroom_exam", "courseware_quiz", "questionnaire", "vote", "homework"],
         "llm": {
-            "provider": "nvidia",
             "base_url": "https://integrate.api.nvidia.com/v1",
             "model": "minimaxai/minimax-m3",
             # Beginner default: the key goes directly in config.conf [llm] api_key. Advanced users

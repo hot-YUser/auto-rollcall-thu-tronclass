@@ -116,13 +116,13 @@ class ConfigFormatTest(unittest.TestCase):
         self.assertTrue(all(group["users"] == [] for group in parsed["groups"]))
 
     def test_default_template_includes_llm_connection_block(self) -> None:
-        # Regression: alpha.4 added the [llm] connection block to render_basic_config but NOT to
-        # this first-run template, so fresh users had nowhere to see the LLM settings / api_key_env.
-        # The template must carry the same [llm] block the renderer emits (fixed in v1.7-beta.1).
+        # The first-run template must carry the [llm] connection block (base_url/model/api_key) so fresh
+        # users see it. `provider` was removed (dead field) and api_key_env moved to config.advanced.toml.
         self.assertIn("[llm]", tron.DEFAULT_BASIC_CONFIG_TEMPLATE)
         parsed = tron.parse_basic_config_text(tron.DEFAULT_BASIC_CONFIG_TEMPLATE)
-        self.assertEqual(parsed["llm"]["provider"], "nvidia")
-        self.assertEqual(parsed["llm"]["api_key_env"], "NVIDIA_API_KEY")
+        self.assertEqual(parsed["llm"]["model"], "minimaxai/minimax-m3")
+        self.assertNotIn("provider", parsed["llm"])     # dead field removed
+        self.assertNotIn("api_key_env", parsed["llm"])  # moved to config.advanced.toml [autoanswer.llm]
 
     def test_save_account_header_parses(self) -> None:
         parsed = tron.parse_basic_config_text("now = S1\n[save account]\nuser = S1\npasswd = P1\nschool = THU\n")
@@ -447,12 +447,13 @@ class LlmConfigSectionTest(unittest.TestCase):
 
     def test_llm_section_parsed_and_merged(self):
         simple = tron.parse_basic_config_text(
-            "now =\n[llm]\nprovider = nvidia\nbase_url = https://x/v1\nmodel = my-model\napi_key_env = MY_KEY\n")
+            "now =\n[llm]\nbase_url = https://x/v1\nmodel = my-model\napi_key = sk-xyz\n")
         self.assertEqual(simple["llm"]["model"], "my-model")
         llm = tron.normalize_config(tron.merge_basic_and_advanced_config(simple, {}))["autoanswer"]["llm"]
         self.assertEqual(llm["model"], "my-model")
-        self.assertEqual(llm["api_key_env"], "MY_KEY")
         self.assertEqual(llm["base_url"], "https://x/v1")
+        self.assertEqual(llm["api_key"], "sk-xyz")
+        self.assertNotIn("provider", llm)  # dead field removed entirely
 
     def test_blank_llm_falls_back_to_defaults(self):
         simple = tron.parse_basic_config_text("now =\n")
@@ -468,7 +469,7 @@ class LlmConfigSectionTest(unittest.TestCase):
         self.assertIn("[llm]", basic_text)
         self.assertIn("model = abc", basic_text)
         adv_text = tron.render_advanced_config_toml(advanced)
-        self.assertNotIn("api_key_env =", adv_text)  # connection keys no longer emitted (moved to config.conf)
+        self.assertIn("api_key_env =", adv_text)      # api_key_env now lives in advanced [autoanswer.llm]
         self.assertNotIn("\nmodel =", adv_text)
         self.assertIn("thinking_mode", adv_text)     # behaviour keys stay
         self.assertIn("max_tokens = 0", adv_text)    # unset sentinel renders cleanly

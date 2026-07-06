@@ -47,7 +47,6 @@ SYSTEM_PROMPT = (
 )
 
 DEFAULT_LLM: Dict[str, Any] = {
-    "provider": "nvidia",
     "base_url": "https://integrate.api.nvidia.com/v1",
     "model": "minimaxai/minimax-m3",
     # Beginner default: the key is read straight from config.conf [llm] api_key. Advanced users
