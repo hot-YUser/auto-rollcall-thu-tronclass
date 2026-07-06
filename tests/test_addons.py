@@ -59,7 +59,7 @@ class AddonRuntimeTest(unittest.TestCase):
         self.assertNotIn("THU_Auto_Rollcall", name)  # must not look like the main program zip
 
     def test_bundle_url_default_and_override(self) -> None:
-        self.assertIn("releases/download/v1.8-beta.2/", addon.bundle_url())
+        self.assertIn("releases/download/v1.8-beta.3/", addon.bundle_url())
         self.assertIn(addon.bundle_name(), addon.bundle_url())
         os.environ["TROTHU_ADDON_URL"] = "C:/local/x.zip"
         self.assertEqual(addon.bundle_url(), "C:/local/x.zip")
