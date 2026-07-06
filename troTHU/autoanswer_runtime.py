@@ -19,14 +19,14 @@ except ImportError:  # pragma: no cover
 try:
     from troTHU import answer_flow, autoanswer_store
     from troTHU.config_runtime import get_autoanswer_config
-    from troTHU.llm_answerer import resolve_api_key
+    from troTHU.llm_answerer import last_llm_error, resolve_api_key
     from troTHU.quiz_engine import format_paper_canonical, normalize_text
     from troTHU.quiz_models import Activity, ActivityType
 except ImportError:  # pragma: no cover - script execution fallback
     import answer_flow  # type: ignore
     import autoanswer_store  # type: ignore
     from config_runtime import get_autoanswer_config  # type: ignore
-    from llm_answerer import resolve_api_key  # type: ignore
+    from llm_answerer import last_llm_error, resolve_api_key  # type: ignore
     from quiz_engine import format_paper_canonical, normalize_text  # type: ignore
     from quiz_models import Activity, ActivityType  # type: ignore
 
@@ -320,11 +320,11 @@ def _announce_prepare_unready(key: str, label: str, aa: Dict[str, Any]) -> None:
     if key in _PREPARE_UNREADY_ANNOUNCED:
         return
     _PREPARE_UNREADY_ANNOUNCED.add(key)
-    if not resolve_api_key(aa.get("llm", {})):
-        ctx.log_print("「{}」需要 LLM 作答，但尚未設定金鑰——請在 config.conf 的 [llm] api_key 填入"
-                      "（或設環境變數 NVIDIA_API_KEY）；在那之前，需要作答的題目會被略過、不自動送出。".format(label))
-    else:
-        ctx.log_print("「{}」暫時無法備妥完整答案（LLM 無回應或題目無法解析），不送出、稍後自動重試。".format(label))
+    if not resolve_api_key(aa.get("llm", {})):  # defensive: handle_activity already skips no-key at detect
+        ctx.log_print("「{}」尚未配置 LLM，跳過答題".format(label))
+        return
+    reason = last_llm_error() or "LLM 無回應或題目無法解析"  # the specific reason from llm_answerer
+    ctx.log_print("「{}」暫時無法備妥完整答案：{}，不送出、稍後自動重試。".format(label, reason))
 
 
 async def handle_activity(session: Any, activity: Activity, aa: Dict[str, Any]) -> None:
@@ -339,6 +339,11 @@ async def handle_activity(session: Any, activity: Activity, aa: Dict[str, Any]) 
     try:
         delay = int(aa.get("delay_seconds", 15) or 0)
         label = activity.title or activity.activity_type.value
+        if not resolve_api_key(aa.get("llm", {})):  # no LLM key -> skip this activity entirely
+            if key not in _DETECT_ANNOUNCED:         # announce ONCE, then silent (no 刷屏)
+                _DETECT_ANNOUNCED.add(key)
+                ctx.log_print("偵測到「{}」，尚未配置 LLM，跳過答題".format(label))
+            return
         if key not in _DETECT_ANNOUNCED:  # announce ONCE per activity — retries stay silent (no 刷屏)
             _DETECT_ANNOUNCED.add(key)
             ctx.log_print("偵測到「{}」，準備答案中…".format(label))

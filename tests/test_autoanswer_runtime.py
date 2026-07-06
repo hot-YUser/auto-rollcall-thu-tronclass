@@ -190,8 +190,9 @@ class DispatchTest(unittest.IsolatedAsyncioTestCase):
         answer_flow.prepare_answer = hung_prepare
         try:
             act = self._act("EX2")
-            autoanswer_runtime._dispatch_activity(object(), act, {"delay_seconds": 0, "llm": {}})
-            autoanswer_runtime._dispatch_activity(object(), act, {"delay_seconds": 0, "llm": {}})
+            aa = {"delay_seconds": 0, "llm": {"api_key": "test-key"}}  # key present -> reaches (hung) prepare
+            autoanswer_runtime._dispatch_activity(object(), act, aa)
+            autoanswer_runtime._dispatch_activity(object(), act, aa)
             await asyncio.sleep(0)
             self.assertEqual(list(autoanswer_runtime._INFLIGHT_ACTIVITIES), ["EX2"])  # exactly one task
         finally:
@@ -216,7 +217,7 @@ class HandleActivityTest(unittest.IsolatedAsyncioTestCase):
         return {"activity": Activity(activity_id=aid, activity_type=ActivityType.EXAM),
                 "questions": [], "answers": (), "source": AnswerSource.LLM}
 
-    async def _run(self, aid, *, prepare, submit, delay=0):
+    async def _run(self, aid, *, prepare, submit, delay=0, llm=None):
         prints = []
         orig_p, orig_s, orig_m, orig_lp = (answer_flow.prepare_answer, answer_flow.submit_prepared,
                                            autoanswer_store.mark_completed, ctx.log_print)
@@ -226,8 +227,9 @@ class HandleActivityTest(unittest.IsolatedAsyncioTestCase):
         ctx.log_print = lambda m: prints.append(str(m))
         try:
             act = Activity(activity_id=aid, activity_type=ActivityType.EXAM, title=aid)
+            aa = {"delay_seconds": delay, "llm": {"api_key": "test-key"} if llm is None else llm}
             await asyncio.wait_for(
-                autoanswer_runtime.handle_activity(object(), act, {"delay_seconds": delay, "llm": {}}),
+                autoanswer_runtime.handle_activity(object(), act, aa),
                 timeout=5)
         finally:
             (answer_flow.prepare_answer, answer_flow.submit_prepared,
@@ -273,19 +275,39 @@ class HandleActivityTest(unittest.IsolatedAsyncioTestCase):
         await self._run("EX4", prepare=prep, submit=sub)
         self.assertEqual(submitted, [])  # None prepared -> never submits
 
-    async def test_no_usable_answer_explains_why_once(self):
-        # prepare -> None with NO llm key (aa llm={}): instead of freezing silently at 準備答案中…,
-        # tell the user ONCE and point at the exact config knob; stay silent on retry (no 刷屏).
+    async def test_no_llm_key_skips_with_message(self):
+        # No LLM key (env fallback points at an unset var): announce "跳過答題" ONCE and DON'T even
+        # fetch/prepare — never a silent 準備答案中… stall. Silent on retry (no 刷屏).
+        called = []
+
+        async def prep(*a, **k):
+            called.append(1)
+            return None
+
+        async def sub(*a, **k):
+            return AnswerResult(ok=True, status="x")
+
+        no_key = {"api_key": "", "api_key_env": "DEFINITELY_UNSET_ENV_XYZ"}
+        first = await self._run("EXK", prepare=prep, submit=sub, llm=no_key)
+        self.assertTrue(any("跳過答題" in p for p in first))
+        self.assertEqual(called, [])            # skipped before any fetch/prepare
+        second = await self._run("EXK", prepare=prep, submit=sub, llm=no_key)
+        self.assertFalse(any("跳過答題" in p for p in second))  # announced once, silent on retry
+
+    async def test_prepare_failure_reports_specific_reason(self):
+        # Key present but prepare -> None: the unready message carries the SPECIFIC LLM reason
+        # (from llm_answerer.last_llm_error()), not a generic "無回應".
+        import troTHU.llm_answerer as _llm
+        _llm._note_llm_result("LLM 回應 401｜金鑰可能無效或未授權（檢查 NVIDIA_API_KEY）", http_status=401)
+
         async def prep(*a, **k):
             return None
 
         async def sub(*a, **k):
             return AnswerResult(ok=True, status="x")
 
-        first = await self._run("EXK", prepare=prep, submit=sub)
-        self.assertTrue(any("api_key" in p for p in first))     # actionable missing-key hint
-        second = await self._run("EXK", prepare=prep, submit=sub)
-        self.assertFalse(any("api_key" in p for p in second))   # announced once, silent on retry
+        prints = await self._run("EXR", prepare=prep, submit=sub)  # default llm has a key
+        self.assertTrue(any("401" in p for p in prints))  # specific reason surfaced, not generic
 
     async def test_detect_announced_once_and_failures_back_off(self):
         # An un-answerable activity (prepare -> None) must announce "偵測到" ONCE, not每次重試 (刷屏),
