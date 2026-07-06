@@ -221,26 +221,24 @@ python -m troTHU.tron config advanced   # 用記事本打開 config.advanced.tom
 
 1. 到 [build.nvidia.com](https://build.nvidia.com/models) 申請一支 API Key（格式類似 `nvapi-...`）。
 2. **最簡單**：直接把金鑰填進 `config.conf` 的 `[llm]` 區塊 `api_key`。`config.conf` 預設不會被提交（`.gitignore`），金鑰也會從 JSON／log／status／debug 輸出中遮蔽——但它仍是機密，請勿外流或截圖分享。
-3. **進階**：不想寫在檔案裡，就把 `api_key` 留空，改設環境變數（名稱由 `api_key_env` 指定，預設 `NVIDIA_API_KEY`）。有填優先用檔案，留空才回退環境變數。
+3. **進階**：不想寫在檔案裡，就把 `api_key` 留空，改設環境變數——名稱由 `config.advanced.toml` 的 `[autoanswer.llm] api_key_env` 指定（預設 `NVIDIA_API_KEY`）。有填 `api_key` 優先，留空才回退環境變數。
 
-兩者都沒設時，需要 LLM 的題目會自動略過、**不送出空白答案**，也不中斷監控。
+沒設金鑰時，偵測到題目會直接顯示「**尚未配置 LLM，跳過答題**」並跳過（不送空白、不中斷監控）；金鑰／model／base_url 填錯時也會明確告知原因（如金鑰無效 401、連線失敗…），**絕不會卡在「準備答案中…」無下文**。
 
-`config.conf [llm]` 完整可填欄位（留空＝用預設）：
+`config.conf [llm]` 可填欄位（留空＝用預設；一般只填 `api_key` 就能用）：
 
 ```ini
 [llm]
-provider = nvidia
 base_url = https://integrate.api.nvidia.com/v1
 model = minimaxai/minimax-m3
 api_key = nvapi-你的金鑰
-api_key_env = NVIDIA_API_KEY
 ```
 
 行為微調在 `config.advanced.toml`：
 
 ```toml
 [autoanswer]
-enabled = true                 # 總開關
+enabled = true                 # 總開關；設 false = 完全關閉自動答題（腳本不再偵測任何作答活動）
 delay_seconds = 15             # 偵測到題目後等幾秒送出（期間先備答；按任意鍵可立即送）
 resubmit_for_correct = true    # 允許「先交→讀正解→再交」（需該測驗可重複作答）
 types = ["exam", "classroom_exam", "courseware_quiz", "questionnaire", "vote", "homework"]
@@ -248,7 +246,10 @@ types = ["exam", "classroom_exam", "courseware_quiz", "questionnaire", "vote", "
 [autoanswer.llm]
 thinking_mode = "enabled"      # 常開推理（作答最穩）
 enable_tools = true            # 題目資訊不足時，允許模型自己讀課程教材/附件（含 PDF）
+api_key_env = "NVIDIA_API_KEY" # （進階）api_key 留空時，改讀這個名字的環境變數當金鑰
 ```
+
+> **完全不想用自動答題？** 把 `config.advanced.toml` 的 `[autoanswer] enabled` 設成 `false` 即可——腳本會**完全不偵測**任何測驗活動。
 
 > 模型互動：作答用的 LLM **常開推理**、推理文字與最終答案分離只取乾淨答案；題幹資訊不足時可自行呼叫工具到課程裡找教材／講義（**PDF 會抽成文字**）；需登入才看得到的圖片會由本工具下載後以 base64 內嵌讓模型看到。
 

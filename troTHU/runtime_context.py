@@ -471,6 +471,7 @@ course =
 #   api_key：直接把你的金鑰填在這裡最簡單（建議一般使用者用這個）。
 #   金鑰是機密；config.conf 預設不會被提交（.gitignore），但仍請勿自行外流或截圖分享。
 #   進階（reasoning／溫度／工具／改用環境變數 api_key_env…）在 config.advanced.toml 的 [autoanswer.llm]。
+#   不想用自動答題？到 config.advanced.toml 把 [autoanswer] enabled 設成 false 即完全關閉（不再偵測）。
 base_url = https://integrate.api.nvidia.com/v1
 model = minimaxai/minimax-m3
 api_key =
