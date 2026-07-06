@@ -122,10 +122,10 @@ class ReadmeUsageTest(unittest.TestCase):
         cls.lowered = cls.text.lower()
 
     def test_beginner_intro_states_capabilities_clearly(self) -> None:
-        self.assertIn("## 這個工具可以幹嘛", self.text)
+        self.assertIn("## 這個工具能做什麼", self.text)
         self.assertIn("數字點名", self.text)
         self.assertIn("雷達點名", self.text)
-        self.assertIn("QR Code 點名", self.text)
+        self.assertIn("QR 點名", self.text)
         self.assertIn("教師輔助", self.text)
         # Supported schools shown up front (FJU is now a first-line native provider).
         self.assertIn("THU", self.text)
