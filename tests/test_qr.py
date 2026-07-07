@@ -7,7 +7,7 @@ import copy
 from pathlib import Path
 from urllib.parse import quote
 from unittest.mock import AsyncMock, MagicMock, patch
-from troTHU import tron, qr_teacher_runtime
+from troTHU import tron, qr_teacher_runtime, cli_teacher
 from troTHU.tron_http import UnauthorizedError, UnexpectedResponseError
 from troTHU.qr_rollcall import FALSE_TOKEN, NUMBER_PREFIX, TRUE_TOKEN, answer_qr_rollcall, build_qr_answer_request, parse_compact_payload, parse_qr_payload, parse_qr_payload_with_diagnostics
 from types import SimpleNamespace
@@ -330,6 +330,32 @@ class TeacherRollcallHelperTest(unittest.TestCase):
         self.assertEqual(teacher_stop_path(42, fallback="radar"), "/api/rollcall/42/stop_radar?api_version=1.1.0")
         self.assertEqual(teacher_stop_path(42, fallback="self_registration"), "/api/rollcall/42/stop_time_table_rollcall")
 
+    def test_build_payload_carries_full_create_params(self) -> None:
+        payload = build_teacher_rollcall_payload(
+            kind="radar", title="小考", status="in_progress",
+            latitude=24.1, longitude=120.6, altitude=50, use_beacon=True, duration_seconds=180,
+            student_rollcalls=[{"student_id": "101", "student_rollcall_status": "on_call_fine"}],
+        )
+        self.assertTrue(payload["is_radar"])
+        self.assertEqual(payload["title"], "小考")
+        self.assertEqual((payload["latitude"], payload["longitude"], payload["altitude"]), (24.1, 120.6, 50))
+        self.assertTrue(payload["use_beacon"])
+        self.assertEqual(payload["duration"], 180)
+        self.assertEqual(payload["student_rollcalls"],
+                         [{"student_id": "101", "student_rollcall_status": "on_call_fine"}])
+
+    def test_parse_students_and_account_decision(self) -> None:
+        self.assertEqual(
+            cli_teacher._parse_students(["101:on_call_fine", "202", "  "]),
+            [{"student_id": "101", "student_rollcall_status": "on_call_fine"},
+             {"student_id": "202", "student_rollcall_status": "absent"}])
+        self.assertIsNone(cli_teacher._parse_students(None))
+        # auto -> teacher only when creds exist; explicit modes force it
+        self.assertTrue(cli_teacher._should_use_teacher("auto", True))
+        self.assertFalse(cli_teacher._should_use_teacher("auto", False))
+        self.assertTrue(cli_teacher._should_use_teacher("teacher", False))
+        self.assertFalse(cli_teacher._should_use_teacher("active", True))
+
 
 class TeacherRollcallCliTest(unittest.TestCase):
     def test_public_beta_cli_accepts_create_start_stop(self) -> None:
@@ -390,6 +416,23 @@ class TeacherRollcallCliTest(unittest.TestCase):
                 with self.assertRaises(SystemExit):
                     parser.parse_args(argv)
 
+    def test_create_accepts_full_parameter_set(self) -> None:
+        args = tron.build_arg_parser().parse_args([
+            "teacher", "rollcall", "create", "--course-id", "301", "--type", "radar",
+            "--title", "T", "--status", "in_progress", "--number-code", "1234",
+            "--duration-min", "3", "--latitude", "24.1", "--longitude", "120.6", "--altitude", "50",
+            "--use-beacon", "--default-status", "absent", "--student", "101:on_call_fine",
+            "--payload-json", '{"x":1}', "--account", "teacher", "--start",
+        ])
+        self.assertEqual(args.title, "T")
+        self.assertEqual(args.number_code, "1234")
+        self.assertEqual(args.duration_min, 3)
+        self.assertEqual((args.latitude, args.longitude, args.altitude), (24.1, 120.6, 50))
+        self.assertTrue(args.use_beacon)
+        self.assertEqual(args.student, ["101:on_call_fine"])
+        self.assertEqual(args.payload_json, '{"x":1}')
+        self.assertEqual(args.account, "teacher")
+
 
 @unittest.skipUnless(aiohttp is not None and web is not None, "aiohttp.web is required")
 class TeacherRollcallHttpTest(unittest.IsolatedAsyncioTestCase):
@@ -432,6 +475,42 @@ class TeacherRollcallHttpTest(unittest.IsolatedAsyncioTestCase):
                 "stop_time_table_rollcall",
             ],
         )
+
+    async def test_cli_create_wires_full_params_through_teacher_client(self) -> None:
+        async with FakeTronServer() as server:
+            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                await server.login_session(session)
+                fake_client = server.client(session)
+
+                async def fake_with_teacher_client(action, *, account="auto"):
+                    self.assertEqual(account, "teacher")  # --account teacher threaded through
+                    return await action(fake_client, cli_teacher._Actor("teacher:t@x"))
+
+                orig = cli_teacher._with_teacher_client
+                cli_teacher._with_teacher_client = fake_with_teacher_client
+                try:
+                    args = tron.build_arg_parser().parse_args([
+                        "teacher", "rollcall", "create", "--course-id", "301", "--type", "radar",
+                        "--title", "小考", "--latitude", "24.1", "--longitude", "120.6",
+                        "--duration-min", "3", "--student", "101:on_call_fine", "--student", "202",
+                        "--payload-json", '{"note":"x"}', "--account", "teacher", "--start",
+                    ])
+                    report = await cli_teacher._teacher_rollcall_create_command(args)
+                finally:
+                    cli_teacher._with_teacher_client = orig
+
+        self.assertEqual(report["status"], "created")
+        self.assertEqual(report["account"], "teacher:t@x")
+        payload = report["payload"]
+        self.assertTrue(payload["is_radar"])
+        self.assertEqual(payload["latitude"], 24.1)
+        self.assertEqual(payload["duration"], 180)         # --duration-min 3
+        self.assertEqual(payload["title"], "小考")
+        self.assertEqual(payload["note"], "x")             # --payload-json merged
+        self.assertEqual(len(payload["student_rollcalls"]), 2)
+        self.assertTrue(report["response"]["is_radar"])    # round-tripped through the server
+        self.assertTrue(report["started"])
+        self.assertEqual(report["start_response"]["start_payload"]["duration"], 180)  # start got duration
 
 
 if __name__ == "__main__":
