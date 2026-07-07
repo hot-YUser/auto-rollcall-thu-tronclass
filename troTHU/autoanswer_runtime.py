@@ -346,7 +346,10 @@ async def handle_activity(session: Any, activity: Activity, aa: Dict[str, Any]) 
             return
         if key not in _DETECT_ANNOUNCED:  # announce ONCE per activity — retries stay silent (no 刷屏)
             _DETECT_ANNOUNCED.add(key)
-            ctx.log_print("偵測到「{}」，準備答案中…".format(label))
+            # The countdown starts HERE (detect), so "N 秒後自動送出" belongs on THIS line — not the READY
+            # line below (by then prepare has eaten part of it). No 按任意鍵 hint yet: any-key only submits
+            # once an answer is prepared (autoanswer_has_pending); before that a keypress opens notepad.
+            ctx.log_print("偵測到「{}」，準備答案中…（{} 秒後自動送出）".format(label, delay))
         started = ctx.time.monotonic()
         client = ctx.create_tron_http_client(session, request_ssl=ctx.get_ssl_request_setting())
         try:
@@ -363,13 +366,14 @@ async def handle_activity(session: Any, activity: Activity, aa: Dict[str, Any]) 
         prepared["delay_seconds"] = delay
         prepared["label"] = label
         ctx.ACTIVE_QUESTION_ANSWERS[key] = prepared  # keeps autoanswer_has_pending() + restart dedup working
-        source = getattr(prepared.get("source"), "value", prepared.get("source"))
-        answer_text = format_paper_canonical(prepared.get("questions") or [], prepared.get("answers") or [])
-        ctx.log_print("「{}」已備妥答案（{}），{} 秒後自動送出（按任意鍵立即送）：\n{}".format(
-            label, source, delay, answer_text))  # announce READY once the answer exists
-        # Count the REMAINING delay (prepare already ran concurrently with the clock) -> submit at
-        # max(prepare, delay); an any-key press sets the shared Event and cuts every countdown short.
+        # Countdown runs from DETECT (started); prepare already ate part of `delay`, so announce the REAL
+        # remaining seconds. An any-key press sets the shared Event and cuts every countdown short.
         remaining = max(0.0, float(delay) - (ctx.time.monotonic() - started))
+        if remaining >= 1.0:  # <1s left -> answer is about to fire anyway; skip the READY line (no 刷屏)
+            source = getattr(prepared.get("source"), "value", prepared.get("source"))
+            answer_text = format_paper_canonical(prepared.get("questions") or [], prepared.get("answers") or [])
+            ctx.log_print("「{}」已備妥答案（{}），還剩 {} 秒（按任意鍵立即送）：\n{}".format(
+                label, source, int(remaining), answer_text))  # announce READY with the true remaining
         event = ctx.AUTOANSWER_SUBMIT_NOW
         if remaining > 0:
             if event is not None:

@@ -237,6 +237,8 @@ class HandleActivityTest(unittest.IsolatedAsyncioTestCase):
         return prints
 
     async def test_success_announces_split_and_marks_completed(self):
+        ctx.AUTOANSWER_SUBMIT_NOW.set()  # cut the countdown short so the test stays fast
+
         async def prep(*a, **k):
             return self._prepared("EX2")
 
@@ -244,12 +246,26 @@ class HandleActivityTest(unittest.IsolatedAsyncioTestCase):
             return AnswerResult(ok=True, status="submitted", activity_id="EX2",
                                 source=AnswerSource.LLM, final_answers=())
 
-        prints = await self._run("EX2", prepare=prep, submit=sub)
+        prints = await self._run("EX2", prepare=prep, submit=sub, delay=15)
         self.assertTrue(ctx.COMPLETED_QUESTION_SUBMISSIONS.get("EX2"))
-        self.assertTrue(any("偵測到" in p for p in prints))      # announce on DETECT
-        self.assertTrue(any("已備妥答案" in p for p in prints))   # announce on READY (after prepare)
+        self.assertTrue(any("偵測到" in p and "秒後自動送出" in p for p in prints))  # countdown on the DETECT line
+        self.assertTrue(any("已備妥答案" in p and "還剩" in p for p in prints))       # READY line shows the true remaining
         self.assertNotIn("EX2", autoanswer_runtime._INFLIGHT_ACTIVITIES)   # released in finally
         self.assertNotIn("EX2", ctx.ACTIVE_QUESTION_ANSWERS)
+
+    async def test_ready_line_skipped_when_under_one_second_left(self):
+        # delay 0 -> <1s remaining when prepared -> skip the "已備妥答案" line, go straight to the banner.
+        async def prep(*a, **k):
+            return self._prepared("EX0")
+
+        async def sub(client, prepared, *, resubmit_for_correct=True):
+            return AnswerResult(ok=True, status="submitted", activity_id="EX0",
+                                source=AnswerSource.LLM, final_answers=())
+
+        prints = await self._run("EX0", prepare=prep, submit=sub, delay=0)
+        self.assertTrue(ctx.COMPLETED_QUESTION_SUBMISSIONS.get("EX0"))
+        self.assertFalse(any("已備妥答案" in p for p in prints))   # <1s left -> READY line skipped
+        self.assertTrue(any("自動作答成功" in p for p in prints))    # success banner still shown
 
     async def test_failure_does_not_mark_completed(self):
         async def prep(*a, **k):
