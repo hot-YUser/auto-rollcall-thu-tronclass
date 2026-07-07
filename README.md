@@ -404,6 +404,18 @@ PUT  {teacher_base}/api/rollcall/{teacher_rollcall_id}/stop_qr_rollcall
 
 教師帳號登入失敗或找不到課程時，只會停用 QR 教師輔助，數字與雷達點名仍照常監控。
 
+### 教師端 CLI：手動發起一場點名
+
+有教師帳號的話，也能用指令直接發起一場點名（預設用 `config.conf` 的 `[teacher]` 帳號登入；沒設 `[teacher]` 才退回目前帳號，`--account {auto,teacher,active}` 可強制）：
+
+```bash
+# 發起並開始一場 QR 點名（--course-id 換成你的課號）
+python -m troTHU.tron teacher rollcall create --course-id 55379 --type qr --start
+python -m troTHU.tron teacher rollcall stop <rollcall_id> --type qr   # 收尾
+```
+
+`--type` 支援 `number`／`radar`／`qr`／`self_registration`／`manual`；create 另有完整參數 `--title`／`--number-code`／`--duration-min`／`--latitude`／`--longitude`／`--altitude`／`--use-beacon`／`--student ID[:STATUS]`／`--payload-json`。
+
 ### 自動答題（各活動型的取題與送出）
 
 同一套「單一入口、依活動型動態分流」：取題（GET）後由 `quiz_engine.py` 決策，送出（POST）契約逐型不同。
