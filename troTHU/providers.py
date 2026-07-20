@@ -351,7 +351,13 @@ def normalize_base_url(text: str) -> tuple[str, str]:
     # manually" — even when the host belongs to a school we support via API.
     # "Typing a URL = manual login" is intentional; only a bare short name/key
     # (THU / TKU / SCU / TRONCLASS / 東吳 …) routes to automatic API login.
-    if text_clean.startswith(("http://", "https://")) or ("." in host and not host.endswith(".")):
+    # BUT an email (`user@host` with no scheme) is an ACCOUNT id, not a URL: urlparse
+    # reads its domain as the host (a79590671@gmail.com -> host "gmail.com"), so the
+    # dotted-host rule alone would misroute a public-cloud email login to the browser.
+    # A real URL with userinfo still matches via the explicit scheme check above.
+    if text_clean.startswith(("http://", "https://")) or (
+        "@" not in text_clean and "." in host and not host.endswith(".")
+    ):
         return ("url", "https://{}".format(host))
     normalized_key = text_clean.lower()
     if normalized_key in PROVIDER_ALIASES:

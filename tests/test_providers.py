@@ -460,6 +460,14 @@ class CustomProviderTest(unittest.TestCase):
         self.assertEqual(normalize_base_url("https://iclass-demo.edu.tw/login"), ("url", "https://iclass-demo.edu.tw"))
         self.assertEqual(normalize_base_url("thuu"), ("plain", "thuu"))
         self.assertEqual(normalize_base_url(""), ("plain", ""))
+        # An email is an ACCOUNT id, not a URL — a public-cloud `now`/username has a dotted
+        # domain that urlparse reads as the host, which used to misroute it to browser login.
+        self.assertEqual(normalize_base_url("a79590671@gmail.com"), ("plain", "a79590671@gmail.com"))
+        self.assertEqual(normalize_base_url("student@mail.thu.edu.tw"), ("plain", "student@mail.thu.edu.tw"))
+        from troTHU.providers import derive_url_provider_key
+        self.assertEqual(derive_url_provider_key("a79590671@gmail.com"), "")
+        # An explicit scheme still wins, so a real URL with userinfo stays a URL.
+        self.assertEqual(normalize_base_url("https://u@host.edu.tw/login"), ("url", "https://host.edu.tw"))
 
     def test_synthetic_provider_for_custom_url_uses_interactive_browser(self) -> None:
         raw = {
