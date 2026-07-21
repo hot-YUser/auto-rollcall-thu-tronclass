@@ -1,5 +1,9 @@
 # Auto-Rollcall-thu-Tronclass
 
+<div align="center">
+  <img src="icon.png" alt="Auto-Rollcall-thu-Tronclass" width="240">
+</div>
+
 **TronClass 校園系統的自動點名工具** — 登入你的學校帳號後，它會在你設定的上課時段自動盯著課程，一偵測到點名就替你完成簽到，還能自動作答進行中的線上測驗。你不用一直盯著手機，也不用手忙腳亂找點名碼。
 
 > ⚠️ 請只在你自己有權限、且符合學校與課程規範的情況下使用。**不要把填好帳密的 `config.conf`、cookie、`state/`、`log/` 傳給任何人。**
