@@ -85,6 +85,9 @@ nul
 # Windows MAX_PATH for deep smali paths), so exclude it explicitly too.
 APP和網頁前端/
 APP和網頁前端 - 新/
+# Consolidated 2026-07 RE work (fresh crawl + APK/IPA/web decompile). Contains wild QR
+# tokens, hardcoded vendor keys, decompiled sources — never commit. Off-repo by convention.
+Tronclass 逆向/
 
 # Local/private live school verification helpers.
 # These call real-school flows through TRON_USER / TRON_PASS and are not
