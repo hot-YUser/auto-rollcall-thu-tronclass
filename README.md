@@ -551,6 +551,14 @@ var token = hex_md5( url + "&ts=" + timestamp + secretKey );   // = md5( 訊息 
 | **JWT** | 暴破 `/api/jwt` 的 HS256 密鑰、試 `alg:none` 偽造教師身分 | 密鑰沒破 + **JWT 根本不是主 API 的認證**（主 API 純靠 cookie）→ 偽造也沒用 |
 | **IDOR / BOLA 圖鑑** | 拿第三方「只驗登入、不驗物件層授權」漏洞圖鑑，把 rollcall 生命週期每條線索都測遍；qr_code 對學生的各種 referer／api_version／舊路徑／大小寫變體 | 全 403/404；學生 建立/start/activate/publish/position **全部 403（有角色檢查）**；`/invites` 只是孤立錯接、非系統性 → 唯一能通的鏈是「成為老師→讀 qr_code」（本工具不走） |
 | **教師端密採（Research Mode）** | 用內建教師端 `(server_time, data)` harvester 收密語料（先前 201 樣本；**2026 現行 App 再收 500 樣本**）重跑掃描；另從一支真機 App 備份撈出 **21 枚真實課堂野生 token** | 500 樣本中 **296 枚 distinct**（幾乎每次請求就換一枚）→ **坐實「重刷一次就換一枚新 token、不對某場點名固定」**；對 21 枚真機真 token 重測密碼學仍 **NO MATCH**（第 N 次獨立確認伺服器金鑰）；學生表面洩漏掃描**零命中** |
+| **權限提升面（invites／角色）** | 圖鑑記載的「把同學變成老師」漏洞 `POST /api/course/{cid}/invites`：在公有雲、THU、TKU 三租戶實測，**全被 WAF 邊緣阻擋**（403「Request forbidden by administrative rules」，連真實瀏覽器同源 HTTP/2 都擋）——廠商已用 WAF 規則修掉公開圖鑑；另測改角色 `PUT /api/course/enrollments/{id} {role}`、`add-enrollments`、複數版 `/api/courses/{cid}/enrollments`、authz assistant-roles | invites 的 POST 全 WAF 擋（GET 學生可讀、清單為空）；其餘全 403/404（教師控制組證明路由存在、是角色檢查在擋） |
+| **WAF 繞過** | invites 被擋後試盡：路徑變體（雙斜線／大小寫／URL 編碼／尾斜線／分號）、主機別名（app.／api.／apex）、PUT／PATCH／DELETE 方法、真實瀏覽器同源 HTTP/2 | 路徑變體到 App 層全 404（路由嚴格）；PUT/PATCH/DELETE 過得了 WAF 但 App 層全 500；瀏覽器也 403 → WAF 規則完整 |
+| **建課／建點名面（自建 data 來源）** | 學生試自建來源：`POST /api/project {name}`（找到的真契約）、`POST /api/courses`、clone、module、`data-import/course/{cid}/rollcall`、activities | 全 403/404；`create_course` 只是組織旗標，角色檢查仍在 |
+| **互動 QR 面** | 投票／教學反饋實建實測，掃學生可達的全部互動端點 | 互動**不帶 data token**（data 只存在於點名 QR）；**加課 QR 是客戶端生成**（反編譯坐實：只含 courseId＋accessCode、無 data）；登入 QR 是另一套 Keycloak 反向登入 |
+| **App 專用端點洩漏二次掃** | 即時點名進行中，補掃第一輪漏掉的 App 專用面：`student-onprogress-rollcalls`、`interactions/is-ongoing`、`inclass-report/timeline`、`modules/rollcalls`（161KB 名冊）、`all-activities`、alert/messages | **零 token 洩漏** |
+| **寫入面窮舉** | `student_rollcalls` 直接改列、`answers` 複數、publish-must、stop_time_table、merged-rollcall、course access、leave-record、exceptional-case、join、group-sets、rollcall-setting | 全 403/404；其中 `student_rollcalls`／`answers` 的 PUT **連教師也 500**＝死路由，非授權面 |
+| **註冊面普查（340 租戶）** | 全租戶 signup 頁普查＋invites 空郵件探測分類 | 唯一開放 Instructor 自助註冊的只有官方中國雲（簡訊驗證、限 11 碼中國門號）；台灣弘光／靜宜等開放註冊只給 Student/Parent；個人雲帳號是 Trial 服務（2026-08-31 終止、註冊已關）；H5 加課註冊只給學生身分 |
+| **anonymous-api 面** | `/anonymous-api/course/{cid}/instructors` 免登入可讀課程講師清單（新 IDOR 實例，與 QR 無關）；同前綴的 rollcall 路由 | 講師清單會漏；`/anonymous-api/.../answer*`、`qr_code` 全 404 → 無登入面沒有 rollcall 功能 |
 
 密碼學／洩漏／偽造／client／舊版／伺服器面／IDOR — **這些角度全數以實測收束為負面**。
 
@@ -569,6 +577,8 @@ var token = hex_md5( url + "&ts=" + timestamp + secretKey );   // = md5( 訊息 
 ### 還剩什麼方向（誠實評估）
 
 QR 真正「生成」的地方在**伺服器 / 舊版的網頁教師端**。如果 2015–2018 的舊網頁 LMS 當年是在**瀏覽器裡**生成 QR，那把金鑰就會**內嵌在那個舊版 JS 裡**（這種簽章金鑰通常不輪替，至今八成還有效）。可惜那個 artifact 現在抓不到（Wayback 只存了登入前的行銷頁），而版本普查也證實沒有 2015–2018 古早活站——所以「舊 client 內嵌金鑰」**這一條路**看來渺茫。
+回合 24（2026-08）又補了一輪更新：公開圖鑑那條「invites 提權」已被廠商以 WAF 規則在台／全球各租戶修掉（連真實瀏覽器都擋），**「成為老師→讀 qr_code」這條鏈如今連第一步都走不通**；340 個租戶普查下來，**全網已無任何開放給外人的教師身分自助註冊**（唯一有的官方中國雲需要中國門號簡訊，台灣使用者拿不到）。換句話說：即使跨課跨校的 data 中繼機制成立，**「學生自己生出 data 來源」的每一扇門目前也都關著**——這是回合 24 之後對「還剩什麼」最重要的更新。
+
 
 誠實說，**從外部能做的都做盡了**；真正還有機會、卻都不在我們手上的只剩三條：
 
@@ -576,7 +586,7 @@ QR 真正「生成」的地方在**伺服器 / 舊版的網頁教師端**。如�
 2. **內部／內線／歷史伺服器洩漏**這種外部碰不到的後端缺口；
 3. **一個還沒想到的全新攻擊面**。
 
-> **研究起點**：這場調查源於坊間流傳的一個說法——**有人聲稱「純學生端」就能偽造或取得當下的 `data`，免教師、跨校通用、涉及密碼學、連工程師都猜不到**。我們據此把每一條密碼學／端點／client／協定的路都窮盡驗證了一遍（見上方地圖），**到目前為止，以外部可達的一切都尚未能重現**。不假裝成功、也不寫死「不可能」，把地圖留給後人。
+> **研究起點**：這場調查源於坊間流傳的一個說法——**有人聲稱「純學生端」就能偽造或取得當下的 `data`，免教師、跨校通用、涉及密碼學、連工程師都猜不到**。我們據此把每一條密碼學／端點／client／協定的路都窮盡驗證了一遍（見上方地圖），**到目前為止，以外部可達的一切都尚未能重現**。不假裝成功、也不寫死「不可能」，把地圖留給後人。另註：圖鑑與我方實測都顯示廠商系統性地「只驗登入、不驗物件層授權」（IDOR 一類），但 rollcall 的**寫入**面與 **data 生成**面目前都還沒鬆動；回合 24 另發現 `/anonymous-api/course/{cid}/instructors` 免登入可讀講師清單，屬同類 IDOR、與 QR 無關，已併入上方地圖。
 
 ### 附帶：其他點名來源（與 QR 金鑰無關，但記著）
 
@@ -591,7 +601,7 @@ QR 真正「生成」的地方在**伺服器 / 舊版的網頁教師端**。如�
 
 ### 重建用的工具
 
-驗證腳本都在 `scripts/_qr_*.py`（gitignored、不進版控，但可由本節描述重建）：`keyhunt` / `keysweep` / `keyhunt_teacher` / `apkkeys` / `wgkey`（金鑰交叉測試）、`keyless`（無金鑰暴破）、`quantum`（量測時間粒度）、`gencheck`（簽章預言機）、`oracle`（token 來源端點）、`socket_authz`（即時推播）、`iv`（提交層繞過）、`jwtcrack` / `jwtauth`（JWT）、`misconfig` / `keybrute_full`（全回應暴破）。另有留存的 `qr_keys_master.json`＋`_qr_keysweep2.py`，日後冒出新金鑰或新演算法即可秒級重驗。
+驗證腳本都在 `scripts/_qr_*.py`（gitignored、不進版控，但可由本節描述重建）：`keyhunt` / `keysweep` / `keyhunt_teacher` / `apkkeys` / `wgkey`（金鑰交叉測試）、`keyless`（無金鑰暴破）、`quantum`（量測時間粒度）、`gencheck`（簽章預言機）、`oracle`（token 來源端點）、`socket_authz`（即時推播）、`iv`（提交層繞過）、`jwtcrack` / `jwtauth`（JWT）、`misconfig` / `keybrute_full`（全回應暴破）。另有留存的 `qr_keys_master.json`＋`_qr_keysweep2.py`，日後冒出新金鑰或新演算法即可秒級重驗。回合 24 的新工具：`_qr24_invites*`（invites 提權與 WAF 繞過）、`_qr24_inband_sweep2`（App 專用端點洩漏二掃）、`_qr24_student_write2`／`_qr24_flip_as_student`／`_qr24_reaudit_writes`（學生寫入面窮舉）、`_qr24_vote_feedback_data`（互動 QR 面）、`_qr24_signup_scan`／`_qr24_tenant_sweep2`（340 租戶註冊與 invites 普查）。
 
 ---
 
