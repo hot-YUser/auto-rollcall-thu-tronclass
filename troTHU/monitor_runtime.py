@@ -308,9 +308,12 @@ async def handle_rollcall(
                 break  # this rollcall closed / a different one appeared -> done
             if status_msg != 'on_call_fine' and rollcall_type == 'qrcode' and not start_announced:
                 start_announced = True
+                qr_source_prefix = ('教師輔助準備中' if ctx.teacher_assist_configured(ctx.CONFIG)
+                                    else '遠端 QR data 來源就緒' if ctx.qr_remote_configured(ctx.CONFIG)
+                                    else '等待手動 QR 內容')
                 await ctx.announce_rollcall_start(
                     ctx.AttendanceType.QRCODE, rollcall_id,
-                    detail='教師輔助準備中；送出前等待簽到率 >= {:.1f}%。'.format(ATTENDANCE_RATE_GATE_PERCENT),
+                    detail='{}；送出前等待簽到率 >= {:.1f}%。'.format(qr_source_prefix, ATTENDANCE_RATE_GATE_PERCENT),
                     event='qrcode_rollcall_started', counter=ctx.cnt,
                     url=ctx.normalize_text(poll.get('url')), http_status=poll.get('http_status'),
                     payload_excerpt=poll.get('rollcall'))
@@ -320,6 +323,8 @@ async def handle_rollcall(
                     prepare_result = await ctx.prepare_teacher_assisted_qr(poll.get('rollcall'))
                     if not prepare_result.get('ok'):
                         await ctx.maybe_notify_unsupported_rollcall(status_msg, poll.get('rollcall') or {}, unsupported_msg, rollcall_type)
+                elif ctx.qr_remote_configured(ctx.CONFIG):
+                    pass  # 遠端來源不必先開教師點名；送出在 gate 通過時進行
                 else:
                     await ctx.maybe_notify_unsupported_rollcall(status_msg, poll.get('rollcall') or {}, unsupported_msg, rollcall_type)
             progress = await _fetch_monitor_rollcall_progress(session, rollcall_id)

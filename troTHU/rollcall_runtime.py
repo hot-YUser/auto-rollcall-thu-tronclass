@@ -249,37 +249,43 @@ async def handle_rollcall_decision(
             qr_key = ctx.normalize_text(selected_rollcall.get('rollcall_id') or selected_rollcall.get('id'))
             if qr_key in ctx.COMPLETED_QR_ROLLCALLS:
                 return 'qr 點名已處理'
+            teacher_ready = ctx.teacher_assist_configured(ctx.CONFIG)
+            remote_ready = (not teacher_ready) and ctx.qr_remote_configured(ctx.CONFIG)
             if ctx.normalize_text(gate_detail):
+                qr_submit_detail = (
+                    '正在透過教師輔助送出 QR 點名。' if teacher_ready
+                    else '正在透過遠端 QR data 服務送出 QR 點名。' if remote_ready
+                    else '正在送出 QR 點名。'
+                )
                 await ctx.announce_rollcall_start(
                     ctx.AttendanceType.QRCODE,
                     qr_key or selected_rollcall.get('rollcall_id') or selected_rollcall.get('id'),
-                    detail=_combine_start_detail(
-                        gate_detail,
-                        '正在透過教師輔助送出 QR 點名。',
-                    ),
+                    detail=_combine_start_detail(gate_detail, qr_submit_detail),
                     event='qrcode_rollcall_submit_started',
                     counter=cnt,
                     url=result_url,
                     http_status=http_status,
                     payload_excerpt=selected_rollcall,
                 )
-            if ctx.teacher_assist_configured(ctx.CONFIG):
+            if teacher_ready:
                 if use_prepared_qr:
                     answered_automatically = await ctx.submit_prepared_teacher_qr(session, selected_rollcall)
                 else:
                     answered_automatically = await ctx.run_teacher_assisted_qr(session, selected_rollcall)
-                if answered_automatically and qr_key:
-                    ctx.COMPLETED_QR_ROLLCALLS[qr_key] = True
-                    try:
-                        group_result = await ctx.submit_group_qr(selected_rollcall, session=session, config=ctx.CONFIG)
-                        if group_result.get('ok'):
-                            pass
-                        summary = ctx.format_group_fanout_summary(group_result, rollcall_type='qr')
-                        if summary:
-                            ctx.log_print(summary)
-                    except Exception as exc:
-                        ctx.log_print('群組 qr fan-out 失敗：{}'.format(exc))
-                    return 'is_qrcode'
+            elif remote_ready:
+                answered_automatically = await ctx.submit_remote_qr(session, selected_rollcall)
+            if answered_automatically and qr_key:
+                ctx.COMPLETED_QR_ROLLCALLS[qr_key] = True
+                try:
+                    group_result = await ctx.submit_group_qr(selected_rollcall, session=session, config=ctx.CONFIG)
+                    if group_result.get('ok'):
+                        pass
+                    summary = ctx.format_group_fanout_summary(group_result, rollcall_type='qr')
+                    if summary:
+                        ctx.log_print(summary)
+                except Exception as exc:
+                    ctx.log_print('群組 qr fan-out 失敗：{}'.format(exc))
+                return 'is_qrcode'
         if not answered_automatically:
             await ctx.maybe_notify_unsupported_rollcall(selected_status, selected_rollcall, selected_message, selected_rollcall_type)
     return selected_status

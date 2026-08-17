@@ -86,6 +86,7 @@ HIDDEN_IMPORTS = sorted(
             "troTHU.package_diagnostics",
             "troTHU.pending_qr",
             "troTHU.providers",
+            "troTHU.qr_remote_runtime",
             "troTHU.qr_rollcall",
             "troTHU.qr_runtime",
             "troTHU.qr_teacher_runtime",

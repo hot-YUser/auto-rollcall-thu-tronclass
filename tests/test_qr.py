@@ -7,7 +7,7 @@ import copy
 from pathlib import Path
 from urllib.parse import quote
 from unittest.mock import AsyncMock, MagicMock, patch
-from troTHU import tron, qr_teacher_runtime, cli_teacher
+from troTHU import tron, qr_teacher_runtime, cli_teacher, qr_remote_runtime
 from troTHU.tron_http import UnauthorizedError, UnexpectedResponseError
 from troTHU.qr_rollcall import FALSE_TOKEN, NUMBER_PREFIX, TRUE_TOKEN, answer_qr_rollcall, build_qr_answer_request, parse_compact_payload, parse_qr_payload, parse_qr_payload_with_diagnostics
 from types import SimpleNamespace
@@ -838,6 +838,87 @@ class QrTeacherRuntimeTest(unittest.IsolatedAsyncioTestCase):
             await tron.submit_qr_with_data(None, "", "abc-data")
         with self.assertRaises(ValueError):
             await tron.submit_qr_with_data(None, "77", "")
+
+
+async def _start_fake_oracle(status, body):
+    """起一個最小 aiohttp 服務模擬 VPS data oracle 的 GET /token；回傳 (runner, base_url)。"""
+    import aiohttp  # noqa: F401
+    from aiohttp import web
+
+    async def handler(request):
+        return web.json_response(body, status=status)
+
+    app = web.Application()
+    app.router.add_get("/token", handler)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "127.0.0.1", 0)
+    await site.start()
+    port = site._server.sockets[0].getsockname()[1]
+    return runner, "http://127.0.0.1:{}".format(port)
+
+
+class QrRemoteRuntimeTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self) -> None:
+        self.original_config = copy.deepcopy(tron.CONFIG)
+        self.original_completed = copy.deepcopy(tron.COMPLETED_QR_ROLLCALLS)
+        tron.COMPLETED_QR_ROLLCALLS.clear()
+
+    def tearDown(self) -> None:
+        tron.CONFIG.clear()
+        tron.CONFIG.update(self.original_config)
+        tron.COMPLETED_QR_ROLLCALLS.clear()
+        tron.COMPLETED_QR_ROLLCALLS.update(self.original_completed)
+
+    def test_qr_remote_configured_requires_enabled_url_and_key(self) -> None:
+        self.assertFalse(tron.qr_remote_configured({}))
+        self.assertFalse(tron.qr_remote_configured({"qr_remote": {"enabled": True, "base_url": "", "api_key": "k"}}))
+        self.assertFalse(tron.qr_remote_configured({"qr_remote": {"enabled": True, "base_url": "http://x", "api_key": ""}}))
+        self.assertFalse(tron.qr_remote_configured({"qr_remote": {"enabled": False, "base_url": "http://x", "api_key": "k"}}))
+        self.assertTrue(tron.qr_remote_configured({"qr_remote": {"enabled": True, "base_url": "http://x", "api_key": "k"}}))
+
+    def test_qr_remote_config_defaults_and_overrides(self) -> None:
+        cfg = tron.qr_remote_config({"qr_remote": {"enabled": True, "base_url": "http://x/", "api_key": "k", "poll_interval_seconds": 0.5}})
+        self.assertEqual(cfg["base_url"], "http://x/")
+        self.assertEqual(cfg["poll_interval_seconds"], 0.5)
+        self.assertEqual(cfg["confirm_window_seconds"], 12.0)
+
+    async def test_submit_remote_qr_completes_against_fake_server(self) -> None:
+        import aiohttp
+        tron.CONFIG.clear()
+        tron.CONFIG.update({"qr_remote": {"enabled": True, "base_url": "http://oracle.test", "api_key": "k",
+                                          "confirm_window_seconds": 2.0, "poll_interval_seconds": 0.01, "timeout_seconds": 1.0}})
+        async with FakeTronServer() as server:
+            server.rollcalls = [{"rollcall_id": "77", "type": "qr_rollcall", "status": "in_progress"}]
+            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as student_session:
+                await server.login_session(student_session)
+                data_token = "1700000000" + "a" * 32
+                with (
+                    patch.object(tron, "get_active_http_endpoints", return_value=server.endpoints()),
+                    patch.object(tron, "get_ssl_request_setting", return_value=None),
+                    patch.object(qr_remote_runtime, "fetch_remote_qr_data", AsyncMock(return_value=data_token)),
+                ):
+                    ok = await tron.submit_remote_qr(student_session, {"rollcall_id": "77"})
+        self.assertTrue(ok)
+        self.assertIn("77", tron.COMPLETED_QR_ROLLCALLS)
+
+    async def test_submit_remote_qr_skips_when_not_configured(self) -> None:
+        tron.CONFIG.clear()
+        tron.CONFIG.update({"qr_remote": {"enabled": False}})
+        self.assertFalse(await tron.submit_remote_qr(None, {"rollcall_id": "77"}))
+
+    async def test_fetch_remote_qr_data_success_and_error(self) -> None:
+        token = "1700000000" + "c" * 32
+        runner, base = await _start_fake_oracle(200, {"ok": True, "data": token})
+        try:
+            self.assertEqual(await tron.fetch_remote_qr_data(base, "k", timeout=1.0), token)
+        finally:
+            await runner.cleanup()
+        runner, base = await _start_fake_oracle(503, {"error": "stale"})
+        try:
+            self.assertIsNone(await tron.fetch_remote_qr_data(base, "k", timeout=1.0))
+        finally:
+            await runner.cleanup()
 
 
 if __name__ == "__main__":

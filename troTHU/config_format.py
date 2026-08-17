@@ -572,6 +572,7 @@ def parse_legacy_basic_config_text(text: str) -> ctx.Dict[str, ctx.Any]:
 ADVANCED_SECTION_KEYS = (
     "time", "session", "monitor", "auth", "ux", "local_ui", "webview",
     "integrations", "notifications", "config", "logging", "number", "radar", "research",
+    "qr_remote",
     "autoanswer",
 )
 
@@ -756,6 +757,13 @@ _ADVANCED_COMMENTS = {
     "logging": "log 記錄層級（也可用 tron run --debug／--research 單次啟用）",
     "logging.mode": "normal=精簡＋遮蔽；debug=完整請求/回應＋遮蔽；research=完整原文（不遮蔽）＋主動探測（限 WisdomGarden 家族網域，原文只落 state/research-crawl、絕不進匯出包）",
     "research": "研究／封包擷取（預設全部關閉，請勿任意開啟）。進階 QR 取樣旋鈕（research mode 用）：hammer_interval／hammer_iterations／hammer_max_duration／teacher_harvest",
+    "qr_remote": "遠端 QR data 來源（教師帳號到期後的替代路徑）：從自架的 data oracle 服務取當下 data 代簽；未設教師輔助時才啟用",
+    "qr_remote.enabled": "true = 啟用；偵測到 QR 點名且未設 [teacher] 教師輔助時，改從下面的服務取 data 送出",
+    "qr_remote.base_url": "data oracle 服務網址（如 http://127.0.0.1:8741，通常經 SSH 通道連你的 VPS）",
+    "qr_remote.api_key": "存取金鑰（Bearer）；由 VPS 端 qr_keys.py 建立、可設 TTL 與即時撤銷。機密，勿外流",
+    "qr_remote.confirm_window_seconds": "送出後在此秒數內反覆刷新重送、直到確認出席（預設 12）",
+    "qr_remote.poll_interval_seconds": "緊迴圈每次重取 data 的間隔秒數（預設 1.0）",
+    "qr_remote.timeout_seconds": "向服務取 data 的 HTTP 逾時秒數（預設 8）",
     "autoanswer": "自動答題（v1.7，預設開）：偵測進行中的測驗/作業/問卷/投票並自動作答",
     "autoanswer.enabled": "true = 啟用自動答題；false = 完全關閉（腳本完全不偵測任何作答活動）——不想用自動答題就設 false",
     "autoanswer.delay_seconds": "偵測到題目後等幾秒才送出（這段期間先備好答案；按任意鍵可立即送）",
