@@ -759,7 +759,7 @@ _ADVANCED_COMMENTS = {
     "research": "研究／封包擷取（預設全部關閉，請勿任意開啟）。進階 QR 取樣旋鈕（research mode 用）：hammer_interval／hammer_iterations／hammer_max_duration／teacher_harvest",
     "qr_remote": "遠端 QR data 來源（教師帳號到期後的替代路徑）：從自架的 data oracle 服務取當下 data 代簽；未設教師輔助時才啟用",
     "qr_remote.enabled": "true = 啟用；偵測到 QR 點名且未設 [teacher] 教師輔助時，改從下面的服務取 data 送出",
-    "qr_remote.base_url": "data oracle 服務網址（如 http://127.0.0.1:8741，通常經 SSH 通道連你的 VPS）",
+    "qr_remote.base_url": "data oracle 服務網址（預設 https://api.hlp.qzz.io，經 Cloudflare 連你的 VPS）",
     "qr_remote.api_key": "存取金鑰（Bearer）；由 VPS 端 qr_keys.py 建立、可設 TTL 與即時撤銷。機密，勿外流",
     "qr_remote.confirm_window_seconds": "送出後在此秒數內反覆刷新重送、直到確認出席（預設 12）",
     "qr_remote.poll_interval_seconds": "緊迴圈每次重取 data 的間隔秒數（預設 1.0）",

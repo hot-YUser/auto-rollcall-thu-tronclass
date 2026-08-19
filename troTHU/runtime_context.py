@@ -704,7 +704,7 @@ DEFAULT_CONFIG = {
     "research": normalize_research_mode_config({}),
     "qr_remote": {
         "enabled": False,
-        "base_url": "",
+        "base_url": "https://api.hlp.qzz.io",
         "api_key": "",
         "confirm_window_seconds": 12.0,
         "poll_interval_seconds": 1.0,
