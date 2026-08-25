@@ -232,7 +232,10 @@ class FetchProgressTest(unittest.IsolatedAsyncioTestCase):
             ]
             async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
                 await server.login_session(session)
-                with patch("troTHU.rollcall_progress.ctx.get_active_profile", return_value=SimpleNamespace(name="user1")):
+                with patch(
+                    "troTHU.rollcall_progress.ctx.get_active_profile",
+                    return_value=SimpleNamespace(name="default", user="user1"),
+                ):
                     verification = await verify_rollcall_on_call_fine(
                         session,
                         "77",
@@ -247,6 +250,57 @@ class FetchProgressTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(verification["progress"]["confirmed_present"])
         self.assertFalse(verification["progress"]["my_status_known"])
         self.assertIn("已簽到 1/1", verification["monitor_detail"])
+
+    async def test_verifier_uses_profile_user_not_profile_name(self) -> None:
+        async with FakeTronServer() as server:
+            server.student_rollcalls = [
+                {"user_no": "student@example.edu", "rollcall_status": "on_call_fine"},
+                {"user_no": "someone_else", "rollcall_status": "absent"},
+            ]
+            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                await server.login_session(session)
+                with patch(
+                    "troTHU.rollcall_progress.ctx.get_active_profile",
+                    return_value=SimpleNamespace(name="default", user="student@example.edu"),
+                ):
+                    verification = await verify_rollcall_on_call_fine(
+                        session,
+                        "77",
+                        attempts=1,
+                        delay_seconds=0,
+                        endpoints=server.endpoints(),
+                        request_ssl=None,
+                    )
+
+        self.assertTrue(verification["ok"])
+        self.assertEqual(verification["source"], "progress")
+        self.assertEqual(verification["progress"]["my_user_no"], "student@example.edu")
+        self.assertTrue(verification["progress"]["my_present"])
+
+    async def test_verifier_explicit_user_is_stable_across_profile_switches(self) -> None:
+        async with FakeTronServer() as server:
+            server.student_rollcalls = [
+                {"user_no": "member@example.edu", "rollcall_status": "on_call_fine"},
+                {"user_no": "other", "rollcall_status": "absent"},
+            ]
+            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                await server.login_session(session)
+                with patch(
+                    "troTHU.rollcall_progress.ctx.get_active_profile",
+                    return_value=SimpleNamespace(name="other-profile", user="other@example.edu"),
+                ):
+                    verification = await verify_rollcall_on_call_fine(
+                        session,
+                        "77",
+                        attempts=1,
+                        delay_seconds=0,
+                        endpoints=server.endpoints(),
+                        request_ssl=None,
+                        my_user_no="member@example.edu",
+                    )
+
+        self.assertTrue(verification["ok"])
+        self.assertEqual(verification["progress"]["my_user_no"], "member@example.edu")
 
 
 if __name__ == "__main__":

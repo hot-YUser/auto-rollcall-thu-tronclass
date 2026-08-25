@@ -198,6 +198,27 @@ class SummaryAggregationTest(unittest.TestCase):
         self.assertNotIn(_T1, serialized)
         self.assertNotIn(_T2, serialized)
 
+    def test_leak_hit_url_drops_credentials_query_and_fragment(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / "state" / "research-crawl"
+            root.mkdir(parents=True)
+            record = {
+                "kind": "qr_hammer",
+                "source": "student",
+                "url": "https://user:pass@example.invalid/api/check?api_key=plain-secret#fragment",
+                "body": "leak " + _T1,
+            }
+            (root / "2026-08-25.jsonl").write_text(
+                json.dumps(record, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+            report = rc.summarize_crawl(crawl_dir=root)
+
+        self.assertEqual(report["leak_hits"][0]["url"], "https://example.invalid/api/check")
+        serialized = json.dumps(report, ensure_ascii=False)
+        self.assertNotIn("plain-secret", serialized)
+        self.assertNotIn("user:pass", serialized)
+        self.assertNotIn("fragment", serialized)
+
     def test_skips_derived_token_index_file(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir) / "state" / "research-crawl"

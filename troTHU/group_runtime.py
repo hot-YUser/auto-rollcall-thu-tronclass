@@ -288,6 +288,7 @@ async def submit_group_number(code: str, *, rcid: str | int | None = None, sessi
                         member_session,
                         rollcall_id,
                         rollcall_type='number',
+                        my_user_no=user,
                     )
                     if verification.get('ok') and verification.get('status') == 'on_call_fine':
                         return True, "submitted"

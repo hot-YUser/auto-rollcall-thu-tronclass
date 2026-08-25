@@ -114,6 +114,25 @@ def _host(url: Any) -> str:
         return ""
 
 
+def _summary_url(value: Any) -> str:
+    """Keep only endpoint identity; credentials, query values, and fragments never enter summaries."""
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    try:
+        parsed = urlparse(text)
+        if not parsed.scheme or not parsed.hostname:
+            return parsed._replace(params="", query="", fragment="").geturl()
+        host = parsed.hostname
+        if ":" in host and not host.startswith("["):
+            host = "[{}]".format(host)
+        port = parsed.port
+        netloc = "{}:{}".format(host, port) if port is not None else host
+        return parsed._replace(netloc=netloc, params="", query="", fragment="").geturl()
+    except (TypeError, ValueError):
+        return ""
+
+
 def build_host_allowlist(config: Any) -> Set[str]:
     """Seed the in-family host set from the provider registry + vendor roots."""
     hosts: Set[str] = set(VENDOR_ROOTS)
@@ -596,6 +615,7 @@ def summarize_crawl(crawl_dir: Any = None, *, max_files: int = 100) -> Dict[str,
                 buckets.add(str(row["data"])[:10])
             finding = leak_scan_record(raw_record)
             if finding.get("is_leak"):
+                finding["url"] = _summary_url(finding.get("url"))
                 finding["token_count"] = len(finding.get("tokens", []))
                 leaks.append(finding)
     return redact_crawl_summary({
