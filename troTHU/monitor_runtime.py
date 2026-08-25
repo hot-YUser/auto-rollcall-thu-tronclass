@@ -393,6 +393,10 @@ async def monitor_loop(
     shutdown_event: ctx.asyncio.Event,
     *,
     ignore_attendance_rate_gate: ctx.Optional[bool]=None,
+    monitor_profile_name: str='',
+    monitor_user_no: str='',
+    monitor_provider_key: str='',
+    monitor_identity: ctx.Optional[ctx.Mapping[str, ctx.Any]]=None,
 ) -> None:
     flag_day_night = False
     login_retry_attempt = 0
@@ -535,7 +539,13 @@ async def monitor_loop(
         next_poll_delay = ctx.get_poll_interval()
         try:
             poll = await ctx.poll_rollcall_decision(session, ctx.cnt)
-            await ctx.autoanswer_tick(session)  # v1.7 auto-answer; dispatches, never blocks the loop
+            identity = monitor_identity if isinstance(monitor_identity, ctx.Mapping) else {}
+            await ctx.autoanswer_tick(
+                session,
+                profile_name=ctx.normalize_text(identity.get('profile_name')) or monitor_profile_name,
+                user_no=ctx.normalize_text(identity.get('user_no')) or monitor_user_no,
+                provider_key=ctx.normalize_text(identity.get('provider_key')) or monitor_provider_key,
+            )  # immutable values copied from the official monitor identity for each dispatch
             if ctx.CRAWLER_ENABLED:
                 _maybe_research_crawl(session, poll)  # research mode; self-contained, never raises
             error_cnt = 0
@@ -647,6 +657,13 @@ async def app_main(
 ) -> None:
     ctx.INPUT_ENABLED = input_enabled
     ctx.bootstrap_config()
+    monitor_profile = ctx.get_active_profile(ctx.CONFIG)
+    monitor_provider_key = ctx.get_active_provider_key()
+    monitor_identity = {
+        'profile_name': monitor_profile.name,
+        'user_no': monitor_profile.user,
+        'provider_key': monitor_provider_key,
+    }
     shutdown_event = external_shutdown_event or ctx.asyncio.Event()
     # Auto-answer's any-key "submit now" signal + in-flight registry are (re)initialised per run:
     # each restart makes a fresh event loop, so a loop-bound Event / stale Tasks must not carry over.
@@ -662,11 +679,10 @@ async def app_main(
     async with ctx.aiohttp.ClientSession(**session_kwargs) as session:
         async with contextlib.AsyncExitStack() as teacher_stack:
             try:
-                active_profile = ctx.get_active_profile(ctx.CONFIG)
-                if ctx.cookie_cache_enabled(ctx.CONFIG) and ctx.load_session_cookies(session, ctx.BASE_DIR, active_profile.name):
+                if ctx.cookie_cache_enabled(ctx.CONFIG) and ctx.load_session_cookies(session, ctx.BASE_DIR, monitor_profile.name):
                     ctx.COOKIE_CACHE_RESTORED = True
-                    ctx.log_print('已載入 {} 的 cookie 快取。'.format(active_profile.name))
-                    c_status = ctx.cookie_cache_status(ctx.BASE_DIR, active_profile.name)
+                    ctx.log_print('已載入 {} 的 cookie 快取。'.format(monitor_profile.name))
+                    c_status = ctx.cookie_cache_status(ctx.BASE_DIR, monitor_profile.name)
                     if c_status.get("near_expiry"):
                         ctx.log_print('【提示】Cookie 快取即將過期，可能需要重新登入。')
             except Exception:
@@ -707,8 +723,16 @@ async def app_main(
                             session,
                             shutdown_event,
                             ignore_attendance_rate_gate=ignore_attendance_rate_gate,
+                            monitor_profile_name=monitor_profile.name,
+                            monitor_user_no=monitor_profile.user,
+                            monitor_provider_key=monitor_provider_key,
+                            monitor_identity=monitor_identity,
                         )),
-                        ctx.asyncio.create_task(ctx.watch_any_key_to_edit_config(shutdown_event, session)),
+                        ctx.asyncio.create_task(ctx.watch_any_key_to_edit_config(
+                            shutdown_event,
+                            session,
+                            monitor_identity=monitor_identity,
+                        )),
                         ctx.asyncio.create_task(ctx.status_line_loop(shutdown_event)),
                     ]
                     try:
@@ -727,6 +751,10 @@ async def app_main(
                         session,
                         shutdown_event,
                         ignore_attendance_rate_gate=ignore_attendance_rate_gate,
+                        monitor_profile_name=monitor_profile.name,
+                        monitor_user_no=monitor_profile.user,
+                        monitor_provider_key=monitor_provider_key,
+                        monitor_identity=monitor_identity,
                     )
             finally:
                 await ctx.stop_prepared_teacher_qr()

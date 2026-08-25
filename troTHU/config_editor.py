@@ -56,6 +56,26 @@ def reload_config_after_editor() -> ctx.Dict[str, ctx.Any]:
     return {"ok": True, "status": "reloaded", "now": config_now_value(config), "effective_now": effective_config_now_value(config)}
 
 
+def refresh_monitor_identity(
+    identity: ctx.Any,
+    config: ctx.Mapping[str, ctx.Any] | None = None,
+) -> ctx.Dict[str, ctx.Any]:
+    """Update only from an official config reload, never from temporary group fan-out switches."""
+    if not isinstance(identity, dict):
+        return {}
+    cfg = config or ctx.CONFIG
+    active = ctx.get_active_profile(cfg)
+    provider = ctx.normalize_provider_config(
+        cfg.get('provider', ctx.DEFAULT_CONFIG['provider'])
+    )
+    identity.update({
+        'profile_name': active.name,
+        'user_no': active.user,
+        'provider_key': ctx.normalize_text(provider.get('current')) or ctx.DEFAULT_PROVIDER,
+    })
+    return identity
+
+
 def config_is_ready_to_run() -> bool:
     """True when a real (user, password) can be resolved to log in with.
 
@@ -100,7 +120,12 @@ def ensure_config_now_or_open_editor(config_path: Path | None = None) -> ctx.Dic
     }
 
 
-async def watch_any_key_to_edit_config(shutdown_event: ctx.asyncio.Event, session: ctx.Any = None) -> None:
+async def watch_any_key_to_edit_config(
+    shutdown_event: ctx.asyncio.Event,
+    session: ctx.Any = None,
+    *,
+    monitor_identity: ctx.Optional[ctx.Dict[str, ctx.Any]] = None,
+) -> None:
     if ctx.os.name != "nt":
         await shutdown_event.wait()
         return
@@ -131,6 +156,7 @@ async def watch_any_key_to_edit_config(shutdown_event: ctx.asyncio.Event, sessio
             ctx.log_print("無法開啟舊版記事本: {}".format(opened.get("status")))
             continue
         ctx.reload_config_after_editor()
+        refresh_monitor_identity(monitor_identity, ctx.CONFIG)
         after = effective_config_now_value(ctx.CONFIG)
         ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status="transient_error", credential_source="config_reload")
         if after != before:

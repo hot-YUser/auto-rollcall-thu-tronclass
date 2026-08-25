@@ -291,6 +291,7 @@ async def submit_group_number(code: str, *, rcid: str | int | None = None, sessi
                         my_user_no=user,
                     )
                     if verification.get('ok') and verification.get('status') == 'on_call_fine':
+                        ctx.mark_completed_number_rollcall(rollcall_id, code, profile_name=user)
                         return True, "submitted"
                     return True, "submitted_unconfirmed"
                 return False, classification.message or "failed"
@@ -309,6 +310,8 @@ async def submit_group_radar(rollcall: ctx.Dict[str, ctx.Any], *, session: ctx.A
     
     async def submit_one(member_session, user):
         ok = await ctx.radar(member_session, rollcall)
+        if ok:
+            ctx.mark_completed_radar_rollcall(_rollcall_id(rollcall), profile_name=user)
         return ok, "submitted" if ok else "failed"
 
     results = await _fanout(plan, submit_one)
@@ -323,6 +326,8 @@ async def submit_group_self_registration(rollcall: ctx.Dict[str, ctx.Any], *, se
 
     async def submit_one(member_session, user):
         ok = await ctx.self_registration(member_session, rollcall)
+        if ok:
+            ctx.mark_completed_self_registration_rollcall(_rollcall_id(rollcall), profile_name=user)
         return ok, "submitted" if ok else "failed"
 
     results = await _fanout(plan, submit_one)

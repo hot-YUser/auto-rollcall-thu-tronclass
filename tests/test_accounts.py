@@ -244,6 +244,15 @@ def make_config():
 
 
 class GroupRuntimeTest(unittest.TestCase):
+    def test_refresh_monitor_identity_only_follows_official_config(self) -> None:
+        config = make_config()
+        identity = {"profile_name": "old", "user_no": "old-user", "provider_key": "old"}
+        tron.refresh_monitor_identity(identity, config)
+        active = tron.get_active_profile(config)
+        self.assertEqual(identity["profile_name"], active.name)
+        self.assertEqual(identity["user_no"], active.user)
+        self.assertEqual(identity["provider_key"], config["provider"]["current"])
+
     def test_resolve_now_class_and_execution_plan(self) -> None:
         config = make_config()
         target = tron.resolve_now_target(config)
@@ -395,7 +404,13 @@ class GroupDisplayTest(unittest.TestCase):
 class GroupRuntimeIntegrationTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.original_config = copy.deepcopy(tron.CONFIG)
+        self.original_completed_number = copy.deepcopy(tron.COMPLETED_NUMBER_ROLLCALLS)
+        self.original_completed_radar = copy.deepcopy(tron.COMPLETED_RADAR_ROLLCALLS)
+        self.original_completed_self_registration = copy.deepcopy(tron.COMPLETED_SELF_REGISTRATION_ROLLCALLS)
         self.original_completed_qr = copy.deepcopy(tron.COMPLETED_QR_ROLLCALLS)
+        tron.COMPLETED_NUMBER_ROLLCALLS.clear()
+        tron.COMPLETED_RADAR_ROLLCALLS.clear()
+        tron.COMPLETED_SELF_REGISTRATION_ROLLCALLS.clear()
         tron.COMPLETED_QR_ROLLCALLS.clear()
         self.original_base_dir = tron.BASE_DIR
         self.original_ctx_base_dir = runtime_context.BASE_DIR
@@ -426,6 +441,12 @@ class GroupRuntimeIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.login_patcher.stop()
         tron.CONFIG.clear()
         tron.CONFIG.update(copy.deepcopy(self.original_config))
+        tron.COMPLETED_NUMBER_ROLLCALLS.clear()
+        tron.COMPLETED_NUMBER_ROLLCALLS.update(self.original_completed_number)
+        tron.COMPLETED_RADAR_ROLLCALLS.clear()
+        tron.COMPLETED_RADAR_ROLLCALLS.update(self.original_completed_radar)
+        tron.COMPLETED_SELF_REGISTRATION_ROLLCALLS.clear()
+        tron.COMPLETED_SELF_REGISTRATION_ROLLCALLS.update(self.original_completed_self_registration)
         tron.COMPLETED_QR_ROLLCALLS.clear()
         tron.COMPLETED_QR_ROLLCALLS.update(self.original_completed_qr)
         tron.BASE_DIR = self.original_base_dir
@@ -471,7 +492,8 @@ class GroupRuntimeIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["results"][0]["user"], "user2")
         self.assertEqual(result["results"][0]["ok"], True)
         self.assertEqual(result["results"][0]["status"], "submitted")
-        
+        self.assertTrue(tron.is_completed_number_rollcall(42, profile_name="user2"))
+
         encoded = json.dumps(result, ensure_ascii=False)
         self.assertNotIn("pass1", encoded)
         self.assertNotIn("1234", encoded)
@@ -494,8 +516,26 @@ class GroupRuntimeIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["results"][0]["user"], "user2")
         self.assertEqual(result["results"][0]["ok"], True)
         self.assertEqual(result["results"][0]["status"], "submitted")
+        self.assertTrue(tron.is_completed_radar_rollcall(43, profile_name="user2"))
 
-        # 3. Test submit_group_qr (Teacher assist mode)
+        # 3. Test submit_group_self_registration
+        self.fake_server.rollcalls = [{"type": "self_registration", "rollcall_id": 430}]
+        self.fake_server.student_rollcalls = [
+            {"student_id": 1, "user_no": "user2", "status": "pending", "rollcall_status": "on_call"}
+        ]
+        async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+            tron.switch_profile(tron.CONFIG, "user1")
+            result = await tron.submit_group_self_registration(
+                {"rollcall_id": 430}, session=session, config=tron.CONFIG
+            )
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["count"], 1)
+        self.assertEqual(result["results"][0]["status"], "submitted")
+        self.assertTrue(
+            tron.is_completed_self_registration_rollcall(430, profile_name="user2")
+        )
+
+        # 4. Test submit_group_qr (Teacher assist mode)
         self.fake_server.rollcalls = [{"is_qrcode": True, "rollcall_id": 44, "type": "qrcode"}]
         self.fake_server.student_rollcalls = [
             {"student_id": 1, "user_no": "user2", "status": "pending", "rollcall_status": "on_call"}
@@ -519,7 +559,7 @@ class GroupRuntimeIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(teacher_submit.await_args.kwargs["profile_name"], "user2")
         self.assertEqual(teacher_submit.await_args.kwargs["my_user_no"], "user2")
 
-        # 4. No teacher and no remote source is an explicit failure, never a false-success skip.
+        # 5. No teacher and no remote source is an explicit failure, never a false-success skip.
         self.fake_server.rollcalls = [{"is_qrcode": True, "rollcall_id": 45, "type": "qrcode"}]
 
         async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:

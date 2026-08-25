@@ -18,17 +18,11 @@ def __getattr__(name: str):
 
 
 def qr_rollcall_key(rollcall_id, *, profile_name: str = "", provider_key: str = "") -> str:
-    rid = ctx.normalize_text(rollcall_id)
-    if not rid:
-        return ""
-    profile = ctx.normalize_profile_name(profile_name) if profile_name else ""
-    if not profile:
-        try:
-            profile = ctx.get_active_profile(ctx.CONFIG).name
-        except Exception:
-            profile = "default"
-    provider = ctx.normalize_text(provider_key) or ctx.get_active_provider_key()
-    return "{}:{}:{}".format(provider, profile, rid)
+    return ctx.rollcall_completion_key(
+        rollcall_id,
+        profile_name=profile_name,
+        provider_key=provider_key,
+    )
 
 
 def is_completed_qr_rollcall(rollcall_id, *, profile_name: str = "", provider_key: str = "") -> bool:

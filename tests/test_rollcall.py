@@ -192,6 +192,36 @@ class SummarizeProgressTest(unittest.TestCase):
         })
 
 
+class RollcallCompletionScopeTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.number = copy.deepcopy(tron.COMPLETED_NUMBER_ROLLCALLS)
+        self.radar = copy.deepcopy(tron.COMPLETED_RADAR_ROLLCALLS)
+        self.self_registration = copy.deepcopy(tron.COMPLETED_SELF_REGISTRATION_ROLLCALLS)
+        tron.COMPLETED_NUMBER_ROLLCALLS.clear()
+        tron.COMPLETED_RADAR_ROLLCALLS.clear()
+        tron.COMPLETED_SELF_REGISTRATION_ROLLCALLS.clear()
+
+    def tearDown(self) -> None:
+        tron.COMPLETED_NUMBER_ROLLCALLS.clear()
+        tron.COMPLETED_NUMBER_ROLLCALLS.update(self.number)
+        tron.COMPLETED_RADAR_ROLLCALLS.clear()
+        tron.COMPLETED_RADAR_ROLLCALLS.update(self.radar)
+        tron.COMPLETED_SELF_REGISTRATION_ROLLCALLS.clear()
+        tron.COMPLETED_SELF_REGISTRATION_ROLLCALLS.update(self.self_registration)
+
+    def test_completion_is_scoped_by_profile_for_all_non_qr_types(self) -> None:
+        tron.mark_completed_number_rollcall("77", "1234", profile_name="user-a")
+        tron.mark_completed_radar_rollcall("77", profile_name="user-a")
+        tron.mark_completed_self_registration_rollcall("77", profile_name="user-a")
+
+        self.assertTrue(tron.is_completed_number_rollcall("77", profile_name="user-a"))
+        self.assertTrue(tron.is_completed_radar_rollcall("77", profile_name="user-a"))
+        self.assertTrue(tron.is_completed_self_registration_rollcall("77", profile_name="user-a"))
+        self.assertFalse(tron.is_completed_number_rollcall("77", profile_name="user-b"))
+        self.assertFalse(tron.is_completed_radar_rollcall("77", profile_name="user-b"))
+        self.assertFalse(tron.is_completed_self_registration_rollcall("77", profile_name="user-b"))
+
+
 class FetchProgressTest(unittest.IsolatedAsyncioTestCase):
     async def test_fetch_against_fake_server(self) -> None:
         async with FakeTronServer() as server:

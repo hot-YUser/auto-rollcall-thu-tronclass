@@ -20,20 +20,73 @@ def reset_unsupported_rollcall_state() -> None:
     ctx.UNSUPPORTED_ROLLCALL_STATE['status'] = ''
 
 
-def number_rollcall_key(rollcall_id: ctx.Any) -> str:
-    return ctx.normalize_text(rollcall_id)
+def rollcall_completion_key(
+    rollcall_id: ctx.Any,
+    *,
+    profile_name: str = "",
+    provider_key: str = "",
+) -> str:
+    rid = ctx.normalize_text(rollcall_id)
+    if not rid:
+        return ""
+    profile = ctx.normalize_profile_name(profile_name) if profile_name else ""
+    if not profile:
+        try:
+            profile = ctx.get_active_profile(ctx.CONFIG).name
+        except Exception:
+            profile = "default"
+    provider = ctx.normalize_text(provider_key) or ctx.get_active_provider_key()
+    return "{}:{}:{}".format(provider, profile, rid)
 
 
-def is_completed_number_rollcall(rollcall_id: ctx.Any) -> bool:
-    key = ctx.number_rollcall_key(rollcall_id)
+def number_rollcall_key(rollcall_id: ctx.Any, *, profile_name: str = "", provider_key: str = "") -> str:
+    return rollcall_completion_key(
+        rollcall_id,
+        profile_name=profile_name,
+        provider_key=provider_key,
+    )
+
+
+def is_completed_number_rollcall(rollcall_id: ctx.Any, *, profile_name: str = "") -> bool:
+    key = ctx.number_rollcall_key(rollcall_id, profile_name=profile_name)
     return bool(key) and key in ctx.COMPLETED_NUMBER_ROLLCALLS
 
 
-def mark_completed_number_rollcall(rollcall_id: ctx.Any, code: ctx.Any) -> None:
-    key = ctx.number_rollcall_key(rollcall_id)
+def mark_completed_number_rollcall(rollcall_id: ctx.Any, code: ctx.Any, *, profile_name: str = "") -> None:
+    key = ctx.number_rollcall_key(rollcall_id, profile_name=profile_name)
     code_text = ctx.normalize_text(code)
     if key and code_text and (code_text != 'NA'):
         ctx.COMPLETED_NUMBER_ROLLCALLS[key] = code_text
+
+
+def radar_rollcall_key(rollcall_id: ctx.Any, *, profile_name: str = "") -> str:
+    return rollcall_completion_key(rollcall_id, profile_name=profile_name)
+
+
+def is_completed_radar_rollcall(rollcall_id: ctx.Any, *, profile_name: str = "") -> bool:
+    key = radar_rollcall_key(rollcall_id, profile_name=profile_name)
+    return bool(key) and key in ctx.COMPLETED_RADAR_ROLLCALLS
+
+
+def mark_completed_radar_rollcall(rollcall_id: ctx.Any, *, profile_name: str = "") -> None:
+    key = radar_rollcall_key(rollcall_id, profile_name=profile_name)
+    if key:
+        ctx.COMPLETED_RADAR_ROLLCALLS[key] = True
+
+
+def self_registration_rollcall_key(rollcall_id: ctx.Any, *, profile_name: str = "") -> str:
+    return rollcall_completion_key(rollcall_id, profile_name=profile_name)
+
+
+def is_completed_self_registration_rollcall(rollcall_id: ctx.Any, *, profile_name: str = "") -> bool:
+    key = self_registration_rollcall_key(rollcall_id, profile_name=profile_name)
+    return bool(key) and key in ctx.COMPLETED_SELF_REGISTRATION_ROLLCALLS
+
+
+def mark_completed_self_registration_rollcall(rollcall_id: ctx.Any, *, profile_name: str = "") -> None:
+    key = self_registration_rollcall_key(rollcall_id, profile_name=profile_name)
+    if key:
+        ctx.COMPLETED_SELF_REGISTRATION_ROLLCALLS[key] = True
 
 
 async def maybe_notify_unsupported_rollcall(status: str, rollcall: ctx.Dict[str, ctx.Any], message: str, rollcall_type: str) -> None:
@@ -186,8 +239,7 @@ async def handle_rollcall_decision(
     if selected_status == 'is_radar' and selected_rollcall is not None:
         ctx.reset_unsupported_rollcall_state()
         rollcall_id = selected_rollcall.get('rollcall_id')
-        radar_key = ctx.normalize_text(rollcall_id)
-        if radar_key in ctx.COMPLETED_RADAR_ROLLCALLS:
+        if ctx.is_completed_radar_rollcall(rollcall_id):
             return '雷達點名已處理'
         await ctx.announce_rollcall_start(
             ctx.AttendanceType.RADAR,
@@ -201,7 +253,7 @@ async def handle_rollcall_decision(
         )
         radar_success = await ctx.radar(session, selected_rollcall)
         if radar_success:
-            ctx.COMPLETED_RADAR_ROLLCALLS[radar_key] = True
+            ctx.mark_completed_radar_rollcall(rollcall_id)
             try:
                 group_result = await ctx.submit_group_radar(selected_rollcall, session=session, config=ctx.CONFIG)
                 if group_result.get('ok'):
@@ -216,8 +268,7 @@ async def handle_rollcall_decision(
     if selected_status == 'is_self_registration' and selected_rollcall is not None:
         ctx.reset_unsupported_rollcall_state()
         rollcall_id = selected_rollcall.get('rollcall_id')
-        sr_key = ctx.normalize_text(rollcall_id)
-        if sr_key in ctx.COMPLETED_SELF_REGISTRATION_ROLLCALLS:
+        if ctx.is_completed_self_registration_rollcall(rollcall_id):
             return '自主報到已處理'
         await ctx.announce_rollcall_start(
             ctx.AttendanceType.SELF_REGISTRATION,
@@ -231,7 +282,7 @@ async def handle_rollcall_decision(
         )
         sr_success = await ctx.self_registration(session, selected_rollcall)
         if sr_success:
-            ctx.COMPLETED_SELF_REGISTRATION_ROLLCALLS[sr_key] = True
+            ctx.mark_completed_self_registration_rollcall(rollcall_id)
             try:
                 group_result = await ctx.submit_group_self_registration(selected_rollcall, session=session, config=ctx.CONFIG)
                 if group_result.get('ok'):
