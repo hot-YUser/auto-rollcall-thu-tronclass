@@ -430,9 +430,23 @@ class GroupRuntimeIntegrationTest(unittest.IsolatedAsyncioTestCase):
         await self.fake_server.close()
         shutil.rmtree(self.base_dir, ignore_errors=True)
 
+    def _with_fake_provider(self, config):
+        config["provider"] = tron.normalize_provider_config(
+            {
+                "current": tron.DEFAULT_PROVIDER,
+                "available": {
+                    tron.DEFAULT_PROVIDER: {
+                        "base_url": self.fake_server.base_url,
+                        "login_url": self.fake_server.login_url,
+                    }
+                },
+            }
+        )
+        return config
+
     async def test_group_submit_helpers_fanout_e2e(self) -> None:
         # Load the configuration with group class A
-        config = make_config()
+        config = self._with_fake_provider(make_config())
         tron.CONFIG.clear()
         tron.CONFIG.update(config)
 
@@ -528,7 +542,9 @@ class GroupRuntimeIntegrationTest(unittest.IsolatedAsyncioTestCase):
             "groups": [{"class": "A", "school": "thu", "users": ["user1", "user2", "user5"]}],
             "operating": {},
         }
-        config = tron.normalize_config(tron.merge_basic_and_advanced_config(simple, {}))
+        config = self._with_fake_provider(
+            tron.normalize_config(tron.merge_basic_and_advanced_config(simple, {}))
+        )
         tron.CONFIG.clear()
         tron.CONFIG.update(config)
 

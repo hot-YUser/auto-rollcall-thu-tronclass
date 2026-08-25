@@ -197,6 +197,62 @@ class ProviderConfigTest(unittest.TestCase):
         self.assertNotIn("captcha_length", merged)
 
 
+class ProviderEndpointOverrideTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.original_config = copy.deepcopy(tron.CONFIG)
+
+    def tearDown(self) -> None:
+        tron.CONFIG.clear()
+        tron.CONFIG.update(self.original_config)
+
+    def _configure(self, key: str, override: dict) -> None:
+        tron.CONFIG["provider"] = {
+            "current": key,
+            "available": {key: override},
+        }
+
+    def test_default_provider_uses_active_base_override(self) -> None:
+        legacy = tron.default_endpoints()
+        self._configure(DEFAULT_PROVIDER, {"base_url": "https://default.example/"})
+
+        endpoints = tron.get_active_http_endpoints()
+
+        self.assertEqual(endpoints.base_url, "https://default.example")
+        self.assertEqual(endpoints.login_url, "https://default.example/login")
+        self.assertEqual(endpoints.rollcalls_url, "https://default.example/api/radar/rollcalls?api_version=1.1.0")
+        self.assertEqual(endpoints.current_semester_url, "https://default.example/api/current-semester-info")
+        self.assertEqual(endpoints.courses_url, "https://default.example/api/my-courses?page=1&page_size=50")
+        self.assertEqual(legacy.base_url, get_provider(DEFAULT_PROVIDER).base_url)
+
+    def test_non_default_builtin_rederives_all_endpoints(self) -> None:
+        self._configure("fju", {"base_url": "https://non-default.example"})
+
+        endpoints = tron.get_active_http_endpoints()
+
+        self.assertEqual(endpoints.base_url, "https://non-default.example")
+        self.assertEqual(endpoints.login_url, "https://non-default.example/login")
+        self.assertEqual(endpoints.rollcalls_url, "https://non-default.example/api/radar/rollcalls?api_version=1.1.0")
+        self.assertEqual(endpoints.current_semester_url, "https://non-default.example/api/current-semester-info")
+        self.assertEqual(endpoints.courses_url, "https://non-default.example/api/my-courses?page=1&page_size=50")
+
+    def test_explicit_fake_login_url_has_highest_precedence(self) -> None:
+        self._configure(
+            "fake",
+            {
+                "base_url": "https://fake.example",
+                "login_url": "https://identity.example/fake-login",
+            },
+        )
+
+        endpoints = tron.get_active_http_endpoints()
+
+        self.assertEqual(endpoints.base_url, "https://fake.example")
+        self.assertEqual(endpoints.login_url, "https://identity.example/fake-login")
+        self.assertEqual(endpoints.rollcalls_url, "https://fake.example/api/radar/rollcalls?api_version=1.1.0")
+        self.assertEqual(endpoints.current_semester_url, "https://fake.example/api/current-semester-info")
+        self.assertEqual(endpoints.courses_url, "https://fake.example/api/my-courses?page=1&page_size=50")
+
+
 class ResearchModeConfigTest(unittest.TestCase):
     def setUp(self) -> None:
         self.original_config = copy.deepcopy(tron.CONFIG)
@@ -627,6 +683,15 @@ class CoursesCommandTest(unittest.IsolatedAsyncioTestCase):
                             "default": {"user": "user1", "passwd": "pass1", "label": ""}
                         },
                     },
+                    "provider": {
+                        "current": DEFAULT_PROVIDER,
+                        "available": {
+                            DEFAULT_PROVIDER: {
+                                "base_url": self.server.base_url,
+                                "login_url": self.server.login_url,
+                            }
+                        },
+                    },
                 }
             )
         )
@@ -806,6 +871,15 @@ class CoursesCommandTest__course_discovery(unittest.IsolatedAsyncioTestCase):
                         "current": "default",
                         "profiles": {
                             "default": {"user": "user1", "passwd": "pass1", "label": ""}
+                        },
+                    },
+                    "provider": {
+                        "current": DEFAULT_PROVIDER,
+                        "available": {
+                            DEFAULT_PROVIDER: {
+                                "base_url": self.server.base_url,
+                                "login_url": self.server.login_url,
+                            }
                         },
                     },
                 }

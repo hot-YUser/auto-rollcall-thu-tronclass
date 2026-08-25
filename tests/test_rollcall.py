@@ -294,6 +294,17 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.fake_server = await FakeTronServer().start()
         self.url_patch = self.fake_server.patch_tron_http_urls(tron_http)
         self.url_patch.__enter__()
+        tron.CONFIG["provider"] = tron.normalize_provider_config(
+            {
+                "current": tron.DEFAULT_PROVIDER,
+                "available": {
+                    tron.DEFAULT_PROVIDER: {
+                        "base_url": self.fake_server.base_url,
+                        "login_url": self.fake_server.login_url,
+                    }
+                },
+            }
+        )
 
     async def asyncTearDown(self) -> None:
         tron.CONFIG.clear()
