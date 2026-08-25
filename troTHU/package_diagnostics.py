@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+import subprocess
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Sequence
 
@@ -21,6 +22,12 @@ FORBIDDEN_BUNDLE_NAMES = (
     "account_runtime",
     "tests",
 )
+RAW_MOBILE_ARCHIVE_SUFFIXES = (
+    ".ipa.zip",
+    ".apk.zip",
+    ".ipa",
+    ".apk",
+)
 REQUIRED_GITIGNORE_PATTERNS = (
     "build/",
     "dist/",
@@ -29,6 +36,10 @@ REQUIRED_GITIGNORE_PATTERNS = (
     ".tmp-tests/",
     "__pycache__/",
     "其他專案參考/",
+    "*.ipa",
+    "*.ipa.zip",
+    "*.apk",
+    "*.apk.zip",
 )
 REQUIRED_GITATTRIBUTES_PATTERNS = (
     "*.py text eol=lf",
@@ -287,6 +298,32 @@ def _runtime_report() -> Dict[str, Any]:
     }
 
 
+def is_raw_mobile_archive_name(value: Any) -> bool:
+    normalized = str(value or "").replace("\\", "/").strip("/").lower()
+    name = normalized.rsplit("/", 1)[-1]
+    return any(name.endswith(suffix) for suffix in RAW_MOBILE_ARCHIVE_SUFFIXES)
+
+
+def _tracked_git_paths(base_dir: Path) -> List[str] | None:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(base_dir), "ls-files", "-z", "--"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if completed.returncode != 0:
+        return None
+    return [
+        path
+        for path in completed.stdout.decode("utf-8", errors="replace").split("\0")
+        if path
+    ]
+
+
 def _line_set(path: Path) -> set[str]:
     return {
         line.strip()
@@ -306,10 +343,17 @@ def _git_hygiene_report(base_dir: Path) -> Dict[str, Any]:
         for pattern in REQUIRED_GITATTRIBUTES_PATTERNS
         if pattern not in attributes_text
     ]
+    tracked_paths = _tracked_git_paths(Path(base_dir))
+    tracked_scan_required = (Path(base_dir) / ".git").exists()
+    tracked_mobile_archives = sorted(
+        path for path in (tracked_paths or []) if is_raw_mobile_archive_name(path)
+    )
     config_ignored = "config.conf" in ignore_lines or "/config.conf" in ignore_lines
     checks = [
         _check(".gitignore exists", gitignore.exists(), ".gitignore", severity="warn"),
-        _check(".gitignore ignores runtime artifacts", not missing_ignore, "build/dist/state/log/reference projects ignored", severity="warn"),
+        _check(".gitignore ignores runtime artifacts", not missing_ignore, "build/dist/state/log/reference/mobile archives ignored", severity="warn"),
+        _check("tracked file scan available", not tracked_scan_required or tracked_paths is not None, "git ls-files available in a repository", severity="fail"),
+        _check("tracked mobile archives absent", not tracked_mobile_archives, "no raw .ipa/.apk archives tracked", severity="fail"),
         _check("local config ignored", config_ignored, "config.conf is ignored", severity="fail"),
         _check(".gitattributes exists", gitattributes.exists(), ".gitattributes", severity="warn"),
         _check(".gitattributes normalizes text", not missing_attributes, "common text file types use LF", severity="warn"),
@@ -320,6 +364,8 @@ def _git_hygiene_report(base_dir: Path) -> Dict[str, Any]:
         "required_ignored": list(REQUIRED_GITIGNORE_PATTERNS),
         "missing_ignored": missing_ignore,
         "missing_attributes": missing_attributes,
+        "tracked_files_scanned": tracked_paths is not None,
+        "tracked_mobile_archives": tracked_mobile_archives[:20],
         "config_local_file_ignored": config_ignored,
         "checks": checks,
     }

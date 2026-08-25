@@ -23,6 +23,7 @@ try:  # pragma: no cover - script execution fallback
         SMALL_BUNDLE_ARTIFACT_PARTS,
         SPEC_NAME,
         build_package_diagnostic_report,
+        is_raw_mobile_archive_name,
     )
 except ImportError:  # pragma: no cover
     from package_diagnostics import (
@@ -32,6 +33,7 @@ except ImportError:  # pragma: no cover
         SMALL_BUNDLE_ARTIFACT_PARTS,
         SPEC_NAME,
         build_package_diagnostic_report,
+        is_raw_mobile_archive_name,
     )
 
 
@@ -224,6 +226,11 @@ def validate_release_artifact(path: Path, *, strict_optional: bool = True) -> Di
         for name in all_names
         if _forbidden_name_match(name)
     ]
+    raw_mobile_archives = sorted({
+        str(name)
+        for name in all_names
+        if is_raw_mobile_archive_name(name)
+    })
     optional_bundles = [
         _optional_bundle_name_match(name)
         for name in optional_names
@@ -235,6 +242,7 @@ def validate_release_artifact(path: Path, *, strict_optional: bool = True) -> Di
         _check("artifact exists", artifact.exists(), artifact.name or str(artifact), severity="warn"),
         _check("artifact naming", name_ok or not artifact.exists(), "expected release artifact naming", severity="warn"),
         _check("artifact excludes local state", not forbidden, "no config/state/log/tests/cookies names", severity="fail"),
+        _check("artifact excludes raw mobile archives", not raw_mobile_archives, "no raw .ipa/.apk archives", severity="fail"),
         _check(
             "artifact excludes optional extras",
             not optional_bundles,
@@ -249,6 +257,7 @@ def validate_release_artifact(path: Path, *, strict_optional: bool = True) -> Di
         "candidate_names": sorted(candidate_names)[:20],
         "manifest": build_release_artifact_manifest(artifact),
         "forbidden_names": sorted(set(forbidden))[:20],
+        "raw_mobile_archive_names": raw_mobile_archives[:20],
         "optional_bundle_names": sorted(set(optional_bundles))[:20],
         "strict_optional": bool(strict_optional),
         "checks": checks,
