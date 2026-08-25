@@ -191,7 +191,12 @@ class SummaryAggregationTest(unittest.TestCase):
         self.assertEqual(report["unique_tokens"], 2)          # T1 (teacher data) + T2 (leaked body)
         self.assertEqual(report["unique_time_buckets"], 2)
         self.assertEqual(len(report["leak_hits"]), 1)          # only the student endpoint echo
-        self.assertEqual(report["leak_hits"][0]["tokens"], [_T2])
+        self.assertEqual(report["leak_hits"][0]["token_count"], 1)
+        self.assertEqual(report["leak_hits"][0]["tokens"], ["[redacted]"])
+        serialized = json.dumps(report, ensure_ascii=False)
+        self.assertIsNone(rc.QR_DATA_TOKEN_RE.search(serialized))
+        self.assertNotIn(_T1, serialized)
+        self.assertNotIn(_T2, serialized)
 
     def test_skips_derived_token_index_file(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -220,6 +225,46 @@ class SummaryAggregationTest(unittest.TestCase):
         # sanitize recurses into nested values, so count only the top-level records it saw.
         top_level = [s for s in seen if isinstance(s, dict) and "kind" in s]
         self.assertEqual(len(top_level), report["record_count"])
+
+    def test_final_serialized_report_redacts_tokens_in_any_field(self) -> None:
+        report = rc.redact_crawl_summary(
+            {
+                "leak_hits": [{"tokens": [_T1], "url": "https://example.invalid/" + _T2}],
+                _T1: {"nested": "prefix " + _T2 + " suffix"},
+            }
+        )
+
+        serialized = json.dumps(report, ensure_ascii=False)
+        self.assertIsNone(rc.QR_DATA_TOKEN_RE.search(serialized))
+        self.assertNotIn(_T1, serialized)
+        self.assertNotIn(_T2, serialized)
+        self.assertEqual(report["leak_hits"][0]["tokens"], ["[redacted]"])
+
+
+class CrawlSummaryCliSafetyTest(unittest.TestCase):
+    def test_json_and_text_output_re_redact_unsafe_report(self) -> None:
+        unsafe = {
+            "unique_tokens": 2,
+            "unique_time_buckets": 2,
+            "leak_hits": [{"url": "https://example.invalid/" + _T1, "kind": "qr_hammer", "tokens": [_T2]}],
+        }
+        for json_output in (False, True):
+            with self.subTest(json_output=json_output):
+                outputs = []
+                args = ["research", "crawl-summary"] + (["--json"] if json_output else [])
+                with (
+                    patch.object(tron, "bootstrap_config"),
+                    patch.object(tron, "summarize_crawl", return_value=unsafe),
+                    patch("builtins.print", side_effect=outputs.append),
+                ):
+                    result = tron.main(args)
+
+                serialized = "\n".join(str(item) for item in outputs)
+                self.assertEqual(result, 0)
+                self.assertIsNone(rc.QR_DATA_TOKEN_RE.search(serialized))
+                self.assertNotIn(_T1, serialized)
+                self.assertNotIn(_T2, serialized)
+                self.assertIn("[redacted]", serialized)
 
 
 class TeacherHarvestSafetyTest(unittest.IsolatedAsyncioTestCase):

@@ -950,6 +950,7 @@ _LEGACY_EXPORTS = {
     'scan_body_for_tokens': ('troTHU.research_crawler', 'scan_body_for_tokens'),
     'leak_scan_record': ('troTHU.research_crawler', 'leak_scan_record'),
     'token_index_row': ('troTHU.research_crawler', 'token_index_row'),
+    'redact_crawl_summary': ('troTHU.research_crawler', 'redact_crawl_summary'),
     'summarize_crawl': ('troTHU.research_crawler', 'summarize_crawl'),
     'decide_rollcall': ('troTHU.rollcall_runtime', 'decide_rollcall'),
     'decode_qr_image_file': ('troTHU.qr_runtime', 'decode_qr_image_file'),

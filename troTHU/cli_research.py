@@ -48,7 +48,7 @@ def research_status_command(json_output: bool=False) -> int:
 
 
 def research_crawl_summary_command(json_output: bool=False) -> int:
-    report = ctx.summarize_crawl()
+    report = ctx.redact_crawl_summary(ctx.summarize_crawl())
     if json_output:
         print(ctx.json_text(report))
     else:

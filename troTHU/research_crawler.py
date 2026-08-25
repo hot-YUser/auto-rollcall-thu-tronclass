@@ -532,6 +532,20 @@ def _research_crawl_dir() -> Any:
     return ctx.BASE_DIR / "state" / "research-crawl"
 
 
+def redact_crawl_summary(report: Any) -> Dict[str, Any]:
+    """Remove QR data tokens from the final serialized report boundary."""
+    try:
+        serialized = ctx.json.dumps(report, ensure_ascii=False, default=str)
+        if QR_DATA_TOKEN_RE.search(serialized):
+            serialized = QR_DATA_TOKEN_RE.sub("[redacted]", serialized)
+        if QR_DATA_TOKEN_RE.search(serialized):
+            return {"status": "redaction_failed"}
+        redacted = ctx.json.loads(serialized)
+    except Exception:
+        return {"status": "redaction_failed"}
+    return redacted if isinstance(redacted, dict) else {"status": "invalid_report"}
+
+
 def summarize_crawl(crawl_dir: Any = None, *, max_files: int = 100) -> Dict[str, Any]:
     """Aggregate the research-crawl jsonl for human/agent inspection: counts per kind,
     unique endpoints, unique harvested tokens, distinct 10-sec time buckets, and leak hits.
@@ -565,7 +579,8 @@ def summarize_crawl(crawl_dir: Any = None, *, max_files: int = 100) -> Dict[str,
             if not line.strip():
                 continue
             try:
-                record = sanitize_debug_payload(ctx.json.loads(line))
+                raw_record = ctx.json.loads(line)
+                record = sanitize_debug_payload(raw_record)
             except Exception:
                 continue
             if not isinstance(record, dict):
@@ -575,14 +590,15 @@ def summarize_crawl(crawl_dir: Any = None, *, max_files: int = 100) -> Dict[str,
             kind_counts[kind] = kind_counts.get(kind, 0) + 1
             if record.get("url"):
                 endpoints.add(str(record.get("url")))
-            row = token_index_row(record)
+            row = token_index_row(raw_record)
             if row.get("data"):
                 tokens.add(str(row["data"]))
                 buckets.add(str(row["data"])[:10])
-            finding = leak_scan_record(record)
+            finding = leak_scan_record(raw_record)
             if finding.get("is_leak"):
+                finding["token_count"] = len(finding.get("tokens", []))
                 leaks.append(finding)
-    return {
+    return redact_crawl_summary({
         "crawl_dir": str(root_path), "file_count": len(files), "record_count": total,
         "kinds": dict(sorted(kind_counts.items())),
         "unique_endpoints": len(endpoints),
@@ -590,4 +606,4 @@ def summarize_crawl(crawl_dir: Any = None, *, max_files: int = 100) -> Dict[str,
         "unique_time_buckets": len(buckets),
         "tokens_per_bucket": (len(tokens) / len(buckets)) if buckets else 0.0,
         "leak_hits": leaks[:50],
-    }
+    })
