@@ -401,6 +401,20 @@ def _normalize_research(config: ctx.Dict[str, ctx.Any]) -> None:
     config['research'] = ctx.normalize_research_mode_config(config.get('research', ctx.DEFAULT_CONFIG['research']))
 
 
+def _normalize_qr_remote(config: ctx.Dict[str, ctx.Any]) -> None:
+    section = config.get('qr_remote')
+    normalized = ctx.normalize_qr_remote_config_section(
+        section,
+        ctx.DEFAULT_CONFIG['qr_remote'],
+    )
+    if normalized['enabled'] and not ctx.qr_remote_base_url_allowed(normalized['base_url']):
+        normalized['enabled'] = False
+        ctx.CONFIG_WARNINGS.append(
+            'qr_remote.base_url 必須使用 HTTPS；只有 localhost/loopback 可使用 HTTP，已停用。'
+        )
+    config['qr_remote'] = normalized
+
+
 def _normalize_logging(config: ctx.Dict[str, ctx.Any]) -> None:
     section = config.get('logging')
     if not isinstance(section, dict):
@@ -515,6 +529,7 @@ def normalize_config(raw_config: ctx.Any) -> ctx.Dict[str, ctx.Any]:
     _normalize_number(config)
     _normalize_radar(config)
     _normalize_research(config)
+    _normalize_qr_remote(config)
     _normalize_logging(config)
     _normalize_autoanswer(config)
     _normalize_operating(config)

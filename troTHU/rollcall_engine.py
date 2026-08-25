@@ -25,7 +25,7 @@ def classify_rollcall(rollcall: Dict[str, Any]) -> Tuple[str, str, str]:
         "qrcode_url",
     )
     if any(rollcall.get(key) for key in qrcode_keys) or "qr" in rollcall_type_value:
-        return "unsupported_qrcode", "qrcode", "偵測到 QR 點名；請用 tron qr paste 手動貼上當下 QR 內容（教師輔助是目前唯一能自動的路徑）。"
+        return "unsupported_qrcode", "qrcode", "偵測到 QR 點名；若已設定教師輔助或遠端 data 服務會自動處理，否則請用 tron qr paste 手動貼上當下 QR 內容。"
 
     return "unsupported_rollcall", "unknown", "偵測到未支援的點名類型"
 

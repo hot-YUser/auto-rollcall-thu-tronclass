@@ -331,34 +331,69 @@ async def submit_group_self_registration(rollcall: ctx.Dict[str, ctx.Any], *, se
 
 
 async def submit_group_qr(payload_or_rollcall: str | ctx.Dict[str, ctx.Any], *, session: ctx.Any = None, config: ctx.Mapping[str, ctx.Any] | None = None) -> ctx.Dict[str, ctx.Any]:
-    plan = build_group_execution_plan(config or ctx.CONFIG)
+    cfg = config or ctx.CONFIG
+    plan = build_group_execution_plan(cfg)
     if not plan.get("ok"):
         return {"ok": False, "status": "no_group_target", "plan": plan}
-    
+
     results = []
-    
     if isinstance(payload_or_rollcall, str):
         payload = payload_or_rollcall
+
         async def submit_one(member_session, user):
             ok = await ctx.submit_qr_payload(member_session, payload, progress_log_output=False)
             return ok, "submitted" if ok else "failed"
+
         results = await _fanout(plan, submit_one)
     else:
         rollcall = payload_or_rollcall
-        if ctx.teacher_assist_configured(config or ctx.CONFIG):
-            async def submit_one(member_session, user):
-                ok = await ctx.submit_prepared_teacher_qr(member_session, rollcall)
-                return ok, "submitted" if ok else "failed"
+        teacher_available = ctx.teacher_assist_configured(cfg)
+        remote_available = ctx.qr_remote_configured(cfg)
+        if not teacher_available and not remote_available:
+            return {
+                "ok": False,
+                "status": "no_qr_source",
+                "count": 0,
+                "results": [],
+                "plan": plan,
+            }
+
+        async def submit_one(member_session, user):
+            if teacher_available:
+                teacher_ok = await ctx.submit_prepared_teacher_qr(
+                    member_session,
+                    rollcall,
+                    profile_name=user,
+                    my_user_no=user,
+                )
+                if teacher_ok:
+                    return True, "submitted_teacher"
+            if remote_available:
+                remote_ok = await ctx.submit_remote_qr(
+                    member_session,
+                    rollcall,
+                    profile_name=user,
+                    my_user_no=user,
+                )
+                return remote_ok, "submitted_remote" if remote_ok else "failed_remote"
+            return False, "failed_teacher"
+
+        try:
             results = await _fanout(plan, submit_one)
-        else:
-            # 沒有教師輔助帳號時,群組 QR 代簽沒有任何「自動」的 data 來源可用。
-            # (原本會背景偷讀剪貼簿並自稱自動——那根本不算自動,已移除;見 qr_teacher_runtime docstring。)
-            return {"ok": True, "status": "skipped_no_teacher_assist", "count": 0, "results": [], "plan": plan}
+        finally:
+            if teacher_available:
+                await ctx.stop_prepared_teacher_qr(_rollcall_id(rollcall))
 
     ok = all(item["ok"] for item in results) if results else True
-    
     payload_hash = ""
     if isinstance(payload_or_rollcall, str):
         payload_hash = ctx.hashlib.sha256(ctx.normalize_text(payload_or_rollcall).encode("utf-8")).hexdigest()[:12]
 
-    return {"ok": ok, "status": "submitted" if ok else "partial_failed", "count": len(results), "results": results, "plan": plan, **({"payload_hash": payload_hash} if payload_hash else {})}
+    return {
+        "ok": ok,
+        "status": "submitted" if ok else "partial_failed",
+        "count": len(results),
+        "results": results,
+        "plan": plan,
+        **({"payload_hash": payload_hash} if payload_hash else {}),
+    }

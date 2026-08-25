@@ -285,6 +285,14 @@
       "outside_scale": 1.6,
       "strategy": "empty_answer"
     },
+    "qr_remote": {
+      "api_key": "",
+      "base_url": "https://api.hlp.qzz.io",
+      "confirm_window_seconds": 12.0,
+      "enabled": false,
+      "poll_interval_seconds": 1.0,
+      "timeout_seconds": 8.0
+    },
     "research": {
       "allow_api_exploration": false,
       "allow_browser_capture": false,
@@ -605,6 +613,14 @@
       "max_final_attempts": 200,
       "outside_scale": 1.6,
       "strategy": "global_wgs84"
+    },
+    "qr_remote": {
+      "api_key": "",
+      "base_url": "https://api.hlp.qzz.io",
+      "confirm_window_seconds": 12.0,
+      "enabled": false,
+      "poll_interval_seconds": 1.0,
+      "timeout_seconds": 8.0
     },
     "research": {
       "allow_api_exploration": false,

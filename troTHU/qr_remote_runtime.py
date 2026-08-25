@@ -9,6 +9,11 @@ on_call_fine、finalize 通知）與教師輔助一致。教師帳號到期後�
 """
 from __future__ import annotations
 
+import ipaddress
+import math
+import re
+from urllib.parse import urlsplit
+
 try:  # pragma: no cover - package import path
     import troTHU.runtime_context as ctx
 except ImportError:  # pragma: no cover - direct script fallback
@@ -25,106 +30,215 @@ def _rollcall_id(rollcall) -> str:
     return ctx.normalize_text(rollcall)
 
 
+QR_REMOTE_TOKEN_RE = re.compile(r"\d{10}[0-9a-f]{32}\Z")
+QR_REMOTE_MAX_BODY_BYTES = 64 * 1024
+
+
+def qr_remote_base_url_allowed(value) -> bool:
+    """Bearer keys may use HTTPS, or plaintext HTTP only on an actual loopback host."""
+    text = ctx.normalize_text(value).rstrip("/")
+    try:
+        parsed = urlsplit(text)
+        host = parsed.hostname or ""
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not host
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or parsed.fragment
+        ):
+            return False
+        if parsed.scheme == "https":
+            return True
+        if host.lower() == "localhost":
+            return True
+        try:
+            return ipaddress.ip_address(host).is_loopback
+        except ValueError:
+            return False
+    except (TypeError, ValueError):
+        return False
+
+
+def _bounded_float(value, default: float, minimum: float, maximum: float) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return float(default)
+    if not math.isfinite(number):
+        return float(default)
+    return min(maximum, max(minimum, number))
+
+
+def _monotonic() -> float:
+    return ctx.time.monotonic()
+
+
+def normalize_qr_remote_config_section(section, default=None) -> ctx.Dict[str, ctx.Any]:
+    fallback = default if isinstance(default, dict) else ctx.DEFAULT_CONFIG.get("qr_remote", {})
+    raw = section if isinstance(section, dict) else {}
+    return {
+        "enabled": ctx.coerce_bool(raw.get("enabled", fallback.get("enabled", False)), False),
+        "base_url": ctx.normalize_text(raw.get("base_url", fallback.get("base_url", ""))).rstrip("/"),
+        "api_key": ctx.normalize_text(raw.get("api_key", fallback.get("api_key", ""))),
+        "confirm_window_seconds": _bounded_float(
+            raw.get("confirm_window_seconds", fallback.get("confirm_window_seconds", 12.0)),
+            float(fallback.get("confirm_window_seconds", 12.0)),
+            1.0,
+            120.0,
+        ),
+        "poll_interval_seconds": _bounded_float(
+            raw.get("poll_interval_seconds", fallback.get("poll_interval_seconds", 1.0)),
+            float(fallback.get("poll_interval_seconds", 1.0)),
+            0.2,
+            30.0,
+        ),
+        "timeout_seconds": _bounded_float(
+            raw.get("timeout_seconds", fallback.get("timeout_seconds", 8.0)),
+            float(fallback.get("timeout_seconds", 8.0)),
+            1.0,
+            60.0,
+        ),
+    }
+
+
 def qr_remote_config(config) -> ctx.Dict[str, ctx.Any]:
     source = config if isinstance(config, dict) else ctx.CONFIG
     section = source.get("qr_remote", {}) if isinstance(source, dict) else {}
-    if not isinstance(section, dict):
-        section = {}
-    default = ctx.DEFAULT_CONFIG.get("qr_remote", {})
-
-    def _float(key: str) -> float:
-        try:
-            return float(section.get(key, default.get(key)))
-        except (TypeError, ValueError):
-            return float(default.get(key, 0.0))
-
-    return {
-        "enabled": bool(section.get("enabled", default.get("enabled", False))),
-        "base_url": ctx.normalize_text(section.get("base_url", default.get("base_url", ""))),
-        "api_key": ctx.normalize_text(section.get("api_key", default.get("api_key", ""))),
-        "confirm_window_seconds": _float("confirm_window_seconds"),
-        "poll_interval_seconds": _float("poll_interval_seconds"),
-        "timeout_seconds": _float("timeout_seconds"),
-    }
+    return normalize_qr_remote_config_section(section)
 
 
 def qr_remote_configured(config) -> bool:
     cfg = qr_remote_config(config)
-    return bool(cfg["enabled"] and cfg["base_url"] and ctx.has_real_credential(cfg["api_key"]))
+    return bool(
+        cfg["enabled"]
+        and qr_remote_base_url_allowed(cfg["base_url"])
+        and ctx.has_real_credential(cfg["api_key"])
+    )
 
 
-async def fetch_remote_qr_data(base_url: str, api_key: str, *, timeout: float = 8.0):
-    """對 data oracle 發 GET {base_url}/token（Bearer）。回傳當下 42 字元 data 或 None。
-    任何錯誤（連線/逾時/非 200/stale 503/缺 data）一律回 None，交由呼叫端緊迴圈重試。"""
-    url = ctx.normalize_text(base_url).rstrip("/") + "/token"
-    headers = {"Authorization": "Bearer " + ctx.normalize_text(api_key), "Accept": "application/json"}
-    timeout_obj = ctx.aiohttp.ClientTimeout(total=max(1.0, float(timeout)))
+async def fetch_remote_qr_data(
+    base_url: str,
+    api_key: str,
+    *,
+    timeout: float = 8.0,
+    session=None,
+):
+    """Fetch one bounded, non-redirecting oracle response; return only a valid 42-byte data token."""
+    base = ctx.normalize_text(base_url).rstrip("/")
+    key = ctx.normalize_text(api_key)
+    if not qr_remote_base_url_allowed(base) or not ctx.has_real_credential(key):
+        return None
+    url = base + "/token"
+    headers = {"Authorization": "Bearer " + key, "Accept": "application/json"}
+    timeout_obj = ctx.aiohttp.ClientTimeout(total=_bounded_float(timeout, 8.0, 1.0, 60.0))
+    remote = session
+    owns_session = remote is None
     try:
-        async with ctx.aiohttp.ClientSession(timeout=timeout_obj) as remote:
-            async with remote.get(url, headers=headers) as resp:
-                if resp.status != 200:
-                    return None
-                body = await resp.json(content_type=None)
+        if owns_session:
+            remote = ctx.aiohttp.ClientSession(
+                timeout=timeout_obj,
+                cookie_jar=ctx.aiohttp.DummyCookieJar(),
+                trust_env=False,
+            )
+        async with remote.get(
+            url,
+            headers=headers,
+            timeout=timeout_obj,
+            allow_redirects=False,
+        ) as resp:
+            if resp.status != 200:
+                return None
+            if resp.content_length is not None and resp.content_length > QR_REMOTE_MAX_BODY_BYTES:
+                return None
+            raw = await resp.content.read(QR_REMOTE_MAX_BODY_BYTES + 1)
+            if len(raw) > QR_REMOTE_MAX_BODY_BYTES:
+                return None
+        body = ctx.json.loads(raw.decode("utf-8"))
     except Exception:
         return None
-    data = ctx.normalize_text(body.get("data") if isinstance(body, dict) else "")
-    return data or None
+    finally:
+        if owns_session and remote is not None:
+            await remote.close()
+    if not isinstance(body, dict) or body.get("ok") is not True:
+        return None
+    data = ctx.normalize_text(body.get("data"))
+    return data if QR_REMOTE_TOKEN_RE.fullmatch(data) else None
 
 
-async def submit_remote_qr(student_session, rollcall) -> bool:
-    """緊迴圈「取遠端當下 data → 代學生送出 → 驗 on_call_fine」，直到確認或超過窗口。
-    與 submit_prepared_teacher_qr 同語意，僅 data 來源不同。"""
+async def submit_remote_qr(
+    student_session,
+    rollcall,
+    *,
+    profile_name: str = "",
+    my_user_no: str = "",
+) -> bool:
+    """Bounded oracle polling with one cookie-less connection pool per confirmation window."""
     student_rollcall_id = _rollcall_id(rollcall)
     if not student_rollcall_id:
         return False
-    if student_rollcall_id in ctx.COMPLETED_QR_ROLLCALLS:
+    if ctx.is_completed_qr_rollcall(student_rollcall_id, profile_name=profile_name):
         return True
     cfg = qr_remote_config(ctx.CONFIG)
+    if not qr_remote_configured({"qr_remote": cfg}):
+        return False
     base_url = cfg["base_url"]
     api_key = cfg["api_key"]
-    if not base_url or not ctx.has_real_credential(api_key):
-        return False
-    deadline = ctx.time.monotonic() + cfg["confirm_window_seconds"]
+    deadline = _monotonic() + cfg["confirm_window_seconds"]
     submitted = False
     last_qr_data = None
     last_result: ctx.Dict[str, ctx.Any] = {}
     last_verification: ctx.Dict[str, ctx.Any] = {}
-    while ctx.time.monotonic() < deadline:
-        data = await fetch_remote_qr_data(base_url, api_key, timeout=cfg["timeout_seconds"])
-        if data:
-            qr_data = ctx.QrCodeData(fields={"rollcallId": student_rollcall_id, "data": data})
-            last_result = await ctx.answer_qr_rollcall(
-                student_session,
-                qr_data,
-                device_id=ctx.random_id(),
-                request_ssl=ctx.get_ssl_request_setting(),
-                session_id=ctx.get_session_id_header(student_session),
-                base_url=ctx.get_active_http_endpoints().base_url,
+    timeout_obj = ctx.aiohttp.ClientTimeout(total=cfg["timeout_seconds"])
+    async with ctx.aiohttp.ClientSession(
+        timeout=timeout_obj,
+        cookie_jar=ctx.aiohttp.DummyCookieJar(),
+        trust_env=False,
+    ) as remote:
+        while _monotonic() < deadline:
+            data = await fetch_remote_qr_data(
+                base_url,
+                api_key,
+                timeout=cfg["timeout_seconds"],
+                session=remote,
             )
-            # answer_qr_rollcall raises on non-2xx, so reaching here means the PUT was accepted.
-            submitted = True
-            last_qr_data = qr_data
-            last_verification = await ctx.verify_rollcall_on_call_fine(
-                student_session,
-                student_rollcall_id,
-                endpoints=ctx.get_active_http_endpoints(),
-                request_ssl=ctx.get_ssl_request_setting(),
-                rollcall_type="qrcode",
-            )
-            if last_verification.get("ok") and last_verification.get("status") == "on_call_fine":
-                await ctx.finalize_qr_submission(
+            if data:
+                qr_data = ctx.QrCodeData(fields={"rollcallId": student_rollcall_id, "data": data})
+                last_result = await ctx.answer_qr_rollcall(
                     student_session,
                     qr_data,
-                    last_result,
-                    notification_body="已透過遠端 QR data 服務完成送出。",
-                    progress_log_output=False,
-                    verification=last_verification,
+                    device_id=ctx.random_id(),
+                    request_ssl=ctx.get_ssl_request_setting(),
+                    session_id=ctx.get_session_id_header(student_session),
+                    base_url=ctx.get_active_http_endpoints().base_url,
                 )
-                ctx.COMPLETED_QR_ROLLCALLS[student_rollcall_id] = True
-                return True
-        await ctx.asyncio.sleep(cfg["poll_interval_seconds"])
+                submitted = True
+                last_qr_data = qr_data
+                last_verification = await ctx.verify_rollcall_on_call_fine(
+                    student_session,
+                    student_rollcall_id,
+                    endpoints=ctx.get_active_http_endpoints(),
+                    request_ssl=ctx.get_ssl_request_setting(),
+                    rollcall_type="qrcode",
+                    my_user_no=my_user_no,
+                )
+                if last_verification.get("ok") and last_verification.get("status") == "on_call_fine":
+                    await ctx.finalize_qr_submission(
+                        student_session,
+                        qr_data,
+                        last_result,
+                        notification_body="已透過遠端 QR data 服務完成送出。",
+                        progress_log_output=False,
+                        verification=last_verification,
+                    )
+                    ctx.mark_completed_qr_rollcall(
+                        student_rollcall_id,
+                        profile_name=profile_name,
+                    )
+                    return True
+            await ctx.asyncio.sleep(cfg["poll_interval_seconds"])
     if submitted and last_qr_data is not None:
-        # PUT 至少成功一次但窗口內未確認出席：留未完成，讓下輪 poll 重查。
         await ctx.finalize_qr_submission(
             student_session,
             last_qr_data,

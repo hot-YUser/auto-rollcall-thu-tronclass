@@ -10,8 +10,8 @@
   密碼學偽造(全硬編碼金鑰清單 × AES/HMAC 等廣演算法)、學生端 HTTP/WebSocket/IDOR 洩漏、
   client 抽鑰、舊版普查、廠商官網 OSINT——都尚未找到。**注意:已知有人實際做到、其原理我方尚未
   掌握,所以這不是「不可能」,只是「目前未解」;哪天發現,QR 就能真正免教師全自動。**
-- 因此:**教師輔助是目前唯一的 QR 自動路徑**。`tron qr paste`/`scan` 是使用者**主動**提供當下 QR
-  內容的**手動**最後手段(完全不算自動),沒有教師帳號時只能這樣頂著,離全自動還遠。
+- 自動化可由本模組的本機教師來源，或已配置的遠端 data oracle 提供。`tron qr paste`/`scan`
+  仍是使用者主動提供當下 QR 內容的手動最後手段，不算自動。
 """
 from __future__ import annotations
 
@@ -216,11 +216,11 @@ def _teacher_qr_client():
     )
 
 
-async def prepare_teacher_assisted_qr(rollcall) -> ctx.Dict[str, ctx.Any]:
+async def prepare_teacher_assisted_qr(rollcall, *, profile_name: str = "") -> ctx.Dict[str, ctx.Any]:
     student_rollcall_id = _rollcall_id(rollcall)
     if not student_rollcall_id:
         return {"ok": False, "status": "missing_student_rollcall_id"}
-    if student_rollcall_id in ctx.COMPLETED_QR_ROLLCALLS:
+    if ctx.is_completed_qr_rollcall(student_rollcall_id, profile_name=profile_name):
         return {"ok": True, "status": "already_completed", "student_rollcall_id": student_rollcall_id}
     existing = ctx.ACTIVE_TEACHER_QR_ASSISTS.get(student_rollcall_id)
     if isinstance(existing, dict) and existing.get("teacher_rollcall_id"):
@@ -272,15 +272,24 @@ async def prepare_teacher_assisted_qr(rollcall) -> ctx.Dict[str, ctx.Any]:
         ctx.update_monitor_status(teacher_state="ready" if ctx.TEACHER_READY else "failed")
 
 
-async def submit_prepared_teacher_qr(student_session, rollcall) -> bool:
+async def submit_prepared_teacher_qr(
+    student_session,
+    rollcall,
+    *,
+    profile_name: str = "",
+    my_user_no: str = "",
+) -> bool:
     student_rollcall_id = _rollcall_id(rollcall)
     if not student_rollcall_id:
         return False
-    if student_rollcall_id in ctx.COMPLETED_QR_ROLLCALLS:
+    if ctx.is_completed_qr_rollcall(student_rollcall_id, profile_name=profile_name):
         return True
     prepared = ctx.ACTIVE_TEACHER_QR_ASSISTS.get(student_rollcall_id)
     if not isinstance(prepared, dict) or not prepared.get("teacher_rollcall_id"):
-        prepare_result = await prepare_teacher_assisted_qr(rollcall)
+        prepare_result = await prepare_teacher_assisted_qr(
+            rollcall,
+            profile_name=profile_name,
+        )
         if not prepare_result.get("ok"):
             return False
         prepared = ctx.ACTIVE_TEACHER_QR_ASSISTS.get(student_rollcall_id, prepare_result)
@@ -320,6 +329,7 @@ async def submit_prepared_teacher_qr(student_session, rollcall) -> bool:
                     endpoints=ctx.get_active_http_endpoints(),
                     request_ssl=ctx.get_ssl_request_setting(),
                     rollcall_type="qrcode",
+                    my_user_no=my_user_no,
                 )
                 if last_verification.get("ok") and last_verification.get("status") == "on_call_fine":
                     await ctx.finalize_qr_submission(
@@ -334,7 +344,10 @@ async def submit_prepared_teacher_qr(student_session, rollcall) -> bool:
                     break
             await ctx.asyncio.sleep(QR_ASSIST_POLL_INTERVAL_SECONDS)
         if success:
-            ctx.COMPLETED_QR_ROLLCALLS[student_rollcall_id] = True
+            ctx.mark_completed_qr_rollcall(
+                student_rollcall_id,
+                profile_name=profile_name,
+            )
             prepared["submitted"] = True
             return True
         if submitted and last_qr_data is not None:
@@ -398,14 +411,30 @@ async def stop_prepared_teacher_qr(rollcall_id=None) -> ctx.Dict[str, ctx.Any]:
     return {"ok": not errors, "status": "stopped" if stopped else "cleared", "stopped": stopped, "errors": errors}
 
 
-async def run_teacher_assisted_qr(student_session, rollcall) -> bool:
+async def run_teacher_assisted_qr(
+    student_session,
+    rollcall,
+    *,
+    profile_name: str = "",
+    my_user_no: str = "",
+    keep_prepared: bool = False,
+) -> bool:
     student_rollcall_id = _rollcall_id(rollcall)
     if not student_rollcall_id:
         return False
     try:
-        prepared = await prepare_teacher_assisted_qr(rollcall)
+        prepared = await prepare_teacher_assisted_qr(
+            rollcall,
+            profile_name=profile_name,
+        )
         if not prepared.get("ok"):
             return bool(prepared.get("status") == "already_completed")
-        return await submit_prepared_teacher_qr(student_session, rollcall)
+        return await submit_prepared_teacher_qr(
+            student_session,
+            rollcall,
+            profile_name=profile_name,
+            my_user_no=my_user_no,
+        )
     finally:
-        await stop_prepared_teacher_qr(student_rollcall_id)
+        if not keep_prepared:
+            await stop_prepared_teacher_qr(student_rollcall_id)

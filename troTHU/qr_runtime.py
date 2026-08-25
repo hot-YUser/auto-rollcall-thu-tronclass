@@ -1,9 +1,8 @@
 """QR 簽到的送出與收尾(送 `data`、驗 `on_call_fine`、通知)。
 
-QR `data` 由伺服器端產生、學生端 API 不回傳;目前唯一能自動完成 QR 簽到的是**教師輔助**
-(靠已實證的 `data` 跨課/跨校可攜——詳見 qr_teacher_runtime)。`tron qr paste`/`scan` 是使用者
-主動提供 QR 內容的**手動**最後手段,不算自動。純學生端免教師取得 data 的方法**目前尚未發現**
-(已知有人做到、原理未明,故非不可能,僅為目前未解)。
+QR `data` 由伺服器端產生、學生端 API 不回傳；自動來源可由本機教師輔助或已配置的遠端
+`data` oracle 提供。`tron qr paste`/`scan` 是使用者主動提供 QR 內容的手動最後手段，不算自動。
+純學生端自行取得或生成 data 的方法目前尚未發現（已知有人做到、原理未明，因此不是不可能）。
 """
 from __future__ import annotations
 
@@ -16,6 +15,32 @@ except ImportError:  # pragma: no cover - direct script fallback
 def __getattr__(name: str):
     return getattr(ctx, name)
 
+
+
+def qr_rollcall_key(rollcall_id, *, profile_name: str = "", provider_key: str = "") -> str:
+    rid = ctx.normalize_text(rollcall_id)
+    if not rid:
+        return ""
+    profile = ctx.normalize_profile_name(profile_name) if profile_name else ""
+    if not profile:
+        try:
+            profile = ctx.get_active_profile(ctx.CONFIG).name
+        except Exception:
+            profile = "default"
+    provider = ctx.normalize_text(provider_key) or ctx.get_active_provider_key()
+    return "{}:{}:{}".format(provider, profile, rid)
+
+
+def is_completed_qr_rollcall(rollcall_id, *, profile_name: str = "", provider_key: str = "") -> bool:
+    key = qr_rollcall_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
+    return bool(key and ctx.COMPLETED_QR_ROLLCALLS.get(key))
+
+
+def mark_completed_qr_rollcall(rollcall_id, *, profile_name: str = "", provider_key: str = "") -> str:
+    key = qr_rollcall_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
+    if key:
+        ctx.COMPLETED_QR_ROLLCALLS[key] = True
+    return key
 
 
 def build_qr_preview(raw_payload: str, provider: str='') -> ctx.Dict[str, ctx.Any]:

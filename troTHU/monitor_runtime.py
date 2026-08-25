@@ -299,7 +299,7 @@ async def handle_rollcall(
     submitted = False
     logged_keys: set[str] = set()
     unsupported_msg = ctx.normalize_text(poll.get('message')) or \
-        '偵測到 QR 點名；請用 tron qr paste 手動貼上當下 QR 內容（教師輔助是目前唯一能自動的路徑）。'
+        '偵測到 QR 點名；若已設定教師輔助或遠端 data 服務會自動處理，否則請用 tron qr paste 手動貼上當下 QR 內容。'
     try:
         while not shutdown_event.is_set():
             status_msg = ctx.normalize_text(poll.get('status'))
@@ -322,7 +322,10 @@ async def handle_rollcall(
                 if ctx.teacher_assist_configured(ctx.CONFIG):
                     prepare_result = await ctx.prepare_teacher_assisted_qr(poll.get('rollcall'))
                     if not prepare_result.get('ok'):
-                        await ctx.maybe_notify_unsupported_rollcall(status_msg, poll.get('rollcall') or {}, unsupported_msg, rollcall_type)
+                        if ctx.qr_remote_configured(ctx.CONFIG):
+                            ctx.log_print('教師 QR 來源準備失敗；送出時將改用遠端 data 服務。')
+                        else:
+                            await ctx.maybe_notify_unsupported_rollcall(status_msg, poll.get('rollcall') or {}, unsupported_msg, rollcall_type)
                 elif ctx.qr_remote_configured(ctx.CONFIG):
                     pass  # 遠端來源不必先開教師點名；送出在 gate 通過時進行
                 else:
