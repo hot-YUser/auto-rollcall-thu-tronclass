@@ -100,7 +100,7 @@ class LeakScannerTest(unittest.TestCase):
         self.assertEqual(rc.scan_body_for_tokens("no token here"), [])
         self.assertEqual(rc.scan_body_for_tokens("123456789" + "a" * 32), [])   # 9 digits
         self.assertEqual(rc.scan_body_for_tokens("1234567890" + "a" * 31), [])  # 31 hex
-        self.assertEqual(rc.scan_body_for_tokens("1234567890" + "A" * 32), [])  # uppercase hex
+        self.assertEqual(rc.scan_body_for_tokens("1234567890" + "G" * 32), [])  # non-hex
         self.assertEqual(rc.scan_body_for_tokens(None), [])
 
     def test_non_teacher_source_is_leak(self) -> None:

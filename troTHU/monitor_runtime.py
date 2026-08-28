@@ -725,10 +725,20 @@ async def app_main(
     ctx.bootstrap_config()
     monitor_profile = ctx.get_active_profile(ctx.CONFIG)
     monitor_provider_key = ctx.get_active_provider_key()
-    monitor_identity = {
+    try:
+        _mi_endpoints = ctx.get_active_http_endpoints()
+    except Exception:
+        _mi_endpoints = None
+    try:
+        _mi_ssl = ctx.get_ssl_request_setting()
+    except Exception:
+        _mi_ssl = None
+    monitor_identity: dict = {
         'profile_name': monitor_profile.name,
         'user_no': monitor_profile.user,
         'provider_key': monitor_provider_key,
+        '_endpoints': _mi_endpoints,
+        '_request_ssl': _mi_ssl,
     }
     shutdown_event = external_shutdown_event or ctx.asyncio.Event()
     # Auto-answer's any-key "submit now" signal + in-flight registry are (re)initialised per run:

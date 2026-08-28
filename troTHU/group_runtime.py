@@ -473,15 +473,23 @@ async def submit_group_qr(payload_or_rollcall: str | ctx.Dict[str, ctx.Any], *, 
                 rid = _rollcall_id(rollcall)
                 for _u in plan.get("fanout_users", []) or []:
                     _up = ctx.normalize_profile_name(_u)
-                    _pk_all = ctx.get_active_provider_key()
+                    _pk_member = ctx.normalize_text(plan.get("target", {}).get("school") or "") if isinstance(plan.get("target"), dict) else ""
+                    _pk_member = ctx.normalize_text(_pk_member) or ctx.normalize_text(plan.get("provider_key") or "")
+                    # plan school maps to provider via registry; fallback to global provider
                     try:
-                        await ctx.stop_prepared_teacher_qr(rid, profile_name=_up, provider_key=_pk_all)
+                        if _pk_member:
+                            _pk_member = ctx.get_provider(_pk_member).key
+                        else:
+                            _pk_member = ctx.get_active_provider_key()
+                    except Exception:
+                        try:
+                            _pk_member = ctx.get_active_provider_key()
+                        except Exception:
+                            _pk_member = "thu"
+                    try:
+                        await ctx.stop_prepared_teacher_qr(rid, profile_name=_up, provider_key=_pk_member)
                     except Exception:
                         pass
-                try:
-                    await ctx.stop_prepared_teacher_qr(rid, profile_name="", provider_key="")
-                except Exception:
-                    pass
 
     ok = all(item["ok"] for item in results) if results else True
     payload_hash = ""

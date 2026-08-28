@@ -205,11 +205,17 @@ def _assist_scope_key(rollcall_id: str, *, profile_name: str = "", provider_key:
     rid = ctx.normalize_text(rollcall_id)
     profile = ctx.normalize_profile_name(profile_name) if profile_name else ""
     if not profile:
+        # No silent global fallback in monitor/group paths; only legacy CLI may omit.
         try:
             profile = ctx.get_active_profile(ctx.CONFIG).name
         except Exception:
             profile = "default"
-    provider = ctx.normalize_text(provider_key) or ctx.get_active_provider_key()
+    provider = ctx.normalize_text(provider_key)
+    if not provider:
+        try:
+            provider = ctx.get_active_provider_key()
+        except Exception:
+            provider = ctx.DEFAULT_PROVIDER if hasattr(ctx, "DEFAULT_PROVIDER") else "thu"
     return "{}:{}:{}".format(provider, profile, rid)
 
 
@@ -293,6 +299,8 @@ async def submit_prepared_teacher_qr(
     profile_name: str = "",
     my_user_no: str = "",
     provider_key: str = "",
+    endpoints: ctx.Any = None,
+    request_ssl: ctx.Any = None,
 ) -> bool:
     student_rollcall_id = _rollcall_id(rollcall)
     if not student_rollcall_id:
@@ -323,6 +331,22 @@ async def submit_prepared_teacher_qr(
         last_qr_data = None
         last_result = {}
         last_verification = {}
+        # Immutable dispatch identity — endpoints/ssl thread from caller DispatchContext, never re-read global inside loop.
+        _ep = endpoints
+        _ssl = request_ssl
+        # One-shot outer fallback only (legacy CLI); monitor/group/bot must pass explicit values.
+        if _ep is None:
+            try:
+                _ep = ctx.get_active_http_endpoints()
+            except Exception:
+                _ep = None
+        if _ssl is None:
+            try:
+                _ssl = ctx.get_ssl_request_setting()
+            except Exception:
+                _ssl = None
+        _base = ctx.normalize_text(getattr(_ep, "base_url", "")) if _ep is not None else ""
+        _my_no = ctx.normalize_text(my_user_no)
         deadline = ctx.time.monotonic() + QR_ASSIST_CONFIRM_WINDOW_SECONDS
         while ctx.time.monotonic() < deadline:
             qr_payload = await client.fetch_teacher_qr_code(course_id, teacher_rollcall_id)
@@ -333,9 +357,9 @@ async def submit_prepared_teacher_qr(
                     student_session,
                     qr_data,
                     device_id=ctx.random_id(),
-                    request_ssl=ctx.get_ssl_request_setting(),
+                    request_ssl=_ssl,
                     session_id=ctx.get_session_id_header(student_session),
-                    base_url=ctx.get_active_http_endpoints().base_url,
+                    base_url=_base,
                 )
                 # answer_qr_rollcall raises on non-2xx, so reaching here means the PUT was accepted.
                 submitted = True
@@ -343,10 +367,10 @@ async def submit_prepared_teacher_qr(
                 last_verification = await ctx.verify_rollcall_on_call_fine(
                     student_session,
                     student_rollcall_id,
-                    endpoints=ctx.get_active_http_endpoints(),
-                    request_ssl=ctx.get_ssl_request_setting(),
+                    endpoints=_ep,
+                    request_ssl=_ssl,
                     rollcall_type="qrcode",
-                    my_user_no=my_user_no,
+                    my_user_no=_my_no,
                 )
                 if last_verification.get("ok") and last_verification.get("status") == "on_call_fine":
                     await ctx.finalize_qr_submission(
@@ -356,6 +380,11 @@ async def submit_prepared_teacher_qr(
                         notification_body="已透過教師帳號輔助取得 QR data 完成送出。",
                         progress_log_output=False,
                         verification=last_verification,
+                        profile_name=ctx.normalize_profile_name(profile_name),
+                        provider_key=ctx.normalize_text(provider_key),
+                        my_user_no=_my_no,
+                        endpoints=_ep,
+                        request_ssl=_ssl,
                     )
                     success = True
                     break
@@ -378,6 +407,11 @@ async def submit_prepared_teacher_qr(
                 notification_body="教師輔助已送出，但未能即時確認簽到，請留意。",
                 progress_log_output=False,
                 verification=last_verification or {"ok": False, "status": "submitted_unconfirmed", "rollcall_id": student_rollcall_id},
+                profile_name=ctx.normalize_profile_name(profile_name),
+                provider_key=ctx.normalize_text(provider_key),
+                my_user_no=_my_no,
+                endpoints=_ep,
+                request_ssl=_ssl,
             )
             prepared["submitted"] = True
             return False
@@ -442,6 +476,8 @@ async def run_teacher_assisted_qr(
     profile_name: str = "",
     my_user_no: str = "",
     provider_key: str = "",
+    endpoints: ctx.Any = None,
+    request_ssl: ctx.Any = None,
     keep_prepared: bool = False,
 ) -> bool:
     student_rollcall_id = _rollcall_id(rollcall)
@@ -461,6 +497,8 @@ async def run_teacher_assisted_qr(
             profile_name=profile_name,
             my_user_no=my_user_no,
             provider_key=provider_key,
+            endpoints=endpoints,
+            request_ssl=request_ssl,
         )
     finally:
         if not keep_prepared:

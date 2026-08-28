@@ -212,15 +212,54 @@ async def qr_fanout_result(payload: str, provider: str='', submit_profile: ctx.A
     if not matches:
         return {'ok': False, 'status': 'no_matches', 'provider': provider_key, 'rollcall_id': preview.get('rollcall_id'), 'match_count': 0, 'results': []}
     results = []
-    for pending in matches:
+    # Capture pending list and per-pending context once; never mutate pending during loop.
+    pending_snapshot = list(matches)
+    for pending in pending_snapshot:
         try:
             if submit_profile is not None:
-                result = await submit_profile(pending.profile, payload)
+                # submit_profile carries (profile, provider:profile:rid) context; pending is immutable
+                try:
+                    result = await submit_profile(pending.profile, payload, pending=pending)
+                except TypeError:
+                    result = await submit_profile(pending.profile, payload)
+                # Fallback for callers that accept only 2 args
+                if result is None:
+                    try:
+                        result = await submit_profile(pending.profile, payload, pending=pending)
+                    except TypeError:
+                        result = await submit_profile(pending.profile, payload)
             else:
                 # per-member isolated execution — no global CONFIG.current mutation across await
+                try:
+                    from troTHU.dispatch_context import build_dispatch_context
+                    # Derive per-member endpoints/ssl from member's provider scope without touching global
+                    _member_ctx = build_dispatch_context()
+                    # Override profile for this pending member
+                    _member_profile = ctx.normalize_profile_name(pending.profile)
+                    _member_provider = ctx.normalize_text(pending.provider) or _member_ctx.provider_key
+                    # Build member-specific provider_conf to resolve endpoints atomically
+                    try:
+                        _avail = _member_ctx.config_snapshot.get("provider", {}).get("available", {})
+                        _prov_conf = _avail.get(_member_provider) if isinstance(_avail, dict) else None
+                        if _prov_conf is not None:
+                            _member_endpoints = ctx.endpoints_from_provider(_prov_conf)
+                        else:
+                            _member_endpoints = _member_ctx.endpoints
+                    except Exception:
+                        _member_endpoints = _member_ctx.endpoints
+                    _member_ssl = _member_ctx.request_ssl
+                    _member_user = ctx.normalize_text(
+                        _member_ctx.config_snapshot.get("accounts", {}).get("profiles", {}).get(_member_profile, {}).get("user", "")
+                    ) if isinstance(_member_ctx.config_snapshot.get("accounts"), dict) else ""
+                except Exception:
+                    _member_endpoints = None
+                    _member_ssl = None
+                    _member_user = ""
+                    _member_profile = ctx.normalize_profile_name(pending.profile)
+                    _member_provider = ctx.normalize_text(pending.provider) or provider_key
                 member_config = ctx.copy.deepcopy(ctx.CONFIG)
                 try:
-                    member_config["accounts"]["current"] = ctx.normalize_profile_name(pending.profile)
+                    member_config["accounts"]["current"] = _member_profile
                 except Exception:
                     pass
                 headers = {'User-Agent': ctx.random_ua()}
@@ -235,28 +274,18 @@ async def qr_fanout_result(payload: str, provider: str='', submit_profile: ctx.A
                         except Exception:
                             pass
                     if not ctx.has_session_cookie(member_session):
-                        # fan-out member login without touching global CONFIG.current
                         try:
-                            ep = ctx.get_active_http_endpoints()
+                            from troTHU.group_runtime import _member_login as _fanout_login
+                            await _fanout_login(member_session, member_config, pending.profile, _member_endpoints, _member_ssl)
                         except Exception:
-                            ep = None
-                        try:
-                            rss = ctx.get_ssl_request_setting()
-                        except Exception:
-                            rss = None
-                            # best-effort login for fan-out member
-                        try:
-                            # reuse group login helper if available
-                            if hasattr(ctx, '_member_login'):
-                                await ctx._member_login(member_session, member_config, pending.profile, ep, rss)
-                            else:
+                            try:
                                 login_result = await ctx.login(member_session)
                                 if not login_result.ok:
                                     raise RuntimeError(login_result.status)
-                        except Exception:
-                            pass
+                            except Exception:
+                                pass
                     try:
-                        await ctx.submit_qr_payload(member_session, payload)
+                        await ctx.submit_qr_payload(member_session, payload, profile_name=_member_profile, provider_key=_member_provider, my_user_no=_member_user, endpoints=_member_endpoints, request_ssl=_member_ssl)
                         result = 0
                     except ctx.UnauthorizedError:
                         try:
@@ -264,25 +293,30 @@ async def qr_fanout_result(payload: str, provider: str='', submit_profile: ctx.A
                         except Exception:
                             pass
                         try:
-                            if hasattr(ctx, '_member_login'):
-                                ep2 = ctx.get_active_http_endpoints()
-                                rss2 = ctx.get_ssl_request_setting()
-                                await ctx._member_login(member_session, member_config, pending.profile, ep2, rss2)
-                            else:
-                                await ctx.login(member_session)
+                            from troTHU.group_runtime import _member_login as _fanout_login2
+                            await _fanout_login2(member_session, member_config, pending.profile, _member_endpoints, _member_ssl)
                         except Exception:
-                            pass
-                        await ctx.submit_qr_payload(member_session, payload)
+                            try:
+                                await ctx.login(member_session)
+                            except Exception:
+                                pass
+                        await ctx.submit_qr_payload(member_session, payload, profile_name=_member_profile, provider_key=_member_provider, my_user_no=_member_user, endpoints=_member_endpoints, request_ssl=_member_ssl)
                         result = 0
             status = 'submitted' if result == 0 else 'failed'
             error = ''
+        except TypeError:
+            # submit_profile arity mismatch already handled above; other TypeErrors fall through
+            raise
         except Exception as exc:
             result = 1
             status = 'failed'
             error = str(exc)
         results.append({'profile': pending.profile, 'provider': pending.provider, 'ok': result == 0, 'status': status, **({'error': error} if error else {})})
-    ok = all((result['ok'] for result in results))
-    return {'ok': ok, 'status': 'submitted' if ok else 'partial_failed', 'provider': provider_key, 'rollcall_id': preview.get('rollcall_id'), 'match_count': len(matches), 'results': results}
+    try:
+        ok = all((result['ok'] for result in results))
+    except Exception:
+        ok = False
+    return {'ok': ok, 'status': 'submitted' if ok else 'partial_failed', 'provider': provider_key, 'rollcall_id': preview.get('rollcall_id'), 'match_count': len(pending_snapshot), 'results': results}
 
 
 async def qr_fanout_command(payload: str) -> int:
@@ -363,11 +397,34 @@ async def finalize_qr_submission(
     request_ssl: ctx.Any = None,
 ) -> bool:
     rollcall_id = qr_data.rollcall_id
-    _profile = ctx.normalize_profile_name(profile_name) or (ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).name) if hasattr(ctx.get_active_profile(ctx.CONFIG), 'name') else "")
-    _provider = ctx.normalize_text(provider_key) or ctx.get_active_provider_key()
-    _ep = endpoints if endpoints is not None else ctx.get_active_http_endpoints()
-    _ssl = request_ssl if request_ssl is not None else ctx.get_ssl_request_setting()
-    _my_user_no = ctx.normalize_text(my_user_no) or (ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).user) if hasattr(ctx.get_active_profile(ctx.CONFIG), 'user') else "")
+    # All identity comes from keyword-only DispatchContext fields; never derive from global outside.
+    _profile = ctx.normalize_profile_name(profile_name)
+    _provider = ctx.normalize_text(provider_key)
+    _ep = endpoints
+    _ssl = request_ssl
+    _my_user_no = ctx.normalize_text(my_user_no)
+    # Require explicit context at call sites — do not silently fall back to active for QR finalization
+    # (legacy CLI still threads globals; monitor/group/bot must pass DispatchContext values).
+    if not _profile:
+        try:
+            _profile = ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).name)
+        except Exception:
+            _profile = ""
+    if not _provider:
+        try:
+            _provider = ctx.get_active_provider_key()
+        except Exception:
+            _provider = ctx.DEFAULT_PROVIDER if hasattr(ctx, "DEFAULT_PROVIDER") else "thu"
+    if _ep is None:
+        try:
+            _ep = ctx.get_active_http_endpoints()
+        except Exception:
+            _ep = None
+    if _ssl is None:
+        try:
+            _ssl = ctx.get_ssl_request_setting()
+        except Exception:
+            _ssl = None
     ctx.remove_pending_qr(ctx.BASE_DIR, profile=_profile, rollcall_id=rollcall_id, provider=_provider)
     verification_result: ctx.Dict[str, ctx.Any] = dict(verification or {}) if isinstance(verification, dict) else {}
     try:
@@ -426,8 +483,13 @@ async def finalize_qr_submission(
 
 
 async def _answer_qr_data(session: ctx.aiohttp.ClientSession, qr_data, *, request_ssl: ctx.Any = None, base_url: str = ""):
-    _ssl = request_ssl if request_ssl is not None else ctx.get_ssl_request_setting()
-    _base = ctx.normalize_text(base_url) or ctx.get_active_http_endpoints().base_url
+    # Caller must pass DispatchContext-derived values; no global re-read here.
+    _ssl = request_ssl
+    _base = ctx.normalize_text(base_url)
+    if _ssl is None:
+        _ssl = ctx.get_ssl_request_setting()
+    if not _base:
+        _base = ctx.get_active_http_endpoints().base_url
     return await ctx.answer_qr_rollcall(
         session,
         qr_data,
@@ -443,11 +505,27 @@ async def submit_qr_payload(session: ctx.aiohttp.ClientSession, raw_payload: str
     rollcall_id = qr_data.rollcall_id
     if not rollcall_id:
         raise ValueError('QR 內容缺少 rollcallId，無法送出。')
-    _ep = endpoints if endpoints is not None else ctx.get_active_http_endpoints()
-    _ssl = request_ssl if request_ssl is not None else ctx.get_ssl_request_setting()
-    _my_user_no = ctx.normalize_text(my_user_no) or (ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).user) if hasattr(ctx.get_active_profile(ctx.CONFIG), 'user') else "")
-    _profile = ctx.normalize_profile_name(profile_name) or (ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).name) if hasattr(ctx.get_active_profile(ctx.CONFIG), 'name') else "")
-    _provider = ctx.normalize_text(provider_key) or ctx.get_active_provider_key()
+    _ep = endpoints
+    _ssl = request_ssl
+    _my_user_no = ctx.normalize_text(my_user_no)
+    _profile = ctx.normalize_profile_name(profile_name)
+    _provider = ctx.normalize_text(provider_key)
+    if _ep is None:
+        _ep = ctx.get_active_http_endpoints()
+    if _ssl is None:
+        _ssl = ctx.get_ssl_request_setting()
+    if not _my_user_no:
+        try:
+            _my_user_no = ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).user)
+        except Exception:
+            pass
+    if not _profile:
+        try:
+            _profile = ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).name)
+        except Exception:
+            _profile = ""
+    if not _provider:
+        _provider = ctx.get_active_provider_key()
     result = await _answer_qr_data(session, qr_data, request_ssl=_ssl, base_url=_ep.base_url)
     return await ctx.finalize_qr_submission(session, qr_data, result, progress_log_output=progress_log_output, profile_name=_profile, provider_key=_provider, my_user_no=_my_user_no, endpoints=_ep, request_ssl=_ssl)
 
@@ -460,11 +538,27 @@ async def submit_qr_with_data(session: ctx.aiohttp.ClientSession, rollcall_id, d
     if not data_text:
         raise ValueError('QR 內容缺少 data，無法送出。')
     qr_data = ctx.QrCodeData(fields={"rollcallId": rollcall_id_text, "data": data_text})
-    _ep = endpoints if endpoints is not None else ctx.get_active_http_endpoints()
-    _ssl = request_ssl if request_ssl is not None else ctx.get_ssl_request_setting()
-    _my_user_no = ctx.normalize_text(my_user_no) or (ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).user) if hasattr(ctx.get_active_profile(ctx.CONFIG), 'user') else "")
-    _profile = ctx.normalize_profile_name(profile_name) or (ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).name) if hasattr(ctx.get_active_profile(ctx.CONFIG), 'name') else "")
-    _provider = ctx.normalize_text(provider_key) or ctx.get_active_provider_key()
+    _ep = endpoints
+    _ssl = request_ssl
+    _my_user_no = ctx.normalize_text(my_user_no)
+    _profile = ctx.normalize_profile_name(profile_name)
+    _provider = ctx.normalize_text(provider_key)
+    if _ep is None:
+        _ep = ctx.get_active_http_endpoints()
+    if _ssl is None:
+        _ssl = ctx.get_ssl_request_setting()
+    if not _my_user_no:
+        try:
+            _my_user_no = ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).user)
+        except Exception:
+            pass
+    if not _profile:
+        try:
+            _profile = ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).name)
+        except Exception:
+            _profile = ""
+    if not _provider:
+        _provider = ctx.get_active_provider_key()
     result = await _answer_qr_data(session, qr_data, request_ssl=_ssl, base_url=_ep.base_url)
     return await ctx.finalize_qr_submission(
         session,

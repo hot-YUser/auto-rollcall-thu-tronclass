@@ -59,9 +59,11 @@ _SEED_API_PATHS = (
 _API_PATH_RE = re.compile(r"""['"](/api/[A-Za-z0-9_\-./]+)['"]""")
 _JS_ASSET_RE = re.compile(r"""['"]([^'"]+?\.js(?:\?[^'"]*)?)['"]""")
 
-# QR data token = <10 unix seconds><32 lowercase hex>. Used both to harvest the teacher
-# qr_code value AND to leak-scan every captured body for an accidental token echo.
-QR_DATA_TOKEN_RE = re.compile(r"\b(\d{10}[0-9a-f]{32})\b")
+# QR data token = <10 unix seconds><32 hex> (case-insensitive for redaction; harvest
+# normalizes to lowercase but leak-scan/redaction must catch either case). Used both to
+# harvest the teacher qr_code value AND to leak-scan every captured body for an accidental
+# token echo. Canonical shape defined in debug_capture._QR_TOKEN_RE — kept identical here.
+QR_DATA_TOKEN_RE = re.compile(r"\b\d{10}[0-9a-fA-F]{32}\b")
 
 
 # --------------------------------------------------------------------------- #
@@ -194,7 +196,7 @@ def _extract_data_token(body_text: Any) -> str:
     if not isinstance(body_text, str):
         body_text = ctx.json.dumps(body_text, ensure_ascii=False, default=str) if body_text else ""
     match = QR_DATA_TOKEN_RE.search(body_text or "")
-    return match.group(1) if match else ""
+    return match.group(0) if match else ""
 
 
 def leak_scan_record(record: Dict[str, Any]) -> Dict[str, Any]:

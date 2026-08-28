@@ -304,7 +304,7 @@ class BotHandlerBridge:
             # Each submit_profile call isolates login/session and passes profile_name/provider
             # so remove_pending_qr keys correctly even though inner submit_qr_payload now
             # defaults to global CONFIG.current.
-            async def submit_profile(_profile: str, raw_payload: str) -> int:
+            async def submit_profile(_profile: str, raw_payload: str, pending=None) -> int:
                 # isolate per pending profile — don't rely on global switch
                 with self.profile_context(_profile):
                     async with self.session_context() as session:
@@ -314,7 +314,9 @@ class BotHandlerBridge:
                             return 1
                         # thread pending profile/provider so finalize removes correct pending_qr key
                         try:
-                            prov = self.tron.get_active_provider_key()
+                            prov = self.tron.normalize_text(getattr(pending, "provider", "") or "") if pending is not None else ""
+                            if not prov:
+                                prov = self.tron.get_active_provider_key()
                         except Exception:
                             prov = ""
                         await self.tron.submit_qr_payload(session, raw_payload, profile_name=_profile, provider_key=prov)

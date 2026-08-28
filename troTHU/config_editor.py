@@ -103,8 +103,13 @@ def refresh_monitor_identity(
     })
     try:
         endpoints = ctx.get_active_http_endpoints()
+        identity['_endpoints'] = endpoints
         identity['base_url'] = ctx.normalize_text(getattr(endpoints, 'base_url', ''))
         identity['login_url'] = ctx.normalize_text(getattr(endpoints, 'login_url', '') or getattr(endpoints, 'base_url', ''))
+    except Exception:
+        pass
+    try:
+        identity['_request_ssl'] = ctx.get_ssl_request_setting()
     except Exception:
         pass
     return identity

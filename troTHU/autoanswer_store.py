@@ -68,6 +68,12 @@ def _atomic_write(path: Path, data: dict) -> None:
 
 
 def _migrate_legacy_if_needed(base_dir: Any, provider: Any) -> dict:
+    """Load once, normalize in-memory to v2 retaining every legacy ID.
+
+    Returns the in-memory v2 doc (or the raw/versioned doc when no migration
+    needed). If the atomic write fails the old file is left untouched and the
+    caller retries with the returned in-memory doc, so legacy+new IDs persist.
+    """
     raw = _load_raw(base_dir)
     if not _legacy_shape(raw):
         return raw
@@ -81,6 +87,7 @@ def _migrate_legacy_if_needed(base_dir: Any, provider: Any) -> dict:
     try:
         _atomic_write(_path(base_dir), migrated)
     except OSError:
+        # Leave old file untouched — caller operates on returned migrated doc.
         pass
     return migrated
 
@@ -110,15 +117,13 @@ def mark_completed(base_dir: Any, profile: Any, activity_id: Any, provider: Any 
     if not activity_id:
         return
     try:
+        data: dict
         if provider is not None:
-            _migrate_legacy_if_needed(base_dir, provider)
-        data = _load_raw(base_dir)
-        if provider is not None:
+            # Single load: reuse migrated doc, never reload-and-reset on write failure.
+            data = _migrate_legacy_if_needed(base_dir, provider)
             if not _is_versioned(data):
-                if _legacy_shape(data):
-                    data = _load_raw(base_dir)
-                if not _is_versioned(data):
-                    data = {"version": STORE_VERSION, "scopes": {}}
+                # Not versioned and not legacy (e.g. corrupt/empty) -> init v2
+                data = {"version": STORE_VERSION, "scopes": {}}
             scopes = data.setdefault("scopes", {})
             prov = _provider_key(provider)
             prof = _profile_key(profile)
@@ -130,6 +135,7 @@ def mark_completed(base_dir: Any, profile: Any, activity_id: Any, provider: Any 
             ids.append(activity_id)
             prov_dict[prof] = sorted(set(ids))
         else:
+            data = _load_raw(base_dir)
             if _is_versioned(data):
                 return
             key = _profile_key(profile)
