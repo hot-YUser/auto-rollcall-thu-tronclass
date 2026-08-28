@@ -218,51 +218,117 @@ def group_status_label(config: ctx.Mapping[str, ctx.Any] | None = None) -> str:
     return ""
 
 
-async def _fanout(plan: ctx.Dict[str, ctx.Any], submit_one) -> ctx.List[ctx.Dict[str, ctx.Any]]:
-    original = ctx.get_active_profile(ctx.CONFIG).name
-    members = [u for u in plan.get("fanout_users", []) if u.lower() != plan.get("monitor_user", "").lower()]
-    results = []
-
+async def _member_login(
+    member_session: ctx.Any,
+    member_config: ctx.Mapping[str, ctx.Any],
+    profile_name: str,
+    endpoints: ctx.Any,
+    request_ssl: ctx.Any,
+) -> bool:
+    """Login for a fan-out member without touching global CONFIG.current."""
     try:
-        for user in members:
+        profiles = member_config.get("accounts", {}).get("profiles", {}) if isinstance(member_config.get("accounts"), dict) else {}
+        prof = profiles.get(ctx.normalize_profile_name(profile_name)) if isinstance(profiles, dict) else None
+        user = ctx.normalize_text(prof.get("user")) if isinstance(prof, dict) else ""
+        passwd = ctx.normalize_text(prof.get("passwd")) if isinstance(prof, dict) else ""
+        # keyring override
+        try:
+            kr = ctx.get_keyring_password(ctx.normalize_profile_name(profile_name), user)
+            if ctx.has_real_credential(kr):
+                passwd = kr
+        except Exception:
+            pass
+        if not ctx.has_real_credential(user) or not ctx.has_real_credential(passwd):
+            # fallback to legacy account in member_config
+            acct = member_config.get("account", {}) if isinstance(member_config.get("account"), dict) else {}
+            user2 = ctx.normalize_text(acct.get("user"))
+            passwd2 = ctx.normalize_text(acct.get("passwd"))
+            if ctx.has_real_credential(user2) and ctx.has_real_credential(passwd2):
+                user, passwd = user2, passwd2
+            else:
+                return False
+        client = ctx.TronHttpClient(member_session, request_ssl=request_ssl, endpoints=endpoints) if endpoints is not None else ctx.TronHttpClient(member_session, request_ssl=request_ssl)
+        try:
+            member_session.cookie_jar.clear()
+        except Exception:
+            pass
+        outcome = await ctx.run_login_flow(client, user, passwd)
+        if not outcome.has_session or not ctx.has_session_cookie(member_session):
+            return False
+        # validate session via API (mirrors auth_runtime.login)
+        try:
+            await client.fetch_current_semester()
+        except Exception:
             try:
-                ctx.switch_profile(ctx.CONFIG, user)
-                # Each member MUST get its own connector and cookie jar. Sharing a
-                # single connector closes it after the first member (the next
-                # request raises "Session is closed"), and sharing a cookie jar
-                # leaks the first member's session cookie into the rest, so they
-                # would all sign in as the first member. Build per-member, exactly
-                # like qr_command/qr_fanout_result do.
-                session_kwargs: ctx.Dict[str, ctx.Any] = {
-                    'connector': ctx.create_http_connector(),
-                    'headers': {'User-Agent': ctx.random_ua()},
-                    'cookie_jar': ctx.aiohttp.CookieJar(unsafe=True),
-                }
-                timeout = ctx.create_http_client_timeout()
-                if timeout is not None:
-                    session_kwargs['timeout'] = timeout
-                async with ctx.aiohttp.ClientSession(**session_kwargs) as member_session:
-                    cookie_loaded = False
-                    if ctx.cookie_cache_enabled(ctx.CONFIG):
-                        try:
-                            cookie_loaded = ctx.load_session_cookies(member_session, ctx.BASE_DIR, user)
-                        except Exception:
-                            cookie_loaded = False
+                member_session.cookie_jar.clear()
+            except Exception:
+                pass
+            return False
+        try:
+            if ctx.cookie_cache_enabled(member_config):
+                ctx.save_session_cookies(member_session, ctx.BASE_DIR, profile_name)
+        except Exception:
+            pass
+        return True
+    except Exception:
+        return False
 
-                    if not cookie_loaded or not ctx.has_session_cookie(member_session):
-                        login_result = await ctx.login(member_session)
-                        if not login_result.ok:
-                            ctx.log_print(f"群組成員 `{user}` 自動登入失敗。")
-                            results.append({"user": user, "ok": False, "status": "login_failed"})
-                            continue
 
-                    ok, status = await submit_one(member_session, user)
-                    results.append({"user": user, "ok": ok, "status": status})
-            except Exception as exc:
-                ctx.log_print(f"群組成員 `{user}` 簽到發生異常: {exc}")
-                results.append({"user": user, "ok": False, "status": f"error: {type(exc).__name__}"})
-    finally:
-        ctx.switch_profile(ctx.CONFIG, original)
+async def _fanout(plan: ctx.Dict[str, ctx.Any], submit_one) -> ctx.List[ctx.Dict[str, ctx.Any]]:
+    members = [u for u in plan.get("fanout_users", []) if u.lower() != plan.get("monitor_user", "").lower()]
+    results: ctx.List[ctx.Dict[str, ctx.Any]] = []
+    # Immutable monitor endpoints / ssl — captured once, never re-read inside loop.
+    try:
+        monitor_endpoints = ctx.get_active_http_endpoints()
+    except Exception:
+        monitor_endpoints = None
+    try:
+        monitor_request_ssl = ctx.get_ssl_request_setting()
+    except Exception:
+        monitor_request_ssl = None
+    for user in members:
+        # Private config copy for this member — no mutation of global CONFIG.current.
+        try:
+            member_config = ctx.copy.deepcopy(ctx.CONFIG)
+            ctx.normalize_accounts_config(member_config)
+            normalized = ctx.normalize_profile_name(user)
+            profiles = member_config.get("accounts", {}).get("profiles", {})
+            if isinstance(profiles, dict) and normalized in profiles:
+                member_config["accounts"]["current"] = normalized
+                prof = profiles[normalized]
+                member_config.setdefault("account", {})["user"] = ctx.normalize_text(prof.get("user", ""))
+                member_config.setdefault("account", {})["passwd"] = ctx.normalize_text(prof.get("passwd", ""))
+        except Exception:
+            member_config = ctx.CONFIG
+        try:
+            session_kwargs: ctx.Dict[str, ctx.Any] = {
+                'connector': ctx.create_http_connector(),
+                'headers': {'User-Agent': ctx.random_ua()},
+                'cookie_jar': ctx.aiohttp.CookieJar(unsafe=True),
+            }
+            timeout = ctx.create_http_client_timeout()
+            if timeout is not None:
+                session_kwargs['timeout'] = timeout
+            async with ctx.aiohttp.ClientSession(**session_kwargs) as member_session:
+                cookie_loaded = False
+                if ctx.cookie_cache_enabled(member_config):
+                    try:
+                        cookie_loaded = ctx.load_session_cookies(member_session, ctx.BASE_DIR, user)
+                    except Exception:
+                        cookie_loaded = False
+
+                if not cookie_loaded or not ctx.has_session_cookie(member_session):
+                    ok_login = await _member_login(member_session, member_config, user, monitor_endpoints, monitor_request_ssl)
+                    if not ok_login:
+                        ctx.log_print(f"群組成員 `{user}` 自動登入失敗。")
+                        results.append({"user": user, "ok": False, "status": "login_failed"})
+                        continue
+
+                ok, status = await submit_one(member_session, user, member_config, monitor_endpoints, monitor_request_ssl)
+                results.append({"user": user, "ok": ok, "status": status})
+        except Exception as exc:
+            ctx.log_print(f"群組成員 `{user}` 簽到發生異常: {exc}")
+            results.append({"user": user, "ok": False, "status": f"error: {type(exc).__name__}"})
 
     return results
 
@@ -276,8 +342,9 @@ async def submit_group_number(code: str, *, rcid: str | int | None = None, sessi
     if not rollcall_id:
         return {"ok": False, "status": "missing_rollcall_id", "plan": plan}
 
-    async def submit_one(member_session, user):
-        request_url = '{}/api/rollcall/{}/answer_number_rollcall'.format(ctx.get_active_http_endpoints().base_url.rstrip('/'), rollcall_id)
+    async def submit_one(member_session, user, member_config, monitor_endpoints, monitor_request_ssl):
+        ep = monitor_endpoints if monitor_endpoints is not None else ctx.get_active_http_endpoints()
+        request_url = '{}/api/rollcall/{}/answer_number_rollcall'.format(ep.base_url.rstrip('/'), rollcall_id)
         payload = {'deviceId': ctx.random_id(), 'numberCode': code}
         try:
             async with member_session.put(request_url, json=payload) as resp:
@@ -289,9 +356,13 @@ async def submit_group_number(code: str, *, rcid: str | int | None = None, sessi
                         rollcall_id,
                         rollcall_type='number',
                         my_user_no=user,
+                        endpoints=monitor_endpoints,
+                        request_ssl=monitor_request_ssl,
                     )
                     if verification.get('ok') and verification.get('status') == 'on_call_fine':
-                        ctx.mark_completed_number_rollcall(rollcall_id, code, profile_name=user)
+                        _pk = member_config.get('provider', {}).get('current', '') if isinstance(member_config.get('provider'), dict) else ""
+                        _pk = ctx.normalize_text(_pk) or ctx.get_active_provider_key()
+                        ctx.mark_completed_number_rollcall(rollcall_id, code, profile_name=user, provider_key=_pk)
                         return True, "submitted"
                     return True, "submitted_unconfirmed"
                 return False, classification.message or "failed"
@@ -308,10 +379,12 @@ async def submit_group_radar(rollcall: ctx.Dict[str, ctx.Any], *, session: ctx.A
     if not plan.get("ok"):
         return {"ok": False, "status": "no_group_target", "plan": plan}
     
-    async def submit_one(member_session, user):
-        ok = await ctx.radar(member_session, rollcall)
+    async def submit_one(member_session, user, member_config, monitor_endpoints, monitor_request_ssl):
+        _pk = member_config.get('provider', {}).get('current', '') if isinstance(member_config.get('provider'), dict) else ""
+        _pk = ctx.normalize_text(_pk) or ctx.get_active_provider_key()
+        ok = await ctx.radar(member_session, rollcall, my_user_no=user, endpoints=monitor_endpoints, request_ssl=monitor_request_ssl)
         if ok:
-            ctx.mark_completed_radar_rollcall(_rollcall_id(rollcall), profile_name=user)
+            ctx.mark_completed_radar_rollcall(_rollcall_id(rollcall), profile_name=user, provider_key=_pk)
         return ok, "submitted" if ok else "failed"
 
     results = await _fanout(plan, submit_one)
@@ -324,10 +397,12 @@ async def submit_group_self_registration(rollcall: ctx.Dict[str, ctx.Any], *, se
     if not plan.get("ok"):
         return {"ok": False, "status": "no_group_target", "plan": plan}
 
-    async def submit_one(member_session, user):
-        ok = await ctx.self_registration(member_session, rollcall)
+    async def submit_one(member_session, user, member_config, monitor_endpoints, monitor_request_ssl):
+        _pk = member_config.get('provider', {}).get('current', '') if isinstance(member_config.get('provider'), dict) else ""
+        _pk = ctx.normalize_text(_pk) or ctx.get_active_provider_key()
+        ok = await ctx.self_registration(member_session, rollcall, my_user_no=user, endpoints=monitor_endpoints, request_ssl=monitor_request_ssl)
         if ok:
-            ctx.mark_completed_self_registration_rollcall(_rollcall_id(rollcall), profile_name=user)
+            ctx.mark_completed_self_registration_rollcall(_rollcall_id(rollcall), profile_name=user, provider_key=_pk)
         return ok, "submitted" if ok else "failed"
 
     results = await _fanout(plan, submit_one)
@@ -345,8 +420,10 @@ async def submit_group_qr(payload_or_rollcall: str | ctx.Dict[str, ctx.Any], *, 
     if isinstance(payload_or_rollcall, str):
         payload = payload_or_rollcall
 
-        async def submit_one(member_session, user):
-            ok = await ctx.submit_qr_payload(member_session, payload, progress_log_output=False)
+        async def submit_one(member_session, user, member_config, monitor_endpoints, monitor_request_ssl):
+            _pk = member_config.get('provider', {}).get('current', '') if isinstance(member_config.get('provider'), dict) else ""
+            _pk = ctx.normalize_text(_pk) or ctx.get_active_provider_key()
+            ok = await ctx.submit_qr_payload(member_session, payload, progress_log_output=False, profile_name=user, provider_key=_pk, my_user_no=user, endpoints=monitor_endpoints, request_ssl=monitor_request_ssl)
             return ok, "submitted" if ok else "failed"
 
         results = await _fanout(plan, submit_one)
@@ -363,13 +440,16 @@ async def submit_group_qr(payload_or_rollcall: str | ctx.Dict[str, ctx.Any], *, 
                 "plan": plan,
             }
 
-        async def submit_one(member_session, user):
+        async def submit_one(member_session, user, member_config, monitor_endpoints, monitor_request_ssl):
+            _pk2 = member_config.get('provider', {}).get('current', '') if isinstance(member_config.get('provider'), dict) else ""
+            _pk2 = ctx.normalize_text(_pk2) or ctx.get_active_provider_key()
             if teacher_available:
                 teacher_ok = await ctx.submit_prepared_teacher_qr(
                     member_session,
                     rollcall,
                     profile_name=user,
                     my_user_no=user,
+                    provider_key=_pk2,
                 )
                 if teacher_ok:
                     return True, "submitted_teacher"
@@ -379,6 +459,9 @@ async def submit_group_qr(payload_or_rollcall: str | ctx.Dict[str, ctx.Any], *, 
                     rollcall,
                     profile_name=user,
                     my_user_no=user,
+                    provider_key=_pk2,
+                    endpoints=monitor_endpoints,
+                    request_ssl=monitor_request_ssl,
                 )
                 return remote_ok, "submitted_remote" if remote_ok else "failed_remote"
             return False, "failed_teacher"
@@ -387,7 +470,18 @@ async def submit_group_qr(payload_or_rollcall: str | ctx.Dict[str, ctx.Any], *, 
             results = await _fanout(plan, submit_one)
         finally:
             if teacher_available:
-                await ctx.stop_prepared_teacher_qr(_rollcall_id(rollcall))
+                rid = _rollcall_id(rollcall)
+                for _u in plan.get("fanout_users", []) or []:
+                    _up = ctx.normalize_profile_name(_u)
+                    _pk_all = ctx.get_active_provider_key()
+                    try:
+                        await ctx.stop_prepared_teacher_qr(rid, profile_name=_up, provider_key=_pk_all)
+                    except Exception:
+                        pass
+                try:
+                    await ctx.stop_prepared_teacher_qr(rid, profile_name="", provider_key="")
+                except Exception:
+                    pass
 
     ok = all(item["ok"] for item in results) if results else True
     payload_hash = ""

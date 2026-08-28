@@ -47,44 +47,44 @@ def number_rollcall_key(rollcall_id: ctx.Any, *, profile_name: str = "", provide
     )
 
 
-def is_completed_number_rollcall(rollcall_id: ctx.Any, *, profile_name: str = "") -> bool:
-    key = ctx.number_rollcall_key(rollcall_id, profile_name=profile_name)
+def is_completed_number_rollcall(rollcall_id: ctx.Any, *, profile_name: str = "", provider_key: str = "") -> bool:
+    key = ctx.number_rollcall_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
     return bool(key) and key in ctx.COMPLETED_NUMBER_ROLLCALLS
 
 
-def mark_completed_number_rollcall(rollcall_id: ctx.Any, code: ctx.Any, *, profile_name: str = "") -> None:
-    key = ctx.number_rollcall_key(rollcall_id, profile_name=profile_name)
+def mark_completed_number_rollcall(rollcall_id: ctx.Any, code: ctx.Any, *, profile_name: str = "", provider_key: str = "") -> None:
+    key = ctx.number_rollcall_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
     code_text = ctx.normalize_text(code)
     if key and code_text and (code_text != 'NA'):
         ctx.COMPLETED_NUMBER_ROLLCALLS[key] = code_text
 
 
-def radar_rollcall_key(rollcall_id: ctx.Any, *, profile_name: str = "") -> str:
-    return rollcall_completion_key(rollcall_id, profile_name=profile_name)
+def radar_rollcall_key(rollcall_id: ctx.Any, *, profile_name: str = "", provider_key: str = "") -> str:
+    return rollcall_completion_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
 
 
-def is_completed_radar_rollcall(rollcall_id: ctx.Any, *, profile_name: str = "") -> bool:
-    key = radar_rollcall_key(rollcall_id, profile_name=profile_name)
+def is_completed_radar_rollcall(rollcall_id: ctx.Any, *, profile_name: str = "", provider_key: str = "") -> bool:
+    key = radar_rollcall_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
     return bool(key) and key in ctx.COMPLETED_RADAR_ROLLCALLS
 
 
-def mark_completed_radar_rollcall(rollcall_id: ctx.Any, *, profile_name: str = "") -> None:
-    key = radar_rollcall_key(rollcall_id, profile_name=profile_name)
+def mark_completed_radar_rollcall(rollcall_id: ctx.Any, *, profile_name: str = "", provider_key: str = "") -> None:
+    key = radar_rollcall_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
     if key:
         ctx.COMPLETED_RADAR_ROLLCALLS[key] = True
 
 
-def self_registration_rollcall_key(rollcall_id: ctx.Any, *, profile_name: str = "") -> str:
-    return rollcall_completion_key(rollcall_id, profile_name=profile_name)
+def self_registration_rollcall_key(rollcall_id: ctx.Any, *, profile_name: str = "", provider_key: str = "") -> str:
+    return rollcall_completion_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
 
 
-def is_completed_self_registration_rollcall(rollcall_id: ctx.Any, *, profile_name: str = "") -> bool:
-    key = self_registration_rollcall_key(rollcall_id, profile_name=profile_name)
+def is_completed_self_registration_rollcall(rollcall_id: ctx.Any, *, profile_name: str = "", provider_key: str = "") -> bool:
+    key = self_registration_rollcall_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
     return bool(key) and key in ctx.COMPLETED_SELF_REGISTRATION_ROLLCALLS
 
 
-def mark_completed_self_registration_rollcall(rollcall_id: ctx.Any, *, profile_name: str = "") -> None:
-    key = self_registration_rollcall_key(rollcall_id, profile_name=profile_name)
+def mark_completed_self_registration_rollcall(rollcall_id: ctx.Any, *, profile_name: str = "", provider_key: str = "") -> None:
+    key = self_registration_rollcall_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
     if key:
         ctx.COMPLETED_SELF_REGISTRATION_ROLLCALLS[key] = True
 
@@ -191,11 +191,30 @@ async def handle_rollcall_decision(
     cnt: int=-1,
     use_prepared_qr: bool=False,
     gate_detail: str='',
+    profile_name: str='',
+    provider_key: str='',
+    my_user_no: str='',
+    endpoints: ctx.Any = None,
+    request_ssl: ctx.Any = None,
 ) -> str:
     selected_status = ctx.normalize_text(poll.get('status'))
     selected_rollcall = poll.get('rollcall') if isinstance(poll.get('rollcall'), dict) else None
     selected_rollcall_type = ctx.normalize_text(poll.get('rollcall_type'))
     selected_message = ctx.normalize_text(poll.get('message'))
+    # immutable snapshot — no global re-read inside decision; poll extras are internal only, endpoints come from handle_rollcall's captured snapshot via caller
+    _rr_my_user_no = ctx.normalize_text(my_user_no) or (ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).user) if hasattr(ctx.get_active_profile(ctx.CONFIG), 'user') else "")
+    _rr_endpoints = endpoints
+    _rr_request_ssl = request_ssl
+    if _rr_endpoints is None:
+        try:
+            _rr_endpoints = ctx.get_active_http_endpoints()
+        except Exception:
+            pass
+    if _rr_request_ssl is None:
+        try:
+            _rr_request_ssl = ctx.get_ssl_request_setting()
+        except Exception:
+            pass
     result_url = ctx.normalize_text(poll.get('url'))
     http_status = poll.get('http_status')
     if selected_status == 'not_call':
@@ -207,8 +226,8 @@ async def handle_rollcall_decision(
     if selected_status == 'is_number' and selected_rollcall is not None:
         ctx.reset_unsupported_rollcall_state()
         rollcall_id = selected_rollcall.get('rollcall_id')
-        if ctx.is_completed_number_rollcall(rollcall_id):
-            found_code = ctx.COMPLETED_NUMBER_ROLLCALLS[ctx.number_rollcall_key(rollcall_id)]
+        if ctx.is_completed_number_rollcall(rollcall_id, profile_name=profile_name, provider_key=provider_key):
+            found_code = ctx.COMPLETED_NUMBER_ROLLCALLS[ctx.number_rollcall_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)]
             return '數字點名已處理'
         await ctx.announce_rollcall_start(
             ctx.AttendanceType.NUMBER,
@@ -223,8 +242,8 @@ async def handle_rollcall_decision(
             http_status=http_status,
             payload_excerpt=selected_rollcall,
         )
-        found_code = await ctx.number(session, rollcall_id)
-        ctx.mark_completed_number_rollcall(rollcall_id, found_code)
+        found_code = await ctx.number(session, rollcall_id, my_user_no=_rr_my_user_no, endpoints=_rr_endpoints, request_ssl=_rr_request_ssl)
+        ctx.mark_completed_number_rollcall(rollcall_id, found_code, profile_name=profile_name, provider_key=provider_key)
         if ctx.normalize_text(found_code) and ctx.normalize_text(found_code) != 'NA':
             try:
                 group_result = await ctx.submit_group_number(found_code, rcid=rollcall_id, session=session, config=ctx.CONFIG)
@@ -239,7 +258,7 @@ async def handle_rollcall_decision(
     if selected_status == 'is_radar' and selected_rollcall is not None:
         ctx.reset_unsupported_rollcall_state()
         rollcall_id = selected_rollcall.get('rollcall_id')
-        if ctx.is_completed_radar_rollcall(rollcall_id):
+        if ctx.is_completed_radar_rollcall(rollcall_id, profile_name=profile_name, provider_key=provider_key):
             return '雷達點名已處理'
         await ctx.announce_rollcall_start(
             ctx.AttendanceType.RADAR,
@@ -251,9 +270,9 @@ async def handle_rollcall_decision(
             http_status=http_status,
             payload_excerpt=selected_rollcall,
         )
-        radar_success = await ctx.radar(session, selected_rollcall)
+        radar_success = await ctx.radar(session, selected_rollcall, my_user_no=_rr_my_user_no, endpoints=_rr_endpoints, request_ssl=_rr_request_ssl)
         if radar_success:
-            ctx.mark_completed_radar_rollcall(rollcall_id)
+            ctx.mark_completed_radar_rollcall(rollcall_id, profile_name=profile_name, provider_key=provider_key)
             try:
                 group_result = await ctx.submit_group_radar(selected_rollcall, session=session, config=ctx.CONFIG)
                 if group_result.get('ok'):
@@ -268,7 +287,7 @@ async def handle_rollcall_decision(
     if selected_status == 'is_self_registration' and selected_rollcall is not None:
         ctx.reset_unsupported_rollcall_state()
         rollcall_id = selected_rollcall.get('rollcall_id')
-        if ctx.is_completed_self_registration_rollcall(rollcall_id):
+        if ctx.is_completed_self_registration_rollcall(rollcall_id, profile_name=profile_name, provider_key=provider_key):
             return '自主報到已處理'
         await ctx.announce_rollcall_start(
             ctx.AttendanceType.SELF_REGISTRATION,
@@ -280,9 +299,9 @@ async def handle_rollcall_decision(
             http_status=http_status,
             payload_excerpt=selected_rollcall,
         )
-        sr_success = await ctx.self_registration(session, selected_rollcall)
+        sr_success = await ctx.self_registration(session, selected_rollcall, my_user_no=_rr_my_user_no, endpoints=_rr_endpoints, request_ssl=_rr_request_ssl)
         if sr_success:
-            ctx.mark_completed_self_registration_rollcall(rollcall_id)
+            ctx.mark_completed_self_registration_rollcall(rollcall_id, profile_name=profile_name, provider_key=provider_key)
             try:
                 group_result = await ctx.submit_group_self_registration(selected_rollcall, session=session, config=ctx.CONFIG)
                 if group_result.get('ok'):
@@ -298,7 +317,7 @@ async def handle_rollcall_decision(
         answered_automatically = False
         if selected_status == 'unsupported_qrcode':
             qr_key = ctx.normalize_text(selected_rollcall.get('rollcall_id') or selected_rollcall.get('id'))
-            if ctx.is_completed_qr_rollcall(qr_key):
+            if ctx.is_completed_qr_rollcall(qr_key, profile_name=profile_name, provider_key=provider_key):
                 return 'qr 點名已處理'
             teacher_ready = ctx.teacher_assist_configured(ctx.CONFIG)
             remote_ready = ctx.qr_remote_configured(ctx.CONFIG)
@@ -320,17 +339,20 @@ async def handle_rollcall_decision(
                 )
             if teacher_ready:
                 if use_prepared_qr:
-                    answered_automatically = await ctx.submit_prepared_teacher_qr(session, selected_rollcall)
+                    answered_automatically = await ctx.submit_prepared_teacher_qr(session, selected_rollcall, profile_name=profile_name, provider_key=provider_key, my_user_no=my_user_no)
                 else:
                     answered_automatically = await ctx.run_teacher_assisted_qr(
                         session,
                         selected_rollcall,
+                        profile_name=profile_name,
+                        provider_key=provider_key,
+                        my_user_no=my_user_no,
                         keep_prepared=True,
                     )
             if not answered_automatically and remote_ready:
-                answered_automatically = await ctx.submit_remote_qr(session, selected_rollcall)
+                answered_automatically = await ctx.submit_remote_qr(session, selected_rollcall, profile_name=profile_name, provider_key=provider_key, my_user_no=my_user_no)
             if answered_automatically and qr_key:
-                ctx.mark_completed_qr_rollcall(qr_key)
+                ctx.mark_completed_qr_rollcall(qr_key, profile_name=profile_name, provider_key=provider_key)
                 try:
                     group_result = await ctx.submit_group_qr(selected_rollcall, session=session, config=ctx.CONFIG)
                     if group_result.get('ok'):
@@ -342,10 +364,10 @@ async def handle_rollcall_decision(
                     ctx.log_print('群組 qr fan-out 失敗：{}'.format(exc))
                 finally:
                     if teacher_ready:
-                        await ctx.stop_prepared_teacher_qr(qr_key)
+                        await ctx.stop_prepared_teacher_qr(qr_key, profile_name=profile_name, provider_key=provider_key)
                 return 'is_qrcode'
             if teacher_ready:
-                await ctx.stop_prepared_teacher_qr(qr_key)
+                await ctx.stop_prepared_teacher_qr(qr_key, profile_name=profile_name, provider_key=provider_key)
         if not answered_automatically:
             await ctx.maybe_notify_unsupported_rollcall(selected_status, selected_rollcall, selected_message, selected_rollcall_type)
     return selected_status

@@ -201,10 +201,23 @@ def _rollcall_id(rollcall) -> str:
     return ""
 
 
-def _can_attempt_qr_assist(rollcall_id: str) -> bool:
+def _assist_scope_key(rollcall_id: str, *, profile_name: str = "", provider_key: str = "") -> str:
+    rid = ctx.normalize_text(rollcall_id)
+    profile = ctx.normalize_profile_name(profile_name) if profile_name else ""
+    if not profile:
+        try:
+            profile = ctx.get_active_profile(ctx.CONFIG).name
+        except Exception:
+            profile = "default"
+    provider = ctx.normalize_text(provider_key) or ctx.get_active_provider_key()
+    return "{}:{}:{}".format(provider, profile, rid)
+
+
+def _can_attempt_qr_assist(rollcall_id: str, *, profile_name: str = "", provider_key: str = "") -> bool:
     if not rollcall_id:
         return False
-    last_attempt = float(ctx.QR_ASSIST_ATTEMPTS.get(rollcall_id, 0.0) or 0.0)
+    key = _assist_scope_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
+    last_attempt = float(ctx.QR_ASSIST_ATTEMPTS.get(key, 0.0) or 0.0)
     return ctx.time.monotonic() - last_attempt >= QR_ASSIST_RETRY_COOLDOWN_SECONDS
 
 
@@ -216,18 +229,19 @@ def _teacher_qr_client():
     )
 
 
-async def prepare_teacher_assisted_qr(rollcall, *, profile_name: str = "") -> ctx.Dict[str, ctx.Any]:
+async def prepare_teacher_assisted_qr(rollcall, *, profile_name: str = "", provider_key: str = "") -> ctx.Dict[str, ctx.Any]:
     student_rollcall_id = _rollcall_id(rollcall)
     if not student_rollcall_id:
         return {"ok": False, "status": "missing_student_rollcall_id"}
-    if ctx.is_completed_qr_rollcall(student_rollcall_id, profile_name=profile_name):
+    if ctx.is_completed_qr_rollcall(student_rollcall_id, profile_name=profile_name, provider_key=provider_key):
         return {"ok": True, "status": "already_completed", "student_rollcall_id": student_rollcall_id}
-    existing = ctx.ACTIVE_TEACHER_QR_ASSISTS.get(student_rollcall_id)
+    scope_key = _assist_scope_key(student_rollcall_id, profile_name=profile_name, provider_key=provider_key)
+    existing = ctx.ACTIVE_TEACHER_QR_ASSISTS.get(scope_key)
     if isinstance(existing, dict) and existing.get("teacher_rollcall_id"):
         return {"ok": True, "status": "prepared", **existing}
-    if not _can_attempt_qr_assist(student_rollcall_id):
+    if not _can_attempt_qr_assist(student_rollcall_id, profile_name=profile_name, provider_key=provider_key):
         return {"ok": False, "status": "cooldown", "student_rollcall_id": student_rollcall_id}
-    ctx.QR_ASSIST_ATTEMPTS[student_rollcall_id] = ctx.time.monotonic()
+    ctx.QR_ASSIST_ATTEMPTS[scope_key] = ctx.time.monotonic()
     if not teacher_assist_configured(ctx.CONFIG):
         ctx.update_monitor_status(teacher_state="failed")
         return {"ok": False, "status": "not_configured", "student_rollcall_id": student_rollcall_id}
@@ -257,7 +271,7 @@ async def prepare_teacher_assisted_qr(rollcall, *, profile_name: str = "") -> ct
             "created_at": ctx.time.monotonic(),
             "submitted": False,
         }
-        ctx.ACTIVE_TEACHER_QR_ASSISTS[student_rollcall_id] = prepared
+        ctx.ACTIVE_TEACHER_QR_ASSISTS[scope_key] = prepared
         return {"ok": True, "status": "prepared", **prepared}
     except ctx.UnauthorizedError as exc:
         ctx.TEACHER_READY = False
@@ -278,21 +292,24 @@ async def submit_prepared_teacher_qr(
     *,
     profile_name: str = "",
     my_user_no: str = "",
+    provider_key: str = "",
 ) -> bool:
     student_rollcall_id = _rollcall_id(rollcall)
     if not student_rollcall_id:
         return False
-    if ctx.is_completed_qr_rollcall(student_rollcall_id, profile_name=profile_name):
+    if ctx.is_completed_qr_rollcall(student_rollcall_id, profile_name=profile_name, provider_key=provider_key):
         return True
-    prepared = ctx.ACTIVE_TEACHER_QR_ASSISTS.get(student_rollcall_id)
+    scope_key = _assist_scope_key(student_rollcall_id, profile_name=profile_name, provider_key=provider_key)
+    prepared = ctx.ACTIVE_TEACHER_QR_ASSISTS.get(scope_key)
     if not isinstance(prepared, dict) or not prepared.get("teacher_rollcall_id"):
         prepare_result = await prepare_teacher_assisted_qr(
             rollcall,
             profile_name=profile_name,
+            provider_key=provider_key,
         )
         if not prepare_result.get("ok"):
             return False
-        prepared = ctx.ACTIVE_TEACHER_QR_ASSISTS.get(student_rollcall_id, prepare_result)
+        prepared = ctx.ACTIVE_TEACHER_QR_ASSISTS.get(scope_key, prepare_result)
     if not await ensure_teacher_ready():
         return False
     try:
@@ -347,6 +364,7 @@ async def submit_prepared_teacher_qr(
             ctx.mark_completed_qr_rollcall(
                 student_rollcall_id,
                 profile_name=profile_name,
+                provider_key=provider_key,
             )
             prepared["submitted"] = True
             return True
@@ -377,10 +395,16 @@ async def submit_prepared_teacher_qr(
         ctx.update_monitor_status(teacher_state="ready" if ctx.TEACHER_READY else "failed")
 
 
-async def stop_prepared_teacher_qr(rollcall_id=None) -> ctx.Dict[str, ctx.Any]:
+async def stop_prepared_teacher_qr(rollcall_id=None, *, profile_name: str = "", provider_key: str = "") -> ctx.Dict[str, ctx.Any]:
     key = ctx.normalize_text(rollcall_id)
     if key:
-        items = [(key, ctx.ACTIVE_TEACHER_QR_ASSISTS.get(key))]
+        scope_key = _assist_scope_key(key, profile_name=profile_name, provider_key=provider_key)
+        if scope_key in ctx.ACTIVE_TEACHER_QR_ASSISTS:
+            items = [(scope_key, ctx.ACTIVE_TEACHER_QR_ASSISTS.get(scope_key))]
+        elif key in ctx.ACTIVE_TEACHER_QR_ASSISTS:
+            items = [(key, ctx.ACTIVE_TEACHER_QR_ASSISTS.get(key))]
+        else:
+            items = [(scope_key, ctx.ACTIVE_TEACHER_QR_ASSISTS.get(scope_key))]
     else:
         items = list(ctx.ACTIVE_TEACHER_QR_ASSISTS.items())
     stopped = 0
@@ -417,6 +441,7 @@ async def run_teacher_assisted_qr(
     *,
     profile_name: str = "",
     my_user_no: str = "",
+    provider_key: str = "",
     keep_prepared: bool = False,
 ) -> bool:
     student_rollcall_id = _rollcall_id(rollcall)
@@ -426,6 +451,7 @@ async def run_teacher_assisted_qr(
         prepared = await prepare_teacher_assisted_qr(
             rollcall,
             profile_name=profile_name,
+            provider_key=provider_key,
         )
         if not prepared.get("ok"):
             return bool(prepared.get("status") == "already_completed")
@@ -434,7 +460,8 @@ async def run_teacher_assisted_qr(
             rollcall,
             profile_name=profile_name,
             my_user_no=my_user_no,
+            provider_key=provider_key,
         )
     finally:
         if not keep_prepared:
-            await stop_prepared_teacher_qr(student_rollcall_id)
+            await stop_prepared_teacher_qr(student_rollcall_id, profile_name=profile_name, provider_key=provider_key)

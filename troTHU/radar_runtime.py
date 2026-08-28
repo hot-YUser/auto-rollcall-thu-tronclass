@@ -114,15 +114,18 @@ async def _announce_radar_success(
     method: ctx.Any,
     detail: ctx.Any = "",
     verification: ctx.Any = None,
+    my_user_no: str = "",
 ) -> bool:
     verification_result = dict(verification or {}) if isinstance(verification, dict) else {}
     if not verification_result:
+        _resolved = ctx.normalize_text(my_user_no) or (ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).user) if hasattr(ctx.get_active_profile(ctx.CONFIG), 'user') else "")
         verification_result = await ctx.verify_rollcall_on_call_fine(
             client.session,
             rollcall_id,
             endpoints=client.endpoints,
             request_ssl=client.request_ssl,
             rollcall_type="radar",
+            my_user_no=_resolved,
         )
     if not (verification_result.get("ok") and verification_result.get("status") == "on_call_fine"):
         await ctx.mes("雷達點名 #{} 已送出，但尚未確認 on_call_fine；下一輪會繼續檢查。".format(rollcall_id))
@@ -265,18 +268,18 @@ async def _run_unbounded_grid_retry(
     return False
 
 
-async def radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str, ctx.Any]) -> bool:
+async def radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str, ctx.Any], *, my_user_no: str = "", endpoints: ctx.Any = None, request_ssl: ctx.Any = None) -> bool:
     radar_config = _read_radar_config()
     strategy = ctx.normalize_text(
         radar_config.get("strategy", ctx.DEFAULT_CONFIG["radar"]["strategy"])
     ).lower().replace("-", "_")
     if strategy == "global_wgs84":
-        return await _run_global_radar(main_session, rollcall, radar_config)
+        return await _run_global_radar(main_session, rollcall, radar_config, my_user_no=my_user_no, endpoints=endpoints, request_ssl=request_ssl)
 
     # Default strategy: empty_answer — submit a coordinate-free `{}` answer first
     # and only trust it once attendance is verified, then fall back to global_wgs84.
     try:
-        if await empty_answer_radar(main_session, rollcall):
+        if await empty_answer_radar(main_session, rollcall, my_user_no=my_user_no, endpoints=endpoints, request_ssl=request_ssl):
             return True
     except _RadarSubmittedUnconfirmed:
         return False
@@ -289,21 +292,25 @@ async def radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str,
     ):
         return False
     ctx.log_print("空答案雷達簽到未確認，改用 global_wgs84 全球定位作為 fallback...")
-    return await _run_global_radar(main_session, rollcall, radar_config)
+    return await _run_global_radar(main_session, rollcall, radar_config, my_user_no=my_user_no, endpoints=endpoints, request_ssl=request_ssl)
 
 
 async def _run_global_radar(
     main_session: ctx.aiohttp.ClientSession,
     rollcall: ctx.Dict[str, ctx.Any],
     radar_config: ctx.Dict[str, ctx.Any],
+    *,
+    my_user_no: str = "",
+    endpoints: ctx.Any = None,
+    request_ssl: ctx.Any = None,
 ) -> bool:
     try:
-        return await global_radar(main_session, rollcall, radar_config=radar_config)
+        return await global_radar(main_session, rollcall, radar_config=radar_config, my_user_no=my_user_no, endpoints=endpoints, request_ssl=request_ssl)
     except (_RadarNoFallback, _RadarSubmittedUnconfirmed):
         return False
 
 
-async def empty_answer_radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str, ctx.Any]) -> bool:
+async def empty_answer_radar(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str, ctx.Any], *, my_user_no: str = "", endpoints: ctx.Any = None, request_ssl: ctx.Any = None) -> bool:
     """Submit a single coordinate-free ``{}`` radar answer and verify sign-in.
 
     Mirrors the standalone repro: one ``PUT /api/rollcall/{id}/answer`` with an
@@ -322,11 +329,14 @@ async def empty_answer_radar(main_session: ctx.aiohttp.ClientSession, rollcall: 
     timeout = ctx.create_http_client_timeout()
     if timeout is not None:
         session_kwargs["timeout"] = timeout
+    _ep = endpoints if endpoints is not None else ctx.get_active_http_endpoints()
+    _ssl = request_ssl if request_ssl is not None else ctx.get_ssl_request_setting()
+    _my_user_no = ctx.normalize_text(my_user_no) or (ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).user) if hasattr(ctx.get_active_profile(ctx.CONFIG), 'user') else "")
     async with ctx.aiohttp.ClientSession(**session_kwargs) as session:
         ctx.clone_session_cookies(main_session, session)
-        request_ssl = ctx.get_ssl_request_setting()
+        request_ssl = _ssl
         client = ctx.create_tron_http_client(session, request_ssl=request_ssl)
-        endpoints = ctx.get_active_http_endpoints()
+        endpoints = _ep
         base_url = endpoints.base_url.rstrip("/")
         request_url = f"{base_url}/api/rollcall/{rollcall_id}/answer"
         payload: ctx.Dict[str, ctx.Any] = {}
@@ -359,6 +369,7 @@ async def empty_answer_radar(main_session: ctx.aiohttp.ClientSession, rollcall: 
                     endpoints=client.endpoints,
                     request_ssl=client.request_ssl,
                     rollcall_type="radar",
+                    my_user_no=_my_user_no,
                 )
             except ctx.UnauthorizedError:
                 raise
@@ -374,6 +385,7 @@ async def empty_answer_radar(main_session: ctx.aiohttp.ClientSession, rollcall: 
                     method="empty_answer",
                     detail="已確認 on_call_fine",
                     verification=verification,
+                    my_user_no=_my_user_no,
                 ):
                     return True
             else:
@@ -383,6 +395,7 @@ async def empty_answer_radar(main_session: ctx.aiohttp.ClientSession, rollcall: 
                     method="empty_answer",
                     detail="submitted_unconfirmed",
                     verification=verification,
+                    my_user_no=_my_user_no,
                 )
                 raise _RadarSubmittedUnconfirmed("雷達空答案已送出但尚未確認 on_call_fine。")
             ctx.log_print("雷達空答案回 2xx 但未確認已簽到，改用 fallback...")
@@ -399,6 +412,9 @@ async def global_radar(
     rollcall: ctx.Dict[str, ctx.Any],
     *,
     radar_config: ctx.Optional[ctx.Dict[str, ctx.Any]] = None,
+    my_user_no: str = "",
+    endpoints: ctx.Any = None,
+    request_ssl: ctx.Any = None,
 ) -> bool:
     rollcall_id = rollcall.get("rollcall_id")
     radar_config = radar_config or _read_radar_config()
@@ -466,11 +482,14 @@ async def global_radar(
         ctx.status_print("雷達點名遇到限流或伺服器錯誤，休息 {:.1f}s 後繼續".format(cooldown_seconds))
         await ctx.asyncio.sleep(cooldown_seconds)
 
+    _ep2 = endpoints if endpoints is not None else ctx.get_active_http_endpoints()
+    _ssl2 = request_ssl if request_ssl is not None else ctx.get_ssl_request_setting()
+    _my_user_no2 = ctx.normalize_text(my_user_no) or (ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).user) if hasattr(ctx.get_active_profile(ctx.CONFIG), 'user') else "")
     async with ctx.aiohttp.ClientSession(**session_kwargs) as session:
         ctx.clone_session_cookies(main_session, session)
-        request_ssl = ctx.get_ssl_request_setting()
+        request_ssl = _ssl2
         client = ctx.create_tron_http_client(session, request_ssl=request_ssl)
-        endpoints = ctx.get_active_http_endpoints()
+        endpoints = _ep2
         base_url = endpoints.base_url.rstrip("/")
         user_id = await client.fetch_user_id()
         lite_url = f"{base_url}/api/rollcall/{rollcall_id}/lite"
@@ -580,6 +599,7 @@ async def global_radar(
                     rollcall_id,
                     method="global_wgs84",
                     detail=detail,
+                    my_user_no=_my_user_no2,
                 ):
                     found = False
                     final_status = "submitted_unconfirmed"

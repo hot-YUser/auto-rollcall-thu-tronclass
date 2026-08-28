@@ -707,14 +707,14 @@ class QrTeacherRuntimeTest(unittest.IsolatedAsyncioTestCase):
                     self.assertTrue(prepared["ok"])
                     self.assertEqual(len(server.teacher_rollcalls), 1)
                     self.assertEqual(server.teacher_rollcall_stops, [])
-                    self.assertIn("77", tron.ACTIVE_TEACHER_QR_ASSISTS)
+                    self.assertIn("thu:user1:77", tron.ACTIVE_TEACHER_QR_ASSISTS)
 
                     stopped = await tron.stop_prepared_teacher_qr("77")
 
         self.assertTrue(stopped["ok"])
         self.assertEqual(stopped["stopped"], 1)
         self.assertEqual(server.teacher_rollcall_stops[-1]["endpoint"], "stop_qr_rollcall")
-        self.assertNotIn("77", tron.ACTIVE_TEACHER_QR_ASSISTS)
+        self.assertNotIn("thu:user1:77", tron.ACTIVE_TEACHER_QR_ASSISTS)
 
     async def test_run_teacher_assisted_qr_accepts_all_present_when_profile_mismatches(self) -> None:
         async with FakeTronServer() as server:
@@ -815,7 +815,7 @@ class QrTeacherRuntimeTest(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(second)
         # The second call is short-circuited by the cooldown before reaching ensure_teacher_ready.
         ensure_mock.assert_awaited_once()
-        self.assertIn("99", tron.QR_ASSIST_ATTEMPTS)
+        self.assertIn("thu:user1:99", tron.QR_ASSIST_ATTEMPTS)
 
     async def test_submit_qr_with_data_builds_payload_and_finalizes(self) -> None:
         answer_mock = AsyncMock(return_value={"ok": True})

@@ -298,10 +298,18 @@ def _runtime_report() -> Dict[str, Any]:
     }
 
 
+def _portable_archive_name(name: str) -> str:
+    """Windows-portable: strip trailing dots/spaces per path segment (NTFS trims them).
+    `foo.ipa. ` and `foo.ipa ` must not bypass the .ipa/.apk gate."""
+    # Apply to the leaf only — cheaper and sufficient for the gate; segment-level
+    # trimming of the full path is unnecessary since we only test the filename suffix.
+    leaf = str(name or "").replace("\\", "/").rsplit("/", 1)[-1]
+    return leaf.rstrip(" .").lower()
+
+
 def is_raw_mobile_archive_name(value: Any) -> bool:
-    normalized = str(value or "").replace("\\", "/").strip("/").lower()
-    name = normalized.rsplit("/", 1)[-1]
-    return any(name.endswith(suffix) for suffix in RAW_MOBILE_ARCHIVE_SUFFIXES)
+    normalized = _portable_archive_name(value)
+    return any(normalized.endswith(suffix) for suffix in RAW_MOBILE_ARCHIVE_SUFFIXES)
 
 
 def _tracked_git_paths(base_dir: Path) -> List[str] | None:

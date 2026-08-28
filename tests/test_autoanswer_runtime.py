@@ -301,7 +301,7 @@ class HandleActivityTest(unittest.IsolatedAsyncioTestCase):
                                            autoanswer_store.mark_completed, ctx.log_print)
         answer_flow.prepare_answer = prepare
         answer_flow.submit_prepared = submit
-        autoanswer_store.mark_completed = lambda base, profile, a: self.persisted.append((profile, a))
+        autoanswer_store.mark_completed = lambda base, profile, a, provider=None: self.persisted.append((profile, a))
         ctx.log_print = lambda m: prints.append(str(m))
         try:
             act = Activity(activity_id=aid, activity_type=ActivityType.EXAM, title=aid)

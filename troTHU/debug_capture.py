@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Any, Dict
 
 
+import re
+
 SENSITIVE_KEY_PARTS = (
     "authorization",
     "cookie",
@@ -16,6 +18,16 @@ SENSITIVE_KEY_PARTS = (
     "key",
     "chat",
 )
+
+
+# QR data token shape: <10 decimal unix seconds><32 hex>, exactly 42 chars. Must be
+# redacted recursively even when embedded in free text. Portable spelling: 10 decimal
+# digits followed immediately by 32 hex; the caller decides whether hex is lower-only.
+_QR_TOKEN_RE = re.compile(r"\b\d{10}[0-9a-fA-F]{32}\b")
+
+
+def _redact_qr_tokens_in_text(text: str) -> str:
+    return _QR_TOKEN_RE.sub("[redacted-qr-token]", text)
 
 
 def sanitize_debug_payload(value: Any) -> Any:
@@ -30,6 +42,10 @@ def sanitize_debug_payload(value: Any) -> Any:
         return sanitized
     if isinstance(value, list):
         return [sanitize_debug_payload(item) for item in value]
+    if isinstance(value, str):
+        if _QR_TOKEN_RE.search(value):
+            return _redact_qr_tokens_in_text(value)
+        return value
     return value
 
 

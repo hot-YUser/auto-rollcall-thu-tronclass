@@ -11,7 +11,7 @@ def __getattr__(name: str):
 
 
 
-async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
+async def number(main_session: ctx.aiohttp.ClientSession, rcid: int, *, my_user_no: str = "", endpoints: ctx.Any = None, request_ssl: ctx.Any = None) -> str:
     request_count = 0
     found_code = 'NA'
     submitted_unconfirmed_code = ''
@@ -22,7 +22,10 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
     headers = {'User-Agent': ctx.random_ua()}
     fatal_error: ctx.Optional[BaseException] = None
     last_transient_error: ctx.Optional[BaseException] = None
-    request_url = '{}/api/rollcall/{}/answer_number_rollcall'.format(ctx.get_active_http_endpoints().base_url.rstrip('/'), rcid)
+    _ep = endpoints if endpoints is not None else ctx.get_active_http_endpoints()
+    _ssl = request_ssl if request_ssl is not None else ctx.get_ssl_request_setting()
+    _my_user_no = ctx.normalize_text(my_user_no) or (ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).user) if hasattr(ctx.get_active_profile(ctx.CONFIG), 'user') else "")
+    request_url = '{}/api/rollcall/{}/answer_number_rollcall'.format(_ep.base_url.rstrip('/'), rcid)
     latest_try_code = '----'
     number_config = ctx.get_number_config()
     default_number_config = ctx.DEFAULT_CONFIG['number']
@@ -79,6 +82,9 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
                                 session,
                                 rcid,
                                 rollcall_type='number',
+                                my_user_no=_my_user_no,
+                                endpoints=_ep,
+                                request_ssl=_ssl,
                             )
                         except ctx.UnauthorizedError as exc:
                             if fatal_error is None and found_code == 'NA':
@@ -136,7 +142,7 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int) -> str:
         nonlocal direct_read_attempted, direct_read_status
         direct_read_attempted = True
         try:
-            client = ctx.create_tron_http_client(session, request_ssl=ctx.get_ssl_request_setting())
+            client = ctx.create_tron_http_client(session, request_ssl=_ssl)
             payload = await client.fetch_student_rollcalls(rcid)
         except (ctx.TronHttpError, ctx.aiohttp.ClientError, ctx.asyncio.TimeoutError, ctx.ssl.SSLError):
             direct_read_status = 'lookup_failed'

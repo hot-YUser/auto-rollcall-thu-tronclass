@@ -202,7 +202,7 @@ def _ensure_persisted_loaded(*, profile_name: str = "", provider_key: str = "") 
     if scope in _LOADED_SCOPES:
         return
     try:
-        for activity_id in autoanswer_store.load_completed(ctx.BASE_DIR, profile):
+        for activity_id in autoanswer_store.load_completed(ctx.BASE_DIR, profile, provider):
             key = activity_runtime_key(
                 activity_id,
                 profile_name=profile,
@@ -476,7 +476,7 @@ async def handle_activity(
             succeeded = True
             ctx.COMPLETED_QUESTION_SUBMISSIONS[key] = True
             try:  # persist permanently so a restart never re-answers it
-                autoanswer_store.mark_completed(ctx.BASE_DIR, profile, activity_id)
+                autoanswer_store.mark_completed(ctx.BASE_DIR, profile, activity_id, provider)
             except Exception:
                 pass
             rsource = getattr(result.source, "value", result.source)

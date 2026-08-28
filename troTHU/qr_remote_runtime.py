@@ -173,13 +173,19 @@ async def submit_remote_qr(
     *,
     profile_name: str = "",
     my_user_no: str = "",
+    provider_key: str = "",
+    endpoints: object = None,
+    request_ssl: object = None,
 ) -> bool:
     """Bounded oracle polling with one cookie-less connection pool per confirmation window."""
     student_rollcall_id = _rollcall_id(rollcall)
     if not student_rollcall_id:
         return False
-    if ctx.is_completed_qr_rollcall(student_rollcall_id, profile_name=profile_name):
+    if ctx.is_completed_qr_rollcall(student_rollcall_id, profile_name=profile_name, provider_key=provider_key):
         return True
+    _ep = endpoints if endpoints is not None else ctx.get_active_http_endpoints()
+    _ssl = request_ssl if request_ssl is not None else ctx.get_ssl_request_setting()
+    _my_user_no = ctx.normalize_text(my_user_no) or (ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).user) if hasattr(ctx.get_active_profile(ctx.CONFIG), 'user') else "")
     cfg = qr_remote_config(ctx.CONFIG)
     if not qr_remote_configured({"qr_remote": cfg}):
         return False
@@ -209,19 +215,19 @@ async def submit_remote_qr(
                     student_session,
                     qr_data,
                     device_id=ctx.random_id(),
-                    request_ssl=ctx.get_ssl_request_setting(),
+                    request_ssl=_ssl,
                     session_id=ctx.get_session_id_header(student_session),
-                    base_url=ctx.get_active_http_endpoints().base_url,
+                    base_url=_ep.base_url,
                 )
                 submitted = True
                 last_qr_data = qr_data
                 last_verification = await ctx.verify_rollcall_on_call_fine(
                     student_session,
                     student_rollcall_id,
-                    endpoints=ctx.get_active_http_endpoints(),
-                    request_ssl=ctx.get_ssl_request_setting(),
+                    endpoints=_ep,
+                    request_ssl=_ssl,
                     rollcall_type="qrcode",
-                    my_user_no=my_user_no,
+                    my_user_no=_my_user_no,
                 )
                 if last_verification.get("ok") and last_verification.get("status") == "on_call_fine":
                     await ctx.finalize_qr_submission(
@@ -231,10 +237,16 @@ async def submit_remote_qr(
                         notification_body="已透過遠端 QR data 服務完成送出。",
                         progress_log_output=False,
                         verification=last_verification,
+                        profile_name=profile_name,
+                        provider_key=provider_key,
+                        my_user_no=_my_user_no,
+                        endpoints=_ep,
+                        request_ssl=_ssl,
                     )
                     ctx.mark_completed_qr_rollcall(
                         student_rollcall_id,
                         profile_name=profile_name,
+                        provider_key=provider_key,
                     )
                     return True
             await ctx.asyncio.sleep(cfg["poll_interval_seconds"])
@@ -246,5 +258,10 @@ async def submit_remote_qr(
             notification_body="已透過遠端 QR data 服務送出（未即時確認）。",
             progress_log_output=False,
             verification=last_verification,
+            profile_name=profile_name,
+            provider_key=provider_key,
+            my_user_no=_my_user_no,
+            endpoints=_ep,
+            request_ssl=_ssl,
         )
     return False

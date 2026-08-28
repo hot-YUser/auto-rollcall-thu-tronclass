@@ -100,8 +100,7 @@ def configure_logging(mode: Optional[str] = None) -> logging.Logger:
         logger.removeHandler(handler)
     handler = _JsonlHandler()
     handler.setLevel(logging.DEBUG)
-    if resolved != "research":
-        handler.addFilter(_RedactionFilter())
+    handler.addFilter(_RedactionFilter())
     logger.addHandler(handler)
     return logger
 

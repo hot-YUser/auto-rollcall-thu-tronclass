@@ -83,7 +83,7 @@ class LogCoreTest(unittest.TestCase):
         tron.configure_logging("research")
         tron.log_event("t", api_key="nvapi-secret")
         rec = _read_records(self.temp_dir)[0]
-        self.assertEqual(rec["api_key"], "nvapi-secret")
+        self.assertEqual(rec["api_key"], "[redacted]")
 
     def test_log_api_call_normal_concise_debug_full(self) -> None:
         tron.configure_logging("normal")

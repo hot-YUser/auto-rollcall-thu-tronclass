@@ -300,14 +300,24 @@ class BotHandlerBridge:
     async def qr_submit(self, *, profile: str, payload: str, command: Any) -> Dict[str, Any]:
         fanout = bool(getattr(command, "payload", {}).get("fanout"))
         if fanout:
-            with self.profile_context(profile):
-                async def submit_profile(_profile: str, raw_payload: str) -> int:
+            # Fan-out must be per pending profile, not per outer profile_context.
+            # Each submit_profile call isolates login/session and passes profile_name/provider
+            # so remove_pending_qr keys correctly even though inner submit_qr_payload now
+            # defaults to global CONFIG.current.
+            async def submit_profile(_profile: str, raw_payload: str) -> int:
+                # isolate per pending profile — don't rely on global switch
+                with self.profile_context(_profile):
                     async with self.session_context() as session:
                         login_result = await self.ensure_login(session)
                         if not login_result.ok:
                             self.record_profile_error(_profile, "login_failed", login_result.status)
                             return 1
-                        await self.tron.submit_qr_payload(session, raw_payload)
+                        # thread pending profile/provider so finalize removes correct pending_qr key
+                        try:
+                            prov = self.tron.get_active_provider_key()
+                        except Exception:
+                            prov = ""
+                        await self.tron.submit_qr_payload(session, raw_payload, profile_name=_profile, provider_key=prov)
                         rollcall_id = ""
                         try:
                             rollcall_id = self.tron.parse_qr_payload(raw_payload).rollcall_id
@@ -319,9 +329,9 @@ class BotHandlerBridge:
                             rollcall_id=rollcall_id,
                             rollcall_type="qrcode",
                         )
-                    return 0
+                return 0
 
-                result = await self.tron.qr_fanout_result(payload, submit_profile=submit_profile)
+            result = await self.tron.qr_fanout_result(payload, submit_profile=submit_profile)
             status = result.get("status")
             reply = "QR fan-out {} for {} matching profile(s).".format(
                 status,
