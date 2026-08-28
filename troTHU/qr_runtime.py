@@ -214,6 +214,15 @@ async def qr_fanout_result(payload: str, provider: str='', submit_profile: ctx.A
     results = []
     # Capture pending list and per-pending context once; never mutate pending during loop.
     pending_snapshot = list(matches)
+    # Freeze batch dispatch snapshot once before any await — no per-iteration global re-read.
+    try:
+        import copy as _copy_batch
+        from troTHU.dispatch_context import build_dispatch_context as _bdc_batch
+        _batch_snapshot = _copy_batch.deepcopy(ctx.CONFIG)
+        _batch_dctx = _bdc_batch(_batch_snapshot)
+    except Exception:
+        _batch_snapshot = None  # type: ignore
+        _batch_dctx = None  # type: ignore
 
     for pending in pending_snapshot:
         try:
@@ -251,35 +260,41 @@ async def qr_fanout_result(payload: str, provider: str='', submit_profile: ctx.A
                 if result is None:
                     result = 0
             else:
-                # per-member isolated execution — no global CONFIG.current mutation across await
+                # per-member isolated execution from frozen batch snapshot — no per-iteration global re-read
                 try:
-                    from troTHU.dispatch_context import build_dispatch_context
-                    # Derive per-member endpoints/ssl from member's provider scope without touching global
-                    _member_ctx = build_dispatch_context()
-                    # Override profile for this pending member
-                    _member_profile = ctx.normalize_profile_name(pending.profile)
-                    _member_provider = ctx.normalize_text(pending.provider) or _member_ctx.provider_key
-                    # Build member-specific provider_conf to resolve endpoints atomically
-                    try:
-                        _avail = _member_ctx.config_snapshot.get("provider", {}).get("available", {})
-                        _prov_conf = _avail.get(_member_provider) if isinstance(_avail, dict) else None
-                        if _prov_conf is not None:
-                            _member_endpoints = ctx.endpoints_from_provider(_prov_conf)
+                    if _batch_dctx is not None and _batch_snapshot is not None:
+                        from troTHU.dispatch_context import resolve_provider_endpoints as _resolve_ep
+                        _member_profile = ctx.normalize_profile_name(pending.profile)
+                        _raw_pending_provider = ctx.normalize_text(pending.provider)
+                        if _raw_pending_provider:
+                            try:
+                                _member_provider, _member_endpoints = _resolve_ep(_raw_pending_provider, _batch_snapshot)
+                            except Exception:
+                                _member_provider = _raw_pending_provider
+                                _member_endpoints = _batch_dctx.endpoints
                         else:
-                            _member_endpoints = _member_ctx.endpoints
-                    except Exception:
-                        _member_endpoints = _member_ctx.endpoints
-                    _member_ssl = _member_ctx.request_ssl
-                    _member_user = ctx.normalize_text(
-                        _member_ctx.config_snapshot.get("accounts", {}).get("profiles", {}).get(_member_profile, {}).get("user", "")
-                    ) if isinstance(_member_ctx.config_snapshot.get("accounts"), dict) else ""
+                            _member_provider = _batch_dctx.provider_key
+                            _member_endpoints = _batch_dctx.endpoints
+                        _member_ssl = _batch_dctx.request_ssl
+                        try:
+                            _member_user = ctx.normalize_text(
+                                _batch_snapshot.get("accounts", {}).get("profiles", {}).get(_member_profile, {}).get("user", "")
+                            ) if isinstance(_batch_snapshot.get("accounts"), dict) else ""
+                        except Exception:
+                            _member_user = ""
+                    else:
+                        raise RuntimeError("no batch snapshot")
                 except Exception:
                     _member_endpoints = None
                     _member_ssl = None
                     _member_user = ""
                     _member_profile = ctx.normalize_profile_name(pending.profile)
                     _member_provider = ctx.normalize_text(pending.provider) or provider_key
-                member_config = ctx.copy.deepcopy(ctx.CONFIG)
+                try:
+                    import copy as _copy_qr
+                    member_config = _copy_qr.deepcopy(_batch_snapshot) if _batch_snapshot is not None else ctx.copy.deepcopy(ctx.CONFIG)
+                except Exception:
+                    member_config = ctx.copy.deepcopy(ctx.CONFIG)
                 try:
                     member_config["accounts"]["current"] = _member_profile
                 except Exception:

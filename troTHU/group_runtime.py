@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
+import copy
+from dataclasses import dataclass
+
 try:  # pragma: no cover - package import path
     import troTHU.runtime_context as ctx
 except ImportError:  # pragma: no cover - direct script fallback
     import runtime_context as ctx  # type: ignore
+
+try:
+    from troTHU.dispatch_context import resolve_provider_endpoints, assert_provider_endpoints_coherent, _request_ssl_from_snapshot
+except ImportError:  # pragma: no cover - direct script fallback
+    from dispatch_context import resolve_provider_endpoints, assert_provider_endpoints_coherent, _request_ssl_from_snapshot  # type: ignore
 
 
 def _school(value: ctx.Any) -> str:
@@ -97,6 +105,132 @@ def build_group_execution_plan(config: ctx.Mapping[str, ctx.Any], target: ctx.Ma
             monitor_user = normalized_user
         fanout.append(normalized_user)
     return {"ok": bool(monitor_user), "target": target, "monitor_user": monitor_user, "fanout_users": fanout, "accounts": [{"user": user, "school": school} for user in fanout], "skipped": skipped, "warnings": warnings}
+
+
+@dataclass(frozen=True)
+class GroupPlan:
+    """Immutable group dispatch value constructed once before any await.
+
+    Holds authoritative provider_key, resolved endpoints and request_ssl
+    alongside monitor identity, plus the group's school/provider target.
+    The plan is built from ONE deep-copied config snapshot.
+    """
+    provider_key: str
+    endpoints: ctx.Any
+    request_ssl: ctx.Any
+    config_snapshot: ctx.Mapping[str, ctx.Any]
+    monitor_profile: str
+    monitor_user_no: str
+    plan: ctx.Dict[str, ctx.Any]  # raw execution plan dict
+    target_school: str
+
+
+def build_group_plan(config: ctx.Mapping[str, ctx.Any] | None = None, *, dispatch_ctx: ctx.Any = None) -> GroupPlan:
+    """Construct GroupPlan once from caller DispatchContext or deep-copied config.
+
+    - If dispatch_ctx (DispatchContext) is supplied, derive snapshot/provider/endpoints/ssl from it.
+    - Otherwise deep-copy the supplied (or global) config once before any await.
+    The group's school/provider is taken from plan.target.school and resolved against the same snapshot.
+    """
+    # Snapshot + provider + endpoints + ssl — immutable, single source
+    if dispatch_ctx is not None and hasattr(dispatch_ctx, "config_snapshot"):
+        snapshot = dispatch_ctx.config_snapshot
+        # dispatch_ctx already immutable; derive group-specific provider from target school
+        base_provider = dispatch_ctx.provider_key
+        base_endpoints = dispatch_ctx.endpoints
+        base_ssl = dispatch_ctx.request_ssl
+        monitor_profile = dispatch_ctx.profile_name
+        monitor_user_no = dispatch_ctx.user_no
+    else:
+        cfg = config if config is not None else ctx.CONFIG
+        snapshot = copy.deepcopy(cfg)
+        # monitor identity from snapshot
+        try:
+            active = ctx.get_active_profile(snapshot)
+            monitor_profile = ctx.normalize_profile_name(active.name)
+            monitor_user_no = ctx.normalize_text(active.user)
+        except Exception:
+            monitor_profile = "default"
+            monitor_user_no = ""
+        # provider derivation will be overridden by group target below
+        base_provider = ""
+        base_endpoints = None
+        base_ssl = None
+        # fallback base provider/ssl from snapshot if no group target
+        try:
+            prov_cfg = snapshot.get("provider", {}) if isinstance(snapshot.get("provider"), dict) else {}
+            base_provider_raw = ctx.normalize_text(prov_cfg.get("current")) if isinstance(prov_cfg, dict) else ""
+            if base_provider_raw:
+                base_provider, base_endpoints = resolve_provider_endpoints(base_provider_raw, snapshot)
+        except Exception:
+            pass
+        try:
+            base_ssl = _request_ssl_from_snapshot(snapshot)
+        except Exception:
+            base_ssl = None
+
+    plan_dict = build_group_execution_plan(snapshot)
+    # Determine target_school — from plan target
+    target = plan_dict.get("target") if isinstance(plan_dict.get("target"), dict) else {}
+    raw_school = ctx.normalize_text(target.get("school")) if isinstance(target, dict) else ""
+    target_school = raw_school.lower() or "thu"
+
+    # If group explicitly targets a school/provider different from monitor, resolve endpoints for target_school
+    # NEVER mix monitor endpoints with target provider.
+    if plan_dict.get("ok") and ctx.normalize_text(target.get("kind")) == "group":
+        try:
+            provider_key, endpoints = resolve_provider_endpoints(target_school, snapshot)
+        except Exception:
+            provider_key, endpoints = (target_school, base_endpoints)
+        request_ssl = base_ssl
+        # request_ssl already from snapshot; coherent by construction
+        try:
+            assert_provider_endpoints_coherent(provider_key, endpoints, snapshot)
+        except AssertionError:
+            raise
+        except Exception:
+            pass
+    elif plan_dict.get("ok") and ctx.normalize_text(target.get("kind")) == "account":
+        # single account: provider is snapshot's current (already resolved)
+        try:
+            acct_school = _school(target.get("school"))
+            provider_key, endpoints = resolve_provider_endpoints(acct_school, snapshot)
+        except Exception:
+            provider_key, endpoints = (base_provider, base_endpoints)
+        request_ssl = base_ssl
+    else:
+        # no valid plan or url kind
+        provider_key, endpoints = (base_provider, base_endpoints)
+        request_ssl = base_ssl
+
+    # If no group target resolution happened and we still have no provider, fallback
+    if not provider_key:
+        provider_key = base_provider or "thu"
+    if endpoints is None:
+        endpoints = base_endpoints
+    if request_ssl is None:
+        request_ssl = base_ssl
+        if request_ssl is None:
+            try:
+                request_ssl = _request_ssl_from_snapshot(snapshot)
+            except Exception:
+                request_ssl = None
+    try:
+        assert_provider_endpoints_coherent(provider_key, endpoints, snapshot)
+    except AssertionError:
+        raise
+    except Exception:
+        pass
+    return GroupPlan(
+        provider_key=provider_key,
+        endpoints=endpoints,
+        request_ssl=request_ssl,
+        config_snapshot=snapshot,
+        monitor_profile=monitor_profile,
+        monitor_user_no=monitor_user_no,
+        plan=plan_dict,
+        target_school=target_school,
+    )
 
 
 _SKIP_REASON_ZH = {
@@ -274,22 +408,14 @@ async def _member_login(
         return False
 
 
-async def _fanout(plan: ctx.Dict[str, ctx.Any], submit_one) -> ctx.List[ctx.Dict[str, ctx.Any]]:
-    members = [u for u in plan.get("fanout_users", []) if u.lower() != plan.get("monitor_user", "").lower()]
+async def _fanout(group_plan: GroupPlan, submit_one) -> ctx.List[ctx.Dict[str, ctx.Any]]:
+    """Fanout using GroupPlan only — no global provider/endpoint getter inside loop."""
+    members = [u for u in group_plan.plan.get("fanout_users", []) if u.lower() != group_plan.plan.get("monitor_user", "").lower()]
     results: ctx.List[ctx.Dict[str, ctx.Any]] = []
-    # Immutable monitor endpoints / ssl — captured once, never re-read inside loop.
-    try:
-        monitor_endpoints = ctx.get_active_http_endpoints()
-    except Exception:
-        monitor_endpoints = None
-    try:
-        monitor_request_ssl = ctx.get_ssl_request_setting()
-    except Exception:
-        monitor_request_ssl = None
     for user in members:
-        # Private config copy for this member — no mutation of global CONFIG.current.
+        # Build member_config from frozen snapshot only; provider reload has no effect.
         try:
-            member_config = ctx.copy.deepcopy(ctx.CONFIG)
+            member_config = copy.deepcopy(group_plan.config_snapshot)
             ctx.normalize_accounts_config(member_config)
             normalized = ctx.normalize_profile_name(user)
             profiles = member_config.get("accounts", {}).get("profiles", {})
@@ -299,7 +425,7 @@ async def _fanout(plan: ctx.Dict[str, ctx.Any], submit_one) -> ctx.List[ctx.Dict
                 member_config.setdefault("account", {})["user"] = ctx.normalize_text(prof.get("user", ""))
                 member_config.setdefault("account", {})["passwd"] = ctx.normalize_text(prof.get("passwd", ""))
         except Exception:
-            member_config = ctx.CONFIG
+            member_config = copy.deepcopy(group_plan.config_snapshot)
         try:
             session_kwargs: ctx.Dict[str, ctx.Any] = {
                 'connector': ctx.create_http_connector(),
@@ -318,13 +444,13 @@ async def _fanout(plan: ctx.Dict[str, ctx.Any], submit_one) -> ctx.List[ctx.Dict
                         cookie_loaded = False
 
                 if not cookie_loaded or not ctx.has_session_cookie(member_session):
-                    ok_login = await _member_login(member_session, member_config, user, monitor_endpoints, monitor_request_ssl)
+                    ok_login = await _member_login(member_session, member_config, user, group_plan.endpoints, group_plan.request_ssl)
                     if not ok_login:
                         ctx.log_print(f"群組成員 `{user}` 自動登入失敗。")
                         results.append({"user": user, "ok": False, "status": "login_failed"})
                         continue
 
-                ok, status = await submit_one(member_session, user, member_config, monitor_endpoints, monitor_request_ssl)
+                ok, status = await submit_one(member_session, user, member_config, group_plan.endpoints, group_plan.request_ssl)
                 results.append({"user": user, "ok": ok, "status": status})
         except Exception as exc:
             ctx.log_print(f"群組成員 `{user}` 簽到發生異常: {exc}")
@@ -333,17 +459,28 @@ async def _fanout(plan: ctx.Dict[str, ctx.Any], submit_one) -> ctx.List[ctx.Dict
     return results
 
 
-async def submit_group_number(code: str, *, rcid: str | int | None = None, session: ctx.Any = None, config: ctx.Mapping[str, ctx.Any] | None = None) -> ctx.Dict[str, ctx.Any]:
-    plan = build_group_execution_plan(config or ctx.CONFIG)
+async def submit_group_number(code: str, *, rcid: str | int | None = None, session: ctx.Any = None, config: ctx.Mapping[str, ctx.Any] | None = None, group_plan: GroupPlan | None = None, provider_key: str = "", endpoints: ctx.Any = None, request_ssl: ctx.Any = None) -> ctx.Dict[str, ctx.Any]:
+    # Prefer explicit GroupPlan; fallback to legacy single-snapshot before await
+    gp = group_plan if isinstance(group_plan, GroupPlan) else build_group_plan(config)
+    plan = gp.plan
     if not plan.get("ok"):
         return {"ok": False, "status": "no_group_target", "plan": plan}
-    
+
     rollcall_id = rcid or plan.get("target", {}).get("rollcall_id") or ""
     if not rollcall_id:
         return {"ok": False, "status": "missing_rollcall_id", "plan": plan}
 
-    async def submit_one(member_session, user, member_config, monitor_endpoints, monitor_request_ssl):
-        ep = monitor_endpoints if monitor_endpoints is not None else ctx.get_active_http_endpoints()
+    async def submit_one(member_session, user, member_config, gp_endpoints, gp_request_ssl):
+        ep = gp_endpoints
+        if ep is None:
+            # Should not happen; GroupPlan is coherent
+            ep = endpoints
+        try:
+            assert_provider_endpoints_coherent(gp.provider_key, ep, gp.config_snapshot)
+        except AssertionError:
+            raise
+        except Exception:
+            pass
         request_url = '{}/api/rollcall/{}/answer_number_rollcall'.format(ep.base_url.rstrip('/'), rollcall_id)
         payload = {'deviceId': ctx.random_id(), 'numberCode': code}
         try:
@@ -356,12 +493,12 @@ async def submit_group_number(code: str, *, rcid: str | int | None = None, sessi
                         rollcall_id,
                         rollcall_type='number',
                         my_user_no=user,
-                        endpoints=monitor_endpoints,
-                        request_ssl=monitor_request_ssl,
+                        endpoints=gp_endpoints,
+                        request_ssl=gp_request_ssl,
                     )
                     if verification.get('ok') and verification.get('status') == 'on_call_fine':
-                        _pk = member_config.get('provider', {}).get('current', '') if isinstance(member_config.get('provider'), dict) else ""
-                        _pk = ctx.normalize_text(_pk) or ctx.get_active_provider_key()
+                        # provider_key from GroupPlan (authoritative, coherent with endpoints)
+                        _pk = gp.provider_key
                         ctx.mark_completed_number_rollcall(rollcall_id, code, profile_name=user, provider_key=_pk)
                         return True, "submitted"
                     return True, "submitted_unconfirmed"
@@ -369,50 +506,63 @@ async def submit_group_number(code: str, *, rcid: str | int | None = None, sessi
         except Exception as exc:
             return False, str(exc)
 
-    results = await _fanout(plan, submit_one)
+    results = await _fanout(gp, submit_one)
     ok = all(item["ok"] for item in results) if results else True
     return {"ok": ok, "status": "submitted" if ok else "partial_failed", "count": len(results), "results": results, "plan": plan}
 
 
-async def submit_group_radar(rollcall: ctx.Dict[str, ctx.Any], *, session: ctx.Any = None, config: ctx.Mapping[str, ctx.Any] | None = None) -> ctx.Dict[str, ctx.Any]:
-    plan = build_group_execution_plan(config or ctx.CONFIG)
+async def submit_group_radar(rollcall: ctx.Dict[str, ctx.Any], *, session: ctx.Any = None, config: ctx.Mapping[str, ctx.Any] | None = None, group_plan: GroupPlan | None = None) -> ctx.Dict[str, ctx.Any]:
+    gp = group_plan if isinstance(group_plan, GroupPlan) else build_group_plan(config)
+    plan = gp.plan
     if not plan.get("ok"):
         return {"ok": False, "status": "no_group_target", "plan": plan}
-    
-    async def submit_one(member_session, user, member_config, monitor_endpoints, monitor_request_ssl):
-        _pk = member_config.get('provider', {}).get('current', '') if isinstance(member_config.get('provider'), dict) else ""
-        _pk = ctx.normalize_text(_pk) or ctx.get_active_provider_key()
-        ok = await ctx.radar(member_session, rollcall, my_user_no=user, endpoints=monitor_endpoints, request_ssl=monitor_request_ssl)
+
+    async def submit_one(member_session, user, member_config, gp_endpoints, gp_request_ssl):
+        _pk = gp.provider_key
+        try:
+            assert_provider_endpoints_coherent(_pk, gp_endpoints, gp.config_snapshot)
+        except AssertionError:
+            raise
+        except Exception:
+            pass
+        ok = await ctx.radar(member_session, rollcall, my_user_no=user, endpoints=gp_endpoints, request_ssl=gp_request_ssl)
         if ok:
             ctx.mark_completed_radar_rollcall(_rollcall_id(rollcall), profile_name=user, provider_key=_pk)
         return ok, "submitted" if ok else "failed"
 
-    results = await _fanout(plan, submit_one)
+    results = await _fanout(gp, submit_one)
     ok = all(item["ok"] for item in results) if results else True
     return {"ok": ok, "status": "submitted" if ok else "partial_failed", "count": len(results), "results": results, "plan": plan}
 
 
-async def submit_group_self_registration(rollcall: ctx.Dict[str, ctx.Any], *, session: ctx.Any = None, config: ctx.Mapping[str, ctx.Any] | None = None) -> ctx.Dict[str, ctx.Any]:
-    plan = build_group_execution_plan(config or ctx.CONFIG)
+async def submit_group_self_registration(rollcall: ctx.Dict[str, ctx.Any], *, session: ctx.Any = None, config: ctx.Mapping[str, ctx.Any] | None = None, group_plan: GroupPlan | None = None) -> ctx.Dict[str, ctx.Any]:
+    gp = group_plan if isinstance(group_plan, GroupPlan) else build_group_plan(config)
+    plan = gp.plan
     if not plan.get("ok"):
         return {"ok": False, "status": "no_group_target", "plan": plan}
 
-    async def submit_one(member_session, user, member_config, monitor_endpoints, monitor_request_ssl):
-        _pk = member_config.get('provider', {}).get('current', '') if isinstance(member_config.get('provider'), dict) else ""
-        _pk = ctx.normalize_text(_pk) or ctx.get_active_provider_key()
-        ok = await ctx.self_registration(member_session, rollcall, my_user_no=user, endpoints=monitor_endpoints, request_ssl=monitor_request_ssl)
+    async def submit_one(member_session, user, member_config, gp_endpoints, gp_request_ssl):
+        _pk = gp.provider_key
+        try:
+            assert_provider_endpoints_coherent(_pk, gp_endpoints, gp.config_snapshot)
+        except AssertionError:
+            raise
+        except Exception:
+            pass
+        ok = await ctx.self_registration(member_session, rollcall, my_user_no=user, endpoints=gp_endpoints, request_ssl=gp_request_ssl)
         if ok:
             ctx.mark_completed_self_registration_rollcall(_rollcall_id(rollcall), profile_name=user, provider_key=_pk)
         return ok, "submitted" if ok else "failed"
 
-    results = await _fanout(plan, submit_one)
+    results = await _fanout(gp, submit_one)
     ok = all(item["ok"] for item in results) if results else True
     return {"ok": ok, "status": "submitted" if ok else "partial_failed", "count": len(results), "results": results, "plan": plan}
 
 
-async def submit_group_qr(payload_or_rollcall: str | ctx.Dict[str, ctx.Any], *, session: ctx.Any = None, config: ctx.Mapping[str, ctx.Any] | None = None) -> ctx.Dict[str, ctx.Any]:
-    cfg = config or ctx.CONFIG
-    plan = build_group_execution_plan(cfg)
+async def submit_group_qr(payload_or_rollcall: str | ctx.Dict[str, ctx.Any], *, session: ctx.Any = None, config: ctx.Mapping[str, ctx.Any] | None = None, group_plan: GroupPlan | None = None) -> ctx.Dict[str, ctx.Any]:
+    gp = group_plan if isinstance(group_plan, GroupPlan) else build_group_plan(config)
+    cfg_snapshot = gp.config_snapshot
+    plan = gp.plan
     if not plan.get("ok"):
         return {"ok": False, "status": "no_group_target", "plan": plan}
 
@@ -420,17 +570,22 @@ async def submit_group_qr(payload_or_rollcall: str | ctx.Dict[str, ctx.Any], *, 
     if isinstance(payload_or_rollcall, str):
         payload = payload_or_rollcall
 
-        async def submit_one(member_session, user, member_config, monitor_endpoints, monitor_request_ssl):
-            _pk = member_config.get('provider', {}).get('current', '') if isinstance(member_config.get('provider'), dict) else ""
-            _pk = ctx.normalize_text(_pk) or ctx.get_active_provider_key()
-            ok = await ctx.submit_qr_payload(member_session, payload, progress_log_output=False, profile_name=user, provider_key=_pk, my_user_no=user, endpoints=monitor_endpoints, request_ssl=monitor_request_ssl)
+        async def submit_one(member_session, user, member_config, gp_endpoints, gp_request_ssl):
+            _pk = gp.provider_key
+            try:
+                assert_provider_endpoints_coherent(_pk, gp_endpoints, gp.config_snapshot)
+            except AssertionError:
+                raise
+            except Exception:
+                pass
+            ok = await ctx.submit_qr_payload(member_session, payload, progress_log_output=False, profile_name=user, provider_key=_pk, my_user_no=user, endpoints=gp_endpoints, request_ssl=gp_request_ssl)
             return ok, "submitted" if ok else "failed"
 
-        results = await _fanout(plan, submit_one)
+        results = await _fanout(gp, submit_one)
     else:
         rollcall = payload_or_rollcall
-        teacher_available = ctx.teacher_assist_configured(cfg)
-        remote_available = ctx.qr_remote_configured(cfg)
+        teacher_available = ctx.teacher_assist_configured(cfg_snapshot)
+        remote_available = ctx.qr_remote_configured(cfg_snapshot)
         if not teacher_available and not remote_available:
             return {
                 "ok": False,
@@ -440,9 +595,14 @@ async def submit_group_qr(payload_or_rollcall: str | ctx.Dict[str, ctx.Any], *, 
                 "plan": plan,
             }
 
-        async def submit_one(member_session, user, member_config, monitor_endpoints, monitor_request_ssl):
-            _pk2 = member_config.get('provider', {}).get('current', '') if isinstance(member_config.get('provider'), dict) else ""
-            _pk2 = ctx.normalize_text(_pk2) or ctx.get_active_provider_key()
+        async def submit_one(member_session, user, member_config, gp_endpoints, gp_request_ssl):
+            _pk2 = gp.provider_key
+            try:
+                assert_provider_endpoints_coherent(_pk2, gp_endpoints, gp.config_snapshot)
+            except AssertionError:
+                raise
+            except Exception:
+                pass
             if teacher_available:
                 teacher_ok = await ctx.submit_prepared_teacher_qr(
                     member_session,
@@ -450,8 +610,8 @@ async def submit_group_qr(payload_or_rollcall: str | ctx.Dict[str, ctx.Any], *, 
                     profile_name=user,
                     my_user_no=user,
                     provider_key=_pk2,
-                    endpoints=monitor_endpoints,
-                    request_ssl=monitor_request_ssl,
+                    endpoints=gp_endpoints,
+                    request_ssl=gp_request_ssl,
                 )
                 if teacher_ok:
                     return True, "submitted_teacher"
@@ -462,32 +622,20 @@ async def submit_group_qr(payload_or_rollcall: str | ctx.Dict[str, ctx.Any], *, 
                     profile_name=user,
                     my_user_no=user,
                     provider_key=_pk2,
-                    endpoints=monitor_endpoints,
-                    request_ssl=monitor_request_ssl,
+                    endpoints=gp_endpoints,
+                    request_ssl=gp_request_ssl,
                 )
                 return remote_ok, "submitted_remote" if remote_ok else "failed_remote"
             return False, "failed_teacher"
 
         try:
-            results = await _fanout(plan, submit_one)
+            results = await _fanout(gp, submit_one)
         finally:
             if teacher_available:
                 rid = _rollcall_id(rollcall)
-                for _u in plan.get("fanout_users", []) or []:
+                for _u in gp.plan.get("fanout_users", []) or []:
                     _up = ctx.normalize_profile_name(_u)
-                    _pk_member = ctx.normalize_text(plan.get("target", {}).get("school") or "") if isinstance(plan.get("target"), dict) else ""
-                    _pk_member = ctx.normalize_text(_pk_member) or ctx.normalize_text(plan.get("provider_key") or "")
-                    # plan school maps to provider via registry; fallback to global provider
-                    try:
-                        if _pk_member:
-                            _pk_member = ctx.get_provider(_pk_member).key
-                        else:
-                            _pk_member = ctx.get_active_provider_key()
-                    except Exception:
-                        try:
-                            _pk_member = ctx.get_active_provider_key()
-                        except Exception:
-                            _pk_member = "thu"
+                    _pk_member = gp.provider_key
                     try:
                         await ctx.stop_prepared_teacher_qr(rid, profile_name=_up, provider_key=_pk_member)
                     except Exception:

@@ -303,6 +303,27 @@ _EAGER_REEXPORTS = {
         "summarize_logs",
         "tail_log_records",
     ),
+    "troTHU.dispatch_context": (
+        "DispatchContext",
+        "build_dispatch_context",
+        "resolve_provider_endpoints",
+        "assert_provider_endpoints_coherent",
+        "_request_ssl_from_snapshot",
+    ),
+    "troTHU.group_runtime": (
+        "GroupPlan",
+        "build_group_plan",
+        "build_group_execution_plan",
+        "resolve_now_target",
+        "summarize_group_target",
+        "describe_group_target",
+        "format_group_fanout_summary",
+        "group_status_label",
+        "submit_group_qr",
+        "submit_group_number",
+        "submit_group_radar",
+        "submit_group_self_registration",
+    ),
 }
 
 

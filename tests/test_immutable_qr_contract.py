@@ -133,22 +133,17 @@ class BotSingleImmutableTest(unittest.IsolatedAsyncioTestCase):
                 pass
             return await orig_submit(session, raw_payload, **kwargs)
 
+        for _k in ("thu", "fju", "tronclass"):
+            tron.CONFIG["provider"]["available"][_k] = {"base_url": self.server.base_url, "login_url": self.server.base_url + "/login", "rollcalls_url": self.server.base_url + "/api/radar/rollcalls?api_version=1.1.0", "current_semester_url": self.server.base_url + "/api/current-semester-info", "courses_url": self.server.base_url + "/api/my-courses?page=1&page_size=50"}
+        from troTHU.adapter_bridge import binding_key as _bk2
+        tron.CONFIG.setdefault("integrations", {}).setdefault("bindings", {})[_bk2("line", "line-user-unbound-test")] = {"adapter": "line", "external_user_id": "line-user-unbound-test", "profile": "default", "channel_id": ""}
         runtime = create_bot_runtime(tron.CONFIG, base_dir=Path(self.tmp.name), session_factory=lambda: aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)))
         payload = '{"rollcallId":88,"data":"fixture"}'
-        with patch.object(tron, "get_active_http_endpoints", self.server.endpoints), \
-             patch.object(tron, "submit_qr_payload", side_effect=spy), \
+        with patch.object(tron, "submit_qr_payload", side_effect=spy), \
              patch.object(tron, "log_print"), \
              patch.object(tron, "notify_event", AsyncMock()):
-            result = await runtime.handle_text("qr {}".format(payload), adapter="line", source_user_id="line-user-unbound-test", channel_id="")
-            # fallback: use direct qr_submit if binding not matched, test via bridge directly
-            if not result.ok:
-                from troTHU.bot_handlers import BotHandlerBridge
-                from troTHU.adapter_bridge import ControlCommand
-                bridge = BotHandlerBridge(tron.CONFIG, base_dir=Path(self.tmp.name), session_factory=lambda: aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)), tron_module=tron)
-                cmd = ControlCommand(action="qr-submit", adapter="line", source_user_id="line-user", profile="default", payload={"fanout": False, "payload": payload})
-                # inject binding for line-user -> default already exists in make_config but our config has none, so call bridge directly
-                with patch.object(tron, "get_active_http_endpoints", self.server.endpoints):
-                    await bridge.qr_submit(profile="default", payload=payload, command=cmd)
+            _ = await runtime.handle_text("qr {}".format(payload), adapter="line", source_user_id="line-user-unbound-test", channel_id="")
+            # handled via handle_text with binding, no fallback
 
         # endpoints/profile/provider 必須顯式傳遞且與假伺服器一致
         self.assertIn("endpoints", captured)
@@ -194,23 +189,20 @@ class GroupProviderImmutableTest(unittest.IsolatedAsyncioTestCase):
             seen.append(dict(kwargs))
             return False
 
+        # Immutable snapshot: captured endpoints live in snapshot's provider.available, verify_ssl=False -> request_ssl=False
+        ctx.CONFIG["provider"]["available"]["thu"] = {"base_url": "https://captured.example", "login_url": "https://captured.example/login", "rollcalls_url": "https://captured.example/api/rollcalls", "current_semester_url": "https://captured.example/api/sem", "courses_url": "https://captured.example/api/courses"}
+        ctx.CONFIG["config"]["verify_ssl"] = False
         with (patch.object(ctx, "teacher_assist_configured", return_value=True),
               patch.object(ctx, "qr_remote_configured", return_value=True),
               patch.object(ctx, "submit_prepared_teacher_qr", side_effect=fake_teacher),
               patch.object(ctx, "submit_remote_qr", side_effect=fake_remote),
-              patch.object(ctx, "get_active_http_endpoints") as mock_ep,
-              patch("troTHU.group_runtime._member_login", new_callable=AsyncMock) as mock_login,
-              patch.object(ctx, "get_ssl_request_setting", return_value=None)):
+              patch("troTHU.group_runtime._member_login", new_callable=AsyncMock) as mock_login):
 
-            from troTHU.tron_http import TronHttpEndpoints
-            captured_ep = TronHttpEndpoints(base_url="https://captured.example", login_url="https://captured.example/login", rollcalls_url="https://captured.example/api/rollcalls", current_semester_url="https://captured.example/api/sem", courses_url="https://captured.example/api/courses", session_cookie_domain="captured.example")
             mock_login.return_value = True
-            mock_ep.return_value = captured_ep
             from troTHU.group_runtime import submit_group_qr
             await submit_group_qr({"rollcall_id": "99"}, config=ctx.CONFIG)
-            # fanout 是 monitor_user=user1 之外的成員（此例只有 user2），至少 1 筆且全為 captured（immutable）
+            # fanout 是 monitor_user=user1 之外的成員（此例只有 user2），至少 1 筆且與快照一致
             self.assertGreaterEqual(len(seen), 1)
-            self.assertTrue(any(kwargs.get("endpoints") is captured_ep for kwargs in seen))
             eps = [kwargs.get("endpoints").base_url if kwargs.get("endpoints") else None for kwargs in seen]
             self.assertTrue(all(ep == "https://captured.example" for ep in eps))
-            self.assertTrue(all(kwargs.get("request_ssl") is None for kwargs in seen))
+            self.assertTrue(all(kwargs.get("request_ssl") is False for kwargs in seen))

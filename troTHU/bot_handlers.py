@@ -301,49 +301,47 @@ class BotHandlerBridge:
         fanout = bool(getattr(command, "payload", {}).get("fanout"))
         if fanout:
             async def submit_profile(_profile: str, raw_payload: str, pending=None) -> int:
-                # Immutable snapshot BEFORE any await — profile/provider/user from DispatchContext,
-                # endpoints/ssl via tron getter (mock-aware) captured before await.
+                # Frozen config/provider registry snapshot BEFORE any await
+                try:
+                    from troTHU.dispatch_context import resolve_provider_endpoints, assert_provider_endpoints_coherent, _request_ssl_from_snapshot
+                    import copy as _copy
+                    _shadow_snapshot = _copy.deepcopy(self.config)
+                except Exception:
+                    _shadow_snapshot = self.config
                 _snap_profile = self.tron.normalize_profile_name(_profile)
-                _snap_provider = self.tron.normalize_text(getattr(pending, "provider", "") or "") if pending is not None else ""
-                _snap_user = ""
-                if not _snap_provider:
+                # pending.provider is authoritative; resolve endpoints from frozen snapshot
+                _pending_provider_raw = self.tron.normalize_text(getattr(pending, "provider", "") or "") if pending is not None else ""
+                if _pending_provider_raw:
+                    try:
+                        _snap_provider, _snap_endpoints = resolve_provider_endpoints(_pending_provider_raw, _shadow_snapshot)
+                    except Exception:
+                        _snap_provider = _pending_provider_raw
+                        _snap_endpoints = None
+                else:
                     try:
                         from troTHU.dispatch_context import build_dispatch_context as _bdc
-                        _snap_provider = _bdc(self.config).provider_key
+                        _tmp = _bdc(_shadow_snapshot)
+                        _snap_provider = _tmp.provider_key
+                        _snap_endpoints = _tmp.endpoints
                     except Exception:
-                        try:
-                            _snap_provider = self.tron.get_active_provider_key()
-                        except Exception:
-                            _snap_provider = "thu"
-                # Derive user_no from config snapshot for this profile
-                try:
-                    from troTHU.dispatch_context import build_dispatch_context as _bdc_u
-                    _ctx_u = _bdc_u(self.config)
-                    _snap_user = self.tron.normalize_text(_ctx_u.config_snapshot.get("accounts", {}).get("profiles", {}).get(_snap_profile, {}).get("user", "")) if isinstance(_ctx_u.config_snapshot.get("accounts"), dict) else ""
-                    if not _snap_user:
-                        _snap_user = _ctx_u.user_no
-                except Exception:
-                    try:
-                        _snap_user = self.tron.normalize_text(self.tron.get_active_profile(self.config).user)
-                    except Exception:
-                        _snap_user = ""
-                # endpoints/ssl — prefer tron getter (honors FakeTronServer patch) captured before await
-                try:
-                    _snap_endpoints = self.tron.get_active_http_endpoints()
-                except Exception:
-                    try:
-                        from troTHU.dispatch_context import build_dispatch_context as _bdc_e
-                        _snap_endpoints = _bdc_e(self.config).endpoints
-                    except Exception:
+                        _snap_provider = "thu"
                         _snap_endpoints = None
+                # Derive user_no from snapshot for this profile
                 try:
-                    _snap_ssl = self.tron.get_ssl_request_setting()
+                    _snap_user = self.tron.normalize_text(_shadow_snapshot.get("accounts", {}).get("profiles", {}).get(_snap_profile, {}).get("user", "")) if isinstance(_shadow_snapshot.get("accounts"), dict) else ""
                 except Exception:
-                    try:
-                        from troTHU.dispatch_context import build_dispatch_context as _bdc_s
-                        _snap_ssl = _bdc_s(self.config).request_ssl
-                    except Exception:
-                        _snap_ssl = None
+                    _snap_user = ""
+                # request_ssl from frozen snapshot
+                try:
+                    _snap_ssl = _request_ssl_from_snapshot(_shadow_snapshot)
+                except Exception:
+                    _snap_ssl = None
+                try:
+                    assert_provider_endpoints_coherent(_snap_provider, _snap_endpoints, _shadow_snapshot)
+                except AssertionError:
+                    raise
+                except Exception:
+                    pass
                 with self.profile_context(_profile):
                     async with self.session_context() as session:
                         login_result = await self.ensure_login(session)
@@ -375,43 +373,35 @@ class BotHandlerBridge:
                 **result,
             }
 
-        # Single path — one immutable snapshot BEFORE any await, explicit through submit_qr_payload.
-        _single_profile = self.tron.normalize_profile_name(profile)
+        # Single path — one DispatchContext BEFORE any await, explicit through submit_qr_payload.
         try:
             from troTHU.dispatch_context import build_dispatch_context as _bdc
             _ctx = _bdc(self.config)
+            _single_profile = _ctx.profile_name if _ctx.profile_name else self.tron.normalize_profile_name(profile)
+            # Align single provider/endpoints with the active profile's snapshot
             _single_provider = _ctx.provider_key
-            _single_user = self.tron.normalize_text(_ctx.config_snapshot.get("accounts", {}).get("profiles", {}).get(_single_profile, {}).get("user", "")) if isinstance(_ctx.config_snapshot.get("accounts"), dict) else ""
-            if not _single_user:
-                _single_user = _ctx.user_no
-        except Exception:
-            _single_provider = ""
+            _single_endpoints = _ctx.endpoints
+            _single_ssl = _ctx.request_ssl
+            # derive user tied to _single_profile from snapshot
             try:
-                _single_provider = self.tron.get_active_provider_key()
+                _single_user = self.tron.normalize_text(_ctx.config_snapshot.get("accounts", {}).get("profiles", {}).get(_single_profile, {}).get("user", "")) if isinstance(_ctx.config_snapshot.get("accounts"), dict) else ""
+                if not _single_user:
+                    _single_user = _ctx.user_no
             except Exception:
-                _single_provider = "thu"
-            _single_user = ""
+                _single_user = _ctx.user_no
+            from troTHU.dispatch_context import assert_provider_endpoints_coherent as _assert
             try:
-                _single_user = self.tron.normalize_text(self.tron.get_active_profile(self.config).user)
+                _assert(_single_provider, _single_endpoints, _ctx.config_snapshot)
+            except AssertionError:
+                raise
             except Exception:
                 pass
-        # endpoints/ssl via getter before any await (honors test mock) — still immutable.
-        try:
-            _single_endpoints = self.tron.get_active_http_endpoints()
         except Exception:
-            try:
-                from troTHU.dispatch_context import build_dispatch_context as _bdc_e
-                _single_endpoints = _bdc_e(self.config).endpoints
-            except Exception:
-                _single_endpoints = None
-        try:
-            _single_ssl = self.tron.get_ssl_request_setting()
-        except Exception:
-            try:
-                from troTHU.dispatch_context import build_dispatch_context as _bdc_s
-                _single_ssl = _bdc_s(self.config).request_ssl
-            except Exception:
-                _single_ssl = None
+            _single_profile = self.tron.normalize_profile_name(profile)
+            _single_provider = "thu"
+            _single_user = ""
+            _single_endpoints = None
+            _single_ssl = None
         with self.profile_context(profile):
             async with self.session_context() as session:
                 login_result = await self.ensure_login(session)

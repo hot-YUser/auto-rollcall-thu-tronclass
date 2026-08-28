@@ -201,32 +201,40 @@ async def handle_rollcall_decision(
     selected_rollcall = poll.get('rollcall') if isinstance(poll.get('rollcall'), dict) else None
     selected_rollcall_type = ctx.normalize_text(poll.get('rollcall_type'))
     selected_message = ctx.normalize_text(poll.get('message'))
-    # immutable snapshot — no global re-read inside decision; poll extras are internal only, endpoints come from handle_rollcall's captured snapshot via caller
-    _rr_profile_name = ctx.normalize_profile_name(profile_name) if profile_name else ""
-    if not _rr_profile_name:
+    # Immutable snapshot via DispatchContext — no global re-read; caller must supply full context.
+    # Build one frozen context if any field missing; never fall back per-field to globals.
+    # Capture _rr_dctx once before any await for GroupPlan coherence.
+    _rr_dctx = None
+    _needs_ctx = not (profile_name and provider_key and endpoints is not None and request_ssl is not None and my_user_no)
+    if _needs_ctx:
         try:
-            _rr_profile_name = ctx.normalize_profile_name(ctx.get_active_profile(ctx.CONFIG).name)
+            from troTHU.dispatch_context import build_dispatch_context as _bdc
+            _dctx = _bdc(ctx.CONFIG)
+            _rr_dctx = _dctx
+            if not profile_name:
+                profile_name = _dctx.profile_name
+            if not provider_key:
+                provider_key = _dctx.provider_key
+            if endpoints is None:
+                endpoints = _dctx.endpoints
+            if request_ssl is None:
+                request_ssl = _dctx.request_ssl
+            if not my_user_no:
+                my_user_no = _dctx.user_no
         except Exception:
-            _rr_profile_name = "default"
-    _rr_provider_key = ctx.normalize_text(provider_key)
-    if not _rr_provider_key:
+            pass
+    # Ensure a frozen dispatch snapshot exists before any await for GroupPlan
+    if _rr_dctx is None:
         try:
-            _rr_provider_key = ctx.get_active_provider_key()
+            from troTHU.dispatch_context import build_dispatch_context as _bdc0
+            _rr_dctx = _bdc0(ctx.CONFIG)
         except Exception:
-            _rr_provider_key = ctx.DEFAULT_PROVIDER if hasattr(ctx, "DEFAULT_PROVIDER") else "thu"
-    _rr_my_user_no = ctx.normalize_text(my_user_no) or (ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).user) if hasattr(ctx.get_active_profile(ctx.CONFIG), 'user') else "")
+            _rr_dctx = None
+    _rr_profile_name = ctx.normalize_profile_name(profile_name) if profile_name else "default"
+    _rr_provider_key = ctx.normalize_text(provider_key) or (ctx.DEFAULT_PROVIDER if hasattr(ctx, "DEFAULT_PROVIDER") else "thu")
+    _rr_my_user_no = ctx.normalize_text(my_user_no)
     _rr_endpoints = endpoints
     _rr_request_ssl = request_ssl
-    if _rr_endpoints is None:
-        try:
-            _rr_endpoints = ctx.get_active_http_endpoints()
-        except Exception:
-            pass
-    if _rr_request_ssl is None:
-        try:
-            _rr_request_ssl = ctx.get_ssl_request_setting()
-        except Exception:
-            pass
     result_url = ctx.normalize_text(poll.get('url'))
     http_status = poll.get('http_status')
     if selected_status == 'not_call':
@@ -258,7 +266,9 @@ async def handle_rollcall_decision(
         ctx.mark_completed_number_rollcall(rollcall_id, found_code, profile_name=_rr_profile_name, provider_key=_rr_provider_key)
         if ctx.normalize_text(found_code) and ctx.normalize_text(found_code) != 'NA':
             try:
-                group_result = await ctx.submit_group_number(found_code, rcid=rollcall_id, session=session, config=ctx.CONFIG)
+                from troTHU.group_runtime import build_group_plan as _bgp
+                _gp = _bgp(dispatch_ctx=_rr_dctx) if _rr_dctx is not None else _bgp(config=ctx.CONFIG)
+                group_result = await ctx.submit_group_number(found_code, rcid=rollcall_id, session=session, group_plan=_gp)
                 if group_result.get('ok'):
                     pass
                 summary = ctx.format_group_fanout_summary(group_result, rollcall_type='number')
@@ -286,7 +296,9 @@ async def handle_rollcall_decision(
         if radar_success:
             ctx.mark_completed_radar_rollcall(rollcall_id, profile_name=_rr_profile_name, provider_key=_rr_provider_key)
             try:
-                group_result = await ctx.submit_group_radar(selected_rollcall, session=session, config=ctx.CONFIG)
+                from troTHU.group_runtime import build_group_plan as _bgp3
+                _gp3 = _bgp3(dispatch_ctx=_rr_dctx) if _rr_dctx is not None else _bgp3(config=ctx.CONFIG)
+                group_result = await ctx.submit_group_radar(selected_rollcall, session=session, group_plan=_gp3)
                 if group_result.get('ok'):
                     pass
                 summary = ctx.format_group_fanout_summary(group_result, rollcall_type='radar')
@@ -315,7 +327,9 @@ async def handle_rollcall_decision(
         if sr_success:
             ctx.mark_completed_self_registration_rollcall(rollcall_id, profile_name=_rr_profile_name, provider_key=_rr_provider_key)
             try:
-                group_result = await ctx.submit_group_self_registration(selected_rollcall, session=session, config=ctx.CONFIG)
+                from troTHU.group_runtime import build_group_plan as _bgp4
+                _gp4 = _bgp4(dispatch_ctx=_rr_dctx) if _rr_dctx is not None else _bgp4(config=ctx.CONFIG)
+                group_result = await ctx.submit_group_self_registration(selected_rollcall, session=session, group_plan=_gp4)
                 if group_result.get('ok'):
                     pass
                 summary = ctx.format_group_fanout_summary(group_result, rollcall_type='self_registration')
@@ -368,7 +382,9 @@ async def handle_rollcall_decision(
             if answered_automatically and qr_key:
                 ctx.mark_completed_qr_rollcall(qr_key, profile_name=_rr_profile_name, provider_key=_rr_provider_key)
                 try:
-                    group_result = await ctx.submit_group_qr(selected_rollcall, session=session, config=ctx.CONFIG)
+                    from troTHU.group_runtime import build_group_plan as _bgp5
+                    _gp5 = _bgp5(dispatch_ctx=_rr_dctx) if _rr_dctx is not None else _bgp5(config=ctx.CONFIG)
+                    group_result = await ctx.submit_group_qr(selected_rollcall, session=session, group_plan=_gp5)
                     if group_result.get('ok'):
                         pass
                     summary = ctx.format_group_fanout_summary(group_result, rollcall_type='qr')
