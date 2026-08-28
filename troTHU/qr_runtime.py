@@ -214,20 +214,42 @@ async def qr_fanout_result(payload: str, provider: str='', submit_profile: ctx.A
     results = []
     # Capture pending list and per-pending context once; never mutate pending during loop.
     pending_snapshot = list(matches)
+
     for pending in pending_snapshot:
         try:
             if submit_profile is not None:
-                # submit_profile carries (profile, provider:profile:rid) context; pending is immutable
+                # Define one callback invocation contract: legacy arity is adapted BEFORE invoking,
+                # never catch TypeError from inside the callback as arity signal, never call twice.
+                import inspect as _inspect
+                _accepts_pending = None
                 try:
+                    _sig = _inspect.signature(submit_profile)
+                    try:
+                        _sig.bind(pending.profile, payload, pending=pending)
+                        _accepts_pending = True
+                    except TypeError:
+                        try:
+                            _sig.bind(pending.profile, payload)
+                            _accepts_pending = False
+                        except TypeError:
+                            # ambiguous (e.g. *args) — try with pending first
+                            _accepts_pending = True
+                except (ValueError, TypeError):
+                    _accepts_pending = None
+                if _accepts_pending is True:
                     result = await submit_profile(pending.profile, payload, pending=pending)
-                except TypeError:
+                elif _accepts_pending is False:
                     result = await submit_profile(pending.profile, payload)
-                # Fallback for callers that accept only 2 args
-                if result is None:
+                else:
+                    # introspection failed — single invocation only; never retry with arity probe
+                    # (would double-execute side effect). Treat as failed invocation.
                     try:
                         result = await submit_profile(pending.profile, payload, pending=pending)
-                    except TypeError:
-                        result = await submit_profile(pending.profile, payload)
+                    except TypeError as _arity_err:
+                        raise
+                # A callback returning None is one completed invocation, not a retry trigger (legacy compat)
+                if result is None:
+                    result = 0
             else:
                 # per-member isolated execution — no global CONFIG.current mutation across await
                 try:
@@ -302,16 +324,15 @@ async def qr_fanout_result(payload: str, provider: str='', submit_profile: ctx.A
                                 pass
                         await ctx.submit_qr_payload(member_session, payload, profile_name=_member_profile, provider_key=_member_provider, my_user_no=_member_user, endpoints=_member_endpoints, request_ssl=_member_ssl)
                         result = 0
-            status = 'submitted' if result == 0 else 'failed'
+            # bool is subclass of int: False==0 must NOT be treated as success
+            _success = (result == 0 and result is not False and type(result) is not bool)
+            status = 'submitted' if _success else 'failed'
             error = ''
-        except TypeError:
-            # submit_profile arity mismatch already handled above; other TypeErrors fall through
-            raise
         except Exception as exc:
             result = 1
             status = 'failed'
             error = str(exc)
-        results.append({'profile': pending.profile, 'provider': pending.provider, 'ok': result == 0, 'status': status, **({'error': error} if error else {})})
+        results.append({'profile': pending.profile, 'provider': pending.provider, 'ok': (result == 0 and result is not False and type(result) is not bool), 'status': status, **({'error': error} if error else {})})
     try:
         ok = all((result['ok'] for result in results))
     except Exception:

@@ -450,6 +450,8 @@ async def submit_group_qr(payload_or_rollcall: str | ctx.Dict[str, ctx.Any], *, 
                     profile_name=user,
                     my_user_no=user,
                     provider_key=_pk2,
+                    endpoints=monitor_endpoints,
+                    request_ssl=monitor_request_ssl,
                 )
                 if teacher_ok:
                     return True, "submitted_teacher"
