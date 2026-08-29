@@ -227,7 +227,7 @@ def classify_number_response(status_code: int, body_text: str = "") -> NumberAtt
     )
 
 
-_FOUR_DIGIT_CODE_RE = re.compile(r"^\d{4}$")
+_FOUR_DIGIT_CODE_RE = re.compile(r"^[0-9]{4}$")  # ASCII digits only; reject Unicode Nd/fullwidth/Arabic-Indic
 
 
 @dataclass(frozen=True)

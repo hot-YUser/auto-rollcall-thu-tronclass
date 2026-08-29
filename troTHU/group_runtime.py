@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import re
 from dataclasses import dataclass
 
 try:  # pragma: no cover - package import path
@@ -459,7 +460,23 @@ async def _fanout(group_plan: GroupPlan, submit_one) -> ctx.List[ctx.Dict[str, c
     return results
 
 
+_FOUR_DIGIT_RE = re.compile(r"^[0-9]{4}$")
+
+def _coerce_number_code_strict(value: str) -> str | None:
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        text = "{:04d}".format(value) if 0 <= value <= 9999 else str(value)
+    else:
+        text = str(value).strip()
+    return text if _FOUR_DIGIT_RE.match(text) else None
+
+
 async def submit_group_number(code: str, *, rcid: str | int | None = None, session: ctx.Any = None, config: ctx.Mapping[str, ctx.Any] | None = None, group_plan: GroupPlan | None = None, provider_key: str = "", endpoints: ctx.Any = None, request_ssl: ctx.Any = None) -> ctx.Dict[str, ctx.Any]:
+    # ASCII-only 0000-9999; reject Unicode Nd/fullwidth/Arabic-Indic before any mutation.
+    if _coerce_number_code_strict(code) is None:
+        gp_tmp = group_plan if isinstance(group_plan, GroupPlan) else build_group_plan(config)
+        return {"ok": False, "status": "invalid_number_code", "message": "number_code must be ASCII 0000-9999", "plan": gp_tmp.plan}
     # Prefer explicit GroupPlan; fallback to legacy single-snapshot before await
     gp = group_plan if isinstance(group_plan, GroupPlan) else build_group_plan(config)
     plan = gp.plan

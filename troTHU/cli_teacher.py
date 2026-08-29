@@ -145,6 +145,15 @@ async def _teacher_rollcall_create_command(args: ctx.Any) -> ctx.Dict[str, ctx.A
             raise TeacherRollcallError("--payload-json is not valid JSON: {}".format(exc))
         if not isinstance(overrides, dict):
             raise TeacherRollcallError("--payload-json must be a JSON object.")
+        # Validate number_code override strictly: ASCII 0000-9999 only (payload/UI/config paths).
+        if "number_code" in overrides:
+            raw_nc = overrides.get("number_code")
+            # Pass raw value directly so int 0 -> "0000" and bool/Unicode are rejected exactly like canonical coerce.
+            try:
+                validated = build_teacher_rollcall_payload(kind=kind, number_code=raw_nc)["number_code"]
+                overrides["number_code"] = validated
+            except TeacherRollcallError as e:
+                raise TeacherRollcallError(str(e))
         payload.update(overrides)
 
     async def action(client, actor):
