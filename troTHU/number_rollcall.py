@@ -38,18 +38,6 @@ class NumberAttemptResult:
         }
 
 
-SUCCESS_MARKERS = (
-    "success",
-    "ok",
-    "on_call",
-    "on_call_fine",
-    "accepted",
-    "completed",
-    "已完成",
-    "成功",
-    "點名成功",
-    "簽到成功",
-)
 WRONG_CODE_MARKERS = (
     "wrong",
     "incorrect",
@@ -110,17 +98,55 @@ def _payload_bool(payload: Dict[str, Any], *keys: str) -> Optional[bool]:
     return None
 
 
+def _success_flag_is_false(value) -> bool:
+    if isinstance(value, bool):
+        return not value
+    if isinstance(value, str):
+        t = value.strip().lower()
+        return t == "false" or t == "0"
+    return False
+
+
+def _error_value_is_failure(value) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, bool):
+        return bool(value)
+    if isinstance(value, (int, float)):
+        try:
+            return int(value) != 0
+        except Exception:
+            return True
+    if isinstance(value, str):
+        t = value.strip()
+        return bool(t) and t != "0"
+    return True
+
+
+def _explicit_business_error_value(payload: dict) -> bool:
+    if not isinstance(payload, dict):
+        return False
+    for key in ("success", "ok", "is_success"):
+        if key in payload and _success_flag_is_false(payload.get(key)):
+            return True
+    if "error_code" in payload and _error_value_is_failure(payload.get("error_code")):
+        return True
+    if "error" in payload and _error_value_is_failure(payload.get("error")):
+        return True
+    return False
+
+
 def classify_number_response(status_code: int, body_text: str = "") -> NumberAttemptResult:
     text = str(body_text or "").strip()
     payload = _loads_json(text) if text else None
     message = _payload_message(payload) if payload else text[:200]
     combined_text = " ".join(part for part in (text, message) if part).strip()
 
-    if status_code in (401, 403):
+    if status_code in (401, 403) or 300 <= status_code <= 399:
         return NumberAttemptResult(
             NumberAttemptStatus.UNAUTHORIZED,
             status_code,
-            message or "authentication expired",
+            message or ("authentication expired" if status_code in (401, 403) else "redirected during number rollcall"),
             payload,
         )
 
@@ -142,7 +168,7 @@ def classify_number_response(status_code: int, body_text: str = "") -> NumberAtt
 
     if 200 <= status_code <= 299:
         if not text:
-            return NumberAttemptResult(NumberAttemptStatus.SUCCESS, status_code, "empty 2xx", payload)
+            return NumberAttemptResult(NumberAttemptStatus.UNKNOWN_FAILURE, status_code, "empty 2xx", payload)
 
         if _text_has_any(combined_text, UNAUTHORIZED_MARKERS):
             return NumberAttemptResult(
@@ -152,39 +178,46 @@ def classify_number_response(status_code: int, body_text: str = "") -> NumberAtt
                 payload,
             )
 
-        success_flag = _payload_bool(payload or {}, "success", "ok", "is_success")
-        if success_flag is True:
-            return NumberAttemptResult(NumberAttemptStatus.SUCCESS, status_code, message, payload)
+        if payload is None:
+            if _text_has_any(combined_text, WRONG_CODE_MARKERS):
+                return NumberAttemptResult(NumberAttemptStatus.WRONG_CODE, status_code, message or "wrong number code", None)
+            return NumberAttemptResult(NumberAttemptStatus.UNKNOWN_FAILURE, status_code, message or "non-JSON 2xx", None)
+        if not isinstance(payload, dict):
+            return NumberAttemptResult(NumberAttemptStatus.UNKNOWN_FAILURE, status_code, message or "non-object 2xx", payload)
 
-        if _text_has_any(combined_text, WRONG_CODE_MARKERS):
+        payload_msg = _payload_message(payload)
+        combined2 = " ".join(part for part in (text, payload_msg) if part).strip().lower()
+        if any(m.lower() in combined2 for m in UNAUTHORIZED_MARKERS):
             return NumberAttemptResult(
-                NumberAttemptStatus.WRONG_CODE,
+                NumberAttemptStatus.UNAUTHORIZED,
                 status_code,
-                message or "wrong number code",
+                payload_msg or "authentication required",
                 payload,
             )
+
+        success_flag = _payload_bool(payload, "success", "ok", "is_success")
+        if success_flag is True:
+            return NumberAttemptResult(NumberAttemptStatus.SUCCESS, status_code, payload_msg, payload)
+
+        if _text_has_any(combined2, WRONG_CODE_MARKERS):
+            return NumberAttemptResult(NumberAttemptStatus.WRONG_CODE, status_code, payload_msg or "wrong number code", payload)
 
         if success_flag is False:
+            return NumberAttemptResult(NumberAttemptStatus.WRONG_CODE, status_code, payload_msg or "server rejected number code", payload)
+
+        if _explicit_business_error_value(payload):
             return NumberAttemptResult(
                 NumberAttemptStatus.WRONG_CODE,
                 status_code,
-                message or "server rejected number code",
+                payload_msg or "server rejected number code",
                 payload,
             )
 
-        marker_text = message if payload else combined_text
-        if _text_has_any(marker_text, SUCCESS_MARKERS):
-            return NumberAttemptResult(NumberAttemptStatus.SUCCESS, status_code, message, payload)
+        status_field = str(payload.get("status") or "").strip()
+        if status_field in ("on_call", "on_call_fine", "accepted", "completed"):
+            return NumberAttemptResult(NumberAttemptStatus.SUCCESS, status_code, payload_msg, payload)
 
-        return NumberAttemptResult(NumberAttemptStatus.SUCCESS, status_code, message or "2xx", payload)
-
-    if 300 <= status_code <= 399:
-        return NumberAttemptResult(
-            NumberAttemptStatus.UNAUTHORIZED,
-            status_code,
-            message or "redirected during number rollcall",
-            payload,
-        )
+        return NumberAttemptResult(NumberAttemptStatus.UNKNOWN_FAILURE, status_code, payload_msg or "ambiguous 2xx", payload)
 
     return NumberAttemptResult(
         NumberAttemptStatus.UNKNOWN_FAILURE,

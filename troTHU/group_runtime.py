@@ -497,7 +497,20 @@ async def submit_group_number(code: str, *, rcid: str | int | None = None, sessi
                         request_ssl=gp_request_ssl,
                     )
                     if verification.get('ok') and verification.get('status') == 'on_call_fine':
-                        # provider_key from GroupPlan (authoritative, coherent with endpoints)
+                        _pk = gp.provider_key
+                        ctx.mark_completed_number_rollcall(rollcall_id, code, profile_name=user, provider_key=_pk)
+                        return True, "submitted"
+                    return True, "submitted_unconfirmed"
+                if classification.status == ctx.NumberAttemptStatus.UNKNOWN_FAILURE:
+                    verification = await ctx.verify_rollcall_on_call_fine(
+                        member_session,
+                        rollcall_id,
+                        rollcall_type='number',
+                        my_user_no=user,
+                        endpoints=gp_endpoints,
+                        request_ssl=gp_request_ssl,
+                    )
+                    if verification.get('ok') and verification.get('status') == 'on_call_fine':
                         _pk = gp.provider_key
                         ctx.mark_completed_number_rollcall(rollcall_id, code, profile_name=user, provider_key=_pk)
                         return True, "submitted"

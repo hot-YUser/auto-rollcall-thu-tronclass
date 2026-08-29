@@ -218,6 +218,19 @@ def qr_remote_report() -> ctx.Dict[str, ctx.Any]:
         host = urlsplit(cfg['base_url']).hostname or ''
     except (TypeError, ValueError):
         host = ''
+    # Safe last outcome from qr_remote_runtime (redacted, no key/token/url)
+    try:
+        last_outcome = ctx.get_qr_remote_last_outcome()
+        if not isinstance(last_outcome, dict):
+            last_outcome = {}
+    except Exception:
+        last_outcome = {}
+    # Ensure no secrets leak even if caller injected
+    safe_outcome = {}
+    if isinstance(last_outcome, dict):
+        for k in ("kind", "status", "error", "retry_after", "has_retry_after", "terminal", "detail"):
+            if k in last_outcome:
+                safe_outcome[k] = last_outcome[k]
     return {
         'enabled': bool(cfg['enabled']),
         'configured': ctx.qr_remote_configured(ctx.CONFIG),
@@ -227,6 +240,7 @@ def qr_remote_report() -> ctx.Dict[str, ctx.Any]:
         'confirm_window_seconds': cfg['confirm_window_seconds'],
         'poll_interval_seconds': cfg['poll_interval_seconds'],
         'timeout_seconds': cfg['timeout_seconds'],
+        'last_outcome': safe_outcome,
     }
 
 

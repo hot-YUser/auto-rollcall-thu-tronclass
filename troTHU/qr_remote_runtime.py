@@ -12,6 +12,8 @@ from __future__ import annotations
 import ipaddress
 import math
 import re
+from dataclasses import dataclass
+from typing import Optional
 from urllib.parse import urlsplit
 
 try:  # pragma: no cover - package import path
@@ -30,8 +32,67 @@ def _rollcall_id(rollcall) -> str:
     return ctx.normalize_text(rollcall)
 
 
-QR_REMOTE_TOKEN_RE = re.compile(r"\d{10}[0-9a-f]{32}\Z")
+QR_REMOTE_TOKEN_RE = re.compile(r"[0-9]{10}[0-9a-f]{32}\Z")
 QR_REMOTE_MAX_BODY_BYTES = 64 * 1024
+
+# Redacted last outcome (no secrets, bounded dict) for status/doctor report
+_QR_REMOTE_LAST_OUTCOME: dict = {}
+
+
+def _set_last_outcome(info: dict) -> None:
+    _QR_REMOTE_LAST_OUTCOME.clear()
+    # keep only safe keys
+    safe = {}
+    for k in ("kind", "status", "error", "retry_after", "has_retry_after", "terminal", "detail"):
+        if k in info:
+            safe[k] = info[k]
+    _QR_REMOTE_LAST_OUTCOME.update(safe)
+
+
+def get_qr_remote_last_outcome() -> dict:
+    return dict(_QR_REMOTE_LAST_OUTCOME)
+
+
+def _redacted_outcome_for_report() -> dict:
+    return dict(_QR_REMOTE_LAST_OUTCOME)
+
+
+@dataclass(frozen=True)
+class QrRemoteSuccess:
+    data: str
+    kind: str = "ok"
+
+    def __bool__(self) -> bool:
+        return True
+
+    def __str__(self) -> str:
+        return self.data
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, str):
+            return self.data == other
+        if isinstance(other, QrRemoteSuccess):
+            return self.data == other.data
+        return NotImplemented
+
+
+@dataclass(frozen=True)
+class QrRemoteError:
+    kind: str  # unauthorized | rate_limited | transient | unavailable | invalid_config
+    status: int
+    message: str = ""
+    retry_after: Optional[float] = None
+    terminal: bool = False
+
+    def __bool__(self) -> bool:
+        return False
+
+    @property
+    def retriable(self) -> bool:
+        return self.kind in ("rate_limited", "transient")
+
+
+QrRemoteResult = object  # union placeholder; actual returns are QrRemoteSuccess or QrRemoteError
 
 
 def qr_remote_base_url_allowed(value) -> bool:
@@ -73,6 +134,27 @@ def _bounded_float(value, default: float, minimum: float, maximum: float) -> flo
 
 def _monotonic() -> float:
     return ctx.time.monotonic()
+
+
+def _bounded_retry_after(value) -> Optional[float]:
+    """Parse Retry-After as bounded numeric seconds; None if missing/malformed/negative/huge."""
+    if value is None:
+        return None
+    try:
+        text = str(value).strip()
+        if not text:
+            return None
+        # Only numeric seconds; ignore HTTP-date form
+        num = float(text)
+        if not math.isfinite(num):
+            return None
+        if num < 0:
+            return None
+        if num > 120:
+            num = 120.0
+        return float(num)
+    except (TypeError, ValueError):
+        return None
 
 
 def normalize_qr_remote_config_section(section, default=None) -> ctx.Dict[str, ctx.Any]:
@@ -125,11 +207,13 @@ async def fetch_remote_qr_data(
     timeout: float = 8.0,
     session=None,
 ):
-    """Fetch one bounded, non-redirecting oracle response; return only a valid 42-byte data token."""
+    """Typed fetch: returns QrRemoteSuccess (with data) or QrRemoteError (typed failure)."""
     base = ctx.normalize_text(base_url).rstrip("/")
     key = ctx.normalize_text(api_key)
     if not qr_remote_base_url_allowed(base) or not ctx.has_real_credential(key):
-        return None
+        err = QrRemoteError(kind="invalid_config", status=0, message="invalid remote config", terminal=True)
+        _set_last_outcome({"kind": err.kind, "status": err.status, "error": err.message, "terminal": True})
+        return err
     url = base + "/token"
     headers = {"Authorization": "Bearer " + key, "Accept": "application/json"}
     timeout_obj = ctx.aiohttp.ClientTimeout(total=_bounded_float(timeout, 8.0, 1.0, 60.0))
@@ -148,23 +232,79 @@ async def fetch_remote_qr_data(
             timeout=timeout_obj,
             allow_redirects=False,
         ) as resp:
+            # Capture Retry-After before reading body
+            retry_after_raw = resp.headers.get("Retry-After") if hasattr(resp, "headers") else None
+            retry_after = _bounded_retry_after(retry_after_raw)
+            if resp.status == 401:
+                err = QrRemoteError(kind="unauthorized", status=401, message="managed key invalid/revoked/expired", terminal=True, retry_after=None)
+                _set_last_outcome({"kind": err.kind, "status": 401, "error": "unauthorized", "terminal": True})
+                return err
+            if resp.status == 429:
+                err = QrRemoteError(kind="rate_limited", status=429, message="rate_limited", retry_after=retry_after, terminal=False)
+                _set_last_outcome({"kind": err.kind, "status": 429, "retry_after": retry_after, "has_retry_after": retry_after is not None})
+                return err
+            if resp.status == 503:
+                # Need body to distinguish stale/no_data (transient) vs busy (rate_limited with Retry-After)
+                if resp.content_length is not None and resp.content_length > QR_REMOTE_MAX_BODY_BYTES:
+                    err = QrRemoteError(kind="transient", status=503, message="response too large", terminal=False)
+                    _set_last_outcome({"kind": err.kind, "status": 503, "error": "too_large"})
+                    return err
+                raw = await resp.content.read(QR_REMOTE_MAX_BODY_BYTES + 1)
+                if len(raw) > QR_REMOTE_MAX_BODY_BYTES:
+                    err = QrRemoteError(kind="transient", status=503, message="response too large", terminal=False)
+                    _set_last_outcome({"kind": err.kind, "status": 503, "error": "too_large"})
+                    return err
+                body = None
+                try:
+                    body = ctx.json.loads(raw.decode("utf-8"))
+                except Exception:
+                    body = None
+                error_code = ""
+                if isinstance(body, dict):
+                    error_code = str(body.get("error") or "").strip().lower()
+                if error_code == "busy":
+                    err = QrRemoteError(kind="rate_limited", status=503, message="busy", retry_after=retry_after, terminal=False)
+                    _set_last_outcome({"kind": err.kind, "status": 503, "retry_after": retry_after, "has_retry_after": retry_after is not None})
+                    return err
+                # stale/no_data/unknown 503 is transient
+                err = QrRemoteError(kind="transient", status=503, message=error_code or "service unavailable", retry_after=None, terminal=False)
+                _set_last_outcome({"kind": err.kind, "status": 503, "error": error_code or "transient"})
+                return err
             if resp.status != 200:
-                return None
+                err = QrRemoteError(kind="unavailable", status=resp.status, message="unexpected status", terminal=False)
+                _set_last_outcome({"kind": err.kind, "status": resp.status, "error": "unexpected_status"})
+                return err
             if resp.content_length is not None and resp.content_length > QR_REMOTE_MAX_BODY_BYTES:
-                return None
+                err = QrRemoteError(kind="transient", status=200, message="response too large", terminal=False)
+                _set_last_outcome({"kind": err.kind, "status": 200, "error": "too_large"})
+                return err
             raw = await resp.content.read(QR_REMOTE_MAX_BODY_BYTES + 1)
             if len(raw) > QR_REMOTE_MAX_BODY_BYTES:
-                return None
+                err = QrRemoteError(kind="transient", status=200, message="response too large", terminal=False)
+                _set_last_outcome({"kind": err.kind, "status": 200, "error": "too_large"})
+                return err
         body = ctx.json.loads(raw.decode("utf-8"))
     except Exception:
-        return None
+        # Network/timeout/JSON errors are transient
+        # Do not leak url/key/token/body
+        err = QrRemoteError(kind="transient", status=0, message="fetch failed", terminal=False)
+        _set_last_outcome({"kind": err.kind, "status": 0, "error": "fetch_failed"})
+        return err
     finally:
         if owns_session and remote is not None:
             await remote.close()
     if not isinstance(body, dict) or body.get("ok") is not True:
-        return None
+        err = QrRemoteError(kind="transient", status=200, message="missing ok", terminal=False)
+        _set_last_outcome({"kind": err.kind, "status": 200, "error": "missing_ok"})
+        return err
     data = ctx.normalize_text(body.get("data"))
-    return data if QR_REMOTE_TOKEN_RE.fullmatch(data) else None
+    if not QR_REMOTE_TOKEN_RE.fullmatch(data):
+        err = QrRemoteError(kind="transient", status=200, message="invalid token shape", terminal=False)
+        _set_last_outcome({"kind": err.kind, "status": 200, "error": "invalid_token"})
+        return err
+    ok = QrRemoteSuccess(data=data)
+    _set_last_outcome({"kind": "ok", "status": 200, "detail": "token_ok"})
+    return ok
 
 
 async def submit_remote_qr(
@@ -196,6 +336,7 @@ async def submit_remote_qr(
     last_qr_data = None
     last_result: ctx.Dict[str, ctx.Any] = {}
     last_verification: ctx.Dict[str, ctx.Any] = {}
+    unauthorized_diagnosed = False
     timeout_obj = ctx.aiohttp.ClientTimeout(total=cfg["timeout_seconds"])
     async with ctx.aiohttp.ClientSession(
         timeout=timeout_obj,
@@ -203,13 +344,14 @@ async def submit_remote_qr(
         trust_env=False,
     ) as remote:
         while _monotonic() < deadline:
-            data = await fetch_remote_qr_data(
+            result = await fetch_remote_qr_data(
                 base_url,
                 api_key,
                 timeout=cfg["timeout_seconds"],
                 session=remote,
             )
-            if data:
+            if isinstance(result, QrRemoteSuccess):
+                data = result.data
                 qr_data = ctx.QrCodeData(fields={"rollcallId": student_rollcall_id, "data": data})
                 last_result = await ctx.answer_qr_rollcall(
                     student_session,
@@ -249,7 +391,37 @@ async def submit_remote_qr(
                         provider_key=provider_key,
                     )
                     return True
+            elif isinstance(result, QrRemoteError):
+                if result.kind == "unauthorized":
+                    if not unauthorized_diagnosed:
+                        ctx.log_print("QR 遠端服務：managed key invalid/revoked/expired（已停止重試）。")
+                        unauthorized_diagnosed = True
+                    break
+                elif result.kind in ("rate_limited",):
+                    # Bounded numeric Retry-After, sleep no longer than remaining deadline, do not hammer
+                    # Already bounded to 120 above; now additionally cap to remaining and clamp to poll interval.
+                    remaining = deadline - _monotonic()
+                    if remaining <= 0:
+                        break
+                    if result.retry_after is not None:
+                        sleep_s = min(result.retry_after, remaining)
+                    else:
+                        sleep_s = min(cfg["poll_interval_seconds"], remaining)
+                    if sleep_s > 0:
+                        await ctx.asyncio.sleep(sleep_s)
+                        continue
+                elif result.kind == "transient":
+                    # 503 stale/no_data is transient; just continue polling
+                    pass
+                elif result.kind == "unavailable":
+                    # typed unavailable; do not hammer, poll interval
+                    pass
+                else:
+                    pass
             await ctx.asyncio.sleep(cfg["poll_interval_seconds"])
+            # Re-check deadline after sleep
+            if _monotonic() >= deadline:
+                break
     if submitted and last_qr_data is not None:
         await ctx.finalize_qr_submission(
             student_session,

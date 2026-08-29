@@ -935,10 +935,11 @@ class QrRemoteRuntimeTest(unittest.IsolatedAsyncioTestCase):
             async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as student_session:
                 await server.login_session(student_session)
                 data_token = "1700000000" + "a" * 32
+                from troTHU.qr_remote_runtime import QrRemoteSuccess
                 with (
                     patch.object(tron, "get_active_http_endpoints", return_value=server.endpoints()),
                     patch.object(tron, "get_ssl_request_setting", return_value=None),
-                    patch.object(qr_remote_runtime, "fetch_remote_qr_data", AsyncMock(return_value=data_token)),
+                    patch.object(qr_remote_runtime, "fetch_remote_qr_data", AsyncMock(return_value=QrRemoteSuccess(data=data_token))),
                 ):
                     ok = await tron.submit_remote_qr(student_session, {"rollcall_id": "77"})
         self.assertTrue(ok)
@@ -950,10 +951,14 @@ class QrRemoteRuntimeTest(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(await tron.submit_remote_qr(None, {"rollcall_id": "77"}))
 
     async def test_fetch_remote_qr_data_success_and_error(self) -> None:
+        from troTHU.qr_remote_runtime import QrRemoteError, QrRemoteSuccess
         token = "1700000000" + "c" * 32
         runner, base = await _start_fake_oracle(200, {"ok": True, "data": token})
         try:
-            self.assertEqual(await tron.fetch_remote_qr_data(base, "k", timeout=1.0), token)
+            res = await tron.fetch_remote_qr_data(base, "k", timeout=1.0)
+            self.assertIsInstance(res, QrRemoteSuccess)
+            self.assertEqual(res.data, token)
+            self.assertEqual(res, token)  # compat: QrRemoteSuccess == string
         finally:
             await runner.cleanup()
         for body in (
@@ -963,17 +968,22 @@ class QrRemoteRuntimeTest(unittest.IsolatedAsyncioTestCase):
         ):
             runner, base = await _start_fake_oracle(200, body)
             try:
-                self.assertIsNone(await tron.fetch_remote_qr_data(base, "k", timeout=1.0))
+                res = await tron.fetch_remote_qr_data(base, "k", timeout=1.0)
+                self.assertIsInstance(res, QrRemoteError)
+                self.assertFalse(bool(res))
             finally:
                 await runner.cleanup()
         runner, base = await _start_fake_oracle(503, {"error": "stale"})
         try:
-            self.assertIsNone(await tron.fetch_remote_qr_data(base, "k", timeout=1.0))
+            res = await tron.fetch_remote_qr_data(base, "k", timeout=1.0)
+            self.assertIsInstance(res, QrRemoteError)
+            self.assertEqual(res.kind, "transient")
         finally:
             await runner.cleanup()
 
     async def test_fetch_remote_qr_data_refuses_redirects(self) -> None:
         from aiohttp import web
+        from troTHU.qr_remote_runtime import QrRemoteError
 
         token = "1700000000" + "d" * 32
         async def redirect(_request):
@@ -991,9 +1001,9 @@ class QrRemoteRuntimeTest(unittest.IsolatedAsyncioTestCase):
         await site.start()
         port = site._server.sockets[0].getsockname()[1]
         try:
-            self.assertIsNone(
-                await tron.fetch_remote_qr_data("http://127.0.0.1:{}".format(port), "k", timeout=1.0)
-            )
+            res = await tron.fetch_remote_qr_data("http://127.0.0.1:{}".format(port), "k", timeout=1.0)
+            self.assertIsInstance(res, QrRemoteError)
+            self.assertEqual(res.kind, "unavailable")
         finally:
             await runner.cleanup()
 
@@ -1009,13 +1019,14 @@ class QrRemoteRuntimeTest(unittest.IsolatedAsyncioTestCase):
         }})
         sessions = []
 
+        from troTHU.qr_remote_runtime import QrRemoteError
         async def no_data(*_args, **kwargs):
             sessions.append(kwargs.get("session"))
-            return None
+            return QrRemoteError(kind="transient", status=200, message="no_data", terminal=False)
 
         with (
             patch.object(qr_remote_runtime, "fetch_remote_qr_data", side_effect=no_data),
-            patch.object(qr_remote_runtime, "_monotonic", side_effect=[0.0, 0.1, 0.5, 1.1]),
+            patch.object(qr_remote_runtime, "_monotonic", side_effect=[0.0, 0.1, 0.5, 0.5, 1.1]),
             patch.object(qr_remote_runtime.ctx.asyncio, "sleep", AsyncMock()),
         ):
             ok = await tron.submit_remote_qr(None, {"rollcall_id": "77"})

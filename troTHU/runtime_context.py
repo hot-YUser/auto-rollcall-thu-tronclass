@@ -1170,6 +1170,7 @@ _LEGACY_EXPORTS = {
     'qr_remote_configured': ('troTHU.qr_remote_runtime', 'qr_remote_configured'),
     'submit_remote_qr': ('troTHU.qr_remote_runtime', 'submit_remote_qr'),
     'fetch_remote_qr_data': ('troTHU.qr_remote_runtime', 'fetch_remote_qr_data'),
+    'get_qr_remote_last_outcome': ('troTHU.qr_remote_runtime', 'get_qr_remote_last_outcome'),
     'teacher_assist_configured': ('troTHU.qr_teacher_runtime', 'teacher_assist_configured'),
     'teacher_assist_report': ('troTHU.status_reports', 'teacher_assist_report'),
     'qr_remote_report': ('troTHU.status_reports', 'qr_remote_report'),

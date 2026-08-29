@@ -12,9 +12,10 @@ from tests.fake_tron_server import FakeTronServer
 # --- merged from tests/test_number_rollcall.py ---
 class NumberRollcallClassificationTest(unittest.TestCase):
     def test_success_accepts_empty_2xx_and_success_payloads(self) -> None:
+        # Empty 2xx is submitted-unconfirmed (unknown), not success; explicit success flag still succeeds.
         self.assertEqual(
             classify_number_response(200).status,
-            NumberAttemptStatus.SUCCESS,
+            NumberAttemptStatus.UNKNOWN_FAILURE,
         )
         self.assertEqual(
             classify_number_response(200, '{"success": true}').status,

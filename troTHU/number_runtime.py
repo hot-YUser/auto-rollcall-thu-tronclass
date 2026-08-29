@@ -91,10 +91,12 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int, *, my_user_
                                 fatal_error = exc
                             return 'fatal'
                         if not (verification.get('ok') and verification.get('status') == 'on_call_fine'):
-                            submitted_unconfirmed_code = payload['numberCode']
+                            if not submitted_unconfirmed_code:
+                                submitted_unconfirmed_code = payload['numberCode']
                             await ctx.mes('數字點名碼 {} 已送出，但尚未確認 on_call_fine；下一輪會繼續檢查。'.format(submitted_unconfirmed_code))
                             return 'submitted_unconfirmed'
-                        found_code = payload['numberCode']
+                        if found_code == 'NA':
+                            found_code = payload['numberCode']
                         banner = ctx.format_rollcall_success_banner(
                             ctx.AttendanceType.NUMBER,
                             rcid,
@@ -107,6 +109,41 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int, *, my_user_
                         ctx.remember_rollcall_progress(verification)
                         await ctx.mes('數字點名成功！', highlight_block=banner)
                         return 'success'
+                    elif classification.status == ctx.NumberAttemptStatus.UNKNOWN_FAILURE:
+                        # Unknown/empty 2xx: submitted-unconfirmed, verify bounded, never blind-advance
+                        stop_event.set()
+                        try:
+                            verification = await ctx.verify_rollcall_on_call_fine(
+                                session,
+                                rcid,
+                                rollcall_type='number',
+                                my_user_no=_my_user_no,
+                                endpoints=_ep,
+                                request_ssl=_ssl,
+                            )
+                        except ctx.UnauthorizedError as exc:
+                            if fatal_error is None and found_code == 'NA':
+                                fatal_error = exc
+                            return 'fatal'
+                        if verification.get('ok') and verification.get('status') == 'on_call_fine':
+                            if found_code == 'NA':
+                                found_code = payload['numberCode']
+                            banner = ctx.format_rollcall_success_banner(
+                                ctx.AttendanceType.NUMBER,
+                                rcid,
+                                method=method,
+                                detail='on_call_fine',
+                                code=found_code,
+                                attendance_rate=ctx.format_success_banner_attendance_rate(verification),
+                            )
+                            ctx.log_print(banner)
+                            ctx.remember_rollcall_progress(verification)
+                            await ctx.mes('數字點名成功！', highlight_block=banner)
+                            return 'success'
+                        if not submitted_unconfirmed_code:
+                            submitted_unconfirmed_code = payload['numberCode']
+                        await ctx.mes('數字點名碼 {} 已送出（回應含糊），等待確認 on_call_fine。'.format(submitted_unconfirmed_code))
+                        return 'submitted_unconfirmed'
                     elif classification.status == ctx.NumberAttemptStatus.WRONG_CODE:
                         return 'wrong'
                     elif classification.status == ctx.NumberAttemptStatus.UNAUTHORIZED:
@@ -163,7 +200,7 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int, *, my_user_
         ctx.clone_session_cookies(main_session, session)
         if direct_lookup_enabled and provider_supports_direct and (not stop_event.is_set()):
             await attempt_direct_code_lookup(session)
-            if found_code == 'NA' and fatal_error is None and (not fallback_bruteforce):
+            if found_code == 'NA' and fatal_error is None and (submitted_unconfirmed_code or not fallback_bruteforce):
                 stop_event.set()
         ctx.status_print(ctx.build_number_progress_message(rcid, request_count, latest_try_code, started_at))
         progress_task = ctx.asyncio.create_task(progress_reporter())
@@ -174,6 +211,10 @@ async def number(main_session: ctx.aiohttp.ClientSession, rcid: int, *, my_user_
                 batch = list(range(next_code, next_code + batch_size))
                 next_code += batch_size
                 results = await ctx.asyncio.gather(*[try_number_code(session, candidate, method='brute_force') for candidate in batch])
+                # Priority Fatal > Ambiguous > Success: if any submitted_unconfirmed occurred, discard concurrent success
+                if submitted_unconfirmed_code and found_code != 'NA':
+                    # Ambiguous terminal outranks success in same batch; keep unconfirmed
+                    found_code = 'NA'
                 transient_count = sum((1 for result in results if result == 'transient'))
                 if fatal_error is not None or stop_event.is_set():
                     break
