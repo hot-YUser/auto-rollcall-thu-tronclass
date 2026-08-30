@@ -1,13 +1,21 @@
 from __future__ import annotations
 import asyncio
 import unittest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import troTHU.runtime_context as ctx
 from troTHU import answer_flow, autoanswer_runtime, autoanswer_store
 from troTHU.quiz_models import (
     Activity, ActivityType, AnswerResult, AnswerSource,
 )
+
+
+def _key(activity_id: str, profile: str = "default", provider: str = "thu") -> str:
+    return autoanswer_runtime.activity_runtime_key(
+        activity_id,
+        profile_name=profile,
+        provider_key=provider,
+    )
 
 
 class FakeClient:
@@ -148,10 +156,30 @@ class VoteDetectionTest(unittest.IsolatedAsyncioTestCase):
             "votes/V_done": {"students": [{"id": 1, "user_no": "me@x.com"}]},      # I already voted
             "votes/V_open": {"students": [{"id": 2, "user_no": "other@x.com"}]},   # someone else, not me
         })
-        with patch.object(autoanswer_runtime, "_current_user_no", return_value="me@x.com"):
-            out = await autoanswer_runtime._poll_course(client, "55379", {ActivityType.VOTE})
-        self.assertEqual([a.activity_id for a in out], ["V_open"])   # already-voted one skipped
-        self.assertIn("V_done", autoanswer_runtime._VOTED_CACHE)     # cached so it isn't re-fetched
+        out = await autoanswer_runtime._poll_course(
+            client,
+            "55379",
+            {ActivityType.VOTE},
+            profile_name="profile-a",
+            user_no="me@x.com",
+            provider_key="thu",
+        )
+        self.assertEqual([a.activity_id for a in out], ["V_open"])
+        self.assertIn(_key("V_done", profile="profile-a"), autoanswer_runtime._VOTED_CACHE)
+
+        other = await autoanswer_runtime._poll_course(
+            client,
+            "55379",
+            {ActivityType.VOTE},
+            profile_name="profile-b",
+            user_no="other-user@x.com",
+            provider_key="thu",
+        )
+        self.assertEqual(
+            [a.activity_id for a in other],
+            ["V_done", "V_open"],
+            "profile-a vote cache must not suppress profile-b",
+        )
 
     async def test_non_started_vote_ignored(self):
         client = FakeClient({"courses/55379/interactions": {"interactions": [
@@ -160,6 +188,22 @@ class VoteDetectionTest(unittest.IsolatedAsyncioTestCase):
         with patch.object(autoanswer_runtime, "_current_user_no", return_value="me@x.com"):
             out = await autoanswer_runtime._poll_course(client, "55379", {ActivityType.VOTE})
         self.assertEqual(out, [])
+
+
+class PersistedCompletionScopeTest(unittest.TestCase):
+    def setUp(self):
+        ctx.COMPLETED_QUESTION_SUBMISSIONS.clear()
+        autoanswer_runtime.reset_autoanswer_dispatch()
+
+    def test_persisted_ids_load_once_per_profile_namespace(self):
+        with patch.object(autoanswer_store, "load_completed", return_value={"EX_PERSIST"}) as load:
+            autoanswer_runtime._ensure_persisted_loaded(profile_name="profile-a", provider_key="thu")
+            autoanswer_runtime._ensure_persisted_loaded(profile_name="profile-a", provider_key="thu")
+            autoanswer_runtime._ensure_persisted_loaded(profile_name="profile-b", provider_key="thu")
+
+        self.assertEqual(load.call_count, 2)
+        self.assertTrue(ctx.COMPLETED_QUESTION_SUBMISSIONS[_key("EX_PERSIST", "profile-a")])
+        self.assertTrue(ctx.COMPLETED_QUESTION_SUBMISSIONS[_key("EX_PERSIST", "profile-b")])
 
 
 class DispatchTest(unittest.IsolatedAsyncioTestCase):
@@ -174,9 +218,42 @@ class DispatchTest(unittest.IsolatedAsyncioTestCase):
         return Activity(activity_id=aid, activity_type=ActivityType.EXAM, course_id="c")
 
     async def test_completed_activity_is_not_dispatched(self):
-        ctx.COMPLETED_QUESTION_SUBMISSIONS["EX1"] = True
+        ctx.COMPLETED_QUESTION_SUBMISSIONS[_key("EX1")] = True
         autoanswer_runtime._dispatch_activity(object(), self._act("EX1"), {"delay_seconds": 0, "llm": {}})
         self.assertEqual(autoanswer_runtime._INFLIGHT_ACTIVITIES, {})  # completed -> no task
+
+    async def test_completed_activity_is_isolated_by_profile(self):
+        ctx.COMPLETED_QUESTION_SUBMISSIONS[_key("EX_SCOPE", profile="profile-a")] = True
+        gate = asyncio.Event()
+        original = answer_flow.prepare_answer
+
+        async def hung_prepare(*_args, **_kwargs):
+            await gate.wait()
+            return None
+
+        answer_flow.prepare_answer = hung_prepare
+        try:
+            activity = self._act("EX_SCOPE")
+            aa = {"delay_seconds": 0, "llm": {"api_key": "test-key"}}
+            autoanswer_runtime._dispatch_activity(
+                object(), activity, aa, profile_name="profile-a", provider_key="thu"
+            )
+            self.assertEqual(autoanswer_runtime._INFLIGHT_ACTIVITIES, {})
+            autoanswer_runtime._dispatch_activity(
+                object(), activity, aa, profile_name="profile-b", provider_key="thu"
+            )
+            await asyncio.sleep(0)
+            self.assertIn(
+                _key("EX_SCOPE", profile="profile-b"),
+                autoanswer_runtime._INFLIGHT_ACTIVITIES,
+            )
+        finally:
+            gate.set()
+            tasks = list(autoanswer_runtime._INFLIGHT_ACTIVITIES.values())
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            answer_flow.prepare_answer = original
 
     async def test_same_activity_dispatched_once(self):
         # A hung prepare keeps the handler in-flight; a 2nd dispatch of the same id must be a no-op.
@@ -194,7 +271,7 @@ class DispatchTest(unittest.IsolatedAsyncioTestCase):
             autoanswer_runtime._dispatch_activity(object(), act, aa)
             autoanswer_runtime._dispatch_activity(object(), act, aa)
             await asyncio.sleep(0)
-            self.assertEqual(list(autoanswer_runtime._INFLIGHT_ACTIVITIES), ["EX2"])  # exactly one task
+            self.assertEqual(list(autoanswer_runtime._INFLIGHT_ACTIVITIES), [_key("EX2")])  # exactly one task
         finally:
             gate.set()
             tasks = list(autoanswer_runtime._INFLIGHT_ACTIVITIES.values())
@@ -209,27 +286,30 @@ class HandleActivityTest(unittest.IsolatedAsyncioTestCase):
         for d in (ctx.COMPLETED_QUESTION_SUBMISSIONS, ctx.ACTIVE_QUESTION_ANSWERS,
                   ctx.QUESTION_ANSWER_ATTEMPTS, autoanswer_runtime._INFLIGHT_ACTIVITIES):
             d.clear()
-        autoanswer_runtime.reset_autoanswer_dispatch()  # also clears _DETECT_ANNOUNCED / _FAILED_ATTEMPTS
+        autoanswer_runtime.reset_autoanswer_dispatch()  # also clears scoped transient caches
         ctx.AUTOANSWER_SUBMIT_NOW = asyncio.Event()
+        self.persisted = []
 
     @staticmethod
     def _prepared(aid):
         return {"activity": Activity(activity_id=aid, activity_type=ActivityType.EXAM),
                 "questions": [], "answers": (), "source": AnswerSource.LLM}
 
-    async def _run(self, aid, *, prepare, submit, delay=0, llm=None):
+    async def _run(self, aid, *, prepare, submit, delay=0, llm=None, profile_name="default"):
         prints = []
         orig_p, orig_s, orig_m, orig_lp = (answer_flow.prepare_answer, answer_flow.submit_prepared,
                                            autoanswer_store.mark_completed, ctx.log_print)
         answer_flow.prepare_answer = prepare
         answer_flow.submit_prepared = submit
-        autoanswer_store.mark_completed = lambda base, profile, a: None
+        autoanswer_store.mark_completed = lambda base, profile, a, provider=None: self.persisted.append((profile, a))
         ctx.log_print = lambda m: prints.append(str(m))
         try:
             act = Activity(activity_id=aid, activity_type=ActivityType.EXAM, title=aid)
             aa = {"delay_seconds": delay, "llm": {"api_key": "test-key"} if llm is None else llm}
             await asyncio.wait_for(
-                autoanswer_runtime.handle_activity(object(), act, aa),
+                autoanswer_runtime.handle_activity(
+                    object(), act, aa, profile_name=profile_name, provider_key="thu"
+                ),
                 timeout=5)
         finally:
             (answer_flow.prepare_answer, answer_flow.submit_prepared,
@@ -247,11 +327,46 @@ class HandleActivityTest(unittest.IsolatedAsyncioTestCase):
                                 source=AnswerSource.LLM, final_answers=())
 
         prints = await self._run("EX2", prepare=prep, submit=sub, delay=15)
-        self.assertTrue(ctx.COMPLETED_QUESTION_SUBMISSIONS.get("EX2"))
+        self.assertTrue(ctx.COMPLETED_QUESTION_SUBMISSIONS.get(_key("EX2")))
         self.assertTrue(any("偵測到" in p and "秒後自動送出" in p for p in prints))  # countdown on the DETECT line
         self.assertTrue(any("已備妥答案" in p and "還剩" in p for p in prints))       # READY line shows the true remaining
-        self.assertNotIn("EX2", autoanswer_runtime._INFLIGHT_ACTIVITIES)   # released in finally
-        self.assertNotIn("EX2", ctx.ACTIVE_QUESTION_ANSWERS)
+        self.assertNotIn(_key("EX2"), autoanswer_runtime._INFLIGHT_ACTIVITIES)   # released in finally
+        self.assertNotIn(_key("EX2"), ctx.ACTIVE_QUESTION_ANSWERS)
+
+    async def test_success_persists_dispatch_profile_not_current_global(self):
+        async def prep(*_args, **_kwargs):
+            return self._prepared("EX_PROFILE")
+
+        async def sub(_client, _prepared, *, resubmit_for_correct=True):
+            return AnswerResult(
+                ok=True,
+                status="submitted",
+                activity_id="EX_PROFILE",
+                source=AnswerSource.LLM,
+                final_answers=(),
+            )
+
+        with patch.object(
+            autoanswer_runtime.ctx,
+            "get_active_profile",
+            return_value=type("Profile", (), {"name": "other", "user": "other-user"})(),
+        ):
+            await self._run(
+                "EX_PROFILE",
+                prepare=prep,
+                submit=sub,
+                profile_name="monitor-profile",
+            )
+
+        self.assertIn(("monitor-profile", "EX_PROFILE"), self.persisted)
+        self.assertTrue(
+            ctx.COMPLETED_QUESTION_SUBMISSIONS.get(
+                _key("EX_PROFILE", profile="monitor-profile")
+            )
+        )
+        self.assertFalse(
+            ctx.COMPLETED_QUESTION_SUBMISSIONS.get(_key("EX_PROFILE", profile="other"))
+        )
 
     async def test_ready_line_skipped_when_under_one_second_left(self):
         # delay 0 -> <1s remaining when prepared -> skip the "已備妥答案" line, go straight to the banner.
@@ -263,7 +378,7 @@ class HandleActivityTest(unittest.IsolatedAsyncioTestCase):
                                 source=AnswerSource.LLM, final_answers=())
 
         prints = await self._run("EX0", prepare=prep, submit=sub, delay=0)
-        self.assertTrue(ctx.COMPLETED_QUESTION_SUBMISSIONS.get("EX0"))
+        self.assertTrue(ctx.COMPLETED_QUESTION_SUBMISSIONS.get(_key("EX0")))
         self.assertFalse(any("已備妥答案" in p for p in prints))   # <1s left -> READY line skipped
         self.assertTrue(any("自動作答成功" in p for p in prints))    # success banner still shown
 
@@ -275,8 +390,8 @@ class HandleActivityTest(unittest.IsolatedAsyncioTestCase):
             return AnswerResult(ok=False, status="submit_failed", activity_id="EX3")
 
         await self._run("EX3", prepare=prep, submit=sub)
-        self.assertFalse(ctx.COMPLETED_QUESTION_SUBMISSIONS.get("EX3"))
-        self.assertNotIn("EX3", ctx.ACTIVE_QUESTION_ANSWERS)
+        self.assertFalse(ctx.COMPLETED_QUESTION_SUBMISSIONS.get(_key("EX3")))
+        self.assertNotIn(_key("EX3"), ctx.ACTIVE_QUESTION_ANSWERS)
 
     async def test_no_usable_answer_never_submits(self):
         submitted = []
@@ -338,7 +453,7 @@ class HandleActivityTest(unittest.IsolatedAsyncioTestCase):
         second = await self._run("EX9", prepare=prep_none, submit=sub)
         self.assertTrue(any("偵測到" in p for p in first))    # announced on first detect
         self.assertFalse(any("偵測到" in p for p in second))  # silent on retry
-        self.assertEqual(autoanswer_runtime._FAILED_ATTEMPTS.get("EX9"), 2)  # backoff grows per failure
+        self.assertEqual(autoanswer_runtime._FAILED_ATTEMPTS.get(_key("EX9")), 2)  # per-profile backoff
 
     async def test_keypress_cuts_15s_countdown_short(self):
         ctx.AUTOANSWER_SUBMIT_NOW.set()  # any-key already pressed
@@ -353,12 +468,39 @@ class HandleActivityTest(unittest.IsolatedAsyncioTestCase):
         # delay 15s but the Event is set -> the wait_for(5s) in _run would time out if the countdown
         # weren't cut short; reaching this assertion proves it submitted well under the 15s.
         await self._run("EX5", prepare=prep, submit=sub, delay=15)
-        self.assertTrue(ctx.COMPLETED_QUESTION_SUBMISSIONS.get("EX5"))
+        self.assertTrue(ctx.COMPLETED_QUESTION_SUBMISSIONS.get(_key("EX5")))
 
 
 class TickNeverRaisesTest(unittest.IsolatedAsyncioTestCase):
     """The monitor loop depends on autoanswer_tick NEVER raising (CLAUDE.md contract). Force an
     inner call to blow up and assert the tick still returns cleanly."""
+
+    async def test_tick_threads_immutable_monitor_identity(self):
+        autoanswer_runtime.reset_autoanswer_dispatch()
+        activity = Activity(activity_id="EX_ID", activity_type=ActivityType.EXAM, course_id="c")
+        poll = AsyncMock(return_value=[activity])
+        dispatch = Mock()
+        with (
+            patch.object(autoanswer_runtime, "get_autoanswer_config", return_value={"enabled": True, "types": ["exam"], "llm": {}}),
+            patch.object(autoanswer_runtime, "_ensure_persisted_loaded"),
+            patch.object(autoanswer_runtime, "_refresh_courses", AsyncMock(return_value=["c"])),
+            patch.object(autoanswer_runtime, "_poll_course", poll),
+            patch.object(autoanswer_runtime, "_dispatch_activity", dispatch),
+            patch.object(ctx, "create_tron_http_client", return_value=object()),
+            patch.object(ctx.time, "monotonic", return_value=100.0),
+        ):
+            await autoanswer_runtime.autoanswer_tick(
+                object(),
+                profile_name="monitor-profile",
+                user_no="monitor-user",
+                provider_key="provider-x",
+            )
+
+        self.assertEqual(poll.await_args.kwargs["profile_name"], "monitor-profile")
+        self.assertEqual(poll.await_args.kwargs["user_no"], "monitor-user")
+        self.assertEqual(poll.await_args.kwargs["provider_key"], "provider-x")
+        self.assertEqual(dispatch.call_args.kwargs["profile_name"], "monitor-profile")
+        self.assertEqual(dispatch.call_args.kwargs["provider_key"], "provider-x")
 
     async def test_tick_swallows_inner_errors(self):
         orig_cfg = autoanswer_runtime.get_autoanswer_config

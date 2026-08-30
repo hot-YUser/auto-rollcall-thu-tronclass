@@ -22,10 +22,10 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Sequence
 
 try:  # pragma: no cover - script execution fallback
-    from troTHU.package_diagnostics import PROJECT_NAME, PROJECT_RELEASE_LABEL, PROJECT_VERSION, SPEC_NAME
+    from troTHU.package_diagnostics import PROJECT_NAME, PROJECT_RELEASE_LABEL, PROJECT_VERSION, SPEC_NAME, is_raw_mobile_archive_name
     from troTHU.release_checklist import EXPECTED_WINDOWS_ZIP, validate_release_artifact
 except ImportError:  # pragma: no cover
-    from package_diagnostics import PROJECT_NAME, PROJECT_RELEASE_LABEL, PROJECT_VERSION, SPEC_NAME
+    from package_diagnostics import PROJECT_NAME, PROJECT_RELEASE_LABEL, PROJECT_VERSION, SPEC_NAME, is_raw_mobile_archive_name
     from release_checklist import EXPECTED_WINDOWS_ZIP, validate_release_artifact
 
 
@@ -210,6 +210,8 @@ def _forbidden_member_name(member_name: str) -> str:
     normalized = member_name.replace("\\", "/").strip("/")
     if not normalized:
         return ""
+    if is_raw_mobile_archive_name(normalized):
+        return PurePosixPath(normalized).name.lower()
     parts = [part.lower() for part in PurePosixPath(normalized).parts if part and part != "."]
     for part in parts:
         if part in FORBIDDEN_RELEASE_PARTS:

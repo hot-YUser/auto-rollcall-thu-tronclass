@@ -300,14 +300,55 @@ class BotHandlerBridge:
     async def qr_submit(self, *, profile: str, payload: str, command: Any) -> Dict[str, Any]:
         fanout = bool(getattr(command, "payload", {}).get("fanout"))
         if fanout:
-            with self.profile_context(profile):
-                async def submit_profile(_profile: str, raw_payload: str) -> int:
+            async def submit_profile(_profile: str, raw_payload: str, pending=None) -> int:
+                # Frozen config/provider registry snapshot BEFORE any await
+                try:
+                    from troTHU.dispatch_context import resolve_provider_endpoints, assert_provider_endpoints_coherent, _request_ssl_from_snapshot
+                    import copy as _copy
+                    _shadow_snapshot = _copy.deepcopy(self.config)
+                except Exception:
+                    _shadow_snapshot = self.config
+                _snap_profile = self.tron.normalize_profile_name(_profile)
+                # pending.provider is authoritative; resolve endpoints from frozen snapshot
+                _pending_provider_raw = self.tron.normalize_text(getattr(pending, "provider", "") or "") if pending is not None else ""
+                if _pending_provider_raw:
+                    try:
+                        _snap_provider, _snap_endpoints = resolve_provider_endpoints(_pending_provider_raw, _shadow_snapshot)
+                    except Exception:
+                        _snap_provider = _pending_provider_raw
+                        _snap_endpoints = None
+                else:
+                    try:
+                        from troTHU.dispatch_context import build_dispatch_context as _bdc
+                        _tmp = _bdc(_shadow_snapshot)
+                        _snap_provider = _tmp.provider_key
+                        _snap_endpoints = _tmp.endpoints
+                    except Exception:
+                        _snap_provider = "thu"
+                        _snap_endpoints = None
+                # Derive user_no from snapshot for this profile
+                try:
+                    _snap_user = self.tron.normalize_text(_shadow_snapshot.get("accounts", {}).get("profiles", {}).get(_snap_profile, {}).get("user", "")) if isinstance(_shadow_snapshot.get("accounts"), dict) else ""
+                except Exception:
+                    _snap_user = ""
+                # request_ssl from frozen snapshot
+                try:
+                    _snap_ssl = _request_ssl_from_snapshot(_shadow_snapshot)
+                except Exception:
+                    _snap_ssl = None
+                try:
+                    assert_provider_endpoints_coherent(_snap_provider, _snap_endpoints, _shadow_snapshot)
+                except AssertionError:
+                    raise
+                except Exception:
+                    pass
+                with self.profile_context(_profile):
                     async with self.session_context() as session:
                         login_result = await self.ensure_login(session)
                         if not login_result.ok:
                             self.record_profile_error(_profile, "login_failed", login_result.status)
                             return 1
-                        await self.tron.submit_qr_payload(session, raw_payload)
+                        await self.tron.submit_qr_payload(session, raw_payload, profile_name=_snap_profile, provider_key=_snap_provider, my_user_no=_snap_user, endpoints=_snap_endpoints, request_ssl=_snap_ssl)
                         rollcall_id = ""
                         try:
                             rollcall_id = self.tron.parse_qr_payload(raw_payload).rollcall_id
@@ -319,9 +360,9 @@ class BotHandlerBridge:
                             rollcall_id=rollcall_id,
                             rollcall_type="qrcode",
                         )
-                    return 0
+                return 0
 
-                result = await self.tron.qr_fanout_result(payload, submit_profile=submit_profile)
+            result = await self.tron.qr_fanout_result(payload, submit_profile=submit_profile)
             status = result.get("status")
             reply = "QR fan-out {} for {} matching profile(s).".format(
                 status,
@@ -332,6 +373,35 @@ class BotHandlerBridge:
                 **result,
             }
 
+        # Single path — one DispatchContext BEFORE any await, explicit through submit_qr_payload.
+        try:
+            from troTHU.dispatch_context import build_dispatch_context as _bdc
+            _ctx = _bdc(self.config)
+            _single_profile = _ctx.profile_name if _ctx.profile_name else self.tron.normalize_profile_name(profile)
+            # Align single provider/endpoints with the active profile's snapshot
+            _single_provider = _ctx.provider_key
+            _single_endpoints = _ctx.endpoints
+            _single_ssl = _ctx.request_ssl
+            # derive user tied to _single_profile from snapshot
+            try:
+                _single_user = self.tron.normalize_text(_ctx.config_snapshot.get("accounts", {}).get("profiles", {}).get(_single_profile, {}).get("user", "")) if isinstance(_ctx.config_snapshot.get("accounts"), dict) else ""
+                if not _single_user:
+                    _single_user = _ctx.user_no
+            except Exception:
+                _single_user = _ctx.user_no
+            from troTHU.dispatch_context import assert_provider_endpoints_coherent as _assert
+            try:
+                _assert(_single_provider, _single_endpoints, _ctx.config_snapshot)
+            except AssertionError:
+                raise
+            except Exception:
+                pass
+        except Exception:
+            _single_profile = self.tron.normalize_profile_name(profile)
+            _single_provider = "thu"
+            _single_user = ""
+            _single_endpoints = None
+            _single_ssl = None
         with self.profile_context(profile):
             async with self.session_context() as session:
                 login_result = await self.ensure_login(session)
@@ -342,7 +412,7 @@ class BotHandlerBridge:
                         "status": "login_failed",
                         "login": login_result.status,
                     }
-                await self.tron.submit_qr_payload(session, payload)
+                await self.tron.submit_qr_payload(session, payload, profile_name=_single_profile, provider_key=_single_provider, my_user_no=_single_user, endpoints=_single_endpoints, request_ssl=_single_ssl)
                 rollcall_id = ""
                 try:
                     rollcall_id = self.tron.parse_qr_payload(payload).rollcall_id

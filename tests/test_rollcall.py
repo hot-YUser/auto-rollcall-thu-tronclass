@@ -20,7 +20,7 @@ class RollcallEngineTest(unittest.TestCase):
     def test_classify_qr_and_unknown_rollcalls(self) -> None:
         self.assertEqual(
             classify_rollcall({"is_qrcode": True, "rollcall_id": 1}),
-            ("unsupported_qrcode", "qrcode", "偵測到 QR 點名；請用 tron qr paste 手動貼上當下 QR 內容（教師輔助是目前唯一能自動的路徑）。"),
+            ("unsupported_qrcode", "qrcode", "偵測到 QR 點名；若已設定教師輔助或遠端 data 服務會自動處理，否則請用 tron qr paste 手動貼上當下 QR 內容。"),
         )
         self.assertEqual(
             classify_rollcall({"foo": "bar"}),
@@ -192,6 +192,36 @@ class SummarizeProgressTest(unittest.TestCase):
         })
 
 
+class RollcallCompletionScopeTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.number = copy.deepcopy(tron.COMPLETED_NUMBER_ROLLCALLS)
+        self.radar = copy.deepcopy(tron.COMPLETED_RADAR_ROLLCALLS)
+        self.self_registration = copy.deepcopy(tron.COMPLETED_SELF_REGISTRATION_ROLLCALLS)
+        tron.COMPLETED_NUMBER_ROLLCALLS.clear()
+        tron.COMPLETED_RADAR_ROLLCALLS.clear()
+        tron.COMPLETED_SELF_REGISTRATION_ROLLCALLS.clear()
+
+    def tearDown(self) -> None:
+        tron.COMPLETED_NUMBER_ROLLCALLS.clear()
+        tron.COMPLETED_NUMBER_ROLLCALLS.update(self.number)
+        tron.COMPLETED_RADAR_ROLLCALLS.clear()
+        tron.COMPLETED_RADAR_ROLLCALLS.update(self.radar)
+        tron.COMPLETED_SELF_REGISTRATION_ROLLCALLS.clear()
+        tron.COMPLETED_SELF_REGISTRATION_ROLLCALLS.update(self.self_registration)
+
+    def test_completion_is_scoped_by_profile_for_all_non_qr_types(self) -> None:
+        tron.mark_completed_number_rollcall("77", "1234", profile_name="user-a")
+        tron.mark_completed_radar_rollcall("77", profile_name="user-a")
+        tron.mark_completed_self_registration_rollcall("77", profile_name="user-a")
+
+        self.assertTrue(tron.is_completed_number_rollcall("77", profile_name="user-a"))
+        self.assertTrue(tron.is_completed_radar_rollcall("77", profile_name="user-a"))
+        self.assertTrue(tron.is_completed_self_registration_rollcall("77", profile_name="user-a"))
+        self.assertFalse(tron.is_completed_number_rollcall("77", profile_name="user-b"))
+        self.assertFalse(tron.is_completed_radar_rollcall("77", profile_name="user-b"))
+        self.assertFalse(tron.is_completed_self_registration_rollcall("77", profile_name="user-b"))
+
+
 class FetchProgressTest(unittest.IsolatedAsyncioTestCase):
     async def test_fetch_against_fake_server(self) -> None:
         async with FakeTronServer() as server:
@@ -232,7 +262,10 @@ class FetchProgressTest(unittest.IsolatedAsyncioTestCase):
             ]
             async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
                 await server.login_session(session)
-                with patch("troTHU.rollcall_progress.ctx.get_active_profile", return_value=SimpleNamespace(name="user1")):
+                with patch(
+                    "troTHU.rollcall_progress.ctx.get_active_profile",
+                    return_value=SimpleNamespace(name="default", user="user1"),
+                ):
                     verification = await verify_rollcall_on_call_fine(
                         session,
                         "77",
@@ -247,6 +280,57 @@ class FetchProgressTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(verification["progress"]["confirmed_present"])
         self.assertFalse(verification["progress"]["my_status_known"])
         self.assertIn("已簽到 1/1", verification["monitor_detail"])
+
+    async def test_verifier_uses_profile_user_not_profile_name(self) -> None:
+        async with FakeTronServer() as server:
+            server.student_rollcalls = [
+                {"user_no": "student@example.edu", "rollcall_status": "on_call_fine"},
+                {"user_no": "someone_else", "rollcall_status": "absent"},
+            ]
+            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                await server.login_session(session)
+                with patch(
+                    "troTHU.rollcall_progress.ctx.get_active_profile",
+                    return_value=SimpleNamespace(name="default", user="student@example.edu"),
+                ):
+                    verification = await verify_rollcall_on_call_fine(
+                        session,
+                        "77",
+                        attempts=1,
+                        delay_seconds=0,
+                        endpoints=server.endpoints(),
+                        request_ssl=None,
+                    )
+
+        self.assertTrue(verification["ok"])
+        self.assertEqual(verification["source"], "progress")
+        self.assertEqual(verification["progress"]["my_user_no"], "student@example.edu")
+        self.assertTrue(verification["progress"]["my_present"])
+
+    async def test_verifier_explicit_user_is_stable_across_profile_switches(self) -> None:
+        async with FakeTronServer() as server:
+            server.student_rollcalls = [
+                {"user_no": "member@example.edu", "rollcall_status": "on_call_fine"},
+                {"user_no": "other", "rollcall_status": "absent"},
+            ]
+            async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+                await server.login_session(session)
+                with patch(
+                    "troTHU.rollcall_progress.ctx.get_active_profile",
+                    return_value=SimpleNamespace(name="other-profile", user="other@example.edu"),
+                ):
+                    verification = await verify_rollcall_on_call_fine(
+                        session,
+                        "77",
+                        attempts=1,
+                        delay_seconds=0,
+                        endpoints=server.endpoints(),
+                        request_ssl=None,
+                        my_user_no="member@example.edu",
+                    )
+
+        self.assertTrue(verification["ok"])
+        self.assertEqual(verification["progress"]["my_user_no"], "member@example.edu")
 
 
 if __name__ == "__main__":
@@ -294,6 +378,17 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.fake_server = await FakeTronServer().start()
         self.url_patch = self.fake_server.patch_tron_http_urls(tron_http)
         self.url_patch.__enter__()
+        tron.CONFIG["provider"] = tron.normalize_provider_config(
+            {
+                "current": tron.DEFAULT_PROVIDER,
+                "available": {
+                    tron.DEFAULT_PROVIDER: {
+                        "base_url": self.fake_server.base_url,
+                        "login_url": self.fake_server.login_url,
+                    }
+                },
+            }
+        )
 
     async def asyncTearDown(self) -> None:
         tron.CONFIG.clear()
@@ -431,6 +526,7 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
             await self.login_session(session)
             with (
                 patch.object(tron, "teacher_assist_configured", return_value=True),
+                patch.object(tron, "qr_remote_configured", return_value=False),
                 patch.object(tron, "run_teacher_assisted_qr", teacher_mock),
                 patch.object(tron, "mes", AsyncMock()),
                 patch.object(tron, "log_print"),
@@ -439,11 +535,11 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result, "is_qrcode")
         teacher_mock.assert_awaited_once()
-        self.assertIn("88", tron.COMPLETED_QR_ROLLCALLS)
+        self.assertTrue(teacher_mock.await_args.kwargs["keep_prepared"])
+        self.assertTrue(tron.is_completed_qr_rollcall("88"))
 
     async def test_check_rollcall_qrcode_teacher_fails_notifies_manual(self) -> None:
-        # Teacher-assist is the ONLY automation; when it fails there is NO clipboard fallback —
-        # the user is honestly told to submit manually, and the rollcall is NOT marked done.
+        # With neither a working teacher source nor configured remote oracle, stay honest and manual.
         self.fake_server.rollcalls = [{"is_qrcode": True, "rollcall_id": 88, "type": "qrcode"}]
         teacher_mock = AsyncMock(return_value=False)
 
@@ -451,6 +547,7 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
             await self.login_session(session)
             with (
                 patch.object(tron, "teacher_assist_configured", return_value=True),
+                patch.object(tron, "qr_remote_configured", return_value=False),
                 patch.object(tron, "run_teacher_assisted_qr", teacher_mock),
                 patch.object(tron, "mes", AsyncMock()),
                 patch.object(tron, "log_print"),
@@ -459,17 +556,41 @@ class TronIntegrationTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result, "unsupported_qrcode")
         teacher_mock.assert_awaited_once()
-        self.assertNotIn("88", tron.COMPLETED_QR_ROLLCALLS)
+        self.assertFalse(tron.is_completed_qr_rollcall("88"))
+
+    async def test_check_rollcall_qrcode_falls_back_to_remote(self) -> None:
+        self.fake_server.rollcalls = [{"is_qrcode": True, "rollcall_id": 88, "type": "qrcode"}]
+        teacher_mock = AsyncMock(return_value=False)
+        remote_mock = AsyncMock(return_value=True)
+
+        async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+            await self.login_session(session)
+            with (
+                patch.object(tron, "teacher_assist_configured", return_value=True),
+                patch.object(tron, "qr_remote_configured", return_value=True),
+                patch.object(tron, "run_teacher_assisted_qr", teacher_mock),
+                patch.object(tron, "submit_remote_qr", remote_mock),
+                patch.object(tron, "submit_group_qr", AsyncMock(return_value={"ok": True, "results": []})),
+                patch.object(tron, "mes", AsyncMock()),
+                patch.object(tron, "log_print"),
+            ):
+                result = await tron.check_rollcall(session, 1)
+
+        self.assertEqual(result, "is_qrcode")
+        teacher_mock.assert_awaited_once()
+        remote_mock.assert_awaited_once()
+        self.assertTrue(tron.is_completed_qr_rollcall("88"))
 
     async def test_check_rollcall_qrcode_skips_when_already_completed(self) -> None:
         self.fake_server.rollcalls = [{"is_qrcode": True, "rollcall_id": 88, "type": "qrcode"}]
-        tron.COMPLETED_QR_ROLLCALLS["88"] = True
+        tron.mark_completed_qr_rollcall("88")
         teacher_mock = AsyncMock(return_value=True)
 
         async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
             await self.login_session(session)
             with (
                 patch.object(tron, "teacher_assist_configured", return_value=True),
+                patch.object(tron, "qr_remote_configured", return_value=False),
                 patch.object(tron, "run_teacher_assisted_qr", teacher_mock),
                 patch.object(tron, "log_print"),
             ):

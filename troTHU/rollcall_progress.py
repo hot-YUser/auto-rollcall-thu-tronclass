@@ -242,6 +242,7 @@ async def verify_rollcall_on_call_fine(
     request_ssl: Any = Ellipsis,
     progress_summary: Mapping[str, Any] | None = None,
     rollcall_type: str = "",
+    my_user_no: str = "",
 ) -> Dict[str, Any]:
     """Confirm a submitted attendance has reached the canonical on_call_fine state."""
     endpoints = endpoints or ctx.get_active_http_endpoints()
@@ -255,11 +256,12 @@ async def verify_rollcall_on_call_fine(
         delay = max(0.0, float(delay_seconds))
     except (TypeError, ValueError):
         delay = 0.0
-    my_user_no = ""
-    try:
-        my_user_no = ctx.get_active_profile(ctx.CONFIG).name
-    except Exception:
-        my_user_no = ""
+    resolved_user_no = ctx.normalize_text(my_user_no)
+    if not resolved_user_no:
+        try:
+            resolved_user_no = ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).user)
+        except Exception:
+            resolved_user_no = ""
 
     last_progress: Dict[str, Any] = dict(progress_summary or {}) if isinstance(progress_summary, Mapping) else {}
     if last_progress.get("ok"):
@@ -282,7 +284,7 @@ async def verify_rollcall_on_call_fine(
                             rollcall_id,
                             endpoints=endpoints,
                             request_ssl=request_ssl,
-                            my_user_no=my_user_no,
+                            my_user_no=resolved_user_no,
                         )
                     except ctx.UnauthorizedError:
                         raise
@@ -314,7 +316,7 @@ async def verify_rollcall_on_call_fine(
                     rollcall_id,
                     endpoints=endpoints,
                     request_ssl=request_ssl,
-                    my_user_no=my_user_no,
+                    my_user_no=resolved_user_no,
                 )
             if last_progress.get("confirmed_present"):
                 verification = {

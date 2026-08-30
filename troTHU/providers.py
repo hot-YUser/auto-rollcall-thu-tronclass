@@ -443,13 +443,12 @@ def normalize_provider_config(value: Any) -> Dict[str, Any]:
         override = available.get(key)
         if isinstance(override, Mapping):
             if "base_url" in override:
-                merged["base_url"] = str(override["base_url"] or "")
+                merged["base_url"] = str(override["base_url"] or "").strip().rstrip("/")
                 endpoints = tronclass_api_endpoints(merged["base_url"])
+                merged["login_url"] = merged["base_url"] + "/login" if merged["base_url"] else ""
                 merged["rollcalls_url"] = endpoints["rollcalls_url"]
                 merged["current_semester_url"] = endpoints["current_semester_url"]
                 merged["courses_url"] = endpoints["courses_url"]
-                if key not in seed:
-                    merged["login_url"] = merged["base_url"] + "/login" if merged["base_url"] else ""
             # Captcha params are intentionally NOT overridable per provider: the flow
             # detects the captcha field/length from the live page and lets OCR decide.
             # login_url / auth_flow stay overridable as a power-user escape hatch only.

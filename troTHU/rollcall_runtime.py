@@ -20,20 +20,73 @@ def reset_unsupported_rollcall_state() -> None:
     ctx.UNSUPPORTED_ROLLCALL_STATE['status'] = ''
 
 
-def number_rollcall_key(rollcall_id: ctx.Any) -> str:
-    return ctx.normalize_text(rollcall_id)
+def rollcall_completion_key(
+    rollcall_id: ctx.Any,
+    *,
+    profile_name: str = "",
+    provider_key: str = "",
+) -> str:
+    rid = ctx.normalize_text(rollcall_id)
+    if not rid:
+        return ""
+    profile = ctx.normalize_profile_name(profile_name) if profile_name else ""
+    if not profile:
+        try:
+            profile = ctx.get_active_profile(ctx.CONFIG).name
+        except Exception:
+            profile = "default"
+    provider = ctx.normalize_text(provider_key) or ctx.get_active_provider_key()
+    return "{}:{}:{}".format(provider, profile, rid)
 
 
-def is_completed_number_rollcall(rollcall_id: ctx.Any) -> bool:
-    key = ctx.number_rollcall_key(rollcall_id)
+def number_rollcall_key(rollcall_id: ctx.Any, *, profile_name: str = "", provider_key: str = "") -> str:
+    return rollcall_completion_key(
+        rollcall_id,
+        profile_name=profile_name,
+        provider_key=provider_key,
+    )
+
+
+def is_completed_number_rollcall(rollcall_id: ctx.Any, *, profile_name: str = "", provider_key: str = "") -> bool:
+    key = ctx.number_rollcall_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
     return bool(key) and key in ctx.COMPLETED_NUMBER_ROLLCALLS
 
 
-def mark_completed_number_rollcall(rollcall_id: ctx.Any, code: ctx.Any) -> None:
-    key = ctx.number_rollcall_key(rollcall_id)
+def mark_completed_number_rollcall(rollcall_id: ctx.Any, code: ctx.Any, *, profile_name: str = "", provider_key: str = "") -> None:
+    key = ctx.number_rollcall_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
     code_text = ctx.normalize_text(code)
     if key and code_text and (code_text != 'NA'):
         ctx.COMPLETED_NUMBER_ROLLCALLS[key] = code_text
+
+
+def radar_rollcall_key(rollcall_id: ctx.Any, *, profile_name: str = "", provider_key: str = "") -> str:
+    return rollcall_completion_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
+
+
+def is_completed_radar_rollcall(rollcall_id: ctx.Any, *, profile_name: str = "", provider_key: str = "") -> bool:
+    key = radar_rollcall_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
+    return bool(key) and key in ctx.COMPLETED_RADAR_ROLLCALLS
+
+
+def mark_completed_radar_rollcall(rollcall_id: ctx.Any, *, profile_name: str = "", provider_key: str = "") -> None:
+    key = radar_rollcall_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
+    if key:
+        ctx.COMPLETED_RADAR_ROLLCALLS[key] = True
+
+
+def self_registration_rollcall_key(rollcall_id: ctx.Any, *, profile_name: str = "", provider_key: str = "") -> str:
+    return rollcall_completion_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
+
+
+def is_completed_self_registration_rollcall(rollcall_id: ctx.Any, *, profile_name: str = "", provider_key: str = "") -> bool:
+    key = self_registration_rollcall_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
+    return bool(key) and key in ctx.COMPLETED_SELF_REGISTRATION_ROLLCALLS
+
+
+def mark_completed_self_registration_rollcall(rollcall_id: ctx.Any, *, profile_name: str = "", provider_key: str = "") -> None:
+    key = self_registration_rollcall_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
+    if key:
+        ctx.COMPLETED_SELF_REGISTRATION_ROLLCALLS[key] = True
 
 
 async def maybe_notify_unsupported_rollcall(status: str, rollcall: ctx.Dict[str, ctx.Any], message: str, rollcall_type: str) -> None:
@@ -138,11 +191,50 @@ async def handle_rollcall_decision(
     cnt: int=-1,
     use_prepared_qr: bool=False,
     gate_detail: str='',
+    profile_name: str='',
+    provider_key: str='',
+    my_user_no: str='',
+    endpoints: ctx.Any = None,
+    request_ssl: ctx.Any = None,
 ) -> str:
     selected_status = ctx.normalize_text(poll.get('status'))
     selected_rollcall = poll.get('rollcall') if isinstance(poll.get('rollcall'), dict) else None
     selected_rollcall_type = ctx.normalize_text(poll.get('rollcall_type'))
     selected_message = ctx.normalize_text(poll.get('message'))
+    # Immutable snapshot via DispatchContext — no global re-read; caller must supply full context.
+    # Build one frozen context if any field missing; never fall back per-field to globals.
+    # Capture _rr_dctx once before any await for GroupPlan coherence.
+    _rr_dctx = None
+    _needs_ctx = not (profile_name and provider_key and endpoints is not None and request_ssl is not None and my_user_no)
+    if _needs_ctx:
+        try:
+            from troTHU.dispatch_context import build_dispatch_context as _bdc
+            _dctx = _bdc(ctx.CONFIG)
+            _rr_dctx = _dctx
+            if not profile_name:
+                profile_name = _dctx.profile_name
+            if not provider_key:
+                provider_key = _dctx.provider_key
+            if endpoints is None:
+                endpoints = _dctx.endpoints
+            if request_ssl is None:
+                request_ssl = _dctx.request_ssl
+            if not my_user_no:
+                my_user_no = _dctx.user_no
+        except Exception:
+            pass
+    # Ensure a frozen dispatch snapshot exists before any await for GroupPlan
+    if _rr_dctx is None:
+        try:
+            from troTHU.dispatch_context import build_dispatch_context as _bdc0
+            _rr_dctx = _bdc0(ctx.CONFIG)
+        except Exception:
+            _rr_dctx = None
+    _rr_profile_name = ctx.normalize_profile_name(profile_name) if profile_name else "default"
+    _rr_provider_key = ctx.normalize_text(provider_key) or (ctx.DEFAULT_PROVIDER if hasattr(ctx, "DEFAULT_PROVIDER") else "thu")
+    _rr_my_user_no = ctx.normalize_text(my_user_no)
+    _rr_endpoints = endpoints
+    _rr_request_ssl = request_ssl
     result_url = ctx.normalize_text(poll.get('url'))
     http_status = poll.get('http_status')
     if selected_status == 'not_call':
@@ -154,8 +246,8 @@ async def handle_rollcall_decision(
     if selected_status == 'is_number' and selected_rollcall is not None:
         ctx.reset_unsupported_rollcall_state()
         rollcall_id = selected_rollcall.get('rollcall_id')
-        if ctx.is_completed_number_rollcall(rollcall_id):
-            found_code = ctx.COMPLETED_NUMBER_ROLLCALLS[ctx.number_rollcall_key(rollcall_id)]
+        if ctx.is_completed_number_rollcall(rollcall_id, profile_name=_rr_profile_name, provider_key=_rr_provider_key):
+            found_code = ctx.COMPLETED_NUMBER_ROLLCALLS[ctx.number_rollcall_key(rollcall_id, profile_name=_rr_profile_name, provider_key=_rr_provider_key)]
             return '數字點名已處理'
         await ctx.announce_rollcall_start(
             ctx.AttendanceType.NUMBER,
@@ -170,11 +262,13 @@ async def handle_rollcall_decision(
             http_status=http_status,
             payload_excerpt=selected_rollcall,
         )
-        found_code = await ctx.number(session, rollcall_id)
-        ctx.mark_completed_number_rollcall(rollcall_id, found_code)
+        found_code = await ctx.number(session, rollcall_id, my_user_no=_rr_my_user_no, endpoints=_rr_endpoints, request_ssl=_rr_request_ssl)
+        ctx.mark_completed_number_rollcall(rollcall_id, found_code, profile_name=_rr_profile_name, provider_key=_rr_provider_key)
         if ctx.normalize_text(found_code) and ctx.normalize_text(found_code) != 'NA':
             try:
-                group_result = await ctx.submit_group_number(found_code, rcid=rollcall_id, session=session, config=ctx.CONFIG)
+                from troTHU.group_runtime import build_group_plan as _bgp
+                _gp = _bgp(dispatch_ctx=_rr_dctx) if _rr_dctx is not None else _bgp(config=ctx.CONFIG)
+                group_result = await ctx.submit_group_number(found_code, rcid=rollcall_id, session=session, group_plan=_gp)
                 if group_result.get('ok'):
                     pass
                 summary = ctx.format_group_fanout_summary(group_result, rollcall_type='number')
@@ -186,8 +280,7 @@ async def handle_rollcall_decision(
     if selected_status == 'is_radar' and selected_rollcall is not None:
         ctx.reset_unsupported_rollcall_state()
         rollcall_id = selected_rollcall.get('rollcall_id')
-        radar_key = ctx.normalize_text(rollcall_id)
-        if radar_key in ctx.COMPLETED_RADAR_ROLLCALLS:
+        if ctx.is_completed_radar_rollcall(rollcall_id, profile_name=_rr_profile_name, provider_key=_rr_provider_key):
             return '雷達點名已處理'
         await ctx.announce_rollcall_start(
             ctx.AttendanceType.RADAR,
@@ -199,11 +292,13 @@ async def handle_rollcall_decision(
             http_status=http_status,
             payload_excerpt=selected_rollcall,
         )
-        radar_success = await ctx.radar(session, selected_rollcall)
+        radar_success = await ctx.radar(session, selected_rollcall, my_user_no=_rr_my_user_no, endpoints=_rr_endpoints, request_ssl=_rr_request_ssl)
         if radar_success:
-            ctx.COMPLETED_RADAR_ROLLCALLS[radar_key] = True
+            ctx.mark_completed_radar_rollcall(rollcall_id, profile_name=_rr_profile_name, provider_key=_rr_provider_key)
             try:
-                group_result = await ctx.submit_group_radar(selected_rollcall, session=session, config=ctx.CONFIG)
+                from troTHU.group_runtime import build_group_plan as _bgp3
+                _gp3 = _bgp3(dispatch_ctx=_rr_dctx) if _rr_dctx is not None else _bgp3(config=ctx.CONFIG)
+                group_result = await ctx.submit_group_radar(selected_rollcall, session=session, group_plan=_gp3)
                 if group_result.get('ok'):
                     pass
                 summary = ctx.format_group_fanout_summary(group_result, rollcall_type='radar')
@@ -216,8 +311,7 @@ async def handle_rollcall_decision(
     if selected_status == 'is_self_registration' and selected_rollcall is not None:
         ctx.reset_unsupported_rollcall_state()
         rollcall_id = selected_rollcall.get('rollcall_id')
-        sr_key = ctx.normalize_text(rollcall_id)
-        if sr_key in ctx.COMPLETED_SELF_REGISTRATION_ROLLCALLS:
+        if ctx.is_completed_self_registration_rollcall(rollcall_id, profile_name=_rr_profile_name, provider_key=_rr_provider_key):
             return '自主報到已處理'
         await ctx.announce_rollcall_start(
             ctx.AttendanceType.SELF_REGISTRATION,
@@ -229,11 +323,13 @@ async def handle_rollcall_decision(
             http_status=http_status,
             payload_excerpt=selected_rollcall,
         )
-        sr_success = await ctx.self_registration(session, selected_rollcall)
+        sr_success = await ctx.self_registration(session, selected_rollcall, my_user_no=_rr_my_user_no, endpoints=_rr_endpoints, request_ssl=_rr_request_ssl)
         if sr_success:
-            ctx.COMPLETED_SELF_REGISTRATION_ROLLCALLS[sr_key] = True
+            ctx.mark_completed_self_registration_rollcall(rollcall_id, profile_name=_rr_profile_name, provider_key=_rr_provider_key)
             try:
-                group_result = await ctx.submit_group_self_registration(selected_rollcall, session=session, config=ctx.CONFIG)
+                from troTHU.group_runtime import build_group_plan as _bgp4
+                _gp4 = _bgp4(dispatch_ctx=_rr_dctx) if _rr_dctx is not None else _bgp4(config=ctx.CONFIG)
+                group_result = await ctx.submit_group_self_registration(selected_rollcall, session=session, group_plan=_gp4)
                 if group_result.get('ok'):
                     pass
                 summary = ctx.format_group_fanout_summary(group_result, rollcall_type='self_registration')
@@ -247,10 +343,10 @@ async def handle_rollcall_decision(
         answered_automatically = False
         if selected_status == 'unsupported_qrcode':
             qr_key = ctx.normalize_text(selected_rollcall.get('rollcall_id') or selected_rollcall.get('id'))
-            if qr_key in ctx.COMPLETED_QR_ROLLCALLS:
+            if ctx.is_completed_qr_rollcall(qr_key, profile_name=_rr_profile_name, provider_key=_rr_provider_key):
                 return 'qr 點名已處理'
             teacher_ready = ctx.teacher_assist_configured(ctx.CONFIG)
-            remote_ready = (not teacher_ready) and ctx.qr_remote_configured(ctx.CONFIG)
+            remote_ready = ctx.qr_remote_configured(ctx.CONFIG)
             if ctx.normalize_text(gate_detail):
                 qr_submit_detail = (
                     '正在透過教師輔助送出 QR 點名。' if teacher_ready
@@ -269,15 +365,26 @@ async def handle_rollcall_decision(
                 )
             if teacher_ready:
                 if use_prepared_qr:
-                    answered_automatically = await ctx.submit_prepared_teacher_qr(session, selected_rollcall)
+                    answered_automatically = await ctx.submit_prepared_teacher_qr(session, selected_rollcall, profile_name=_rr_profile_name, provider_key=_rr_provider_key, my_user_no=_rr_my_user_no, endpoints=_rr_endpoints, request_ssl=_rr_request_ssl)
                 else:
-                    answered_automatically = await ctx.run_teacher_assisted_qr(session, selected_rollcall)
-            elif remote_ready:
-                answered_automatically = await ctx.submit_remote_qr(session, selected_rollcall)
+                    answered_automatically = await ctx.run_teacher_assisted_qr(
+                        session,
+                        selected_rollcall,
+                        profile_name=_rr_profile_name,
+                        provider_key=_rr_provider_key,
+                        my_user_no=_rr_my_user_no,
+                        endpoints=_rr_endpoints,
+                        request_ssl=_rr_request_ssl,
+                        keep_prepared=True,
+                    )
+            if not answered_automatically and remote_ready:
+                answered_automatically = await ctx.submit_remote_qr(session, selected_rollcall, profile_name=_rr_profile_name, provider_key=_rr_provider_key, my_user_no=_rr_my_user_no, endpoints=_rr_endpoints, request_ssl=_rr_request_ssl)
             if answered_automatically and qr_key:
-                ctx.COMPLETED_QR_ROLLCALLS[qr_key] = True
+                ctx.mark_completed_qr_rollcall(qr_key, profile_name=_rr_profile_name, provider_key=_rr_provider_key)
                 try:
-                    group_result = await ctx.submit_group_qr(selected_rollcall, session=session, config=ctx.CONFIG)
+                    from troTHU.group_runtime import build_group_plan as _bgp5
+                    _gp5 = _bgp5(dispatch_ctx=_rr_dctx) if _rr_dctx is not None else _bgp5(config=ctx.CONFIG)
+                    group_result = await ctx.submit_group_qr(selected_rollcall, session=session, group_plan=_gp5)
                     if group_result.get('ok'):
                         pass
                     summary = ctx.format_group_fanout_summary(group_result, rollcall_type='qr')
@@ -285,7 +392,12 @@ async def handle_rollcall_decision(
                         ctx.log_print(summary)
                 except Exception as exc:
                     ctx.log_print('群組 qr fan-out 失敗：{}'.format(exc))
+                finally:
+                    if teacher_ready:
+                        await ctx.stop_prepared_teacher_qr(qr_key, profile_name=_rr_profile_name, provider_key=_rr_provider_key)
                 return 'is_qrcode'
+            if teacher_ready:
+                await ctx.stop_prepared_teacher_qr(qr_key, profile_name=_rr_profile_name, provider_key=_rr_provider_key)
         if not answered_automatically:
             await ctx.maybe_notify_unsupported_rollcall(selected_status, selected_rollcall, selected_message, selected_rollcall_type)
     return selected_status

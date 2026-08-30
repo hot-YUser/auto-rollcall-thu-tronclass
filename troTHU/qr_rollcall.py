@@ -1,8 +1,8 @@
 """QR 點名的資料結構與 payload 解析(WG 官方緊湊格式 `key~value!...`)。
 
 只負責解析與送出格式;`data` token 本身由伺服器端產生,不在此生成、學生端也拿不到。
-自動化路徑見 qr_teacher_runtime(教師輔助＝目前唯一自動路徑;純學生端免教師取得 data 的
-方法目前尚未發現——已知有人做到、原理未明,非不可能)。
+自動化 data 來源見 qr_teacher_runtime（本機教師）與 qr_remote_runtime（遠端 oracle）。純學生端
+自行取得 data 的方法目前尚未發現；已知有人做到、原理未明，因此不是不可能。
 """
 from __future__ import annotations
 import hashlib

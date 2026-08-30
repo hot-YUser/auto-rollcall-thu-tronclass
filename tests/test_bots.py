@@ -1194,9 +1194,11 @@ class BotHandlersTest(unittest.IsolatedAsyncioTestCase):
     async def test_qr_submit_posts_payload_to_fake_server(self) -> None:
         runtime = self.runtime()
         payload = '{"rollcallId":88,"data":"fixture"}'
+        # Immutable dispatch snapshot — inject fake server as the frozen provider.available entry so QR hits FakeTronServer, not the real host
+        for _k in ("thu", "fju", "tronclass"):
+            tron.CONFIG["provider"]["available"][_k] = {"base_url": self.server.base_url, "login_url": self.server.base_url + "/login", "rollcalls_url": self.server.base_url + "/api/radar/rollcalls?api_version=1.1.0", "current_semester_url": self.server.base_url + "/api/current-semester-info", "courses_url": self.server.base_url + "/api/my-courses?page=1&page_size=50"}
 
         with (
-            patch.object(tron, "get_active_http_endpoints", self.server.endpoints),
             patch.object(tron, "log_print"),
             patch.object(tron, "notify_event", AsyncMock()),
         ):
@@ -1219,9 +1221,10 @@ class BotHandlersTest(unittest.IsolatedAsyncioTestCase):
         add_pending_qr(self.temp_dir, profile="default", rollcall_id=88, provider="thu")
         add_pending_qr(self.temp_dir, profile="alt", rollcall_id=88, provider="thu")
         add_pending_qr(self.temp_dir, profile="default", rollcall_id=88, provider="fju")
+        for _k in ("thu", "fju", "tronclass"):
+            tron.CONFIG["provider"]["available"][_k] = {"base_url": self.server.base_url, "login_url": self.server.base_url + "/login", "rollcalls_url": self.server.base_url + "/api/radar/rollcalls?api_version=1.1.0", "current_semester_url": self.server.base_url + "/api/current-semester-info", "courses_url": self.server.base_url + "/api/my-courses?page=1&page_size=50"}
 
         with (
-            patch.object(tron, "get_active_http_endpoints", self.server.endpoints),
             patch.object(tron, "log_print"),
             patch.object(tron, "notify_event", AsyncMock()),
         ):

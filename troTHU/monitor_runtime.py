@@ -59,15 +59,29 @@ def _attendance_rate_gate_passed(progress: ctx.Mapping[str, ctx.Any], *, ignore_
         return False
 
 
-async def _fetch_monitor_rollcall_progress(session: ctx.Any, rollcall_id: ctx.Any) -> ctx.Dict[str, ctx.Any]:
+async def _fetch_monitor_rollcall_progress(
+    session: ctx.Any,
+    rollcall_id: ctx.Any,
+    *,
+    my_user_no: str = "",
+    endpoints: ctx.Any = None,
+    request_ssl: ctx.Any = None,
+) -> ctx.Dict[str, ctx.Any]:
     try:
-        my_user_no = ctx.get_active_profile(ctx.CONFIG).name
+        resolved_user_no = ctx.normalize_text(my_user_no)
+        if not resolved_user_no:
+            try:
+                resolved_user_no = ctx.get_active_profile(ctx.CONFIG).user
+            except Exception:
+                resolved_user_no = ""
+        ep = endpoints if endpoints is not None else ctx.get_active_http_endpoints()
+        ssl_setting = request_ssl if request_ssl is not None else ctx.get_ssl_request_setting()
         return await ctx.fetch_rollcall_progress(
             session,
             rollcall_id,
-            endpoints=ctx.get_active_http_endpoints(),
-            request_ssl=ctx.get_ssl_request_setting(),
-            my_user_no=my_user_no,
+            endpoints=ep,
+            request_ssl=ssl_setting,
+            my_user_no=resolved_user_no,
         )
     except Exception:
         return {'ok': False, 'status': 'error', 'rollcall_id': str(rollcall_id or '')}
@@ -144,11 +158,14 @@ async def _log_final_attendance_rate_on_close(
     *,
     counter: int,
     logged_keys: set[str],
+    my_user_no: str = "",
+    endpoints: ctx.Any = None,
+    request_ssl: ctx.Any = None,
 ) -> None:
     rollcall_key = ctx.normalize_text(rollcall_id)
     if not rollcall_key or rollcall_key in logged_keys:
         return
-    progress = await _fetch_monitor_rollcall_progress(session, rollcall_key)
+    progress = await _fetch_monitor_rollcall_progress(session, rollcall_key, my_user_no=my_user_no, endpoints=endpoints, request_ssl=request_ssl)
     final_rate_text = _final_attendance_rate_text(rollcall_key, progress)
     if not final_rate_text:
         return
@@ -236,6 +253,29 @@ def _update_monitor_status(*, legacy_message=None, **kwargs) -> None:
         ctx.status_print(legacy_message)
 
 
+_TRACKED_RESEARCH_TASKS: set = set()
+
+def _track_task(coro):
+    task = ctx.asyncio.create_task(coro)
+    _TRACKED_RESEARCH_TASKS.add(task)
+    task.add_done_callback(lambda tt: _TRACKED_RESEARCH_TASKS.discard(tt))
+    return task
+
+async def _cancel_and_await_tracked_research() -> None:
+    if not _TRACKED_RESEARCH_TASKS:
+        return
+    for tt in list(_TRACKED_RESEARCH_TASKS):
+        if not tt.done():
+            tt.cancel()
+    for tt in list(_TRACKED_RESEARCH_TASKS):
+        try:
+            await tt
+        except ctx.asyncio.CancelledError:
+            pass
+        except Exception:
+            pass
+
+
 def _maybe_research_crawl(session: ctx.Any, poll: ctx.Dict[str, ctx.Any]) -> None:
     """Research tier only: fire a startup crawl once, then a delta crawl whenever the API
     source-state signature changes (debounced), plus a QR hammer when a QR rollcall goes
@@ -246,23 +286,27 @@ def _maybe_research_crawl(session: ctx.Any, poll: ctx.Dict[str, ctx.Any]) -> Non
         if ctx.RESEARCH_LAST_CRAWL_AT <= 0.0:
             ctx.RESEARCH_LAST_CRAWL_AT = now
             ctx.RESEARCH_LAST_SIGNATURE = ctx.source_state_signature(poll.get('payload'))
-            ctx.asyncio.create_task(ctx.run_startup_crawl(session))
+            _track_task(ctx.run_startup_crawl(session))
             return
         signature = ctx.source_state_signature(poll.get('payload'))
         if ctx.should_recrawl(signature, now=now, last_signature=ctx.RESEARCH_LAST_SIGNATURE,
                               last_crawl_at=ctx.RESEARCH_LAST_CRAWL_AT, min_interval=30.0):
             ctx.RESEARCH_LAST_SIGNATURE = signature
             ctx.RESEARCH_LAST_CRAWL_AT = now
-            ctx.asyncio.create_task(ctx.run_delta_crawl(session, signature))
+            _track_task(ctx.run_delta_crawl(session, signature))
             qr_rollcall_id = ctx.first_qr_rollcall_id(poll.get('payload'))
             if qr_rollcall_id:
-                ctx.asyncio.create_task(ctx.run_qr_hammer(session, qr_rollcall_id))
+                _track_task(ctx.run_qr_hammer(session, qr_rollcall_id))
     except Exception:
         return
 
 
-# rollcall_id -> the background Task handling that rollcall's whole lifecycle (dispatch dedup).
+# provider:profile:rollcall_id -> the background Task handling that rollcall's whole lifecycle (dispatch dedup).
 _INFLIGHT_ROLLCALLS: ctx.Dict[str, ctx.Any] = {}
+
+
+def _inflight_key(rollcall_id: str, *, provider_key: str = "", profile_name: str = "") -> str:
+    return "{}:{}:{}".format(ctx.normalize_text(provider_key) or "?", ctx.normalize_profile_name(profile_name) or "?", ctx.normalize_text(rollcall_id))
 
 
 def reset_rollcall_dispatch() -> None:
@@ -286,6 +330,11 @@ async def handle_rollcall(
     *,
     ignore_attendance_rate_gate: ctx.Optional[bool],
     shutdown_event: ctx.asyncio.Event,
+    profile_name: str = "",
+    provider_key: str = "",
+    my_user_no: str = "",
+    endpoints: ctx.Any = None,
+    request_ssl: ctx.Any = None,
 ) -> None:
     """Own ONE rollcall's full lifecycle as a background task so the poll loop never blocks:
     QR one-shots (announce + teacher-assist pre-create) -> wait the 15% attendance gate (re-polling
@@ -299,7 +348,7 @@ async def handle_rollcall(
     submitted = False
     logged_keys: set[str] = set()
     unsupported_msg = ctx.normalize_text(poll.get('message')) or \
-        '偵測到 QR 點名；請用 tron qr paste 手動貼上當下 QR 內容（教師輔助是目前唯一能自動的路徑）。'
+        '偵測到 QR 點名；若已設定教師輔助或遠端 data 服務會自動處理，否則請用 tron qr paste 手動貼上當下 QR 內容。'
     try:
         while not shutdown_event.is_set():
             status_msg = ctx.normalize_text(poll.get('status'))
@@ -320,14 +369,17 @@ async def handle_rollcall(
             if status_msg != 'on_call_fine' and rollcall_type == 'qrcode' and not qr_prepare_attempted:
                 qr_prepare_attempted = True
                 if ctx.teacher_assist_configured(ctx.CONFIG):
-                    prepare_result = await ctx.prepare_teacher_assisted_qr(poll.get('rollcall'))
+                    prepare_result = await ctx.prepare_teacher_assisted_qr(poll.get('rollcall'), profile_name=profile_name, provider_key=provider_key)
                     if not prepare_result.get('ok'):
-                        await ctx.maybe_notify_unsupported_rollcall(status_msg, poll.get('rollcall') or {}, unsupported_msg, rollcall_type)
+                        if ctx.qr_remote_configured(ctx.CONFIG):
+                            ctx.log_print('教師 QR 來源準備失敗；送出時將改用遠端 data 服務。')
+                        else:
+                            await ctx.maybe_notify_unsupported_rollcall(status_msg, poll.get('rollcall') or {}, unsupported_msg, rollcall_type)
                 elif ctx.qr_remote_configured(ctx.CONFIG):
                     pass  # 遠端來源不必先開教師點名；送出在 gate 通過時進行
                 else:
                     await ctx.maybe_notify_unsupported_rollcall(status_msg, poll.get('rollcall') or {}, unsupported_msg, rollcall_type)
-            progress = await _fetch_monitor_rollcall_progress(session, rollcall_id)
+            progress = await _fetch_monitor_rollcall_progress(session, rollcall_id, my_user_no=my_user_no, endpoints=endpoints, request_ssl=request_ssl)
             ignore_gate = ctx.get_ignore_attendance_rate_gate(ignore_attendance_rate_gate)
             gate_passed = _attendance_rate_gate_passed(progress, ignore_gate=ignore_gate)
             if progress.get('ok'):
@@ -350,7 +402,7 @@ async def handle_rollcall(
             if gate_passed and status_msg != 'on_call_fine' and not submitted:
                 submitted = True
                 gate_detail = _format_gate_start_detail(rollcall_id, rollcall_type, progress, ignore_gate=ignore_gate)
-                await ctx.handle_rollcall_decision(session, poll, cnt=ctx.cnt, use_prepared_qr=True, gate_detail=gate_detail)
+                await ctx.handle_rollcall_decision(session, poll, cnt=ctx.cnt, use_prepared_qr=True, gate_detail=gate_detail, profile_name=profile_name, provider_key=provider_key, my_user_no=my_user_no, endpoints=endpoints, request_ssl=request_ssl)
             elapsed = max(0.0, ctx.time.monotonic() - detected_at)
             delay = ROLLCALL_FAST_POLL_SECONDS if elapsed < ROLLCALL_FAST_WINDOW_SECONDS else ROLLCALL_ACTIVE_POLL_SECONDS
             await sleep_or_shutdown(shutdown_event, delay)
@@ -361,28 +413,30 @@ async def handle_rollcall(
         return
     finally:
         try:
-            await _log_final_attendance_rate_on_close(session, rollcall_id, rollcall_type, counter=ctx.cnt, logged_keys=logged_keys)
+            await _log_final_attendance_rate_on_close(session, rollcall_id, rollcall_type, counter=ctx.cnt, logged_keys=logged_keys, my_user_no=my_user_no, endpoints=endpoints, request_ssl=request_ssl)
             if rollcall_type == 'qrcode':
-                await ctx.stop_prepared_teacher_qr(rollcall_id)
+                await ctx.stop_prepared_teacher_qr(rollcall_id, profile_name=profile_name, provider_key=provider_key)
         except Exception:
             pass
         ctx.clear_rollcall_progress()
         ctx.update_monitor_status(rollcall_status='', redraw=False)
-        _INFLIGHT_ROLLCALLS.pop(rollcall_id, None)
+        _INFLIGHT_ROLLCALLS.pop(_inflight_key(rollcall_id, provider_key=provider_key, profile_name=profile_name), None)
 
 
 def _dispatch_rollcall(session: ctx.Any, poll: ctx.Dict[str, ctx.Any], rollcall_id: str,
                        rollcall_type: str, ignore_attendance_rate_gate: ctx.Optional[bool],
-                       shutdown_event: ctx.asyncio.Event) -> None:
+                       shutdown_event: ctx.asyncio.Event, profile_name: str = "", provider_key: str = "", my_user_no: str = "", endpoints: ctx.Any = None, request_ssl: ctx.Any = None) -> None:
     """Spawn handle_rollcall unless this rollcall is already being handled. Synchronous
     check->create_task->register (no await between) so a second poll cannot double-dispatch it."""
-    if not rollcall_id or rollcall_id in _INFLIGHT_ROLLCALLS:
+    dkey = _inflight_key(rollcall_id, provider_key=provider_key, profile_name=profile_name)
+    if not rollcall_id or dkey in _INFLIGHT_ROLLCALLS:
         return
     task = ctx.asyncio.create_task(handle_rollcall(
         session, poll, rollcall_id, rollcall_type,
-        ignore_attendance_rate_gate=ignore_attendance_rate_gate, shutdown_event=shutdown_event))
-    _INFLIGHT_ROLLCALLS[rollcall_id] = task
-    task.add_done_callback(lambda _t: _INFLIGHT_ROLLCALLS.pop(rollcall_id, None))
+        ignore_attendance_rate_gate=ignore_attendance_rate_gate, shutdown_event=shutdown_event,
+        profile_name=profile_name, provider_key=provider_key, my_user_no=my_user_no, endpoints=endpoints, request_ssl=request_ssl))
+    _INFLIGHT_ROLLCALLS[dkey] = task
+    task.add_done_callback(lambda _t, _k=dkey: _INFLIGHT_ROLLCALLS.pop(_k, None))
 
 
 async def monitor_loop(
@@ -390,6 +444,10 @@ async def monitor_loop(
     shutdown_event: ctx.asyncio.Event,
     *,
     ignore_attendance_rate_gate: ctx.Optional[bool]=None,
+    monitor_profile_name: str='',
+    monitor_user_no: str='',
+    monitor_provider_key: str='',
+    monitor_identity: ctx.Optional[ctx.Mapping[str, ctx.Any]]=None,
 ) -> None:
     flag_day_night = False
     login_retry_attempt = 0
@@ -532,7 +590,13 @@ async def monitor_loop(
         next_poll_delay = ctx.get_poll_interval()
         try:
             poll = await ctx.poll_rollcall_decision(session, ctx.cnt)
-            await ctx.autoanswer_tick(session)  # v1.7 auto-answer; dispatches, never blocks the loop
+            identity = monitor_identity if isinstance(monitor_identity, ctx.Mapping) else {}
+            await ctx.autoanswer_tick(
+                session,
+                profile_name=ctx.normalize_text(identity.get('profile_name')) or monitor_profile_name,
+                user_no=ctx.normalize_text(identity.get('user_no')) or monitor_user_no,
+                provider_key=ctx.normalize_text(identity.get('provider_key')) or monitor_provider_key,
+            )  # immutable values copied from the official monitor identity for each dispatch
             if ctx.CRAWLER_ENABLED:
                 _maybe_research_crawl(session, poll)  # research mode; self-contained, never raises
             error_cnt = 0
@@ -546,8 +610,23 @@ async def monitor_loop(
                 # final-rate log / rollcall status segment — so this poll loop keeps polling and is
                 # NEVER blocked by rollcall handling (mirrors the auto-answer dispatch).
                 startup_rollcall_flow_completed = True
+                # immutable snapshot from monitor_identity — never re-read global inside dispatch
+                _dispatch_endpoints = identity.get('_endpoints') if isinstance(identity.get('_endpoints'), object) and identity.get('_endpoints') is not None else None
+                try:
+                    if _dispatch_endpoints is None:
+                        _dispatch_endpoints = ctx.get_active_http_endpoints()
+                except Exception:
+                    _dispatch_endpoints = None
+                try:
+                    _dispatch_ssl = identity.get('_request_ssl') if '_request_ssl' in identity else ctx.get_ssl_request_setting()
+                except Exception:
+                    _dispatch_ssl = None
                 _dispatch_rollcall(session, poll, rollcall_id, rollcall_type,
-                                   ignore_attendance_rate_gate, shutdown_event)
+                                   ignore_attendance_rate_gate, shutdown_event,
+                                   profile_name=ctx.normalize_text(identity.get('profile_name')) or monitor_profile_name,
+                                   provider_key=ctx.normalize_text(identity.get('provider_key')) or monitor_provider_key,
+                                   my_user_no=ctx.normalize_text(identity.get('user_no')) or monitor_user_no,
+                                   endpoints=_dispatch_endpoints, request_ssl=_dispatch_ssl)
                 next_poll_delay = ROLLCALL_ACTIVE_POLL_SECONDS
                 _update_monitor_status(phase='monitoring', check_count=ctx.cnt,
                                        next_switch_at=next_switch, redraw=False)
@@ -644,6 +723,23 @@ async def app_main(
 ) -> None:
     ctx.INPUT_ENABLED = input_enabled
     ctx.bootstrap_config()
+    monitor_profile = ctx.get_active_profile(ctx.CONFIG)
+    monitor_provider_key = ctx.get_active_provider_key()
+    try:
+        _mi_endpoints = ctx.get_active_http_endpoints()
+    except Exception:
+        _mi_endpoints = None
+    try:
+        _mi_ssl = ctx.get_ssl_request_setting()
+    except Exception:
+        _mi_ssl = None
+    monitor_identity: dict = {
+        'profile_name': monitor_profile.name,
+        'user_no': monitor_profile.user,
+        'provider_key': monitor_provider_key,
+        '_endpoints': _mi_endpoints,
+        '_request_ssl': _mi_ssl,
+    }
     shutdown_event = external_shutdown_event or ctx.asyncio.Event()
     # Auto-answer's any-key "submit now" signal + in-flight registry are (re)initialised per run:
     # each restart makes a fresh event loop, so a loop-bound Event / stale Tasks must not carry over.
@@ -659,11 +755,10 @@ async def app_main(
     async with ctx.aiohttp.ClientSession(**session_kwargs) as session:
         async with contextlib.AsyncExitStack() as teacher_stack:
             try:
-                active_profile = ctx.get_active_profile(ctx.CONFIG)
-                if ctx.cookie_cache_enabled(ctx.CONFIG) and ctx.load_session_cookies(session, ctx.BASE_DIR, active_profile.name):
+                if ctx.cookie_cache_enabled(ctx.CONFIG) and ctx.load_session_cookies(session, ctx.BASE_DIR, monitor_profile.name):
                     ctx.COOKIE_CACHE_RESTORED = True
-                    ctx.log_print('已載入 {} 的 cookie 快取。'.format(active_profile.name))
-                    c_status = ctx.cookie_cache_status(ctx.BASE_DIR, active_profile.name)
+                    ctx.log_print('已載入 {} 的 cookie 快取。'.format(monitor_profile.name))
+                    c_status = ctx.cookie_cache_status(ctx.BASE_DIR, monitor_profile.name)
                     if c_status.get("near_expiry"):
                         ctx.log_print('【提示】Cookie 快取即將過期，可能需要重新登入。')
             except Exception:
@@ -704,8 +799,16 @@ async def app_main(
                             session,
                             shutdown_event,
                             ignore_attendance_rate_gate=ignore_attendance_rate_gate,
+                            monitor_profile_name=monitor_profile.name,
+                            monitor_user_no=monitor_profile.user,
+                            monitor_provider_key=monitor_provider_key,
+                            monitor_identity=monitor_identity,
                         )),
-                        ctx.asyncio.create_task(ctx.watch_any_key_to_edit_config(shutdown_event, session)),
+                        ctx.asyncio.create_task(ctx.watch_any_key_to_edit_config(
+                            shutdown_event,
+                            session,
+                            monitor_identity=monitor_identity,
+                        )),
                         ctx.asyncio.create_task(ctx.status_line_loop(shutdown_event)),
                     ]
                     try:
@@ -724,8 +827,25 @@ async def app_main(
                         session,
                         shutdown_event,
                         ignore_attendance_rate_gate=ignore_attendance_rate_gate,
+                        monitor_profile_name=monitor_profile.name,
+                        monitor_user_no=monitor_profile.user,
+                        monitor_provider_key=monitor_provider_key,
+                        monitor_identity=monitor_identity,
                     )
             finally:
+                try:
+                    await _cancel_and_await_tracked_research()
+                except Exception:
+                    pass
+                _cancel_inflight_rollcalls()
+                # await inflight rollcalls to consume CancelledError
+                for _tt in list(_INFLIGHT_ROLLCALLS.values()):
+                    try:
+                        await _tt
+                    except ctx.asyncio.CancelledError:
+                        pass
+                    except Exception:
+                        pass
                 await ctx.stop_prepared_teacher_qr()
                 ctx.record_monitor_runtime('stopped', heartbeat=False)
                 ctx.TEACHER_SESSION = None

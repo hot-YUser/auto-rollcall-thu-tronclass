@@ -10,15 +10,18 @@ def __getattr__(name: str):
     return getattr(ctx, name)
 
 
-async def self_registration(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str, ctx.Any]) -> bool:
+async def self_registration(main_session: ctx.aiohttp.ClientSession, rollcall: ctx.Dict[str, ctx.Any], *, my_user_no: str = "", endpoints: ctx.Any = None, request_ssl: ctx.Any = None) -> bool:
     """自主報到 (self_registration) — submit an empty PUT, then confirm on_call_fine.
 
     The vendor web client sends a bare ``{}`` to ``answer_self_registration_rollcall`` (there is no
     code / coordinate / QR to compute — it is the simplest check-in type). We mirror number/radar:
     submit → verify → banner, and return True only after the rollcall is confirmed on_call_fine.
     """
+    _ep = endpoints if endpoints is not None else ctx.get_active_http_endpoints()
+    _ssl = request_ssl if request_ssl is not None else ctx.get_ssl_request_setting()
+    _my_user_no = ctx.normalize_text(my_user_no) or (ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).user) if hasattr(ctx.get_active_profile(ctx.CONFIG), 'user') else "")
     rollcall_id = rollcall.get('rollcall_id') if isinstance(rollcall, dict) else None
-    base_url = ctx.get_active_http_endpoints().base_url.rstrip('/')
+    base_url = _ep.base_url.rstrip('/')
     request_url = '{}/api/rollcall/{}/answer_self_registration_rollcall'.format(base_url, rollcall_id)
     ctx.status_print('正在送出自主報到 #{} ...'.format(rollcall_id))
     try:
@@ -34,7 +37,7 @@ async def self_registration(main_session: ctx.aiohttp.ClientSession, rollcall: c
         ctx.log_print('自主報到請求失敗：{}'.format(exc))
         return False
 
-    verification = await ctx.verify_rollcall_on_call_fine(main_session, rollcall_id, rollcall_type='self_registration')
+    verification = await ctx.verify_rollcall_on_call_fine(main_session, rollcall_id, rollcall_type='self_registration', my_user_no=_my_user_no, endpoints=_ep, request_ssl=_ssl)
     if not (verification.get('ok') and verification.get('status') == 'on_call_fine'):
         await ctx.mes('自主報到 #{} 已送出，但尚未確認 on_call_fine；下一輪會再檢查。'.format(rollcall_id))
         return False

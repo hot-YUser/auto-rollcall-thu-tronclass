@@ -117,4 +117,8 @@ desktop.ini
 # under "tronclass_reverse_engineering - share_release/" is intentionally tracked,
 # but compressed source archives and fresh raw captures must not be committed.
 *.7z
+*.ipa
+*.ipa.zip
+*.apk
+*.apk.zip
 tests/test_rollcalls.js

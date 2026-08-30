@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Any, Mapping, Sequence
+
+# ASCII-only 0000-9999; reject Unicode Nd / fullwidth / Arabic-Indic (payload/direct/UI/config paths).
+_FOUR_DIGIT_RE = re.compile(r"^[0-9]{4}$")
 
 
 ROLLCALL_KIND_ALIASES = {
@@ -69,6 +73,24 @@ def _normalize_student_rollcalls(value: Any) -> list[dict[str, Any]]:
     return records
 
 
+def _coerce_number_code_strict(value: Any) -> str:
+    # Align with number_rollcall.coerce_number_code: bool is not a code, int 0..9999 is zero-padded,
+    # otherwise trimmed string must be ASCII [0-9]{4}. Avoid normalize_text(value or "") falsy collapse.
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        raise TeacherRollcallError("number_code must be ASCII 0000-9999 ([0-9]{{4}}); got {!r}".format(value))
+    if isinstance(value, int):
+        text = "{:04d}".format(value) if 0 <= value <= 9999 else str(value)
+    else:
+        text = str(value).strip()
+        if not text:
+            return ""
+    if not _FOUR_DIGIT_RE.match(text):
+        raise TeacherRollcallError("number_code must be ASCII 0000-9999 ([0-9]{{4}}); got {!r}".format(text))
+    return text
+
+
 def build_teacher_rollcall_payload(
     *,
     kind: Any = "manual",
@@ -84,13 +106,17 @@ def build_teacher_rollcall_payload(
     default_rollcall_status: str = "",
 ) -> dict[str, Any]:
     normalized_kind = normalize_rollcall_kind(kind)
+    number_code_text = _coerce_number_code_strict(number_code) if normalized_kind == "number" else normalize_text(number_code)
+    # Non-number kinds ignore number_code but still reject Unicode-looking codes if caller passed one
+    if normalized_kind != "number" and number_code_text and not _FOUR_DIGIT_RE.match(number_code_text):
+        raise TeacherRollcallError("number_code must be ASCII 0000-9999 ([0-9]{{4}}); got {!r}".format(number_code_text))
     payload = {
         "title": normalize_text(title) or default_rollcall_title(),
         "status": normalize_text(status) or "in_progress",
         "is_radar": False,
         "is_number": False,
         "type": "another",
-        "number_code": normalize_text(number_code),
+        "number_code": number_code_text,
         "altitude": altitude,
         "latitude": latitude,
         "longitude": longitude,

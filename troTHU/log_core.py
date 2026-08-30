@@ -71,7 +71,14 @@ class _JsonlHandler(logging.Handler):
             now = ctx.current_datetime()
             path = ctx.PATH / "{}.jsonl".format(now.strftime("%Y-%m-%d"))
             path.parent.mkdir(parents=True, exist_ok=True)
-            line = json.dumps(_record_to_dict(record, now), ensure_ascii=False, default=str)
+            data = _record_to_dict(record, now)
+            # Sanitize the COMPLETE record at the writer boundary (message/exception/nested strings).
+            # Use a copy so the original LogRecord is never mutated across handlers.
+            try:
+                sanitized = sanitize_debug_payload(dict(data))
+            except Exception:
+                sanitized = data
+            line = json.dumps(sanitized, ensure_ascii=False, default=str)
             with open(path, "a", encoding="utf-8") as handle:
                 handle.write(line + "\n")
         except Exception:  # never let logging break the caller
@@ -79,12 +86,21 @@ class _JsonlHandler(logging.Handler):
 
 
 class _RedactionFilter(logging.Filter):
-    """Redact secrets inside a record's structured ``fields`` before it is written."""
+    """Redact secrets inside a record's structured ``fields`` before it is written.
+
+    Kept for defence-in-depth, but the authoritative boundary is _JsonlHandler.emit
+    which sanitizes the full dict (including message) without mutating the LogRecord.
+    """
 
     def filter(self, record: logging.LogRecord) -> bool:
         fields = getattr(record, "fields", None)
         if isinstance(fields, dict):
-            record.fields = sanitize_debug_payload(fields)
+            # Non-mutating: copy-on-write so other handlers see original
+            try:
+                # Shallow copy of record.__dict__ field to avoid mutating original list/dict refs
+                record.fields = sanitize_debug_payload(dict(fields))
+            except Exception:
+                pass
         return True
 
 
@@ -100,8 +116,7 @@ def configure_logging(mode: Optional[str] = None) -> logging.Logger:
         logger.removeHandler(handler)
     handler = _JsonlHandler()
     handler.setLevel(logging.DEBUG)
-    if resolved != "research":
-        handler.addFilter(_RedactionFilter())
+    handler.addFilter(_RedactionFilter())
     logger.addHandler(handler)
     return logger
 

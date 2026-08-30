@@ -27,7 +27,8 @@ class RollcallDispatchTest(unittest.IsolatedAsyncioTestCase):
             monitor_runtime._dispatch_rollcall(object(), poll, "R1", "number", None, se)  # duplicate
             await asyncio.sleep(0)
             try:
-                self.assertEqual(list(monitor_runtime._INFLIGHT_ROLLCALLS), ["R1"])  # exactly one task
+                # provider:profile:rid scoping — bare R1 becomes ?:default:R1 when no provider/profile given
+                self.assertEqual(list(monitor_runtime._INFLIGHT_ROLLCALLS), [monitor_runtime._inflight_key("R1")])  # exactly one task
             finally:
                 gate.set()
                 tasks = list(monitor_runtime._INFLIGHT_ROLLCALLS.values())
@@ -46,11 +47,11 @@ class RollcallDispatchTest(unittest.IsolatedAsyncioTestCase):
         async def fake_poll(session, cnt):
             return polls.pop(0) if polls else {"status": "not_call"}
 
-        async def fake_progress(session, rid):
+        async def fake_progress(session, rid, **_kw):
             return {"ok": True, "present_rate_known": True, "present_rate_percent": 99.0,
                     "attendance_rate_text": "99%"}
 
-        async def fake_decision(session, poll, *, cnt=-1, use_prepared_qr=False, gate_detail=""):
+        async def fake_decision(session, poll, *, cnt=-1, use_prepared_qr=False, gate_detail="", **_kw):
             submits.append(poll.get("status"))
             return "is_number"
 
@@ -71,7 +72,7 @@ class RollcallDispatchTest(unittest.IsolatedAsyncioTestCase):
                                                 ignore_attendance_rate_gate=None, shutdown_event=asyncio.Event()),
                 timeout=5)
         self.assertEqual(submits, ["is_number"])                      # submitted exactly once (gate passed)
-        self.assertNotIn("R2", monitor_runtime._INFLIGHT_ROLLCALLS)   # cleaned up on close
+        self.assertNotIn(monitor_runtime._inflight_key("R2"), monitor_runtime._INFLIGHT_ROLLCALLS)   # cleaned up on close
 
 
 if __name__ == "__main__":

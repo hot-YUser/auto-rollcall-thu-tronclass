@@ -38,11 +38,11 @@ COURSE_REFRESH_SECONDS = 300.0
 PREPARE_TIMEOUT_SECONDS = 180.0        # generous cap so a stuck (no-timeout) LLM eventually releases the task
 _MAX_INFLIGHT_ACTIVITIES = 5           # bound concurrent answer handlers (LLM calls)
 
-# activity_id -> the fire-and-forget handler Task currently answering it (dispatch dedup).
+# provider/profile/activity -> the fire-and-forget handler Task currently answering it.
 _INFLIGHT_ACTIVITIES: Dict[str, Any] = {}
-_DETECT_ANNOUNCED: Set[str] = set()    # activity ids already announced "偵測到…" — print ONCE, not each retry
-_FAILED_ATTEMPTS: Dict[str, int] = {}  # activity id -> consecutive prepare/submit failures (exponential backoff)
-_PREPARE_UNREADY_ANNOUNCED: Set[str] = set()  # activity ids we've already told the user couldn't be prepared (no 刷屏)
+_DETECT_ANNOUNCED: Set[str] = set()
+_FAILED_ATTEMPTS: Dict[str, int] = {}
+_PREPARE_UNREADY_ANNOUNCED: Set[str] = set()
 
 
 def _as_int(value: Any, default: int = 0) -> int:
@@ -121,11 +121,62 @@ def _exam_open(e: Dict[str, Any]) -> bool:
 _VOTED_CACHE: Set[str] = set()
 
 
-def _current_user_no() -> str:
+def _active_profile_name() -> str:
     try:
-        return normalize_text(ctx.get_active_profile(ctx.CONFIG).user).lower()
+        return ctx.get_active_profile(ctx.CONFIG).name
+    except Exception:
+        return "default"
+
+
+def _active_user_no() -> str:
+    try:
+        return normalize_text(ctx.get_active_profile(ctx.CONFIG).user)
     except Exception:
         return ""
+
+
+def _activity_scope(
+    *,
+    profile_name: str = "",
+    provider_key: str = "",
+) -> tuple[str, str, str]:
+    profile = ctx.normalize_profile_name(profile_name) if profile_name else _active_profile_name()
+    provider = normalize_text(provider_key) or ctx.get_active_provider_key()
+    return provider, profile, "{}:{}".format(provider, profile)
+
+
+def activity_runtime_key(
+    activity_id: Any,
+    *,
+    profile_name: str = "",
+    provider_key: str = "",
+) -> str:
+    provider, profile, _scope = _activity_scope(
+        profile_name=profile_name,
+        provider_key=provider_key,
+    )
+    return ctx.rollcall_completion_key(
+        activity_id,
+        profile_name=profile,
+        provider_key=provider,
+    )
+
+
+def _vote_runtime_key(
+    vote_id: Any,
+    *,
+    profile_name: str = "",
+    provider_key: str = "",
+) -> str:
+    return activity_runtime_key(
+        vote_id,
+        profile_name=profile_name,
+        provider_key=provider_key,
+    )
+
+
+def _current_user_no(explicit: str = "") -> str:
+    return (normalize_text(explicit) or _active_user_no()).lower()
 
 
 def _vote_already_cast(detail: Any, my_user_no: str) -> bool:
@@ -137,32 +188,30 @@ def _vote_already_cast(detail: Any, my_user_no: str) -> bool:
     return False
 
 
-_last_poll = 0.0
-_courses: List[str] = []
-_courses_at = 0.0
-_loaded_profile: Any = None
+_LAST_POLL_BY_SCOPE: Dict[str, float] = {}
+_COURSE_CACHE: Dict[str, Any] = {}
+_LOADED_SCOPES: Set[str] = set()
 
 
-def _active_profile_name() -> str:
-    try:
-        return ctx.get_active_profile(ctx.CONFIG).name
-    except Exception:
-        return "default"
-
-
-def _ensure_persisted_loaded() -> None:
-    """Load the active profile's permanently-completed activity ids into the in-memory dedup set,
-    once per profile, so a restart doesn't re-answer a week-long homework. Best-effort."""
-    global _loaded_profile
-    profile = _active_profile_name()
-    if profile == _loaded_profile:
+def _ensure_persisted_loaded(*, profile_name: str = "", provider_key: str = "") -> None:
+    """Load completed ids into the matching provider/profile namespace exactly once."""
+    provider, profile, scope = _activity_scope(
+        profile_name=profile_name,
+        provider_key=provider_key,
+    )
+    if scope in _LOADED_SCOPES:
         return
     try:
-        for activity_id in autoanswer_store.load_completed(ctx.BASE_DIR, profile):
-            ctx.COMPLETED_QUESTION_SUBMISSIONS.setdefault(activity_id, True)
+        for activity_id in autoanswer_store.load_completed(ctx.BASE_DIR, profile, provider):
+            key = activity_runtime_key(
+                activity_id,
+                profile_name=profile,
+                provider_key=provider,
+            )
+            ctx.COMPLETED_QUESTION_SUBMISSIONS.setdefault(key, True)
     except Exception:
         pass
-    _loaded_profile = profile
+    _LOADED_SCOPES.add(scope)
 
 
 def autoanswer_enabled(config: Any = None) -> bool:
@@ -188,17 +237,20 @@ def _course_ids(payload: Any) -> List[str]:
     return out
 
 
-async def _refresh_courses(client: Any, now: float) -> List[str]:
-    global _courses, _courses_at
-    if _courses and now - _courses_at < COURSE_REFRESH_SECONDS:
-        return _courses
+async def _refresh_courses(client: Any, now: float, scope: str) -> List[str]:
+    cached = _COURSE_CACHE.get(scope)
+    if isinstance(cached, tuple) and len(cached) == 2:
+        courses, cached_at = cached
+        if courses and now - float(cached_at) < COURSE_REFRESH_SECONDS:
+            return list(courses)
+    fallback = list(cached[0]) if isinstance(cached, tuple) and cached else []
     try:
         payload = await client.fetch_my_courses()
     except Exception:
-        return _courses
-    _courses = _course_ids(payload)
-    _courses_at = now
-    return _courses
+        return fallback
+    courses = _course_ids(payload)
+    _COURSE_CACHE[scope] = (courses, now)
+    return courses
 
 
 async def _get(client: Any, path: str) -> Any:
@@ -213,7 +265,15 @@ def _activity(course_id: str, atype: ActivityType, raw: Dict[str, Any], title_ke
                     course_id=course_id, title=normalize_text(raw.get(title_key)), raw=raw)
 
 
-async def _poll_course(client: Any, course_id: str, wanted: Set[ActivityType]) -> List[Activity]:
+async def _poll_course(
+    client: Any,
+    course_id: str,
+    wanted: Set[ActivityType],
+    *,
+    profile_name: str = "",
+    user_no: str = "",
+    provider_key: str = "",
+) -> List[Activity]:
     """Open (in-progress) question activities in a course, per requested type."""
     out: List[Activity] = []
 
@@ -238,20 +298,25 @@ async def _poll_course(client: Any, course_id: str, wanted: Set[ActivityType]) -
                 out.append(_activity(course_id, ActivityType.HOMEWORK, h))
 
     if ActivityType.VOTE in wanted:
-        my_user_no = _current_user_no()
+        my_user_no = _current_user_no(user_no)
         body = await _get(client, "/api/courses/{}/interactions".format(course_id))
         for i in (body.get("interactions") if isinstance(body, dict) else None) or []:
             if not (isinstance(i, dict) and normalize_text(i.get("type")) == "vote"
                     and normalize_text(i.get("status")) == "start"):
                 continue
             vid = normalize_text(i.get("id"))
-            if vid and vid in _VOTED_CACHE:
+            vote_key = _vote_runtime_key(
+                vid,
+                profile_name=profile_name,
+                provider_key=provider_key,
+            ) if vid else ""
+            if vote_key and vote_key in _VOTED_CACHE:
                 continue
             # The LIST has no per-user voted flag; the detail exposes who voted -> skip if it's us.
             detail = await _get(client, "/api/votes/{}".format(vid)) if vid else None
             if _vote_already_cast(detail, my_user_no):
-                if vid:
-                    _VOTED_CACHE.add(vid)
+                if vote_key:
+                    _VOTED_CACHE.add(vote_key)
                 continue
             out.append(_activity(course_id, ActivityType.VOTE, i))
 
@@ -305,12 +370,17 @@ async def _poll_courseware(client: Any, course_id: str, out: List[Activity]) -> 
 
 
 def reset_autoanswer_dispatch() -> None:
-    """Forget stale in-flight handlers. Called by app_main per run: a crash+restart makes a NEW
-    event loop, so Tasks from the previous loop are dead and their ids must not block re-dispatch."""
+    """Drop every loop-bound/transient cache before a fresh monitor run."""
     _INFLIGHT_ACTIVITIES.clear()
     _DETECT_ANNOUNCED.clear()
     _FAILED_ATTEMPTS.clear()
     _PREPARE_UNREADY_ANNOUNCED.clear()
+    _VOTED_CACHE.clear()
+    _LAST_POLL_BY_SCOPE.clear()
+    _COURSE_CACHE.clear()
+    _LOADED_SCOPES.clear()
+    ctx.ACTIVE_QUESTION_ANSWERS.clear()
+    ctx.QUESTION_ANSWER_ATTEMPTS.clear()
 
 
 def _announce_prepare_unready(key: str, label: str, aa: Dict[str, Any]) -> None:
@@ -327,14 +397,31 @@ def _announce_prepare_unready(key: str, label: str, aa: Dict[str, Any]) -> None:
     ctx.log_print("「{}」暫時無法備妥完整答案：{}，不送出、稍後自動重試。".format(label, reason))
 
 
-async def handle_activity(session: Any, activity: Activity, aa: Dict[str, Any]) -> None:
+async def handle_activity(
+    session: Any,
+    activity: Activity,
+    aa: Dict[str, Any],
+    *,
+    runtime_key: str = "",
+    profile_name: str = "",
+    provider_key: str = "",
+) -> None:
     """One activity's full lifecycle, run as an independent background task so it NEVER blocks the
     monitor poll loop and many activities proceed in parallel:
       announce-DETECT immediately -> prepare the answer (LLM; timed out) -> announce-READY ->
       count down `delay_seconds` (any-key cuts it short for all pending) -> submit -> banner.
     Effective submit time = max(prepare_time, delay). Never raises.
     """
-    key = activity.activity_id
+    activity_id = activity.activity_id
+    provider, profile, _scope = _activity_scope(
+        profile_name=profile_name,
+        provider_key=provider_key,
+    )
+    key = runtime_key or activity_runtime_key(
+        activity_id,
+        profile_name=profile,
+        provider_key=provider,
+    )
     succeeded = False
     try:
         delay = int(aa.get("delay_seconds", 15) or 0)
@@ -389,7 +476,7 @@ async def handle_activity(session: Any, activity: Activity, aa: Dict[str, Any]) 
             succeeded = True
             ctx.COMPLETED_QUESTION_SUBMISSIONS[key] = True
             try:  # persist permanently so a restart never re-answers it
-                autoanswer_store.mark_completed(ctx.BASE_DIR, _active_profile_name(), key)
+                autoanswer_store.mark_completed(ctx.BASE_DIR, profile, activity_id, provider)
             except Exception:
                 pass
             rsource = getattr(result.source, "value", result.source)
@@ -397,7 +484,7 @@ async def handle_activity(session: Any, activity: Activity, aa: Dict[str, Any]) 
             final_text = format_paper_canonical(prepared.get("questions") or [], final)
             atype = getattr(prepared.get("activity"), "activity_type", "")
             atype_text = getattr(atype, "value", atype)
-            ctx.log_print(ctx.format_autoanswer_success_banner(label, key, atype_text, rsource, final_text))
+            ctx.log_print(ctx.format_autoanswer_success_banner(label, activity_id, atype_text, rsource, final_text))
         # else: failed -> file-log only; retried at the 30s cooldown (per-user: no submit-side backoff)
     except Exception:
         return
@@ -410,11 +497,26 @@ async def handle_activity(session: Any, activity: Activity, aa: Dict[str, Any]) 
             _FAILED_ATTEMPTS[key] = _FAILED_ATTEMPTS.get(key, 0) + 1
 
 
-def _dispatch_activity(session: Any, activity: Activity, aa: Dict[str, Any]) -> None:
+def _dispatch_activity(
+    session: Any,
+    activity: Activity,
+    aa: Dict[str, Any],
+    *,
+    profile_name: str = "",
+    provider_key: str = "",
+) -> None:
     """Spawn handle_activity as a background task unless this activity is already being handled /
     completed / on cooldown / at the concurrency cap. Synchronous check->create_task->register
     (no await between) so a second poll cannot double-dispatch the same id."""
-    key = activity.activity_id
+    provider, profile, _scope = _activity_scope(
+        profile_name=profile_name,
+        provider_key=provider_key,
+    )
+    key = activity_runtime_key(
+        activity.activity_id,
+        profile_name=profile,
+        provider_key=provider,
+    )
     if not key or key in _INFLIGHT_ACTIVITIES or ctx.COMPLETED_QUESTION_SUBMISSIONS.get(key) \
             or key in ctx.ACTIVE_QUESTION_ANSWERS or len(_INFLIGHT_ACTIVITIES) >= _MAX_INFLIGHT_ACTIVITIES:
         return
@@ -425,35 +527,64 @@ def _dispatch_activity(session: Any, activity: Activity, aa: Dict[str, Any]) -> 
     if now - float(ctx.QUESTION_ANSWER_ATTEMPTS.get(key, 0.0) or 0.0) < cooldown:
         return
     ctx.QUESTION_ANSWER_ATTEMPTS[key] = now
-    task = ctx.asyncio.create_task(handle_activity(session, activity, aa))
+    task = ctx.asyncio.create_task(handle_activity(
+        session,
+        activity,
+        aa,
+        runtime_key=key,
+        profile_name=profile,
+        provider_key=provider,
+    ))
     _INFLIGHT_ACTIVITIES[key] = task
     task.add_done_callback(lambda _t: _INFLIGHT_ACTIVITIES.pop(key, None))
 
 
-async def autoanswer_tick(session: Any) -> None:
-    """Called once per monitor poll. Polls for open activities and DISPATCHES each to a background
-    handler task — it does NOT prepare/submit inline, so it returns fast and NEVER blocks the
-    rollcall poll loop (the v1.8-alpha.2 starvation cause). Never raises."""
+async def autoanswer_tick(
+    session: Any,
+    *,
+    profile_name: str = "",
+    user_no: str = "",
+    provider_key: str = "",
+) -> None:
+    """Poll and dispatch against the monitor's immutable account identity; never read a fan-out switch."""
     try:
         aa = get_autoanswer_config(ctx.CONFIG)
         if not aa.get("enabled"):
             return
-        _ensure_persisted_loaded()
-        # Edge-triggered clear: once every pending answer has been submitted, reset the any-key signal.
+        provider, profile, scope = _activity_scope(
+            profile_name=profile_name,
+            provider_key=provider_key,
+        )
+        captured_user = normalize_text(user_no) or _active_user_no()
+        _ensure_persisted_loaded(profile_name=profile, provider_key=provider)
         event = ctx.AUTOANSWER_SUBMIT_NOW
         if event is not None and event.is_set() and not ctx.autoanswer_has_pending():
             event.clear()
-        global _last_poll
         now = ctx.time.monotonic() if hasattr(ctx, "time") else time.monotonic()
-        if now - _last_poll < POLL_INTERVAL_SECONDS:
+        last_poll = _LAST_POLL_BY_SCOPE.get(scope, 0.0)
+        if now - last_poll < POLL_INTERVAL_SECONDS:
             return
-        _last_poll = now
+        _LAST_POLL_BY_SCOPE[scope] = now
         wanted = _wanted_types(aa)
         if not wanted:
             return
         client = ctx.create_tron_http_client(session, request_ssl=ctx.get_ssl_request_setting())
-        for course_id in await _refresh_courses(client, now):
-            for activity in await _poll_course(client, course_id, wanted):
-                _dispatch_activity(session, activity, aa)
+        for course_id in await _refresh_courses(client, now, scope):
+            activities = await _poll_course(
+                client,
+                course_id,
+                wanted,
+                profile_name=profile,
+                user_no=captured_user,
+                provider_key=provider,
+            )
+            for activity in activities:
+                _dispatch_activity(
+                    session,
+                    activity,
+                    aa,
+                    profile_name=profile,
+                    provider_key=provider,
+                )
     except Exception:  # autoanswer must never break the monitor loop
         pass

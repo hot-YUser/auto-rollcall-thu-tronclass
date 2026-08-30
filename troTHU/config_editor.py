@@ -56,6 +56,65 @@ def reload_config_after_editor() -> ctx.Dict[str, ctx.Any]:
     return {"ok": True, "status": "reloaded", "now": config_now_value(config), "effective_now": effective_config_now_value(config)}
 
 
+def _auth_boundary_snapshot(config: ctx.Mapping[str, ctx.Any]) -> tuple:
+    try:
+        active = ctx.get_active_profile(config)
+        user = ctx.normalize_text(active.user)
+        profile = ctx.normalize_text(active.name)
+    except Exception:
+        user = ""
+        profile = ""
+    try:
+        provider = ctx.normalize_provider_config(config.get('provider', ctx.DEFAULT_CONFIG['provider']))
+        provider_key = ctx.normalize_text(provider.get('current')) or ctx.DEFAULT_PROVIDER
+    except Exception:
+        provider_key = ctx.DEFAULT_PROVIDER
+    try:
+        endpoints = ctx.get_active_http_endpoints()
+        base = ctx.normalize_text(getattr(endpoints, 'base_url', ''))
+        login_ep = ctx.normalize_text(getattr(endpoints, 'login_url', '') or getattr(endpoints, 'base_url', ''))
+    except Exception:
+        base = ""
+        login_ep = ""
+    effective = ctx.normalize_text(config.get('_simple', {}).get('now', '')) if isinstance(config.get('_simple'), dict) else ''
+    if not effective:
+        try:
+            effective = ctx.normalize_text(ctx.infer_single_account_now(config.get('_simple', {})))
+        except Exception:
+            effective = ''
+    return (provider_key, profile, user, base, login_ep, effective)
+
+
+def refresh_monitor_identity(
+    identity: ctx.Any,
+    config: ctx.Mapping[str, ctx.Any] | None = None,
+) -> ctx.Dict[str, ctx.Any]:
+    if not isinstance(identity, dict):
+        return {}
+    cfg = config or ctx.CONFIG
+    active = ctx.get_active_profile(cfg)
+    provider = ctx.normalize_provider_config(
+        cfg.get('provider', ctx.DEFAULT_CONFIG['provider'])
+    )
+    identity.update({
+        'profile_name': active.name,
+        'user_no': active.user,
+        'provider_key': ctx.normalize_text(provider.get('current')) or ctx.DEFAULT_PROVIDER,
+    })
+    try:
+        endpoints = ctx.get_active_http_endpoints()
+        identity['_endpoints'] = endpoints
+        identity['base_url'] = ctx.normalize_text(getattr(endpoints, 'base_url', ''))
+        identity['login_url'] = ctx.normalize_text(getattr(endpoints, 'login_url', '') or getattr(endpoints, 'base_url', ''))
+    except Exception:
+        pass
+    try:
+        identity['_request_ssl'] = ctx.get_ssl_request_setting()
+    except Exception:
+        pass
+    return identity
+
+
 def config_is_ready_to_run() -> bool:
     """True when a real (user, password) can be resolved to log in with.
 
@@ -100,7 +159,12 @@ def ensure_config_now_or_open_editor(config_path: Path | None = None) -> ctx.Dic
     }
 
 
-async def watch_any_key_to_edit_config(shutdown_event: ctx.asyncio.Event, session: ctx.Any = None) -> None:
+async def watch_any_key_to_edit_config(
+    shutdown_event: ctx.asyncio.Event,
+    session: ctx.Any = None,
+    *,
+    monitor_identity: ctx.Optional[ctx.Dict[str, ctx.Any]] = None,
+) -> None:
     if ctx.os.name != "nt":
         await shutdown_event.wait()
         return
@@ -124,22 +188,25 @@ async def watch_any_key_to_edit_config(shutdown_event: ctx.asyncio.Event, sessio
             ctx.log_print("偵測到按鍵，立即送出已備妥的自動答題。")
             continue
         ctx.log_print("偵測到按鍵，開啟 config.conf。關閉記事本後會重新載入設定。")
-        before = effective_config_now_value(ctx.CONFIG)
+        before = _auth_boundary_snapshot(ctx.CONFIG)
         with ctx.pause_status_line():
             opened = await ctx.asyncio.to_thread(ctx.open_config_in_legacy_notepad, ctx.CONFIG_PATH, wait=True)
         if not opened.get("ok"):
             ctx.log_print("無法開啟舊版記事本: {}".format(opened.get("status")))
             continue
         ctx.reload_config_after_editor()
-        after = effective_config_now_value(ctx.CONFIG)
+        refresh_monitor_identity(monitor_identity, ctx.CONFIG)
+        after = _auth_boundary_snapshot(ctx.CONFIG)
         ctx.LAST_LOGIN_RESULT = ctx.LoginResult(status="transient_error", credential_source="config_reload")
         if after != before:
             ctx.log_print("設定 now 已變更為 `{}`，將清除目前 session 並套用新設定。\n{}".format(
-                display_config_now_value(after), ctx.describe_group_target(ctx.CONFIG)))
+                display_config_now_value(after[5]), ctx.describe_group_target(ctx.CONFIG)))
             ctx.update_monitor_status(target_label=ctx.group_status_label(ctx.CONFIG), redraw=False)
             try:
                 if session is not None:
                     session.cookie_jar.clear()
-                ctx.clear_session_cookies(ctx.BASE_DIR, ctx.get_active_profile(ctx.CONFIG).name)
+                for prof in {before[1], after[1]}:
+                    if prof:
+                        ctx.clear_session_cookies(ctx.BASE_DIR, prof)
             except Exception:
                 pass

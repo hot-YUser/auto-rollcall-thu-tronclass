@@ -244,6 +244,15 @@ def make_config():
 
 
 class GroupRuntimeTest(unittest.TestCase):
+    def test_refresh_monitor_identity_only_follows_official_config(self) -> None:
+        config = make_config()
+        identity = {"profile_name": "old", "user_no": "old-user", "provider_key": "old"}
+        tron.refresh_monitor_identity(identity, config)
+        active = tron.get_active_profile(config)
+        self.assertEqual(identity["profile_name"], active.name)
+        self.assertEqual(identity["user_no"], active.user)
+        self.assertEqual(identity["provider_key"], config["provider"]["current"])
+
     def test_resolve_now_class_and_execution_plan(self) -> None:
         config = make_config()
         target = tron.resolve_now_target(config)
@@ -395,6 +404,14 @@ class GroupDisplayTest(unittest.TestCase):
 class GroupRuntimeIntegrationTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.original_config = copy.deepcopy(tron.CONFIG)
+        self.original_completed_number = copy.deepcopy(tron.COMPLETED_NUMBER_ROLLCALLS)
+        self.original_completed_radar = copy.deepcopy(tron.COMPLETED_RADAR_ROLLCALLS)
+        self.original_completed_self_registration = copy.deepcopy(tron.COMPLETED_SELF_REGISTRATION_ROLLCALLS)
+        self.original_completed_qr = copy.deepcopy(tron.COMPLETED_QR_ROLLCALLS)
+        tron.COMPLETED_NUMBER_ROLLCALLS.clear()
+        tron.COMPLETED_RADAR_ROLLCALLS.clear()
+        tron.COMPLETED_SELF_REGISTRATION_ROLLCALLS.clear()
+        tron.COMPLETED_QR_ROLLCALLS.clear()
         self.original_base_dir = tron.BASE_DIR
         self.original_ctx_base_dir = runtime_context.BASE_DIR
         self.base_dir = Path(tempfile.mkdtemp())
@@ -424,15 +441,37 @@ class GroupRuntimeIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.login_patcher.stop()
         tron.CONFIG.clear()
         tron.CONFIG.update(copy.deepcopy(self.original_config))
+        tron.COMPLETED_NUMBER_ROLLCALLS.clear()
+        tron.COMPLETED_NUMBER_ROLLCALLS.update(self.original_completed_number)
+        tron.COMPLETED_RADAR_ROLLCALLS.clear()
+        tron.COMPLETED_RADAR_ROLLCALLS.update(self.original_completed_radar)
+        tron.COMPLETED_SELF_REGISTRATION_ROLLCALLS.clear()
+        tron.COMPLETED_SELF_REGISTRATION_ROLLCALLS.update(self.original_completed_self_registration)
+        tron.COMPLETED_QR_ROLLCALLS.clear()
+        tron.COMPLETED_QR_ROLLCALLS.update(self.original_completed_qr)
         tron.BASE_DIR = self.original_base_dir
         runtime_context.BASE_DIR = self.original_ctx_base_dir
         self.url_patch.__exit__(None, None, None)
         await self.fake_server.close()
         shutil.rmtree(self.base_dir, ignore_errors=True)
 
+    def _with_fake_provider(self, config):
+        config["provider"] = tron.normalize_provider_config(
+            {
+                "current": tron.DEFAULT_PROVIDER,
+                "available": {
+                    tron.DEFAULT_PROVIDER: {
+                        "base_url": self.fake_server.base_url,
+                        "login_url": self.fake_server.login_url,
+                    }
+                },
+            }
+        )
+        return config
+
     async def test_group_submit_helpers_fanout_e2e(self) -> None:
         # Load the configuration with group class A
-        config = make_config()
+        config = self._with_fake_provider(make_config())
         tron.CONFIG.clear()
         tron.CONFIG.update(config)
 
@@ -453,7 +492,8 @@ class GroupRuntimeIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["results"][0]["user"], "user2")
         self.assertEqual(result["results"][0]["ok"], True)
         self.assertEqual(result["results"][0]["status"], "submitted")
-        
+        self.assertTrue(tron.is_completed_number_rollcall(42, profile_name="user2"))
+
         encoded = json.dumps(result, ensure_ascii=False)
         self.assertNotIn("pass1", encoded)
         self.assertNotIn("1234", encoded)
@@ -476,18 +516,38 @@ class GroupRuntimeIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["results"][0]["user"], "user2")
         self.assertEqual(result["results"][0]["ok"], True)
         self.assertEqual(result["results"][0]["status"], "submitted")
+        self.assertTrue(tron.is_completed_radar_rollcall(43, profile_name="user2"))
 
-        # 3. Test submit_group_qr (Teacher assist mode)
+        # 3. Test submit_group_self_registration
+        self.fake_server.rollcalls = [{"type": "self_registration", "rollcall_id": 430}]
+        self.fake_server.student_rollcalls = [
+            {"student_id": 1, "user_no": "user2", "status": "pending", "rollcall_status": "on_call"}
+        ]
+        async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+            tron.switch_profile(tron.CONFIG, "user1")
+            result = await tron.submit_group_self_registration(
+                {"rollcall_id": 430}, session=session, config=tron.CONFIG
+            )
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["count"], 1)
+        self.assertEqual(result["results"][0]["status"], "submitted")
+        self.assertTrue(
+            tron.is_completed_self_registration_rollcall(430, profile_name="user2")
+        )
+
+        # 4. Test submit_group_qr (Teacher assist mode)
         self.fake_server.rollcalls = [{"is_qrcode": True, "rollcall_id": 44, "type": "qrcode"}]
         self.fake_server.student_rollcalls = [
             {"student_id": 1, "user_no": "user2", "status": "pending", "rollcall_status": "on_call"}
         ]
+        # The monitor account is complete; member user2 must still execute its own submission.
+        tron.mark_completed_qr_rollcall(44, profile_name="user1")
 
         async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
             tron.switch_profile(tron.CONFIG, "user1")
-            # Mock teacher assist QR call to return success
-            with patch.object(tron, "submit_prepared_teacher_qr", AsyncMock(return_value=True)), \
-                 patch.object(tron, "teacher_assist_configured", return_value=True):
+            with patch.object(tron, "submit_prepared_teacher_qr", AsyncMock(return_value=True)) as teacher_submit, \
+                 patch.object(tron, "teacher_assist_configured", return_value=True), \
+                 patch.object(tron, "qr_remote_configured", return_value=False):
                 result = await tron.submit_group_qr({"rollcall_id": 44}, session=session, config=tron.CONFIG)
 
         self.assertTrue(result["ok"])
@@ -495,22 +555,54 @@ class GroupRuntimeIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["count"], 1)
         self.assertEqual(result["results"][0]["user"], "user2")
         self.assertEqual(result["results"][0]["ok"], True)
+        teacher_submit.assert_awaited_once()
+        self.assertEqual(teacher_submit.await_args.kwargs["profile_name"], "user2")
+        self.assertEqual(teacher_submit.await_args.kwargs["my_user_no"], "user2")
 
-        # 4. submit_group_qr with NO teacher-assist: there is no automatic data source, so the
-        #    group fan-out is skipped. (The old background clipboard-reading path was removed — it
-        #    masqueraded as automatic; teacher-assist is the only real QR automation.)
+        # 5. No teacher and no remote source is an explicit failure, never a false-success skip.
         self.fake_server.rollcalls = [{"is_qrcode": True, "rollcall_id": 45, "type": "qrcode"}]
 
         async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
             tron.switch_profile(tron.CONFIG, "user1")
             with patch.object(tron, "submit_qr_payload", AsyncMock(return_value=True)) as submit_qr_mock, \
-                 patch.object(tron, "teacher_assist_configured", return_value=False):
+                 patch.object(tron, "teacher_assist_configured", return_value=False), \
+                 patch.object(tron, "qr_remote_configured", return_value=False):
                 result = await tron.submit_group_qr({"rollcall_id": 45}, session=session, config=tron.CONFIG)
                 submit_qr_mock.assert_not_awaited()
 
-        self.assertTrue(result["ok"])
-        self.assertEqual(result["status"], "skipped_no_teacher_assist")
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["status"], "no_qr_source")
         self.assertEqual(result["count"], 0)
+
+    async def test_group_qr_uses_remote_and_falls_back_after_teacher_failure(self) -> None:
+        config = self._with_fake_provider(make_config())
+        tron.CONFIG.clear()
+        tron.CONFIG.update(config)
+        self.fake_server.rollcalls = [{"is_qrcode": True, "rollcall_id": 46, "type": "qrcode"}]
+
+        async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+            tron.switch_profile(tron.CONFIG, "user1")
+            teacher_submit = AsyncMock(return_value=False)
+            remote_submit = AsyncMock(return_value=True)
+            with (
+                patch.object(tron, "submit_prepared_teacher_qr", teacher_submit),
+                patch.object(tron, "submit_remote_qr", remote_submit),
+                patch.object(tron, "teacher_assist_configured", return_value=True),
+                patch.object(tron, "qr_remote_configured", return_value=True),
+            ):
+                result = await tron.submit_group_qr(
+                    {"rollcall_id": 46},
+                    session=session,
+                    config=tron.CONFIG,
+                )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["results"][0]["status"], "submitted_remote")
+        teacher_submit.assert_awaited_once()
+        remote_submit.assert_awaited_once()
+        for mocked in (teacher_submit, remote_submit):
+            self.assertEqual(mocked.await_args.kwargs["profile_name"], "user2")
+            self.assertEqual(mocked.await_args.kwargs["my_user_no"], "user2")
 
     async def test_group_number_fanout_covers_multiple_members(self) -> None:
         # Regression: a group with TWO valid fan-out members must sign BOTH in.
@@ -528,7 +620,9 @@ class GroupRuntimeIntegrationTest(unittest.IsolatedAsyncioTestCase):
             "groups": [{"class": "A", "school": "thu", "users": ["user1", "user2", "user5"]}],
             "operating": {},
         }
-        config = tron.normalize_config(tron.merge_basic_and_advanced_config(simple, {}))
+        config = self._with_fake_provider(
+            tron.normalize_config(tron.merge_basic_and_advanced_config(simple, {}))
+        )
         tron.CONFIG.clear()
         tron.CONFIG.update(config)
 

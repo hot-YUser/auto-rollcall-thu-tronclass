@@ -1,9 +1,8 @@
 """QR 簽到的送出與收尾(送 `data`、驗 `on_call_fine`、通知)。
 
-QR `data` 由伺服器端產生、學生端 API 不回傳;目前唯一能自動完成 QR 簽到的是**教師輔助**
-(靠已實證的 `data` 跨課/跨校可攜——詳見 qr_teacher_runtime)。`tron qr paste`/`scan` 是使用者
-主動提供 QR 內容的**手動**最後手段,不算自動。純學生端免教師取得 data 的方法**目前尚未發現**
-(已知有人做到、原理未明,故非不可能,僅為目前未解)。
+QR `data` 由伺服器端產生、學生端 API 不回傳；自動來源可由本機教師輔助或已配置的遠端
+`data` oracle 提供。`tron qr paste`/`scan` 是使用者主動提供 QR 內容的手動最後手段，不算自動。
+純學生端自行取得或生成 data 的方法目前尚未發現（已知有人做到、原理未明，因此不是不可能）。
 """
 from __future__ import annotations
 
@@ -16,6 +15,26 @@ except ImportError:  # pragma: no cover - direct script fallback
 def __getattr__(name: str):
     return getattr(ctx, name)
 
+
+
+def qr_rollcall_key(rollcall_id, *, profile_name: str = "", provider_key: str = "") -> str:
+    return ctx.rollcall_completion_key(
+        rollcall_id,
+        profile_name=profile_name,
+        provider_key=provider_key,
+    )
+
+
+def is_completed_qr_rollcall(rollcall_id, *, profile_name: str = "", provider_key: str = "") -> bool:
+    key = qr_rollcall_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
+    return bool(key and ctx.COMPLETED_QR_ROLLCALLS.get(key))
+
+
+def mark_completed_qr_rollcall(rollcall_id, *, profile_name: str = "", provider_key: str = "") -> str:
+    key = qr_rollcall_key(rollcall_id, profile_name=profile_name, provider_key=provider_key)
+    if key:
+        ctx.COMPLETED_QR_ROLLCALLS[key] = True
+    return key
 
 
 def build_qr_preview(raw_payload: str, provider: str='') -> ctx.Dict[str, ctx.Any]:
@@ -192,27 +211,148 @@ async def qr_fanout_result(payload: str, provider: str='', submit_profile: ctx.A
     matches = ctx.match_pending_qr(ctx.BASE_DIR, preview.get('rollcall_id'), provider=provider_key)
     if not matches:
         return {'ok': False, 'status': 'no_matches', 'provider': provider_key, 'rollcall_id': preview.get('rollcall_id'), 'match_count': 0, 'results': []}
-    original = ctx.get_active_profile(ctx.CONFIG).name
     results = []
+    # Capture pending list and per-pending context once; never mutate pending during loop.
+    pending_snapshot = list(matches)
+    # Freeze batch dispatch snapshot once before any await — no per-iteration global re-read.
     try:
-        for pending in matches:
-            ctx.switch_profile(ctx.CONFIG, pending.profile)
-            try:
-                if submit_profile is not None:
+        import copy as _copy_batch
+        from troTHU.dispatch_context import build_dispatch_context as _bdc_batch
+        _batch_snapshot = _copy_batch.deepcopy(ctx.CONFIG)
+        _batch_dctx = _bdc_batch(_batch_snapshot)
+    except Exception:
+        _batch_snapshot = None  # type: ignore
+        _batch_dctx = None  # type: ignore
+
+    for pending in pending_snapshot:
+        try:
+            if submit_profile is not None:
+                # Define one callback invocation contract: legacy arity is adapted BEFORE invoking,
+                # never catch TypeError from inside the callback as arity signal, never call twice.
+                import inspect as _inspect
+                _accepts_pending = None
+                try:
+                    _sig = _inspect.signature(submit_profile)
+                    try:
+                        _sig.bind(pending.profile, payload, pending=pending)
+                        _accepts_pending = True
+                    except TypeError:
+                        try:
+                            _sig.bind(pending.profile, payload)
+                            _accepts_pending = False
+                        except TypeError:
+                            # ambiguous (e.g. *args) — try with pending first
+                            _accepts_pending = True
+                except (ValueError, TypeError):
+                    _accepts_pending = None
+                if _accepts_pending is True:
+                    result = await submit_profile(pending.profile, payload, pending=pending)
+                elif _accepts_pending is False:
                     result = await submit_profile(pending.profile, payload)
                 else:
-                    result = await ctx.qr_command(payload)
-                status = 'submitted' if result == 0 else 'failed'
-                error = ''
-            except Exception as exc:
-                result = 1
-                status = 'failed'
-                error = str(exc)
-            results.append({'profile': pending.profile, 'provider': pending.provider, 'ok': result == 0, 'status': status, **({'error': error} if error else {})})
-    finally:
-        ctx.switch_profile(ctx.CONFIG, original)
-    ok = all((result['ok'] for result in results))
-    return {'ok': ok, 'status': 'submitted' if ok else 'partial_failed', 'provider': provider_key, 'rollcall_id': preview.get('rollcall_id'), 'match_count': len(matches), 'results': results}
+                    # introspection failed — single invocation only; never retry with arity probe
+                    # (would double-execute side effect). Treat as failed invocation.
+                    try:
+                        result = await submit_profile(pending.profile, payload, pending=pending)
+                    except TypeError as _arity_err:
+                        raise
+                # A callback returning None is one completed invocation, not a retry trigger (legacy compat)
+                if result is None:
+                    result = 0
+            else:
+                # per-member isolated execution from frozen batch snapshot — no per-iteration global re-read
+                try:
+                    if _batch_dctx is not None and _batch_snapshot is not None:
+                        from troTHU.dispatch_context import resolve_provider_endpoints as _resolve_ep
+                        _member_profile = ctx.normalize_profile_name(pending.profile)
+                        _raw_pending_provider = ctx.normalize_text(pending.provider)
+                        if _raw_pending_provider:
+                            try:
+                                _member_provider, _member_endpoints = _resolve_ep(_raw_pending_provider, _batch_snapshot)
+                            except Exception:
+                                _member_provider = _raw_pending_provider
+                                _member_endpoints = _batch_dctx.endpoints
+                        else:
+                            _member_provider = _batch_dctx.provider_key
+                            _member_endpoints = _batch_dctx.endpoints
+                        _member_ssl = _batch_dctx.request_ssl
+                        try:
+                            _member_user = ctx.normalize_text(
+                                _batch_snapshot.get("accounts", {}).get("profiles", {}).get(_member_profile, {}).get("user", "")
+                            ) if isinstance(_batch_snapshot.get("accounts"), dict) else ""
+                        except Exception:
+                            _member_user = ""
+                    else:
+                        raise RuntimeError("no batch snapshot")
+                except Exception:
+                    _member_endpoints = None
+                    _member_ssl = None
+                    _member_user = ""
+                    _member_profile = ctx.normalize_profile_name(pending.profile)
+                    _member_provider = ctx.normalize_text(pending.provider) or provider_key
+                try:
+                    import copy as _copy_qr
+                    member_config = _copy_qr.deepcopy(_batch_snapshot) if _batch_snapshot is not None else ctx.copy.deepcopy(ctx.CONFIG)
+                except Exception:
+                    member_config = ctx.copy.deepcopy(ctx.CONFIG)
+                try:
+                    member_config["accounts"]["current"] = _member_profile
+                except Exception:
+                    pass
+                headers = {'User-Agent': ctx.random_ua()}
+                mk: ctx.Dict[str, ctx.Any] = {'connector': ctx.create_http_connector(), 'headers': headers, 'cookie_jar': ctx.aiohttp.CookieJar(unsafe=True)}
+                tout = ctx.create_http_client_timeout()
+                if tout is not None:
+                    mk['timeout'] = tout
+                async with ctx.aiohttp.ClientSession(**mk) as member_session:
+                    if ctx.cookie_cache_enabled(member_config):
+                        try:
+                            ctx.load_session_cookies(member_session, ctx.BASE_DIR, pending.profile)
+                        except Exception:
+                            pass
+                    if not ctx.has_session_cookie(member_session):
+                        try:
+                            from troTHU.group_runtime import _member_login as _fanout_login
+                            await _fanout_login(member_session, member_config, pending.profile, _member_endpoints, _member_ssl)
+                        except Exception:
+                            try:
+                                login_result = await ctx.login(member_session)
+                                if not login_result.ok:
+                                    raise RuntimeError(login_result.status)
+                            except Exception:
+                                pass
+                    try:
+                        await ctx.submit_qr_payload(member_session, payload, profile_name=_member_profile, provider_key=_member_provider, my_user_no=_member_user, endpoints=_member_endpoints, request_ssl=_member_ssl)
+                        result = 0
+                    except ctx.UnauthorizedError:
+                        try:
+                            member_session.cookie_jar.clear()
+                        except Exception:
+                            pass
+                        try:
+                            from troTHU.group_runtime import _member_login as _fanout_login2
+                            await _fanout_login2(member_session, member_config, pending.profile, _member_endpoints, _member_ssl)
+                        except Exception:
+                            try:
+                                await ctx.login(member_session)
+                            except Exception:
+                                pass
+                        await ctx.submit_qr_payload(member_session, payload, profile_name=_member_profile, provider_key=_member_provider, my_user_no=_member_user, endpoints=_member_endpoints, request_ssl=_member_ssl)
+                        result = 0
+            # bool is subclass of int: False==0 must NOT be treated as success
+            _success = (result == 0 and result is not False and type(result) is not bool)
+            status = 'submitted' if _success else 'failed'
+            error = ''
+        except Exception as exc:
+            result = 1
+            status = 'failed'
+            error = str(exc)
+        results.append({'profile': pending.profile, 'provider': pending.provider, 'ok': (result == 0 and result is not False and type(result) is not bool), 'status': status, **({'error': error} if error else {})})
+    try:
+        ok = all((result['ok'] for result in results))
+    except Exception:
+        ok = False
+    return {'ok': ok, 'status': 'submitted' if ok else 'partial_failed', 'provider': provider_key, 'rollcall_id': preview.get('rollcall_id'), 'match_count': len(pending_snapshot), 'results': results}
 
 
 async def qr_fanout_command(payload: str) -> int:
@@ -286,10 +426,42 @@ async def finalize_qr_submission(
     progress_summary: ctx.Mapping[str, ctx.Any] | None = None,
     progress_log_output: bool = True,
     verification: ctx.Mapping[str, ctx.Any] | None = None,
+    profile_name: str = "",
+    provider_key: str = "",
+    my_user_no: str = "",
+    endpoints: ctx.Any = None,
+    request_ssl: ctx.Any = None,
 ) -> bool:
     rollcall_id = qr_data.rollcall_id
-    active = ctx.get_active_profile(ctx.CONFIG)
-    ctx.remove_pending_qr(ctx.BASE_DIR, profile=active.name, rollcall_id=rollcall_id, provider=ctx.get_active_provider_key())
+    # All identity comes from keyword-only DispatchContext fields; never derive from global outside.
+    _profile = ctx.normalize_profile_name(profile_name)
+    _provider = ctx.normalize_text(provider_key)
+    _ep = endpoints
+    _ssl = request_ssl
+    _my_user_no = ctx.normalize_text(my_user_no)
+    # Require explicit context at call sites — do not silently fall back to active for QR finalization
+    # (legacy CLI still threads globals; monitor/group/bot must pass DispatchContext values).
+    if not _profile:
+        try:
+            _profile = ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).name)
+        except Exception:
+            _profile = ""
+    if not _provider:
+        try:
+            _provider = ctx.get_active_provider_key()
+        except Exception:
+            _provider = ctx.DEFAULT_PROVIDER if hasattr(ctx, "DEFAULT_PROVIDER") else "thu"
+    if _ep is None:
+        try:
+            _ep = ctx.get_active_http_endpoints()
+        except Exception:
+            _ep = None
+    if _ssl is None:
+        try:
+            _ssl = ctx.get_ssl_request_setting()
+        except Exception:
+            _ssl = None
+    ctx.remove_pending_qr(ctx.BASE_DIR, profile=_profile, rollcall_id=rollcall_id, provider=_provider)
     verification_result: ctx.Dict[str, ctx.Any] = dict(verification or {}) if isinstance(verification, dict) else {}
     try:
         if not verification_result:
@@ -298,6 +470,9 @@ async def finalize_qr_submission(
                 rollcall_id,
                 progress_summary=progress_summary,
                 rollcall_type='qrcode',
+                my_user_no=_my_user_no,
+                endpoints=_ep,
+                request_ssl=_ssl,
             )
     except Exception:
         verification_result = {'ok': False, 'status': 'submitted_unconfirmed', 'rollcall_id': rollcall_id}
@@ -343,28 +518,55 @@ async def finalize_qr_submission(
     return True
 
 
-async def _answer_qr_data(session: ctx.aiohttp.ClientSession, qr_data):
+async def _answer_qr_data(session: ctx.aiohttp.ClientSession, qr_data, *, request_ssl: ctx.Any = None, base_url: str = ""):
+    # Caller must pass DispatchContext-derived values; no global re-read here.
+    _ssl = request_ssl
+    _base = ctx.normalize_text(base_url)
+    if _ssl is None:
+        _ssl = ctx.get_ssl_request_setting()
+    if not _base:
+        _base = ctx.get_active_http_endpoints().base_url
     return await ctx.answer_qr_rollcall(
         session,
         qr_data,
         device_id=ctx.random_id(),
-        request_ssl=ctx.get_ssl_request_setting(),
+        request_ssl=_ssl,
         session_id=ctx.get_session_id_header(session),
-        base_url=ctx.get_active_http_endpoints().base_url,
+        base_url=_base,
     )
 
 
-async def submit_qr_payload(session: ctx.aiohttp.ClientSession, raw_payload: str, *, progress_log_output: bool = True) -> bool:
+async def submit_qr_payload(session: ctx.aiohttp.ClientSession, raw_payload: str, *, progress_log_output: bool = True, profile_name: str = "", provider_key: str = "", my_user_no: str = "", endpoints: ctx.Any = None, request_ssl: ctx.Any = None) -> bool:
     qr_data = ctx.parse_qr_payload(raw_payload)
     rollcall_id = qr_data.rollcall_id
     if not rollcall_id:
         raise ValueError('QR 內容缺少 rollcallId，無法送出。')
+    _ep = endpoints
+    _ssl = request_ssl
+    _my_user_no = ctx.normalize_text(my_user_no)
+    _profile = ctx.normalize_profile_name(profile_name)
+    _provider = ctx.normalize_text(provider_key)
+    if _ep is None:
+        _ep = ctx.get_active_http_endpoints()
+    if _ssl is None:
+        _ssl = ctx.get_ssl_request_setting()
+    if not _my_user_no:
+        try:
+            _my_user_no = ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).user)
+        except Exception:
+            pass
+    if not _profile:
+        try:
+            _profile = ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).name)
+        except Exception:
+            _profile = ""
+    if not _provider:
+        _provider = ctx.get_active_provider_key()
+    result = await _answer_qr_data(session, qr_data, request_ssl=_ssl, base_url=_ep.base_url)
+    return await ctx.finalize_qr_submission(session, qr_data, result, progress_log_output=progress_log_output, profile_name=_profile, provider_key=_provider, my_user_no=_my_user_no, endpoints=_ep, request_ssl=_ssl)
 
-    result = await _answer_qr_data(session, qr_data)
-    return await ctx.finalize_qr_submission(session, qr_data, result, progress_log_output=progress_log_output)
 
-
-async def submit_qr_with_data(session: ctx.aiohttp.ClientSession, rollcall_id, data, *, progress_log_output: bool = True) -> bool:
+async def submit_qr_with_data(session: ctx.aiohttp.ClientSession, rollcall_id, data, *, progress_log_output: bool = True, profile_name: str = "", provider_key: str = "", my_user_no: str = "", endpoints: ctx.Any = None, request_ssl: ctx.Any = None) -> bool:
     rollcall_id_text = ctx.normalize_text(rollcall_id)
     data_text = ctx.normalize_text(data)
     if not rollcall_id_text:
@@ -372,11 +574,37 @@ async def submit_qr_with_data(session: ctx.aiohttp.ClientSession, rollcall_id, d
     if not data_text:
         raise ValueError('QR 內容缺少 data，無法送出。')
     qr_data = ctx.QrCodeData(fields={"rollcallId": rollcall_id_text, "data": data_text})
-    result = await _answer_qr_data(session, qr_data)
+    _ep = endpoints
+    _ssl = request_ssl
+    _my_user_no = ctx.normalize_text(my_user_no)
+    _profile = ctx.normalize_profile_name(profile_name)
+    _provider = ctx.normalize_text(provider_key)
+    if _ep is None:
+        _ep = ctx.get_active_http_endpoints()
+    if _ssl is None:
+        _ssl = ctx.get_ssl_request_setting()
+    if not _my_user_no:
+        try:
+            _my_user_no = ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).user)
+        except Exception:
+            pass
+    if not _profile:
+        try:
+            _profile = ctx.normalize_text(ctx.get_active_profile(ctx.CONFIG).name)
+        except Exception:
+            _profile = ""
+    if not _provider:
+        _provider = ctx.get_active_provider_key()
+    result = await _answer_qr_data(session, qr_data, request_ssl=_ssl, base_url=_ep.base_url)
     return await ctx.finalize_qr_submission(
         session,
         qr_data,
         result,
         notification_body='已透過教師帳號輔助取得 QR data 完成送出。',
         progress_log_output=progress_log_output,
+        profile_name=_profile,
+        provider_key=_provider,
+        my_user_no=_my_user_no,
+        endpoints=_ep,
+        request_ssl=_ssl,
     )

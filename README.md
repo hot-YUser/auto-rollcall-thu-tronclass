@@ -20,7 +20,7 @@
 
 - ✅ **數字點名** — **完整、成熟**。經過無數次實際課堂驗收與打磨：偵測到點名 → 自動拿到點名碼 → 自動簽到，全程零操作。
 - ✅ **雷達點名** — **完整、成熟**。同樣經大量實戰驗收，偵測到就自動完成定位簽到，你不用開地圖、不用對座標。就算哪天伺服器補掉現在的捷徑，背後還有一套**自寫的全球定位演算法**能反推教室座標頂上，不會因此失效。
-- ⚠️ **QR 點名** — 誠實說：**要全自動，得自備一個「能發起點名的教師帳號」**，但一般學生幾乎不可能拿到教師帳號，所以目前很尷尬。純學生端的自助解法我們**尚未發現**（坊間流傳有都市傳說級的作法，所以不寫成「不可能」，只是我方還沒找到）。完整逆向研究見文末〈QR 資料 Token 逆向研究紀錄〉。
+- ⚠️ **QR 點名** — 全自動需要一個外部 `data` 來源：可用自己的教師帳號即時取得，或在 `config.advanced.toml` 配置自架的 `[qr_remote]` data oracle。遠端 oracle 本身仍須由有權限的來源維持，不是學生端生成器。純學生端的自助解法我們**尚未發現**（已知有人做到、原理未明，因此不寫成「不可能」）。
 - ✅ **自主報到** — 已支援（四種點名裡最單純的：老師開啟後偵測到就自動送出）。誠實交代：測試租戶未開通此服務，屬**契約正確＋離線測試、尚未實機驗證**，在有開通的租戶上應可直接運作。
 
 ### 🤖 自動答題（LLM，核心功能）
@@ -41,7 +41,7 @@
 
 ### 我只是想用（Windows，最簡單）
 
-1. 到 Releases，**只下載主程式這一個檔**（檔名形如 **`THU_Auto_Rollcall-vX.Y.Z-windows-x64.zip`**）。
+1. 到 [Releases](https://github.com/hot-YUser/auto-rollcall-thu-tronclass/releases)，**只下載主程式這一個檔**（檔名形如 **`THU_Auto_Rollcall-vX.Y.Z-windows-x64.zip`**）。
 2. **整包解壓縮**到一個固定資料夾（不要在 zip 裡直接雙擊）。
 3. 進資料夾，執行 `auto-rollcall-thu-tronclass.exe`。
 
@@ -304,9 +304,9 @@ LINE 支援 webhook 簽章驗證、回覆與推播，常用環境變數 `LINE_CH
 - **v1.7** — LLM 自動答題：測驗、問卷、作業、投票全自動
 - **v1.8** — 第四種點名、日誌系統重寫＋研究模式、監控永不卡頓
 
-### 未來方向（v2.0）
+### v2 原生 App
 
-核心的點名與答題功能已趨於穩定，原則上不再大改（除非冒出強而有力的新線索）。接下來想挑戰的，是把整套東西帶到更遠的地方：試著用 **Rust 重寫**、試著用 **.NET MAUI**、把目標放在**全平台、尤其是手機端的原生 App**。這些都是給自己的挑戰題，做到哪算哪。
+[v2（Rust＋.NET MAUI）](https://github.com/hot-YUser/auto-Tronclass-APP) 已有 Windows 與 Android alpha，可供測試原生 GUI、群組排程與背景監控。它仍是實驗性版本；需要成熟 CLI、Bot 與目前最完整行為時，v1 仍是穩定基準。
 
 ---
 
@@ -336,9 +336,9 @@ LINE 支援 webhook 簽章驗證、回覆與推播，常用環境變數 `LINE_CH
 
 TronClass 有些測驗會把「正確答案」透過學生也能呼叫的複閱 API 漏給你。所以策略是：**拿得到正解就直接填**（可重複作答的測驗甚至「先交一次→讀到正解→再交一次」拿滿分）；**拿不到就交給 LLM** 看題目作答，並確保每題都有真實答案、不送空白。
 
-### QR 點名：為什麼只能教師輔助
+### QR 點名：`data` 必須來自外部來源
 
-QR 點名的學生端 API 只接受 `data`＋`deviceId`，但**不會**把 `data` 回給學生，所以一定得從別的地方拿到那串 `data`。設定 `teacher` 後就能全自動：程式偵測到 QR 點名，先用教師帳號**預備好**一場教師端 QR 點名；輪到可送出時，讀取教師端會定時輪換的 `data`，立刻送出學生端答案並在確認窗口內反覆刷新重送，直到回查確認簽到成功，最後把教師端那場關掉。整個過程不需要你動手——但這建立在「有教師帳號」上，離真正的免教師自助簽到還有距離（見文末）。
+QR 點名的學生端 API 只接受 `data`＋`deviceId`，但不會把 `data` 回給學生。程式可從兩種來源取得：本機 `[teacher]` 帳號即時建立 QR 點名並讀取，或 `[qr_remote]` 從自架 oracle 取得。教師來源失敗時可自動 fallback remote；兩者都沒有才要求手動貼上 QR。遠端 oracle 只是供應 `data`，學生仍以自己的學校 endpoint、session 與 device ID 送出並回查 `on_call_fine`。
 
 ---
 
@@ -388,7 +388,7 @@ PUT {base}/api/rollcall/{rollcall_id}/answer_self_registration_rollcall   body: 
 
 送法直接對照官方網頁前端。⚠️ 測試租戶 `www.tronclass.com.tw` 未開通此服務（老師建立時回 `400 未開啟這項服務`），故為**契約正確 + 離線測試、尚未實機驗證**。
 
-### QR 點名（教師輔助取得 data）
+### QR 點名（教師或遠端 oracle 取得 data）
 
 ```http
 # 教師帳號建立 / 啟動一場 QR 點名
@@ -406,7 +406,7 @@ PUT  {student_base}/api/rollcall/{student_rollcall_id}/answer_qr_rollcall
 PUT  {teacher_base}/api/rollcall/{teacher_rollcall_id}/stop_qr_rollcall
 ```
 
-教師帳號登入失敗或找不到課程時，只會停用 QR 教師輔助，數字與雷達點名仍照常監控。
+遠端模式以 Bearer key 呼叫 `GET {oracle}/token`，只接受 HTTPS（本機 loopback 測試可用 HTTP）、不跟 redirect，且只採信 `ok=true` 的 42 字元 `data`。教師來源登入／準備失敗時會 fallback remote；兩者都不可用時，數字與雷達監控仍不受影響。
 
 ### 教師端 CLI：手動發起一場點名
 

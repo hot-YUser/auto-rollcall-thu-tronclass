@@ -23,6 +23,7 @@ try:  # pragma: no cover - script execution fallback
         SMALL_BUNDLE_ARTIFACT_PARTS,
         SPEC_NAME,
         build_package_diagnostic_report,
+        is_raw_mobile_archive_name,
     )
 except ImportError:  # pragma: no cover
     from package_diagnostics import (
@@ -32,6 +33,7 @@ except ImportError:  # pragma: no cover
         SMALL_BUNDLE_ARTIFACT_PARTS,
         SPEC_NAME,
         build_package_diagnostic_report,
+        is_raw_mobile_archive_name,
     )
 
 
@@ -224,6 +226,11 @@ def validate_release_artifact(path: Path, *, strict_optional: bool = True) -> Di
         for name in all_names
         if _forbidden_name_match(name)
     ]
+    raw_mobile_archives = sorted({
+        str(name)
+        for name in all_names
+        if is_raw_mobile_archive_name(name)
+    })
     optional_bundles = [
         _optional_bundle_name_match(name)
         for name in optional_names
@@ -235,6 +242,7 @@ def validate_release_artifact(path: Path, *, strict_optional: bool = True) -> Di
         _check("artifact exists", artifact.exists(), artifact.name or str(artifact), severity="warn"),
         _check("artifact naming", name_ok or not artifact.exists(), "expected release artifact naming", severity="warn"),
         _check("artifact excludes local state", not forbidden, "no config/state/log/tests/cookies names", severity="fail"),
+        _check("artifact excludes raw mobile archives", not raw_mobile_archives, "no raw .ipa/.apk archives", severity="fail"),
         _check(
             "artifact excludes optional extras",
             not optional_bundles,
@@ -249,6 +257,7 @@ def validate_release_artifact(path: Path, *, strict_optional: bool = True) -> Di
         "candidate_names": sorted(candidate_names)[:20],
         "manifest": build_release_artifact_manifest(artifact),
         "forbidden_names": sorted(set(forbidden))[:20],
+        "raw_mobile_archive_names": raw_mobile_archives[:20],
         "optional_bundle_names": sorted(set(optional_bundles))[:20],
         "strict_optional": bool(strict_optional),
         "checks": checks,
@@ -349,16 +358,16 @@ def _readme_report(path: Path) -> Dict[str, Any]:
     checks = [
         _check("README exists", path.exists(), path.name, severity="warn"),
         _check(
-            "README release status",
-            f"v{PROJECT_RELEASE_LABEL}" in text or PROJECT_RELEASE_LABEL in text,
-            "current release status documented",
+            "README release link",
+            "https://github.com/hot-YUser/auto-rollcall-thu-tronclass/releases" in text,
+            "stable Releases link documented",
             severity="warn",
         ),
         _check("README monitor console quickstart", "run --no-input" in text and "按任意鍵" in text, "monitor console quickstart documented", severity="warn"),
         _check("README config tutorial", "config.advanced.toml" in text and "operating" in text, "config tutorial documented", severity="warn"),
         _check("README bot docs", "HTTP Interactions" in text and "Telegram" in text, "bot entrypoints documented", severity="warn"),
         _check("README provider scope", "THU" in text and "TKU" in text, "THU/TKU provider scope documented", severity="warn"),
-        _check("README qr teacher assist", "QR Code 點名" in text and "教師輔助" in text, "QR teacher assist documented", severity="warn"),
+        _check("README qr automation", "QR 點名" in text and "教師輔助" in text and "qr_remote" in text, "teacher and remote QR sources documented", severity="warn"),
         _check("README no stale stable-version advice", "建議優先使用上一個正式版" not in text and "v0.2.8" not in text, "no obsolete v0.2.8 recommendation", severity="warn"),
         _check("credits original repo", "silvercow002/tronclass-script" in text, "original repo documented", severity="warn"),
         _check("credits original author", "@silvercow002" in text or "github.com/silvercow002" in text, "original author documented", severity="warn"),

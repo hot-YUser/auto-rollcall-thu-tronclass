@@ -156,7 +156,7 @@ def build_arg_parser() -> ctx.argparse.ArgumentParser:
     research_browser_capture.add_argument('--json', action='store_true', help='print JSON')
     research_crawl_summary = research_subcommands.add_parser('crawl-summary', help='summarize the local research-crawl evidence (re-redacted on read)')
     research_crawl_summary.add_argument('--json', action='store_true', help='print JSON')
-    qr_parser = subcommands.add_parser('qr', help='manually submit a QR payload you provide (teacher-assist in [teacher] is the only AUTOMATIC QR path)')
+    qr_parser = subcommands.add_parser('qr', help='manually submit a QR payload you provide (automatic sources are configured in [teacher] / [qr_remote])')
     qr_parser.add_argument('qr_args', nargs='*', help='payload, or subcommands: paste/pending/scan (all MANUAL last-resort — not automatic)')
     qr_parser.add_argument('--yes', action='store_true', help='skip QR paste confirmation')
     qr_parser.add_argument('--all', dest='fanout_all', action='store_true', help='submit to all matching pending profiles')

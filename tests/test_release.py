@@ -6,7 +6,7 @@ import unittest
 import unittest.mock
 import zipfile
 from pathlib import Path
-from troTHU.package_diagnostics import PROJECT_NAME, PROJECT_VERSION, build_package_diagnostic_report, discover_hidden_import_gaps, validate_pyinstaller_spec
+from troTHU.package_diagnostics import PROJECT_NAME, PROJECT_VERSION, build_package_diagnostic_report, discover_hidden_import_gaps, is_raw_mobile_archive_name, validate_pyinstaller_spec
 from troTHU.release_checklist import EXPECTED_WINDOWS_ZIP, build_release_artifact_manifest, build_release_build_plan, build_release_checklist, format_release_checklist, validate_release_artifact
 from troTHU.release_builder import RELEASE_NOTES_FILE, ReleaseBuildError, _default_command_runner, build_release_build_preflight, package_addon_bundle, package_release_artifact, run_release_build_pipeline
 from troTHU import tron
@@ -157,6 +157,23 @@ class ReleaseBuilderTest(unittest.TestCase):
                     notes_text="notes",
                 )
 
+    def test_package_release_artifact_rejects_raw_mobile_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            collect = root / "collect"
+            collect.mkdir()
+            (collect / "vendor-app.apk.zip").write_bytes(b"raw archive")
+            readme = root / "README.md"
+            readme.write_text("# readme\n", encoding="utf-8")
+
+            with self.assertRaises(ReleaseBuildError):
+                package_release_artifact(
+                    collect,
+                    root / "dist" / EXPECTED_WINDOWS_ZIP,
+                    readme_path=readme,
+                    notes_text="notes",
+                )
+
 
 
     def test_pipeline_fails_when_pyinstaller_is_unavailable(self) -> None:
@@ -266,6 +283,20 @@ class ReleaseChecklistTest(unittest.TestCase):
         self.assertEqual(report["status"], "fail")
         self.assertIn("keyring", report["optional_bundle_names"])
         self.assertIn("cv2", report["optional_bundle_names"])  # OCR stack must not be in the lean main exe
+
+    def test_validate_release_artifact_flags_raw_mobile_archive_members(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            artifact = root / EXPECTED_WINDOWS_ZIP
+            with zipfile.ZipFile(artifact, "w") as archive:
+                archive.writestr("THU_Auto_Rollcall.exe", "placeholder")
+                archive.writestr("captures/tronclass.ipa", "do-not-ship")
+                archive.writestr("captures/vendor.apk.zip", "do-not-ship")
+            report = validate_release_artifact(artifact)
+
+        self.assertEqual(report["status"], "fail")
+        self.assertIn("captures/tronclass.ipa", report["raw_mobile_archive_names"])
+        self.assertIn("captures/vendor.apk.zip", report["raw_mobile_archive_names"])
 
     def test_build_release_artifact_manifest_lists_names_hashes_and_sizes(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -427,6 +458,23 @@ class PackageDiagnosticsTest(unittest.TestCase):
         self.assertIn("keyring", report["runtime"]["optional_capabilities"])
         self.assertIn("playwright.async_api", report["runtime"]["optional_capabilities"])
         self.assertNotIn("textual", report["runtime"]["modules"])
+
+    def test_raw_mobile_archive_policy_covers_repo_and_release_inputs(self) -> None:
+        for name in ("tronclass.ipa", "tronclass.ipa.zip", "vendor.apk", "vendor.apk.zip"):
+            with self.subTest(name=name):
+                self.assertTrue(is_raw_mobile_archive_name(name))
+        self.assertFalse(is_raw_mobile_archive_name(EXPECTED_WINDOWS_ZIP))
+
+        report = build_package_diagnostic_report(Path("."), config=tron.CONFIG)
+        hygiene = report["git_hygiene"]
+        self.assertEqual(hygiene["tracked_mobile_archives"], [])
+        self.assertEqual(
+            next(item["status"] for item in hygiene["checks"] if item["name"] == "tracked mobile archives absent"),
+            "ok",
+        )
+        for pattern in ("*.ipa", "*.ipa.zip", "*.apk", "*.apk.zip"):
+            self.assertIn(pattern, hygiene["required_ignored"])
+            self.assertNotIn(pattern, hygiene["missing_ignored"])
 
     def test_doctor_and_package_check_json_include_packaging_report(self) -> None:
         outputs = []
