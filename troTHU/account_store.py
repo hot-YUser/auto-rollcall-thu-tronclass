@@ -188,7 +188,10 @@ def cookie_path(base_dir: Path, profile_name: str) -> Path:
 
 def save_session_cookies(session: Any, base_dir: Path, profile_name: str) -> bool:
     path = cookie_path(base_dir, profile_name)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return False
     records = []
     
     import time
@@ -229,7 +232,19 @@ def save_session_cookies(session: Any, base_dir: Path, profile_name: str) -> boo
         "saved_at": saved_at,
         "cookies": records
     }
-    path.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
+    # Atomic same-dir tmp + os.replace (same shape as autoanswer_store/account_runtime_store,
+    # which also skip fsync). On failure clean up the tmp and report False — never fall back
+    # to a direct write, so callers keep the last good file and never a torn one.
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    try:
+        tmp.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
+        os.replace(tmp, path)
+    except OSError:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return False
     return True
 
 

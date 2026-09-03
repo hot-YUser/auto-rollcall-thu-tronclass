@@ -34,6 +34,12 @@ except ImportError:  # pragma: no cover - script execution fallback
 MATERIAL_LIST_MAX = 60
 READ_MAX_CHARS = 12000
 PDF_MAX_CHARS = 8000
+# Single-download bound for course-material bodies (PDF/image): a declared length over
+# it fails closed before reading; a lying stream is cut at the cap. Text-scale
+# attachments never need more; total=None is kept so a slow-but-progressing body
+# still finishes instead of timing out.
+PDF_MAX_BYTES = 16 * 1024 * 1024
+_PDF_READ_CHUNK_BYTES = 256 * 1024
 # Material-ish activity types that can carry readable content / attachments.
 _MATERIAL_TYPES = ("material", "page", "online_video", "web_link", "scorm")
 _IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".webp")
@@ -87,6 +93,52 @@ async def _get_json(client: Any, path: str) -> Any:
         return {}
 
 
+async def _read_bounded_body(resp: Any, *, limit: int) -> Optional[bytes]:
+    """Read at most `limit` bytes (stdlib-light, no extra dependency).
+
+    Returns None when the body exceeds `limit` (fail closed — the over-cap tail is
+    never buffered). Reads incrementally so a lying Content-Length / chunked stream
+    is cut at the cap instead of being buffered whole.
+    """
+    try:
+        declared = resp.content_length
+    except Exception:
+        declared = None
+    try:
+        if declared is not None and int(declared) > limit:
+            return None
+    except (TypeError, ValueError):
+        pass
+    chunks: List[bytes] = []
+    total = 0
+    content = getattr(resp, "content", None)
+    read_chunk = getattr(content, "read", None)
+    if read_chunk is None:
+        # Legacy fake-response shape (resp.read() -> bytes); still length-checked.
+        legacy_read = getattr(resp, "read", None)
+        if legacy_read is None:
+            return None
+        try:
+            data = await legacy_read()
+        except Exception:
+            return None
+        if data is None or len(data) > limit:
+            return None
+        return bytes(data)
+    try:
+        while True:
+            piece = await read_chunk(_PDF_READ_CHUNK_BYTES)
+            if not piece:
+                break
+            total += len(piece)
+            if total > limit:
+                return None
+            chunks.append(piece)
+    except Exception:
+        return None
+    return b"".join(chunks)
+
+
 async def _get_bytes(client: Any, url: str) -> Tuple[Optional[bytes], str]:
     """Authenticated raw GET (the student session); returns (bytes, mime) or (None, '')."""
     full = url if url.startswith("http") else client.api_url(url)
@@ -100,8 +152,12 @@ async def _get_bytes(client: Any, url: str) -> Tuple[Optional[bytes], str]:
             if resp.status != 200:
                 ctx.log_api_call("GET", full, http_status=resp.status, elapsed_ms=elapsed)
                 return None, ""
-            data = await resp.read()
+            data = await _read_bounded_body(resp, limit=PDF_MAX_BYTES)
             mime = normalize_text(resp.headers.get("Content-Type")).split(";")[0]
+            if data is None:
+                ctx.log_api_call("GET", full, http_status=resp.status, elapsed_ms=elapsed,
+                                 response={"bytes": "over_limit", "mime": mime})
+                return None, ""
             ctx.log_api_call("GET", full, http_status=resp.status, elapsed_ms=elapsed,
                              response={"bytes": len(data), "mime": mime})
             return data, mime

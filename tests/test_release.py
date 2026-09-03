@@ -117,6 +117,10 @@ class ReleaseBuilderTest(unittest.TestCase):
             self.assertTrue(report["artifact"]["sha256_short"])
             self.assertEqual(report["smoke"]["status"], "ok")
             self.assertTrue(report["smoke"]["uses_temp_extract"])
+            # Additive informational fields: input collect size vs output zip size.
+            self.assertEqual(report["artifact"]["collect_file_count"] + 2,
+                             report["artifact"]["member_count"])
+            self.assertGreater(report["artifact"]["collect_bytes"], 0)
             with zipfile.ZipFile(artifact) as archive:
                 names = archive.namelist()
                 release_notes = archive.read(
@@ -139,6 +143,8 @@ class ReleaseBuilderTest(unittest.TestCase):
         self.assertTrue(smoke_cwds)
         self.assertTrue(all("release-smoke-" in cwd for cwd in smoke_cwds))
         self.assertEqual(report["smoke"]["status"], "ok")
+        # Additive already-paid sum: 3 fake smoke steps x 0.01s, never a gate.
+        self.assertAlmostEqual(report["smoke"]["total_duration_seconds"], 0.03, places=2)
 
     def test_package_release_artifact_rejects_forbidden_collect_members(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
