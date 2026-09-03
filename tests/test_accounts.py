@@ -217,6 +217,50 @@ class AccountStoreCookiesTest(unittest.TestCase):
             self.assertFalse(status["near_expiry"])
             self.assertIsNone(status["expires_at"])
 
+    def test_save_leaves_no_tmp_and_valid_final(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base_dir = Path(temp_dir)
+            session = FakeSession()
+            session.cookie_jar.cookies.append(FakeCookie("session", "v", domain=".example.com"))
+
+            self.assertTrue(save_session_cookies(session, base_dir, "atomic_profile"))
+
+            path = cookie_path(base_dir, "atomic_profile")
+            self.assertFalse(path.with_suffix(path.suffix + ".tmp").exists())
+            data = json.loads(path.read_text(encoding="utf-8"))  # no torn final: parses
+            self.assertEqual(data.get("version"), 2)
+            self.assertEqual(len(data.get("cookies", [])), 1)
+
+    def test_replace_failure_returns_false_keeps_old_and_cleans_tmp(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base_dir = Path(temp_dir)
+            path = cookie_path(base_dir, "replace_profile")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            old = {"version": 2, "saved_at": 1,
+                   "cookies": [{"key": "session", "value": "old", "domain": ".example.com",
+                                "path": "/", "expires": None, "secure": False,
+                                "httponly": False, "samesite": ""}]}
+            path.write_text(json.dumps(old), encoding="utf-8")
+            session = FakeSession()
+            session.cookie_jar.cookies.append(FakeCookie("session", "new"))
+
+            with patch("os.replace", side_effect=OSError("disk full")):
+                self.assertFalse(save_session_cookies(session, base_dir, "replace_profile"))
+
+            self.assertEqual(json.loads(path.read_text(encoding="utf-8")), old)  # last good kept
+            self.assertFalse(path.with_suffix(path.suffix + ".tmp").exists())  # tmp cleaned
+
+    def test_write_failure_returns_false_without_final(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base_dir = Path(temp_dir)
+            session = FakeSession()
+            session.cookie_jar.cookies.append(FakeCookie("session", "v"))
+
+            with patch.object(Path, "write_text", side_effect=OSError("read-only")):
+                self.assertFalse(save_session_cookies(session, base_dir, "write_profile"))
+
+            self.assertFalse(cookie_path(base_dir, "write_profile").exists())
+
 
 # --- merged from tests/test_group_runtime.py ---
 try:

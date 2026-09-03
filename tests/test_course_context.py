@@ -2,7 +2,15 @@ from __future__ import annotations
 import unittest
 
 from troTHU import course_context
-from troTHU.course_context import make_image_fetcher, make_tool_executor, material_tool_specs, pdf_to_text
+from troTHU.course_context import (
+    PDF_MAX_BYTES,
+    _get_bytes,
+    _read_bounded_body,
+    make_image_fetcher,
+    make_tool_executor,
+    material_tool_specs,
+    pdf_to_text,
+)
 
 
 class _Resp:
@@ -65,6 +73,97 @@ class ToolSpecTest(unittest.TestCase):
 class PdfTest(unittest.TestCase):
     def test_garbage_bytes_degrade_to_empty(self):
         self.assertEqual(pdf_to_text(b"this is not a pdf"), "")  # never raises
+
+
+class _ChunkContent:
+    """Deterministic aiohttp-shaped body: content.read(n) yields fixed pieces."""
+
+    def __init__(self, pieces):
+        self._pieces = [bytes(p) for p in pieces]
+        self.read_calls = 0
+
+    async def read(self, n):
+        self.read_calls += 1
+        if not self._pieces:
+            return b""
+        head = self._pieces[0]
+        out, rest = head[:n], head[n:]
+        if rest:
+            self._pieces[0] = rest
+        else:
+            self._pieces.pop(0)
+        return out
+
+
+class _BoundedResp:
+    def __init__(self, pieces, *, content_length=None, status=200, mime="application/pdf"):
+        self.status = status
+        self.headers = {"Content-Type": mime}
+        self.content_length = content_length
+        self.content = _ChunkContent(pieces)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *a):
+        return False
+
+
+class _BoundedSession:
+    def __init__(self, resp):
+        self._resp = resp
+
+    def get(self, url, **kw):
+        return self._resp
+
+
+class _BoundedClient:
+    def __init__(self, resp):
+        self.session = _BoundedSession(resp)
+
+    def api_url(self, path):
+        return "https://x" + path
+
+    def request_kwargs(self):
+        return {}
+
+
+class BoundedPdfBodyTest(unittest.IsolatedAsyncioTestCase):
+    async def test_small_body_passes_through(self):
+        resp = _BoundedResp([b"a" * 100, b"b" * 50], content_length=150)
+        self.assertEqual(await _read_bounded_body(resp, limit=PDF_MAX_BYTES), b"a" * 100 + b"b" * 50)
+
+    async def test_declared_over_cap_fails_closed_without_reading(self):
+        resp = _BoundedResp([b"x" * 10], content_length=PDF_MAX_BYTES + 1)
+        self.assertIsNone(await _read_bounded_body(resp, limit=PDF_MAX_BYTES))
+        self.assertEqual(resp.content.read_calls, 0)  # never buffered the body
+
+    async def test_lying_declared_small_stream_cut_at_cap(self):
+        # Declared 3 bytes, actual stream far larger: incremental read stops at the cap.
+        big = [b"z" * 1024] * 40  # 40 KiB stream against a 4 KiB cap
+        resp = _BoundedResp(big, content_length=3)
+        self.assertIsNone(await _read_bounded_body(resp, limit=4096))
+        # Incremental: stopped shortly past the cap, never consumed the whole stream.
+        self.assertLess(resp.content.read_calls, 40)
+
+    async def test_slow_progressing_valid_body_with_unknown_length(self):
+        # content_length None (chunked/slow): many small pieces under the cap still finish.
+        pieces = [b"p" * 100] * 20
+        resp = _BoundedResp(pieces, content_length=None)
+        self.assertEqual(await _read_bounded_body(resp, limit=PDF_MAX_BYTES), b"p" * 2000)
+
+    async def test_get_bytes_enforces_cap_end_to_end(self):
+        resp = _BoundedResp([b"y" * 8], content_length=PDF_MAX_BYTES + 100)
+        data, _mime = await _get_bytes(_BoundedClient(resp), "/dl/big.pdf")
+        self.assertIsNone(data)
+        self.assertEqual(resp.content.read_calls, 0)
+
+    async def test_get_bytes_keeps_valid_pdf_under_cap(self):
+        body = b"%PDF-1.4 valid"
+        resp = _BoundedResp([body], content_length=len(body))
+        data, mime = await _get_bytes(_BoundedClient(resp), "/dl/ok.pdf")
+        self.assertEqual(data, body)
+        self.assertEqual(mime, "application/pdf")
 
 
 class ExecutorTest(unittest.IsolatedAsyncioTestCase):

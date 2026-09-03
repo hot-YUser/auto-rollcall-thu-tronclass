@@ -356,6 +356,7 @@ def package_release_artifact(
     if artifact.exists():
         artifact.unlink()
     file_count = 0
+    collect_bytes = 0
     with zipfile.ZipFile(artifact, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for child in _iter_collect_files(collect):
             relative = _rel(child, collect)
@@ -365,6 +366,10 @@ def package_release_artifact(
                 raise ReleaseBuildError("unsafe_artifact_member")
             archive.write(child, member)
             file_count += 1
+            try:
+                collect_bytes += child.stat().st_size
+            except OSError:
+                pass
         archive.write(readme, "{}/README.md".format(ARTIFACT_ROOT))
         archive.writestr("{}/RELEASE_NOTES.txt".format(ARTIFACT_ROOT), notes_text)
         file_count += 2
@@ -381,6 +386,9 @@ def package_release_artifact(
         "size_bytes": artifact.stat().st_size if artifact.exists() else 0,
         "sha256_short": _sha256_short(artifact),
         "member_count": file_count,
+        # Informational only — never gates the build: input collect size vs output zip size.
+        "collect_bytes": collect_bytes,
+        "collect_file_count": file_count - 2,
         "validation": validation,
         "status": "ok",
     }
@@ -505,6 +513,10 @@ def _smoke_artifact(
             "extract_dir_name": smoke_root.name,
             "executable": exe.name,
             "steps": steps,
+            # Informational only — sum of the already-paid per-step durations, never a gate.
+            "total_duration_seconds": round(
+                sum(float(step.get("duration_seconds") or 0) for step in steps
+                    if isinstance(step, Mapping)), 3),
         }
     finally:
         shutil.rmtree(smoke_root, ignore_errors=True)

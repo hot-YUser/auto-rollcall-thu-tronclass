@@ -1036,6 +1036,60 @@ class QrRemoteRuntimeTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(sessions[0])
         self.assertIs(sessions[0], sessions[1])
 
+    async def test_submit_remote_qr_does_not_mark_done_when_submitted_but_unconfirmed(self) -> None:
+        tron.CONFIG.clear()
+        tron.CONFIG.update({"qr_remote": {
+            "enabled": True,
+            "base_url": "https://oracle.test",
+            "api_key": "k",
+            "confirm_window_seconds": 0.2,
+            "poll_interval_seconds": 0.01,
+            "timeout_seconds": 1.0,
+        }})
+        data_token = "1700000000" + "e" * 32
+        from troTHU.qr_remote_runtime import QrRemoteSuccess
+        finalize_mock = AsyncMock(return_value=False)
+        with (
+            patch.object(qr_remote_runtime, "fetch_remote_qr_data", AsyncMock(return_value=QrRemoteSuccess(data=data_token))),
+            patch.object(tron, "answer_qr_rollcall", AsyncMock(return_value={"ok": True})),
+            patch.object(tron, "verify_rollcall_on_call_fine",
+                         AsyncMock(return_value={"ok": False, "status": "submitted_unconfirmed", "rollcall_id": "77"})),
+            patch.object(tron, "get_active_http_endpoints", return_value=SimpleNamespace(base_url="https://x")),
+            patch.object(tron, "get_ssl_request_setting", return_value=None),
+            patch.object(tron, "finalize_qr_submission", finalize_mock),
+        ):
+            ok = await tron.submit_remote_qr(object(), {"rollcall_id": "77"})
+
+        self.assertFalse(ok)
+        self.assertFalse(tron.is_completed_qr_rollcall("77"))  # 未確認不標記完成，下一輪可重查
+        finalize_mock.assert_awaited_once()  # unconfirmed finalize sent once with the last data
+
+    async def test_submit_remote_qr_never_submitted_marks_nothing(self) -> None:
+        tron.CONFIG.clear()
+        tron.CONFIG.update({"qr_remote": {
+            "enabled": True,
+            "base_url": "https://oracle.test",
+            "api_key": "k",
+            "confirm_window_seconds": 0.05,
+            "poll_interval_seconds": 0.01,
+            "timeout_seconds": 1.0,
+        }})
+        from troTHU.qr_remote_runtime import QrRemoteError
+        answer_mock = AsyncMock(return_value={"ok": True})
+        finalize_mock = AsyncMock(return_value=False)
+        with (
+            patch.object(qr_remote_runtime, "fetch_remote_qr_data",
+                         AsyncMock(return_value=QrRemoteError(kind="transient", status=200, message="no_data", terminal=False))),
+            patch.object(tron, "answer_qr_rollcall", answer_mock),
+            patch.object(tron, "finalize_qr_submission", finalize_mock),
+        ):
+            ok = await tron.submit_remote_qr(object(), {"rollcall_id": "78"})
+
+        self.assertFalse(ok)
+        self.assertFalse(tron.is_completed_qr_rollcall("78"))
+        answer_mock.assert_not_awaited()  # never had data -> never submitted
+        finalize_mock.assert_not_awaited()  # nothing to finalize
+
 
 if __name__ == "__main__":
     unittest.main()
